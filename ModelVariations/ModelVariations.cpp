@@ -19,7 +19,9 @@ using namespace plugin;
 CIniReader iniVeh("ModelVariations_Vehicles.ini");
 
 std::array<std::vector<short>, 6> pedVariations[300];
+
 std::array<std::vector<short>, 6> vehVariations[212];
+std::array<std::vector<short>, 6> vehWantedVariations[212];
 
 std::vector<short> currentVehVariations[212];
 
@@ -48,13 +50,23 @@ std::vector<short> pimpModels;
 std::vector<short> burglarModels;
 std::vector<short> trainModels;
 
-
 bool isPlayerInTaxi = false;
 bool enableSideMissions = false;
 int enableVehicles = 0;
 
 //debug
 //std::ofstream myfile("output.txt");
+
+bool isPlayerInDesert(CPlayerPed *player)
+{
+    if (player)
+        if (player->IsWithinArea(-883.0, 2979.0, 847.0, 456.0) ||
+            player->IsWithinArea(-1127.0, 2979.0, -880.0, 924.0) ||
+            player->IsWithinArea(-1823.0, 2979.0, -1128.0, 1580.0))
+            return true;
+
+    return false;
+}
 
 bool IdExists(std::vector<short>& vec, int id)
 {
@@ -69,49 +81,28 @@ bool IdExists(std::vector<short>& vec, int id)
 
 void drugDealerFix(void)
 {
-    if (pedVariations[28][0].empty() && pedVariations[28][1].empty() && pedVariations[28][2].empty() &&
-        pedVariations[28][3].empty() && pedVariations[28][4].empty() && pedVariations[28][5].empty() &&
+    bool enableFix = false;
 
-        pedVariations[29][0].empty() && pedVariations[29][1].empty() && pedVariations[29][2].empty() &&
-        pedVariations[29][3].empty() && pedVariations[29][4].empty() && pedVariations[29][5].empty() &&
+    for (int i = 0; i < 6; i++)
+        if (!pedVariations[28][i].empty() || !pedVariations[29][i].empty() || !pedVariations[30][i].empty() || !pedVariations[254][i].empty())
+            enableFix = true;
 
-        pedVariations[30][0].empty() && pedVariations[30][1].empty() && pedVariations[30][2].empty() &&
-        pedVariations[30][3].empty() && pedVariations[30][4].empty() && pedVariations[30][5].empty() &&
-
-        pedVariations[254][0].empty() && pedVariations[254][1].empty() && pedVariations[254][2].empty() &&
-        pedVariations[254][3].empty() && pedVariations[254][4].empty() && pedVariations[254][5].empty())
-        return;
-       
+    if (!enableFix)
+        return;       
 
     std::vector<short> totalVariations;
 
-    totalVariations.insert(totalVariations.end(), pedVariations[28][0].begin(), pedVariations[28][0].end());
-    totalVariations.insert(totalVariations.end(), pedVariations[28][1].begin(), pedVariations[28][1].end());
-    totalVariations.insert(totalVariations.end(), pedVariations[28][2].begin(), pedVariations[28][2].end());
-    totalVariations.insert(totalVariations.end(), pedVariations[28][3].begin(), pedVariations[28][3].end());
-    totalVariations.insert(totalVariations.end(), pedVariations[28][4].begin(), pedVariations[28][4].end());
-    totalVariations.insert(totalVariations.end(), pedVariations[28][5].begin(), pedVariations[28][5].end());
+    for (int i = 0; i < 6; i++)
+        totalVariations.insert(totalVariations.end(), pedVariations[28][i].begin(), pedVariations[28][i].end());
 
-    totalVariations.insert(totalVariations.end(), pedVariations[29][0].begin(), pedVariations[29][0].end());
-    totalVariations.insert(totalVariations.end(), pedVariations[29][1].begin(), pedVariations[29][1].end());
-    totalVariations.insert(totalVariations.end(), pedVariations[29][2].begin(), pedVariations[29][2].end());
-    totalVariations.insert(totalVariations.end(), pedVariations[29][3].begin(), pedVariations[29][3].end());
-    totalVariations.insert(totalVariations.end(), pedVariations[29][4].begin(), pedVariations[29][4].end());
-    totalVariations.insert(totalVariations.end(), pedVariations[29][5].begin(), pedVariations[29][5].end());
+    for (int i = 0; i < 6; i++)
+        totalVariations.insert(totalVariations.end(), pedVariations[29][i].begin(), pedVariations[29][i].end());
 
-    totalVariations.insert(totalVariations.end(), pedVariations[30][0].begin(), pedVariations[30][0].end());
-    totalVariations.insert(totalVariations.end(), pedVariations[30][1].begin(), pedVariations[30][1].end());
-    totalVariations.insert(totalVariations.end(), pedVariations[30][2].begin(), pedVariations[30][2].end());
-    totalVariations.insert(totalVariations.end(), pedVariations[30][3].begin(), pedVariations[30][3].end());
-    totalVariations.insert(totalVariations.end(), pedVariations[30][4].begin(), pedVariations[30][4].end());
-    totalVariations.insert(totalVariations.end(), pedVariations[30][5].begin(), pedVariations[30][5].end());
+    for (int i = 0; i < 6; i++)
+        totalVariations.insert(totalVariations.end(), pedVariations[30][i].begin(), pedVariations[30][0].end());
 
-    totalVariations.insert(totalVariations.end(), pedVariations[254][0].begin(), pedVariations[254][0].end());
-    totalVariations.insert(totalVariations.end(), pedVariations[254][1].begin(), pedVariations[254][1].end());
-    totalVariations.insert(totalVariations.end(), pedVariations[254][2].begin(), pedVariations[254][2].end());
-    totalVariations.insert(totalVariations.end(), pedVariations[254][3].begin(), pedVariations[254][3].end());
-    totalVariations.insert(totalVariations.end(), pedVariations[254][4].begin(), pedVariations[254][4].end());
-    totalVariations.insert(totalVariations.end(), pedVariations[254][5].begin(), pedVariations[254][5].end());
+    for (int i = 0; i < 6; i++)
+        totalVariations.insert(totalVariations.end(), pedVariations[254][i].begin(), pedVariations[254][0].end());
 
     std::vector<short> variationsProcessed;
 
@@ -172,6 +163,36 @@ void __fastcall UpdateRpHAnimHooked(CEntity* entity)
     modelIndex = -1;
 }
 
+void updateVariations(std::vector<short> *currentPedVariations, int currentTown)
+{
+    for (int i = 0; i < 300; i++)
+    {
+        currentPedVariations[i].clear();
+        std::set_union(pedVariations[i][LV_GLOBAL].begin(), pedVariations[i][LV_GLOBAL].end(),
+            pedVariations[i][currentTown].begin(), pedVariations[i][currentTown].end(), std::back_inserter(currentPedVariations[i]));
+        if (i < 212)
+        {
+            currentVehVariations[i].clear();
+            std::set_union(vehVariations[i][LV_GLOBAL].begin(), vehVariations[i][LV_GLOBAL].end(),
+                vehVariations[i][currentTown].begin(), vehVariations[i][currentTown].end(), std::back_inserter(currentVehVariations[i]));
+            CWanted* wanted = FindPlayerWanted(-1);
+            if (wanted)
+            {
+                int wantedLevel = (wanted->m_nWantedLevel > 0) ? (wanted->m_nWantedLevel - 1) : (wanted->m_nWantedLevel);
+                if (!vehWantedVariations[i][wantedLevel].empty() && !currentVehVariations[i].empty())
+                {
+                    std::vector<short>::iterator it = currentVehVariations[i].begin();
+                    while (it != currentVehVariations[i].end())
+                        if (std::find(vehWantedVariations[i][wantedLevel].begin(), vehWantedVariations[i][wantedLevel].end(), *it) != vehWantedVariations[i][wantedLevel].end())
+                            ++it;
+                        else 
+                            it = currentVehVariations[i].erase(it);
+                }       
+            }
+        }
+    }
+}
+
 class ModelVariations {
 public:
     ModelVariations() {
@@ -180,6 +201,7 @@ public:
         static CIniReader iniWeap("ModelVariations_PedWeapons.ini");
     
         static int currentTown = -1;
+        static int currentWanted = 0;
         static std::vector<short> currentPedVariations[300];
 
         for (int i = 0; i < 300; i++)
@@ -227,81 +249,40 @@ public:
         Events::processScriptsEvent += []
         {
             CPlayerPed *player = FindPlayerPed();
+            CWanted* wanted = FindPlayerWanted(-1);
+            if (wanted && wanted->m_nWantedLevel != currentWanted)
+            {
+                currentWanted = wanted->m_nWantedLevel;
+                updateVariations(currentPedVariations, currentTown);
+            }
+
             if (player != NULL)
             {
                 if (CTheZones::m_CurrLevel == LEVEL_NAME_COUNTRY_SIDE)
                 {
                     if (currentTown != LV_DESERT)
                     {
-                        if (player->IsWithinArea(-883.0, 2979.0, 847.0, 456.0) ||
-                            player->IsWithinArea(-1127.0, 2979.0, -880.0, 924.0) ||
-                            player->IsWithinArea(-1823.0, 2979.0, -1128.0, 1580.0))
+                        if (isPlayerInDesert(player))
                         {
                             currentTown = LV_DESERT;
-                            for (int i = 0; i < 300; i++)
-                            {
-                                currentPedVariations[i].clear();
-                                std::set_union(pedVariations[i][LV_GLOBAL].begin(), pedVariations[i][LV_GLOBAL].end(),
-                                               pedVariations[i][LV_DESERT].begin(), pedVariations[i][LV_DESERT].end(), std::back_inserter(currentPedVariations[i]));
-                                if (i < 212)
-                                {
-                                    currentVehVariations[i].clear();
-                                    std::set_union(vehVariations[i][LV_GLOBAL].begin(), vehVariations[i][LV_GLOBAL].end(),
-                                                   vehVariations[i][LV_DESERT].begin(), vehVariations[i][LV_DESERT].end(), std::back_inserter(currentVehVariations[i]));
-                                }
-                            }
+                            updateVariations(currentPedVariations, currentTown);
                         }
                         else if (CTheZones::m_CurrLevel != currentTown)
                         {
                             currentTown = CTheZones::m_CurrLevel;
-                            for (int i = 0; i < 300; i++)
-                            {
-                                currentPedVariations[i].clear();
-                                std::set_union(pedVariations[i][LV_GLOBAL].begin(), pedVariations[i][LV_GLOBAL].end(),
-                                               pedVariations[i][currentTown].begin(), pedVariations[i][currentTown].end(), std::back_inserter(currentPedVariations[i]));
-                                if (i < 212)
-                                {
-                                    currentVehVariations[i].clear();
-                                    std::set_union(vehVariations[i][LV_GLOBAL].begin(), vehVariations[i][LV_GLOBAL].end(),
-                                                   vehVariations[i][currentTown].begin(), vehVariations[i][currentTown].end(), std::back_inserter(currentVehVariations[i]));
-                                }
-                            }
+                            updateVariations(currentPedVariations, currentTown);
                         }
                     }
-                    else if (!(player->IsWithinArea(-883.0, 2979.0, 847.0, 456.0) ||
-                               player->IsWithinArea(-1127.0, 2979.0, -880.0, 924.0) ||
-                               player->IsWithinArea(-1823.0, 2979.0, -1128.0, 1580.0)))
+                    else if (!isPlayerInDesert(player))
                     {
                         currentTown = CTheZones::m_CurrLevel;
-                        for (int i = 0; i < 300; i++)
-                        {
-                            currentPedVariations[i].clear();
-                            std::set_union(pedVariations[i][LV_GLOBAL].begin(), pedVariations[i][LV_GLOBAL].end(),
-                                            pedVariations[i][currentTown].begin(), pedVariations[i][currentTown].end(), std::back_inserter(currentPedVariations[i]));
-                            if (i < 212)
-                            {
-                                currentVehVariations[i].clear();
-                                std::set_union(vehVariations[i][LV_GLOBAL].begin(), vehVariations[i][LV_GLOBAL].end(),
-                                               vehVariations[i][currentTown].begin(), vehVariations[i][currentTown].end(), std::back_inserter(currentVehVariations[i]));
-                            }
-                        }
+                        updateVariations(currentPedVariations, currentTown);
                     }
                 }
                 else if (CTheZones::m_CurrLevel != currentTown)
                 {
                     currentTown = CTheZones::m_CurrLevel;
-                    for (int i = 0; i < 300; i++)
-                    {
-                        currentPedVariations[i].clear();
-                        std::set_union(pedVariations[i][LV_GLOBAL].begin(), pedVariations[i][LV_GLOBAL].end(),
-                                       pedVariations[i][currentTown].begin(), pedVariations[i][currentTown].end(), std::back_inserter(currentPedVariations[i]));
-                        if (i < 212)
-                        {
-                            currentVehVariations[i].clear();
-                            std::set_union(vehVariations[i][LV_GLOBAL].begin(), vehVariations[i][LV_GLOBAL].end(),
-                                           vehVariations[i][currentTown].begin(), vehVariations[i][currentTown].end(), std::back_inserter(currentVehVariations[i]));
-                        }
-                    }
+                    updateVariations(currentPedVariations, currentTown);
                 }
             }
 

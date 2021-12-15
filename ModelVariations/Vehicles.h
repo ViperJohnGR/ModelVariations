@@ -7,6 +7,8 @@ extern CIniReader iniVeh;
 //extern BYTE vehNumVariations[212];
 
 extern std::array<std::vector<short>, 6> vehVariations[212];
+extern std::array<std::vector<short>, 6> vehWantedVariations[212];
+
 extern std::vector<short> currentVehVariations[212];
 
 extern std::vector<short> copModels;

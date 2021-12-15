@@ -23,6 +23,15 @@ using namespace plugin;
 
 //int AddPoliceCarOccupantsOriginalModel;
 
+bool elementExists(std::vector<short>* vec, int element)
+{
+    if (vec)
+        if (std::find(vec->begin(), vec->end(), element) != vec->end())
+            return true;
+
+    return false;
+}
+
 int hasModelSideMission(int model)
 {
     switch (model)
@@ -61,28 +70,28 @@ int isModelTaxi(int model)
 
     return 0;
 }
-//TODO: make a vectorFind(CVector<short>*) function - if (vectorFind())...
+
 int getCopVariationOriginalModel(int modelIndex)
 {
     int originalModel = modelIndex;
 
-    if (std::find(copModels.begin(), copModels.end(), modelIndex) != copModels.end())
+    if (elementExists(&copModels, modelIndex))
         originalModel = 596;
-    else if (std::find(copBikeModels.begin(), copBikeModels.end(), modelIndex) != copBikeModels.end())
+    else if (elementExists(&copBikeModels, modelIndex))
         originalModel = 523;
-    else if (std::find(swatModels.begin(), swatModels.end(), modelIndex) != swatModels.end())
+    else if (elementExists(&swatModels, modelIndex))
         originalModel = 427;
-    else if (std::find(fbiModels.begin(), fbiModels.end(), modelIndex) != fbiModels.end())
+    else if (elementExists(&fbiModels, modelIndex))
         originalModel = 490;
-    else if (std::find(tankModels.begin(), tankModels.end(), modelIndex) != tankModels.end())
+    else if (elementExists(&tankModels, modelIndex))
         originalModel = 432;
-    else if (std::find(barracksModels.begin(), barracksModels.end(), modelIndex) != barracksModels.end())
+    else if (elementExists(&barracksModels, modelIndex))
         originalModel = 433;
-    else if (std::find(patriotModels.begin(), patriotModels.end(), modelIndex) != patriotModels.end())
+    else if (elementExists(&patriotModels, modelIndex))
         originalModel = 470;
-    else if (std::find(heliModels.begin(), heliModels.end(), modelIndex) != heliModels.end())
+    else if (elementExists(&heliModels, modelIndex))
         originalModel = 497;
-    else if (std::find(predatorModels.begin(), predatorModels.end(), modelIndex) != predatorModels.end())
+    else if (elementExists(&predatorModels, modelIndex))
         originalModel = 430;
 
     return originalModel;
@@ -94,21 +103,40 @@ int getVariationOriginalModel(int modelIndex)
 
     originalModel = getCopVariationOriginalModel(modelIndex);
 
-    if (std::find(ambulanceModels.begin(), ambulanceModels.end(), modelIndex) != ambulanceModels.end())
+    if (elementExists(&ambulanceModels, modelIndex))
         originalModel = 416;
-    else if (std::find(firetruckModels.begin(), firetruckModels.end(), modelIndex) != firetruckModels.end())
+    else if (elementExists(&firetruckModels, modelIndex))
         originalModel = 407;
-    else if (std::find(taxiModels.begin(), taxiModels.end(), modelIndex) != taxiModels.end())
+    else if (elementExists(&taxiModels, modelIndex))
         originalModel = 420;
-    else if (std::find(pimpModels.begin(), pimpModels.end(), modelIndex) != pimpModels.end())
+    else if (elementExists(&pimpModels, modelIndex))
         originalModel = 575;
-    else if (std::find(burglarModels.begin(), burglarModels.end(), modelIndex) != burglarModels.end())
+    else if (elementExists(&burglarModels, modelIndex))
         originalModel = 609;
-    else if (std::find(trainModels.begin(), trainModels.end(), modelIndex) != trainModels.end())
+    else if (elementExists(&trainModels, modelIndex))
         originalModel = 538;
 
     return originalModel;
 }
+
+int getRandomVariation(int modelid)
+{
+    if (modelid < 400 || modelid > 611)
+        return modelid;
+    if (currentVehVariations[modelid - 400].empty())
+        return modelid;
+
+    int random = CGeneral::GetRandomNumberInRange(0, currentVehVariations[modelid - 400].size());
+    int variationModel = currentVehVariations[modelid - 400][random];
+    if (variationModel > -1)
+    {
+        CStreaming::RequestModel(variationModel, 2);
+        CStreaming::LoadAllRequestedModels(false);
+        return variationModel;
+    }
+    return modelid;
+}
+
 
 void readVehicleIni()
 {
@@ -126,6 +154,19 @@ void readVehicleIni()
         vehVariations[i-400][4] = vec;
         vec = iniLineParser(VEHICLE_VARIATION, i, "Desert", &iniVeh);
         vehVariations[i-400][5] = vec;
+
+        vec = iniLineParser(VEHICLE_VARIATION, i, "Wanted1", &iniVeh);
+        vehWantedVariations[i - 400][0] = vec;
+        vec = iniLineParser(VEHICLE_VARIATION, i, "Wanted2", &iniVeh);
+        vehWantedVariations[i - 400][1] = vec;
+        vec = iniLineParser(VEHICLE_VARIATION, i, "Wanted3", &iniVeh);
+        vehWantedVariations[i - 400][2] = vec;
+        vec = iniLineParser(VEHICLE_VARIATION, i, "Wanted4", &iniVeh);
+        vehWantedVariations[i - 400][3] = vec;
+        vec = iniLineParser(VEHICLE_VARIATION, i, "Wanted5", &iniVeh);
+        vehWantedVariations[i - 400][4] = vec;
+        vec = iniLineParser(VEHICLE_VARIATION, i, "Wanted6", &iniVeh);
+        vehWantedVariations[i - 400][5] = vec;
 
         for (int j = 0; j < 212; j++)
         {
@@ -204,24 +245,6 @@ void readVehicleIni()
             }
         }
     }
-}
-
-int getRandomVariation(int modelid)
-{
-    if (modelid < 400 || modelid > 611)
-        return modelid;
-    if (currentVehVariations[modelid - 400].empty())
-        return modelid;
-
-    int random = CGeneral::GetRandomNumberInRange(0, currentVehVariations[modelid-400].size());
-    int variationModel = currentVehVariations[modelid - 400][random];
-    if (variationModel > -1)
-    {
-        CStreaming::RequestModel(variationModel, 2);
-        CStreaming::LoadAllRequestedModels(false);
-        return variationModel;
-    }
-    return modelid;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -478,7 +501,7 @@ char __cdecl GenerateRoadBlockCopsForCarHooked(CVehicle* a1, int pedsPositionsTy
 
     return 1;
 }
-
+/*
 void __fastcall ProcessControlHooked(CVehicle* veh)
 {
     int model = veh->m_nModelIndex;
@@ -486,7 +509,7 @@ void __fastcall ProcessControlHooked(CVehicle* veh)
     plugin::CallMethod<0x6B1880>(veh);
     veh->m_nModelIndex = model;
 }
-
+*/
 void installVehicleHooks()
 {
     patch::RedirectCall(0x43022A, ChooseModelHooked); //CCarCtrl::GenerateOneRandomCar
@@ -545,12 +568,15 @@ void installVehicleHooks()
 
     patch::RedirectCall(0x613A43, FindSpecificDriverModelForCar_ToUseHooked); //CPopulation::AddPedInCar
 
-    DWORD** p;
-    p = reinterpret_cast<DWORD**>(0x871148);
-    *p = (DWORD*)ProcessControlHooked;
+    //DWORD** p;
+    //p = reinterpret_cast<DWORD**>(0x871148);
+    //*p = (DWORD*)ProcessControlHooked;
 
-    if (iniVeh.ReadInteger("Settings", "EnableTaxiPassengers", 0) == 0)
-        patch::RedirectCall(0x6D1B0E, AddPedInCarHooked); //CVehicle::SetupPassenger
+    //Crashes when it tries to add ped to a variation replacing 
+    //the firetruck (probably all emergency vehicles)
+    // 
+    //if (iniVeh.ReadInteger("Settings", "EnableTaxiPassengers", 0) == 0)
+        //patch::RedirectCall(0x6D1B0E, AddPedInCarHooked); //CVehicle::SetupPassenger
 
     if (iniVeh.ReadInteger("Settings", "EnableSiren", 0))
         patch::RedirectCall(0x6D8492, IsLawOrEmergencyVehicle); //CVehicle::UsesSiren

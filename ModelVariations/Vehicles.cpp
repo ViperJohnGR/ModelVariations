@@ -21,7 +21,7 @@
 
 using namespace plugin;
 
-int AddPoliceCarOccupantsOriginalModel;
+//int AddPoliceCarOccupantsOriginalModel;
 
 int hasModelSideMission(int model)
 {

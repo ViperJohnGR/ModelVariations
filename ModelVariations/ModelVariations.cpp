@@ -303,7 +303,7 @@ public:
             {
                 int random = CGeneral::GetRandomNumberInRange(0, currentPedVariations[ped->m_nModelIndex].size());
                 int variationModel = currentPedVariations[ped->m_nModelIndex][random];
-                if (variationModel > -1)
+                if (variationModel > -1 && variationModel != ped->m_nModelIndex)
                 {
                     CStreaming::RequestModel(variationModel, 2);
                     CStreaming::LoadAllRequestedModels(false);

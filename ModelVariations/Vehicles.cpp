@@ -21,16 +21,7 @@
 
 using namespace plugin;
 
-//int AddPoliceCarOccupantsOriginalModel;
-
-bool elementExists(std::vector<short>* vec, int element)
-{
-    if (vec)
-        if (std::find(vec->begin(), vec->end(), element) != vec->end())
-            return true;
-
-    return false;
-}
+int roadblockModel = -1;
 
 int hasModelSideMission(int model)
 {
@@ -47,51 +38,42 @@ int hasModelSideMission(int model)
     return 0;
 }
 
-int isModelAmbulance(int model)
+bool isModelAmbulance(int model)
 {
-    if (std::find(ambulanceModels.begin(), ambulanceModels.end(), model) != ambulanceModels.end())
-        return 1;
-
-    return 0;
+    return (ambulanceModels.find(model) != ambulanceModels.end()) ? true : false;
 }
 
-int isModelFiretruck(int model)
+bool isModelFiretruck(int model)
 {
-    if (std::find(firetruckModels.begin(), firetruckModels.end(), model) != firetruckModels.end())
-        return 1;
-
-    return 0;
+    return (firetruckModels.find(model) != firetruckModels.end()) ? true : false;
 }
 
-int isModelTaxi(int model)
+bool isModelTaxi(int model)
 {
-    if (std::find(taxiModels.begin(), taxiModels.end(), model) != taxiModels.end())
-        return 1;
-
-    return 0;
+    return (taxiModels.find(model) != taxiModels.end()) ? true : false;
 }
 
 int getCopVariationOriginalModel(int modelIndex)
 {
     int originalModel = modelIndex;
 
-    if (elementExists(&copModels, modelIndex))
+    if (copModels.find(modelIndex) != copModels.end())
         originalModel = 596;
-    else if (elementExists(&copBikeModels, modelIndex))
+    else if (copBikeModels.find(modelIndex) != copBikeModels.end())
         originalModel = 523;
-    else if (elementExists(&swatModels, modelIndex))
+    else if (swatModels.find(modelIndex) != swatModels.end())
         originalModel = 427;
-    else if (elementExists(&fbiModels, modelIndex))
+    else if (fbiModels.find(modelIndex) != fbiModels.end())
         originalModel = 490;
-    else if (elementExists(&tankModels, modelIndex))
+    else if (tankModels.find(modelIndex) != tankModels.end())
         originalModel = 432;
-    else if (elementExists(&barracksModels, modelIndex))
+    else if (barracksModels.find(modelIndex) != barracksModels.end())
         originalModel = 433;
-    else if (elementExists(&patriotModels, modelIndex))
+    else if (patriotModels.find(modelIndex) != patriotModels.end())
         originalModel = 470;
-    else if (elementExists(&heliModels, modelIndex))
+    else if (heliModels.find(modelIndex) != heliModels.end())
         originalModel = 497;
-    else if (elementExists(&predatorModels, modelIndex))
+    else if (predatorModels.find(modelIndex) != predatorModels.end())
         originalModel = 430;
 
     return originalModel;
@@ -103,17 +85,17 @@ int getVariationOriginalModel(int modelIndex)
 
     originalModel = getCopVariationOriginalModel(modelIndex);
 
-    if (elementExists(&ambulanceModels, modelIndex))
+    if (ambulanceModels.find(modelIndex) != ambulanceModels.end())
         originalModel = 416;
-    else if (elementExists(&firetruckModels, modelIndex))
+    else if (firetruckModels.find(modelIndex) != firetruckModels.end())
         originalModel = 407;
-    else if (elementExists(&taxiModels, modelIndex))
+    else if (taxiModels.find(modelIndex) != taxiModels.end())
         originalModel = 420;
-    else if (elementExists(&pimpModels, modelIndex))
+    else if (pimpModels.find(modelIndex) != pimpModels.end())
         originalModel = 575;
-    else if (elementExists(&burglarModels, modelIndex))
+    else if (burglarModels.find(modelIndex) != burglarModels.end())
         originalModel = 609;
-    else if (elementExists(&trainModels, modelIndex))
+    else if (trainModels.find(modelIndex) != trainModels.end())
         originalModel = 538;
 
     return originalModel;
@@ -143,17 +125,89 @@ void readVehicleIni()
     for (int i = 400; i < 612; i++)
     {
         std::vector<short> vec = iniLineParser(VEHICLE_VARIATION, i, "Countryside", &iniVeh);
-        vehVariations[i-400][0] = vec;
+        vehVariations[i - 400][0] = vec;
+        std::sort(vehVariations[i - 400][0].begin(), vehVariations[i - 400][0].end());
+
         vec = iniLineParser(VEHICLE_VARIATION, i, "LosSantos", &iniVeh);
-        vehVariations[i-400][1] = vec;
+        vehVariations[i - 400][1] = vec;
+        std::sort(vehVariations[i - 400][1].begin(), vehVariations[i - 400][1].end());
+
         vec = iniLineParser(VEHICLE_VARIATION, i, "SanFierro", &iniVeh);
-        vehVariations[i-400][2] = vec;
+        vehVariations[i - 400][2] = vec;
+        std::sort(vehVariations[i - 400][2].begin(), vehVariations[i - 400][2].end());
+
         vec = iniLineParser(VEHICLE_VARIATION, i, "LasVenturas", &iniVeh);
-        vehVariations[i-400][3] = vec;
+        vehVariations[i - 400][3] = vec;
+        std::sort(vehVariations[i - 400][3].begin(), vehVariations[i - 400][3].end());
+
         vec = iniLineParser(VEHICLE_VARIATION, i, "Global", &iniVeh);
-        vehVariations[i-400][4] = vec;
+        vehVariations[i - 400][4] = vec;
+        std::sort(vehVariations[i - 400][4].begin(), vehVariations[i - 400][4].end());
+
         vec = iniLineParser(VEHICLE_VARIATION, i, "Desert", &iniVeh);
-        vehVariations[i-400][5] = vec;
+        vehVariations[i - 400][5] = vec;
+        std::sort(vehVariations[i - 400][5].begin(), vehVariations[i - 400][5].end());
+
+        vec = iniLineParser(VEHICLE_VARIATION, i, "TierraRobada", &iniVeh);
+        vehVariations[i - 400][6] = vec;
+        std::sort(vehVariations[i - 400][6].begin(), vehVariations[i - 400][6].end());
+        vectorUnion(vehVariations[i - 400][6], vehVariations[i - 400][5], vec);
+        vehVariations[i - 400][6] = vec;
+
+        vec = iniLineParser(VEHICLE_VARIATION, i, "BoneCounty", &iniVeh);
+        vehVariations[i - 400][7] = vec;
+        std::sort(vehVariations[i - 400][7].begin(), vehVariations[i - 400][7].end());
+        vectorUnion(vehVariations[i - 400][7], vehVariations[i - 400][5], vec);
+        vehVariations[i - 400][7] = vec;
+
+        vec = iniLineParser(VEHICLE_VARIATION, i, "RedCounty", &iniVeh);
+        vehVariations[i - 400][8] = vec;
+        std::sort(vehVariations[i - 400][8].begin(), vehVariations[i - 400][8].end());
+        vectorUnion(vehVariations[i - 400][8], vehVariations[i - 400][0], vec);
+        vehVariations[i - 400][8] = vec;
+
+        vec = iniLineParser(VEHICLE_VARIATION, i, "Blueberry", &iniVeh);
+        vehVariations[i - 400][9] = vec;
+        std::sort(vehVariations[i - 400][9].begin(), vehVariations[i - 400][9].end());
+        vectorUnion(vehVariations[i-400][9], vehVariations[i - 400][8], vec);
+        vehVariations[i - 400][9] = vec;
+
+        vec = iniLineParser(VEHICLE_VARIATION, i, "Montgomery", &iniVeh);
+        vehVariations[i - 400][10] = vec;
+        std::sort(vehVariations[i - 400][10].begin(), vehVariations[i - 400][10].end());
+        vectorUnion(vehVariations[i - 400][10], vehVariations[i - 400][8], vec);
+        vehVariations[i - 400][10] = vec;
+
+        vec = iniLineParser(VEHICLE_VARIATION, i, "Dillimore", &iniVeh);
+        vehVariations[i - 400][11] = vec;
+        std::sort(vehVariations[i - 400][11].begin(), vehVariations[i - 400][11].end());
+        vectorUnion(vehVariations[i - 400][11], vehVariations[i - 400][8], vec);
+        vehVariations[i - 400][11] = vec;
+
+        vec = iniLineParser(VEHICLE_VARIATION, i, "PalominoCreek", &iniVeh);
+        vehVariations[i - 400][12] = vec;
+        std::sort(vehVariations[i - 400][12].begin(), vehVariations[i - 400][12].end());
+        vectorUnion(vehVariations[i - 400][12], vehVariations[i - 400][8], vec);
+        vehVariations[i - 400][12] = vec;
+
+        vec = iniLineParser(VEHICLE_VARIATION, i, "FlintCounty", &iniVeh);
+        vehVariations[i - 400][13] = vec;
+        std::sort(vehVariations[i - 400][13].begin(), vehVariations[i - 400][13].end());
+        vectorUnion(vehVariations[i - 400][13], vehVariations[i - 400][0], vec);
+        vehVariations[i - 400][13] = vec;
+
+        vec = iniLineParser(VEHICLE_VARIATION, i, "Whetstone", &iniVeh);
+        vehVariations[i - 400][14] = vec;
+        std::sort(vehVariations[i - 400][14].begin(), vehVariations[i - 400][14].end());
+        vectorUnion(vehVariations[i - 400][14], vehVariations[i - 400][0], vec);
+        vehVariations[i - 400][14] = vec;
+
+        vec = iniLineParser(VEHICLE_VARIATION, i, "AngelPine", &iniVeh);
+        vehVariations[i - 400][15] = vec;
+        std::sort(vehVariations[i - 400][15].begin(), vehVariations[i - 400][15].end());
+        vectorUnion(vehVariations[i - 400][15], vehVariations[i - 400][14], vec);
+        vehVariations[i - 400][15] = vec;
+
 
         vec = iniLineParser(VEHICLE_VARIATION, i, "Wanted1", &iniVeh);
         vehWantedVariations[i - 400][0] = vec;
@@ -168,23 +222,13 @@ void readVehicleIni()
         vec = iniLineParser(VEHICLE_VARIATION, i, "Wanted6", &iniVeh);
         vehWantedVariations[i - 400][5] = vec;
 
-        for (int j = 0; j < 212; j++)
-        {
-            std::sort(vehVariations[j][0].begin(), vehVariations[j][0].end());
-            std::sort(vehVariations[j][1].begin(), vehVariations[j][1].end());
-            std::sort(vehVariations[j][2].begin(), vehVariations[j][2].end());
-            std::sort(vehVariations[j][3].begin(), vehVariations[j][3].end());
-            std::sort(vehVariations[j][4].begin(), vehVariations[j][4].end());
-            std::sort(vehVariations[j][5].begin(), vehVariations[j][5].end());
-        }
 
-
-        for (int j = 0; j < 6; j++)
+        for (int j = 0; j < 16; j++)
         {
             for (int k = 0; k < (int)(vehVariations[i-400][j].size()); k++)
             {
-                if (vehVariations[i-400][j][k] > 0 && vehVariations[i-400][j][k] < 30000 &&
-                    getVariationOriginalModel(vehVariations[i-400][j][k]) == vehVariations[i-400][j][k] && vehVariations[i-400][j][k] != i)
+                if (vehVariations[i-400][j][k] > 0 && vehVariations[i-400][j][k] < 30000  &&/*
+                    getVariationOriginalModel(vehVariations[i-400][j][k]) == vehVariations[i-400][j][k] &&*/ vehVariations[i-400][j][k] != i)
                 {
                     switch (i)
                     {
@@ -192,53 +236,53 @@ void readVehicleIni()
                         case 597: //Police SF
                         case 598: //Police LV
                         case 599: //Police Ranger
-                            copModels.push_back(vehVariations[i-400][j][k]);
+                            copModels.insert(vehVariations[i-400][j][k]);
                             break;
                         case 523: //HPV1000
-                            copBikeModels.push_back(vehVariations[i-400][j][k]);
+                            copBikeModels.insert(vehVariations[i-400][j][k]);
                             break;
                         case 427: //Enforcer
                         case 601: //S.W.A.T.
-                            swatModels.push_back(vehVariations[i-400][j][k]);
+                            swatModels.insert(vehVariations[i-400][j][k]);
                             break;
                         case 490: //FBI Rancher
                         case 528: //FBI Truck
-                            fbiModels.push_back(vehVariations[i-400][j][k]);
+                            fbiModels.insert(vehVariations[i-400][j][k]);
                             break;
                         case 433: //Barracks
-                            barracksModels.push_back(vehVariations[i - 400][j][k]);
+                            barracksModels.insert(vehVariations[i - 400][j][k]);
                             break;
                         case 470: //Patriot
-                            patriotModels.push_back(vehVariations[i - 400][j][k]);
+                            patriotModels.insert(vehVariations[i - 400][j][k]);
                             break;
                         case 432: //Rhino
-                            tankModels.push_back(vehVariations[i-400][j][k]);
+                            tankModels.insert(vehVariations[i-400][j][k]);
                             break;
                         case 430: //Predator
-                            predatorModels.push_back(vehVariations[i-400][j][k]);
+                            predatorModels.insert(vehVariations[i-400][j][k]);
                             break;
                         case 497: //Police Maverick
-                            heliModels.push_back(vehVariations[i-400][j][k]);
+                            heliModels.insert(vehVariations[i-400][j][k]);
                             break;
                         case 407: //Fire Truck
-                            firetruckModels.push_back(vehVariations[i-400][j][k]);
+                            firetruckModels.insert(vehVariations[i-400][j][k]);
                             break;
                         case 416: //Ambulance
-                            ambulanceModels.push_back(vehVariations[i-400][j][k]);
+                            ambulanceModels.insert(vehVariations[i-400][j][k]);
                             break;
                         case 420: //Taxi
                         case 438: //Cabbie
-                            taxiModels.push_back(vehVariations[i-400][j][k]);
+                            taxiModels.insert(vehVariations[i-400][j][k]);
                             break;
                         case 575: //Broadway
-                            pimpModels.push_back(vehVariations[i-400][j][k]);
+                            pimpModels.insert(vehVariations[i-400][j][k]);
                             break;
                         case 609: //Boxville Mission
-                            burglarModels.push_back(vehVariations[i-400][j][k]);
+                            burglarModels.insert(vehVariations[i-400][j][k]);
                             break;
                         case 538: //Brown Streak
                         case 537: //Freight
-                            trainModels.push_back(vehVariations[i-400][j][k]);
+                            trainModels.insert(vehVariations[i-400][j][k]);
                             break;
                     }
                 }
@@ -306,23 +350,12 @@ int __cdecl ChoosePoliceCarModelHooked(int a1)
 void __cdecl AddPoliceCarOccupantsHooked(CVehicle* a2, char a3)
 {
     int model = a2->m_nModelIndex;
-
     a2->m_nModelIndex = getCopVariationOriginalModel(a2->m_nModelIndex);
 
     CCarAI::AddPoliceCarOccupants(a2, a3);
 
     a2->m_nModelIndex = model;
 }
-/*
-CPed* __fastcall SetupPassengerHooked(CVehicle* vehicle, void*, int a2, signed int a3, char a4, char a5)
-{
-    //vehicle->m_nModelIndex = changedModel;
-    CPed* ped = vehicle->SetupPassenger(a2, a3, a4, a5);
-    vehicle->m_nModelIndex = AddPoliceCarOccupantsOriginalModel;
-
-    return ped;
-}
-*/
 
 CAutomobile* __fastcall CAutomobileHooked(CAutomobile* automobile, void*, int modelIndex, char usageType, char bSetupSuspensionLines)
 {
@@ -477,27 +510,17 @@ void __fastcall CollectParametersHooked(CRunningScript* script, void*, unsigned 
     }
 }
 
-CPed* __cdecl AddPedInCarHooked(CVehicle* a1, char a2, int a3, signed int a4, int a5, char a6)
-{
-    if (a1 == NULL)
-        return NULL;
-
-    int model = a1->m_nModelIndex;
-    a1->m_nModelIndex = getVariationOriginalModel(a1->m_nModelIndex);
-    CPed *ped = CPopulation::AddPedInCar(a1, a2, a3, a4, a5, a6);
-    a1->m_nModelIndex = model;
-    return ped;
-}
-
 char __cdecl GenerateRoadBlockCopsForCarHooked(CVehicle* a1, int pedsPositionsType, int type)
 {
     if (a1 == NULL)
         return 0;
 
-    int model = a1->m_nModelIndex;
+    roadblockModel = a1->m_nModelIndex;
     a1->m_nModelIndex = getCopVariationOriginalModel(a1->m_nModelIndex);
     CRoadBlocks::GenerateRoadBlockCopsForCar(a1, pedsPositionsType, type);
-    a1->m_nModelIndex = model;
+    if (roadblockModel >= 400)
+        a1->m_nModelIndex = roadblockModel;
+    roadblockModel = -1;
 
     return 1;
 }
@@ -510,6 +533,38 @@ void __fastcall ProcessControlHooked(CVehicle* veh)
     veh->m_nModelIndex = model;
 }
 */
+
+CColModel* __fastcall GetColModelHooked(CVehicle* entity)
+{
+    if (roadblockModel >= 400)
+        entity->m_nModelIndex = roadblockModel;
+    return entity->GetColModel();
+}
+
+void __cdecl SetUpDriverAndPassengersForVehicleHooked(CVehicle* car, int a3, int a4, char a5, char a6, int a7)
+{
+    if (car == NULL)
+        return;
+
+    CStreaming::RequestModel(277, 2);//lafd1
+    CStreaming::RequestModel(278, 2);//lvfd1
+    CStreaming::RequestModel(279, 2);//sffd1
+    CStreaming::RequestModel(274, 2);//laemt1
+    CStreaming::RequestModel(275, 2);//lvemt1
+    CStreaming::RequestModel(276, 2);//sfemt1
+    CStreaming::RequestModel(285, 2);//swat
+    CStreaming::RequestModel(286, 2);//fbi
+    
+    CStreaming::LoadAllRequestedModels(false);
+
+    int model = car->m_nModelIndex;
+    car->m_nModelIndex = getVariationOriginalModel(car->m_nModelIndex);
+
+    CCarCtrl::SetUpDriverAndPassengersForVehicle(car, a3, a4, a5, a6, a7);
+
+    car->m_nModelIndex = model;
+}
+
 void installVehicleHooks()
 {
     patch::RedirectCall(0x43022A, ChooseModelHooked); //CCarCtrl::GenerateOneRandomCar
@@ -528,9 +583,6 @@ void installVehicleHooks()
     patch::RedirectCall(0x49A5EB, AddPoliceCarOccupantsHooked); //CSetPiece::Update
     patch::RedirectCall(0x49A85E, AddPoliceCarOccupantsHooked); //CSetPiece::Update
     patch::RedirectCall(0x49A9AF, AddPoliceCarOccupantsHooked); //CSetPiece::Update
-
-    ////patch::RedirectCall(0x41C0D0, SetUpDriverHooked);
-    //patch::RedirectCall(0x41C107, SetupPassengerHooked);
 
 
 /*****************************************************************************************************/
@@ -562,21 +614,20 @@ void installVehicleHooks()
     //Roadblocks
     patch::RedirectCall(0x42CDDD, IsLawEnforcementVehicleHooked); //CCarCtrl::RemoveDistantCars
     patch::RedirectCall(0x42CE07, GenerateRoadBlockCopsForCarHooked); //CCarCtrl::RemoveDistantCars
+    patch::RedirectCall(0x4613EB, GetColModelHooked); //CCarCtrl::RemoveDistantCars
 
     patch::RedirectCall(0x42BBFB, AddAmbulanceOccupantsHooked); //CCarCtrl::GenerateOneEmergencyServicesCar
     patch::RedirectCall(0x42BC1A, AddFiretruckOccupantsHooked); //CCarCtrl::GenerateOneEmergencyServicesCar
 
     patch::RedirectCall(0x613A43, FindSpecificDriverModelForCar_ToUseHooked); //CPopulation::AddPedInCar
 
+    patch::RedirectCall(0x431DE2, SetUpDriverAndPassengersForVehicleHooked); //CCarCtrl::GenerateOneRandomCar
+    patch::RedirectCall(0x431DF9, SetUpDriverAndPassengersForVehicleHooked); //CCarCtrl::GenerateOneRandomCar
+    patch::RedirectCall(0x431ED1, SetUpDriverAndPassengersForVehicleHooked); //CCarCtrl::GenerateOneRandomCar
+
     //DWORD** p;
     //p = reinterpret_cast<DWORD**>(0x871148);
     //*p = (DWORD*)ProcessControlHooked;
-
-    //Crashes when it tries to add ped to a variation replacing 
-    //the firetruck (probably all emergency vehicles)
-    // 
-    //if (iniVeh.ReadInteger("Settings", "EnableTaxiPassengers", 0) == 0)
-        //patch::RedirectCall(0x6D1B0E, AddPedInCarHooked); //CVehicle::SetupPassenger
 
     if (iniVeh.ReadInteger("Settings", "EnableSiren", 0))
         patch::RedirectCall(0x6D8492, IsLawOrEmergencyVehicle); //CVehicle::UsesSiren

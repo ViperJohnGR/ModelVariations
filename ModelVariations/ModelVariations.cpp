@@ -88,9 +88,6 @@ bool isPlayerInTaxi = false;
 bool enableSideMissions = false;
 int enableVehicles = 0;
 
-//debug
-//std::ofstream myfile("output.txt");
-
 void vectorUnion(std::vector<short> &vec1, std::vector<short> &vec2, std::vector<short> &dest)
 {
     dest.clear();
@@ -266,66 +263,6 @@ void updateVariations(std::vector<short> *currentPedVariations, CZone *zInfo, CI
                 std::sort(vec.begin(), vec.end());
                 vectorUnion(currentVehVariations[i], vec, vec2);
                 currentVehVariations[i] = vec2;
-                for (auto &j : vec)
-                {
-                    if (i+400 != j)
-                        switch (i + 400)
-                        {
-                            case 596: //Police LS
-                            case 597: //Police SF
-                            case 598: //Police LV
-                            case 599: //Police Ranger
-                                copModels.insert(j);
-                                break;
-                            case 523: //HPV1000
-                                copBikeModels.insert(j);
-                                break;
-                            case 427: //Enforcer
-                            case 601: //S.W.A.T.
-                                swatModels.insert(j);
-                                break;
-                            case 490: //FBI Rancher
-                            case 528: //FBI Truck
-                                fbiModels.insert(j);
-                                break;
-                            case 433: //Barracks
-                                barracksModels.insert(j);
-                                break;
-                            case 470: //Patriot
-                                patriotModels.insert(j);
-                                break;
-                            case 432: //Rhino
-                                tankModels.insert(j);
-                                break;
-                            case 430: //Predator
-                                predatorModels.insert(j);
-                                break;
-                            case 497: //Police Maverick
-                                heliModels.insert(j);
-                                break;
-                            case 407: //Fire Truck
-                                firetruckModels.insert(j);
-                                break;
-                            case 416: //Ambulance
-                                ambulanceModels.insert(j);
-                                break;
-                            case 420: //Taxi
-                            case 438: //Cabbie
-                                taxiModels.insert(j);
-                                break;
-                            case 575: //Broadway
-                                pimpModels.insert(j);
-                                break;
-                            case 609: //Boxville Mission
-                                burglarModels.insert(j);
-                                break;
-                            case 538: //Brown Streak
-                            case 537: //Freight
-                                trainModels.insert(j);
-                                break;
-                        }
-                }
-
             }
 
             CWanted* wanted = FindPlayerWanted(-1);
@@ -357,6 +294,94 @@ public:
 
         static int currentWanted = 0;
         static std::vector<short> currentPedVariations[300];
+
+        //https://stackoverflow.com/questions/48467994/how-to-read-only-the-first-value-on-each-line-of-a-csv-file-in-c
+        std::string str;
+        std::vector <std::string> result;    
+        std::ifstream zoneFile("data\\info.zon");
+    
+        while (std::getline(zoneFile, str)) 
+        {
+            std::stringstream ss(str);
+            if (ss.good())
+            {
+                std::string substr;
+                std::getline(ss, substr, ','); // Grab first names till first comma
+                if (substr != "zone" && substr != "end")
+                {
+                    std::for_each(substr.begin(), substr.end(), [](char& c) {
+                        c = ::toupper(c);
+                    });
+                    result.push_back(substr);
+                }
+            }
+        }
+        for (auto &i : result) //for every zone name
+        {
+            for (int j = 0; j < 212; j++) //for every vehicle id
+            {
+                std::vector<short> vec = iniLineParser(PED_VARIATION, j+400, i.c_str(), &iniVeh); //get zone name 'i' of veh id 'j+400'
+
+                if (!vec.empty()) //if veh id 'j+400' has variations in zone 'i'
+                    for (auto &k : vec) //for every variation 'k' of veh id 'j+400' in zone 'i'
+                        if (j + 400 != k)
+                            switch (j + 400)
+                            {
+                                case 596: //Police LS
+                                case 597: //Police SF
+                                case 598: //Police LV
+                                case 599: //Police Ranger
+                                    copModels.insert(k);
+                                    break;
+                                case 523: //HPV1000
+                                    copBikeModels.insert(k);
+                                    break;
+                                case 427: //Enforcer
+                                case 601: //S.W.A.T.
+                                    swatModels.insert(k);
+                                    break;
+                                case 490: //FBI Rancher
+                                case 528: //FBI Truck
+                                    fbiModels.insert(k);
+                                    break;
+                                case 433: //Barracks
+                                    barracksModels.insert(k);
+                                    break;
+                                case 470: //Patriot
+                                    patriotModels.insert(k);
+                                    break;
+                                case 432: //Rhino
+                                    tankModels.insert(k);
+                                    break;
+                                case 430: //Predator
+                                    predatorModels.insert(k);
+                                    break;
+                                case 497: //Police Maverick
+                                    heliModels.insert(k);
+                                    break;
+                                case 407: //Fire Truck
+                                    firetruckModels.insert(k);
+                                    break;
+                                case 416: //Ambulance
+                                    ambulanceModels.insert(k);
+                                    break;
+                                case 420: //Taxi
+                                case 438: //Cabbie
+                                    taxiModels.insert(k);
+                                    break;
+                                case 575: //Broadway
+                                    pimpModels.insert(k);
+                                    break;
+                                case 609: //Boxville Mission
+                                    burglarModels.insert(k);
+                                    break;
+                                case 538: //Brown Streak
+                                case 537: //Freight
+                                    trainModels.insert(k);
+                                    break;
+                            }
+            }
+        }
 
         for (int i = 0; i < 300; i++)
         {

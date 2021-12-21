@@ -15,7 +15,6 @@
 #include <array>
 #include <unordered_set>
 
-
 /*
 --ZONES--
 
@@ -59,7 +58,8 @@ std::array<std::vector<short>, 16> vehWantedVariations[212];
 
 std::vector<short> currentVehVariations[212];
 
-BYTE pedWepVariationTypes[300] = {};
+std::map<short, BYTE> pedWepVariationTypes;
+
 BYTE vehNumVariations[212] = {};
 
 std::stack<CPed*> pedStack;
@@ -468,11 +468,13 @@ public:
             std::sort(pedVariations[i][15].begin(), pedVariations[i][15].end());
             vectorUnion(pedVariations[i][15], pedVariations[i][14], vec);
             pedVariations[i][15] = vec;
+        }
 
-
-            int wepVariationType = iniWeap.ReadInteger(std::to_string(i), "VariationType", -1);
+        for (short i = 0; i < 32000; i++)
+        {
+            BYTE wepVariationType = iniWeap.ReadInteger(std::to_string(i), "VariationType", -1);
             if (wepVariationType == 1 || wepVariationType == 2)
-                pedWepVariationTypes[i] = wepVariationType;
+                pedWepVariationTypes.insert(std::make_pair(i, wepVariationType));
         }
 
         if (enableVehicles = iniVeh.ReadInteger("Settings", "Enable", 0))
@@ -549,10 +551,11 @@ public:
             {
                 CPed* ped = pedStack.top();
                 pedStack.pop();
-                if (ped->m_nModelIndex >= 0 && ped->m_nModelIndex < 300 && pedWepVariationTypes[ped->m_nModelIndex] > 0)
+                auto it = pedWepVariationTypes.find(ped->m_nModelIndex);
+                if (it != pedWepVariationTypes.end())
                 {
                     int activeSlot = ped->m_nActiveWeaponSlot;
-                    int loopMax = pedWepVariationTypes[ped->m_nModelIndex] == 1 ? 13 : 47;
+                    int loopMax = it->second == 1 ? 13 : 47;
 
                     for (int i = 0; i < loopMax; i++)
                     {
@@ -562,7 +565,7 @@ public:
                         {
                             int slot = i;
                             int random = CGeneral::GetRandomNumberInRange(0, wvec.size());
-                            if (pedWepVariationTypes[ped->m_nModelIndex] == 2)
+                            if (it->second == 2)
                                 slot = ped->GetWeaponSlot((eWeaponType)i);
 
                             if (ped->m_aWeapons[slot].m_nType > 0 && ped->m_aWeapons[slot].m_nType != wvec[random])

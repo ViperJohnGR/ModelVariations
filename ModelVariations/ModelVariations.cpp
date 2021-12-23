@@ -54,35 +54,20 @@ CIniReader iniVeh("ModelVariations_Vehicles.ini");
 std::array<std::vector<short>, 16> pedVariations[300];
 
 std::array<std::vector<short>, 16> vehVariations[212];
+std::map<short, short> vehOriginalModels;
+std::map<short, std::vector<short>> vehDrivers;
+std::map<short, std::vector<short>> vehPassengers;
+
 std::array<std::vector<short>, 16> vehWantedVariations[212];
 
-std::vector<short> currentVehVariations[212];
+std::vector<short> vehCurrentVariations[212];
 
 std::map<short, BYTE> pedWepVariationTypes;
-
-BYTE vehNumVariations[212] = {};
 
 std::stack<CPed*> pedStack;
 
 BYTE dealersFixed = 0;
 short modelIndex = -1;
-
-//veh models
-std::unordered_set<short> copModels;
-std::unordered_set<short> copBikeModels;
-std::unordered_set<short> swatModels;
-std::unordered_set<short> fbiModels;
-std::unordered_set<short> tankModels;
-std::unordered_set<short> barracksModels;
-std::unordered_set<short> patriotModels;
-std::unordered_set<short> heliModels;
-std::unordered_set<short> predatorModels;
-std::unordered_set<short> ambulanceModels;
-std::unordered_set<short> firetruckModels;
-std::unordered_set<short> taxiModels;
-std::unordered_set<short> pimpModels;
-std::unordered_set<short> burglarModels;
-std::unordered_set<short> trainModels;
 
 bool isPlayerInTaxi = false;
 bool enableSideMissions = false;
@@ -243,40 +228,40 @@ void updateVariations(std::vector<short> *currentPedVariations, CZone *zInfo, CI
     {
         vectorUnion(pedVariations[i][LV_GLOBAL], pedVariations[i][merge], currentPedVariations[i]);
 
-        std::vector<short> vec = iniLineParser(PED_VARIATION, i, zInfo->m_szLabel, iniPed);
-        if (!vec.empty())
+        std::vector<short> vecPed = iniLineParser(PED_VARIATION, i, zInfo->m_szLabel, iniPed);
+        if (!vecPed.empty())
         {
             std::vector<short> vec2;
-            std::sort(vec.begin(), vec.end());
-            vectorUnion(currentPedVariations[i], vec, vec2);
+            std::sort(vecPed.begin(), vecPed.end());
+            vectorUnion(currentPedVariations[i], vecPed, vec2);
             currentPedVariations[i] = vec2;
         }
 
         if (i < 212)
         {
-            vectorUnion(vehVariations[i][LV_GLOBAL], vehVariations[i][merge], currentVehVariations[i]);
+            vectorUnion(vehVariations[i][LV_GLOBAL], vehVariations[i][merge], vehCurrentVariations[i]);
 
             std::vector<short> vec = iniLineParser(VEHICLE_VARIATION, i+400, zInfo->m_szLabel, iniVeh);
             if (!vec.empty())
             {
                 std::vector<short> vec2;
                 std::sort(vec.begin(), vec.end());
-                vectorUnion(currentVehVariations[i], vec, vec2);
-                currentVehVariations[i] = vec2;
+                vectorUnion(vehCurrentVariations[i], vec, vec2);
+                vehCurrentVariations[i] = vec2;
             }
 
             CWanted* wanted = FindPlayerWanted(-1);
             if (wanted)
             {
                 int wantedLevel = (wanted->m_nWantedLevel > 0) ? (wanted->m_nWantedLevel - 1) : (wanted->m_nWantedLevel);
-                if (!vehWantedVariations[i][wantedLevel].empty() && !currentVehVariations[i].empty())
+                if (!vehWantedVariations[i][wantedLevel].empty() && !vehCurrentVariations[i].empty())
                 {
-                    std::vector<short>::iterator it = currentVehVariations[i].begin();
-                    while (it != currentVehVariations[i].end())
+                    std::vector<short>::iterator it = vehCurrentVariations[i].begin();
+                    while (it != vehCurrentVariations[i].end())
                         if (std::find(vehWantedVariations[i][wantedLevel].begin(), vehWantedVariations[i][wantedLevel].end(), *it) != vehWantedVariations[i][wantedLevel].end())
                             ++it;
                         else 
-                            it = currentVehVariations[i].erase(it);
+                            it = vehCurrentVariations[i].erase(it);
                 }       
             }
         }
@@ -293,7 +278,7 @@ public:
         static char currentZone[8] = {};
 
         static int currentWanted = 0;
-        static std::vector<short> currentPedVariations[300];
+        static std::vector<short> pedCurrentVariations[300];
 
         //https://stackoverflow.com/questions/48467994/how-to-read-only-the-first-value-on-each-line-of-a-csv-file-in-c
         std::string str;
@@ -323,63 +308,9 @@ public:
                 std::vector<short> vec = iniLineParser(PED_VARIATION, j+400, i.c_str(), &iniVeh); //get zone name 'i' of veh id 'j+400'
 
                 if (!vec.empty()) //if veh id 'j+400' has variations in zone 'i'
-                    for (auto &k : vec) //for every variation 'k' of veh id 'j+400' in zone 'i'
+                    for (auto& k : vec) //for every variation 'k' of veh id 'j+400' in zone 'i'
                         if (j + 400 != k)
-                            switch (j + 400)
-                            {
-                                case 596: //Police LS
-                                case 597: //Police SF
-                                case 598: //Police LV
-                                case 599: //Police Ranger
-                                    copModels.insert(k);
-                                    break;
-                                case 523: //HPV1000
-                                    copBikeModels.insert(k);
-                                    break;
-                                case 427: //Enforcer
-                                case 601: //S.W.A.T.
-                                    swatModels.insert(k);
-                                    break;
-                                case 490: //FBI Rancher
-                                case 528: //FBI Truck
-                                    fbiModels.insert(k);
-                                    break;
-                                case 433: //Barracks
-                                    barracksModels.insert(k);
-                                    break;
-                                case 470: //Patriot
-                                    patriotModels.insert(k);
-                                    break;
-                                case 432: //Rhino
-                                    tankModels.insert(k);
-                                    break;
-                                case 430: //Predator
-                                    predatorModels.insert(k);
-                                    break;
-                                case 497: //Police Maverick
-                                    heliModels.insert(k);
-                                    break;
-                                case 407: //Fire Truck
-                                    firetruckModels.insert(k);
-                                    break;
-                                case 416: //Ambulance
-                                    ambulanceModels.insert(k);
-                                    break;
-                                case 420: //Taxi
-                                case 438: //Cabbie
-                                    taxiModels.insert(k);
-                                    break;
-                                case 575: //Broadway
-                                    pimpModels.insert(k);
-                                    break;
-                                case 609: //Boxville Mission
-                                    burglarModels.insert(k);
-                                    break;
-                                case 538: //Brown Streak
-                                case 537: //Freight
-                                    trainModels.insert(k);
-                                    break;
-                            }
+                            vehOriginalModels.insert({k, j+400});
             }
         }
 
@@ -507,10 +438,10 @@ public:
 
         Events::pedSetModelEvent.after += [](CPed* ped, int model)
         {
-            if (ped->m_nModelIndex > 0 && ped->m_nModelIndex < 300 && !currentPedVariations[ped->m_nModelIndex].empty())
+            if (ped->m_nModelIndex > 0 && ped->m_nModelIndex < 300 && !pedCurrentVariations[ped->m_nModelIndex].empty())
             {
-                int random = CGeneral::GetRandomNumberInRange(0, currentPedVariations[ped->m_nModelIndex].size());
-                int variationModel = currentPedVariations[ped->m_nModelIndex][random];
+                int random = CGeneral::GetRandomNumberInRange(0, pedCurrentVariations[ped->m_nModelIndex].size());
+                int variationModel = pedCurrentVariations[ped->m_nModelIndex][random];
                 if (variationModel > -1 && variationModel != ped->m_nModelIndex)
                 {
                     CStreaming::RequestModel(variationModel, 2);
@@ -534,14 +465,14 @@ public:
             if (wanted && wanted->m_nWantedLevel != currentWanted)
             {
                 currentWanted = wanted->m_nWantedLevel;
-                updateVariations(currentPedVariations, zInfo, &iniPed, &iniVeh);
+                updateVariations(pedCurrentVariations, zInfo, &iniPed, &iniVeh);
             }
 
             if (zInfo && strncmp(zInfo->m_szLabel, currentZone, 7) != 0)
             {
                 strncpy(currentZone, zInfo->m_szLabel, 7);
 
-                updateVariations(currentPedVariations, zInfo, &iniPed, &iniVeh);
+                updateVariations(pedCurrentVariations, zInfo, &iniPed, &iniVeh);
             }
 
 

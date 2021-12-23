@@ -23,6 +23,10 @@ using namespace plugin;
 
 int roadblockModel = -1;
 
+int passengerModelIndex = -1;
+const unsigned int jmp613B7E = 0x613B7E;
+
+
 int hasModelSideMission(int model)
 {
     switch (model)
@@ -40,63 +44,38 @@ int hasModelSideMission(int model)
 
 bool isModelAmbulance(int model)
 {
-    return (ambulanceModels.find(model) != ambulanceModels.end()) ? true : false;
+    auto it = vehOriginalModels.find(model);
+    if (it != vehOriginalModels.end() && it->second == 416)
+        return true;
+
+    return false;
 }
 
 bool isModelFiretruck(int model)
 {
-    return (firetruckModels.find(model) != firetruckModels.end()) ? true : false;
+    auto it = vehOriginalModels.find(model);
+    if (it != vehOriginalModels.end() && (it->second == 407 || it->second == 544))
+        return true;
+
+    return false;
 }
 
 bool isModelTaxi(int model)
 {
-    return (taxiModels.find(model) != taxiModels.end()) ? true : false;
-}
+    auto it = vehOriginalModels.find(model);
+    if (it != vehOriginalModels.end() && (it->second == 438 || it->second == 420))
+        return true;
 
-int getCopVariationOriginalModel(int modelIndex)
-{
-    int originalModel = modelIndex;
-
-    if (copModels.find(modelIndex) != copModels.end())
-        originalModel = 596;
-    else if (copBikeModels.find(modelIndex) != copBikeModels.end())
-        originalModel = 523;
-    else if (swatModels.find(modelIndex) != swatModels.end())
-        originalModel = 427;
-    else if (fbiModels.find(modelIndex) != fbiModels.end())
-        originalModel = 490;
-    else if (tankModels.find(modelIndex) != tankModels.end())
-        originalModel = 432;
-    else if (barracksModels.find(modelIndex) != barracksModels.end())
-        originalModel = 433;
-    else if (patriotModels.find(modelIndex) != patriotModels.end())
-        originalModel = 470;
-    else if (heliModels.find(modelIndex) != heliModels.end())
-        originalModel = 497;
-    else if (predatorModels.find(modelIndex) != predatorModels.end())
-        originalModel = 430;
-
-    return originalModel;
+    return false;
 }
 
 int getVariationOriginalModel(int modelIndex)
 {
     int originalModel = modelIndex;
 
-    originalModel = getCopVariationOriginalModel(modelIndex);
-
-    if (ambulanceModels.find(modelIndex) != ambulanceModels.end())
-        originalModel = 416;
-    else if (firetruckModels.find(modelIndex) != firetruckModels.end())
-        originalModel = 407;
-    else if (taxiModels.find(modelIndex) != taxiModels.end())
-        originalModel = 420;
-    else if (pimpModels.find(modelIndex) != pimpModels.end())
-        originalModel = 575;
-    else if (burglarModels.find(modelIndex) != burglarModels.end())
-        originalModel = 609;
-    else if (trainModels.find(modelIndex) != trainModels.end())
-        originalModel = 538;
+    auto it = vehOriginalModels.find(modelIndex);
+    if (it != vehOriginalModels.end())
+        return it->second;
 
     return originalModel;
 }
@@ -105,11 +84,11 @@ int getRandomVariation(int modelid)
 {
     if (modelid < 400 || modelid > 611)
         return modelid;
-    if (currentVehVariations[modelid - 400].empty())
+    if (vehCurrentVariations[modelid - 400].empty())
         return modelid;
 
-    int random = CGeneral::GetRandomNumberInRange(0, currentVehVariations[modelid - 400].size());
-    int variationModel = currentVehVariations[modelid - 400][random];
+    int random = CGeneral::GetRandomNumberInRange(0, vehCurrentVariations[modelid - 400].size());
+    int variationModel = vehCurrentVariations[modelid - 400][random];
     if (variationModel > -1)
     {
         CStreaming::RequestModel(variationModel, 2);
@@ -224,70 +203,20 @@ void readVehicleIni()
 
 
         for (int j = 0; j < 16; j++)
-        {
             for (int k = 0; k < (int)(vehVariations[i-400][j].size()); k++)
-            {
-                if (vehVariations[i-400][j][k] > 0 && vehVariations[i-400][j][k] < 30000  &&/*
-                    getVariationOriginalModel(vehVariations[i-400][j][k]) == vehVariations[i-400][j][k] &&*/ vehVariations[i-400][j][k] != i)
-                {
-                    switch (i)
-                    {
-                        case 596: //Police LS
-                        case 597: //Police SF
-                        case 598: //Police LV
-                        case 599: //Police Ranger
-                            copModels.insert(vehVariations[i-400][j][k]);
-                            break;
-                        case 523: //HPV1000
-                            copBikeModels.insert(vehVariations[i-400][j][k]);
-                            break;
-                        case 427: //Enforcer
-                        case 601: //S.W.A.T.
-                            swatModels.insert(vehVariations[i-400][j][k]);
-                            break;
-                        case 490: //FBI Rancher
-                        case 528: //FBI Truck
-                            fbiModels.insert(vehVariations[i-400][j][k]);
-                            break;
-                        case 433: //Barracks
-                            barracksModels.insert(vehVariations[i - 400][j][k]);
-                            break;
-                        case 470: //Patriot
-                            patriotModels.insert(vehVariations[i - 400][j][k]);
-                            break;
-                        case 432: //Rhino
-                            tankModels.insert(vehVariations[i-400][j][k]);
-                            break;
-                        case 430: //Predator
-                            predatorModels.insert(vehVariations[i-400][j][k]);
-                            break;
-                        case 497: //Police Maverick
-                            heliModels.insert(vehVariations[i-400][j][k]);
-                            break;
-                        case 407: //Fire Truck
-                            firetruckModels.insert(vehVariations[i-400][j][k]);
-                            break;
-                        case 416: //Ambulance
-                            ambulanceModels.insert(vehVariations[i-400][j][k]);
-                            break;
-                        case 420: //Taxi
-                        case 438: //Cabbie
-                            taxiModels.insert(vehVariations[i-400][j][k]);
-                            break;
-                        case 575: //Broadway
-                            pimpModels.insert(vehVariations[i-400][j][k]);
-                            break;
-                        case 609: //Boxville Mission
-                            burglarModels.insert(vehVariations[i-400][j][k]);
-                            break;
-                        case 538: //Brown Streak
-                        case 537: //Freight
-                            trainModels.insert(vehVariations[i-400][j][k]);
-                            break;
-                    }
-                }
-            }
-        }
+                if (vehVariations[i-400][j][k] > 0 && vehVariations[i-400][j][k] < 30000  && vehVariations[i-400][j][k] != i)
+                    vehOriginalModels.insert({ vehVariations[i - 400][j][k], i });
+    }
+
+    for (int i = 400; i < 32000; i++)
+    {
+        std::vector<short> vec = iniLineParser(VEHICLE_VARIATION, i, "Drivers", &iniVeh);
+        if (!vec.empty())
+            vehDrivers.insert({ i, vec });
+
+        vec = iniLineParser(VEHICLE_VARIATION, i, "Passengers", &iniVeh);
+        if (!vec.empty())
+            vehPassengers.insert({ i, vec });
     }
 }
 
@@ -328,7 +257,7 @@ int __cdecl ChooseModelHooked(int* a1)
     if (model < 400 || model > 611)
         return model;
 
-    if (currentVehVariations[model - 400].empty())
+    if (vehCurrentVariations[model - 400].empty())
         return model;
 
     return getRandomVariation(model);
@@ -341,7 +270,7 @@ int __cdecl ChoosePoliceCarModelHooked(int a1)
     if (model < 427 || model > 601)
         return model;
 
-    if (currentVehVariations[model - 400].empty())
+    if (vehCurrentVariations[model - 400].empty())
         return model;
 
     return getRandomVariation(model);
@@ -350,7 +279,7 @@ int __cdecl ChoosePoliceCarModelHooked(int a1)
 void __cdecl AddPoliceCarOccupantsHooked(CVehicle* a2, char a3)
 {
     int model = a2->m_nModelIndex;
-    a2->m_nModelIndex = getCopVariationOriginalModel(a2->m_nModelIndex);
+    a2->m_nModelIndex = getVariationOriginalModel(a2->m_nModelIndex);
 
     CCarAI::AddPoliceCarOccupants(a2, a3);
 
@@ -424,11 +353,21 @@ char __fastcall IsLawEnforcementVehicleHooked(CVehicle* vehicle)
         return 0;
     int modelIndex = vehicle->m_nModelIndex;
 
-    vehicle->m_nModelIndex = getCopVariationOriginalModel(vehicle->m_nModelIndex);
+    vehicle->m_nModelIndex = getVariationOriginalModel(vehicle->m_nModelIndex);
 
     char isLawEnforcement = vehicle->IsLawEnforcementVehicle();
     vehicle->m_nModelIndex = modelIndex;
     return isLawEnforcement;
+}
+
+char __fastcall IsLawOrEmergencyVehicle(CVehicle* vehicle)
+{
+    if (vehicle == NULL)
+        return 0;
+    if (isModelAmbulance(vehicle->m_nModelIndex) || isModelFiretruck(vehicle->m_nModelIndex) || IsLawEnforcementVehicleHooked(vehicle))
+        return 1;
+
+    return 0;
 }
 
 char __cdecl IsCarSprayableHooked(CVehicle* a1)
@@ -436,16 +375,20 @@ char __cdecl IsCarSprayableHooked(CVehicle* a1)
     if (a1 == NULL)
         return 0;
 
-    if (getCopVariationOriginalModel(a1->m_nModelIndex) != a1->m_nModelIndex || isModelAmbulance(a1->m_nModelIndex) || isModelFiretruck(a1->m_nModelIndex))
+    if (IsLawOrEmergencyVehicle(a1))
         return 0;
 
     return CallAndReturn<char, 0x4479A0>(a1);
 }
 
-char __fastcall IsLawOrEmergencyVehicle(CVehicle* vehicle)
+char __fastcall HasCarSiren(CVehicle* vehicle)
 {
     if (vehicle == NULL)
         return 0;
+    auto it = vehOriginalModels.find(vehicle->m_nModelIndex);
+    if (it != vehOriginalModels.end() && (it->second == 432 || it->second == 564))
+        return 0;
+
     if (isModelAmbulance(vehicle->m_nModelIndex) || isModelFiretruck(vehicle->m_nModelIndex) || IsLawEnforcementVehicleHooked(vehicle))
         return 1;
 
@@ -480,6 +423,17 @@ void __cdecl AddFiretruckOccupantsHooked(CVehicle* pVehicle)
 
 DWORD __cdecl FindSpecificDriverModelForCar_ToUseHooked(int carModel)
 {
+    auto it = vehDrivers.find(carModel);
+    int replaceDriver = iniVeh.ReadInteger(std::to_string(carModel), "ReplaceDriver", 0);
+    if (it != vehDrivers.end())
+        if ((replaceDriver == 0 && CGeneral::GetRandomNumberInRange(0, 100) > 50) || replaceDriver == 1)
+        {
+            int random = CGeneral::GetRandomNumberInRange(0, it->second.size());
+            CStreaming::RequestModel(it->second[random], 2);
+            CStreaming::LoadAllRequestedModels(false);
+            return it->second[random];
+        }
+
     return CPopulation::FindSpecificDriverModelForCar_ToUse(getVariationOriginalModel(carModel));
 }
 
@@ -516,7 +470,7 @@ char __cdecl GenerateRoadBlockCopsForCarHooked(CVehicle* a1, int pedsPositionsTy
         return 0;
 
     roadblockModel = a1->m_nModelIndex;
-    a1->m_nModelIndex = getCopVariationOriginalModel(a1->m_nModelIndex);
+    a1->m_nModelIndex = getVariationOriginalModel(a1->m_nModelIndex);
     CRoadBlocks::GenerateRoadBlockCopsForCar(a1, pedsPositionsType, type);
     if (roadblockModel >= 400)
         a1->m_nModelIndex = roadblockModel;
@@ -546,14 +500,21 @@ void __cdecl SetUpDriverAndPassengersForVehicleHooked(CVehicle* car, int a3, int
     if (car == NULL)
         return;
 
-    CStreaming::RequestModel(277, 2);//lafd1
-    CStreaming::RequestModel(278, 2);//lvfd1
-    CStreaming::RequestModel(279, 2);//sffd1
     CStreaming::RequestModel(274, 2);//laemt1
     CStreaming::RequestModel(275, 2);//lvemt1
     CStreaming::RequestModel(276, 2);//sfemt1
+    CStreaming::RequestModel(277, 2);//lafd1
+    CStreaming::RequestModel(278, 2);//lvfd1
+    CStreaming::RequestModel(279, 2);//sffd1
+    CStreaming::RequestModel(280, 2);//lapd1
+    CStreaming::RequestModel(281, 2);//sfpd1
+    CStreaming::RequestModel(282, 2);//lvpd1
+    CStreaming::RequestModel(283, 2);//csher
+    CStreaming::RequestModel(284, 2);//lapdm1
     CStreaming::RequestModel(285, 2);//swat
     CStreaming::RequestModel(286, 2);//fbi
+    CStreaming::RequestModel(287, 2);//army
+    CStreaming::RequestModel(288, 2);//dsher
     
     CStreaming::LoadAllRequestedModels(false);
 
@@ -564,6 +525,68 @@ void __cdecl SetUpDriverAndPassengersForVehicleHooked(CVehicle* car, int a3, int
 
     car->m_nModelIndex = model;
 }
+
+CHeli* __cdecl GenerateHeliHooked(CPed* ped, char newsHeli)
+{
+    if (CHeli::pHelis)
+    {
+        CStreaming::RequestModel(488, 2);
+        CStreaming::RequestModel(497, 2);
+        CStreaming::LoadAllRequestedModels(false);
+
+        newsHeli = 1;
+        if (CHeli::pHelis[0] && (CHeli::pHelis[0]->m_nModelIndex == 488 || getVariationOriginalModel(CHeli::pHelis[0]->m_nModelIndex) == 488))
+            newsHeli = 0;
+
+        if (CHeli::pHelis[1] && (CHeli::pHelis[1]->m_nModelIndex == 488 || getVariationOriginalModel(CHeli::pHelis[1]->m_nModelIndex) == 488))
+            newsHeli = 0;
+    }
+
+    return CHeli::GenerateHeli(ped, newsHeli);
+}
+
+void __declspec(naked) patchPassengerModel()
+{
+    __asm {
+        lea edx, [esp + 0x10]
+        push edx
+        push passengerModelIndex
+        jmp jmp613B7E
+    }
+}
+
+CPed* __cdecl AddPedInCarHooked(CVehicle* a1, char a2, int a3, signed int a4, int a5, char a6)
+{
+    if (a1)
+    {
+        auto it = vehPassengers.find(a1->m_nModelIndex);
+        if (it != vehPassengers.end())
+        {
+            int replacePassenger = iniVeh.ReadInteger(std::to_string(a1->m_nModelIndex), "ReplacePassengers", 0);
+
+            if ((replacePassenger == 0 && CGeneral::GetRandomNumberInRange(0, 100) > 50) || replacePassenger == 1)
+            {
+                int random = CGeneral::GetRandomNumberInRange(0, it->second.size());
+                passengerModelIndex = it->second[random];
+            }
+            else
+                return CPopulation::AddPedInCar(a1, a2, a3, a4, a5, a6);
+
+            unsigned char originalData[5] = { 0x8D, 0x54, 0x24, 0x10, 0x52 };
+            CStreaming::RequestModel(passengerModelIndex, 2);
+            CStreaming::LoadAllRequestedModels(false);
+            injector::MakeJMP(0x613B78, patchPassengerModel);
+            CPed* ped = CPopulation::AddPedInCar(a1, a2, a3, a4, a5, a6);
+            memcpy((void*)0x613B78, originalData, 5);
+            passengerModelIndex = -1;
+            return ped;
+        }
+    }
+
+
+    return CPopulation::AddPedInCar(a1, a2, a3, a4, a5, a6);
+}
+
 
 void installVehicleHooks()
 {
@@ -610,6 +633,9 @@ void installVehicleHooks()
     patch::RedirectCall(0x6C6590, CHeliHooked); //CHeli::GenerateHeli
     patch::RedirectCall(0x6C6568, CHeliHooked); //CHeli::GenerateHeli
     patch::RedirectCall(0x5D2C46, CHeliHooked); //CPools::LoadVehiclePool
+    patch::RedirectCall(0x6C7ACA, GenerateHeliHooked); //CHeli::UpdateHelis
+
+
 
     //Roadblocks
     patch::RedirectCall(0x42CDDD, IsLawEnforcementVehicleHooked); //CCarCtrl::RemoveDistantCars
@@ -620,6 +646,7 @@ void installVehicleHooks()
     patch::RedirectCall(0x42BC1A, AddFiretruckOccupantsHooked); //CCarCtrl::GenerateOneEmergencyServicesCar
 
     patch::RedirectCall(0x613A43, FindSpecificDriverModelForCar_ToUseHooked); //CPopulation::AddPedInCar
+    patch::RedirectCall(0x6D1B0E, AddPedInCarHooked); //CVehicle::SetupPassenger
 
     patch::RedirectCall(0x431DE2, SetUpDriverAndPassengersForVehicleHooked); //CCarCtrl::GenerateOneRandomCar
     patch::RedirectCall(0x431DF9, SetUpDriverAndPassengersForVehicleHooked); //CCarCtrl::GenerateOneRandomCar
@@ -630,7 +657,7 @@ void installVehicleHooks()
     //*p = (DWORD*)ProcessControlHooked;
 
     if (iniVeh.ReadInteger("Settings", "EnableSiren", 0))
-        patch::RedirectCall(0x6D8492, IsLawOrEmergencyVehicle); //CVehicle::UsesSiren
+        patch::RedirectCall(0x6D8492, HasCarSiren); //CVehicle::UsesSiren
 
     if (iniVeh.ReadInteger("Settings", "DisablePayAndSpray", 0))
         patch::RedirectCall(0x44AC75, IsCarSprayableHooked); //CGarage::Update

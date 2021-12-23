@@ -12,24 +12,11 @@ extern CIniReader iniVeh;
 
 extern std::array<std::vector<short>, 16> vehVariations[212];
 extern std::array<std::vector<short>, 16> vehWantedVariations[212];
+extern std::map<short, std::vector<short>> vehDrivers;
+extern std::map<short, std::vector<short>> vehPassengers;
 
-extern std::vector<short> currentVehVariations[212];
-
-extern std::unordered_set<short> copModels;
-extern std::unordered_set<short> copBikeModels;
-extern std::unordered_set<short> swatModels;
-extern std::unordered_set<short> fbiModels;
-extern std::unordered_set<short> tankModels;
-extern std::unordered_set<short> barracksModels;
-extern std::unordered_set<short> patriotModels;
-extern std::unordered_set<short> heliModels;
-extern std::unordered_set<short> predatorModels;
-extern std::unordered_set<short> ambulanceModels;
-extern std::unordered_set<short> firetruckModels;
-extern std::unordered_set<short> taxiModels;
-extern std::unordered_set<short> pimpModels;
-extern std::unordered_set<short> burglarModels;
-extern std::unordered_set<short> trainModels;
+extern std::vector<short> vehCurrentVariations[212];
+extern std::map<short, short> vehOriginalModels;
 
 extern bool isPlayerInTaxi;
 extern bool enableSideMissions;

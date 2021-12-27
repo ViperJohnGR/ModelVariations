@@ -204,7 +204,8 @@ void readVehicleIni()
 
         for (int j = 0; j < 16; j++)
             for (int k = 0; k < (int)(vehVariations[i-400][j].size()); k++)
-                if (vehVariations[i-400][j][k] > 0 && vehVariations[i-400][j][k] < 30000  && vehVariations[i-400][j][k] != i)
+                if (vehVariations[i-400][j][k] > 0 && vehVariations[i-400][j][k] < 30000  && vehVariations[i-400][j][k] != i && 
+                    !(isGameModelPolice(i) && isGameModelPolice(vehVariations[i - 400][j][k])))
                     vehOriginalModels.insert({ vehVariations[i - 400][j][k], i });
     }
 
@@ -218,6 +219,10 @@ void readVehicleIni()
         if (!vec.empty())
             vehPassengers.insert({ i, vec });
     }
+
+    changeCarGenerators = iniVeh.ReadInteger("Settings", "ChangeCarGenerators", 0);
+    vehCarGenExclude = iniLineParser(MODEL_SETTINGS, (int)"Settings", "ExcludeCarGeneratorVehicles", &iniVeh);
+    loadAllVehicles = iniVeh.ReadInteger("Settings", "LoadAllVehicles", 0);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -303,6 +308,21 @@ void __fastcall DoInternalProcessingHooked(CCarGenerator* park) //for non-random
     if (park != NULL)
     {
         int model = park->m_nModelId;
+        if (changeCarGenerators == 1)
+        {
+            if (!vehCarGenExclude.empty())
+                if (std::find(vehCarGenExclude.begin(), vehCarGenExclude.end(), model) != vehCarGenExclude.end())
+                {
+                    park->DoInternalProcessing();
+                    return;
+                }
+
+            park->m_nModelId = getRandomVariation(park->m_nModelId);
+            park->DoInternalProcessing();
+            park->m_nModelId = model;
+            return;
+        }
+
         switch (park->m_nModelId)
         {
             case 416: //Ambulance
@@ -528,6 +548,9 @@ void __cdecl SetUpDriverAndPassengersForVehicleHooked(CVehicle* car, int a3, int
 
 CHeli* __cdecl GenerateHeliHooked(CPed* ped, char newsHeli)
 {
+    if (FindPlayerWanted(-1)->m_nWantedLevel < 4)
+        return CHeli::GenerateHeli(ped, 0);
+
     if (CHeli::pHelis)
     {
         CStreaming::RequestModel(488, 2);

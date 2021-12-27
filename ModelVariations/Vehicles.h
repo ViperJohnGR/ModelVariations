@@ -17,12 +17,16 @@ extern std::map<short, std::vector<short>> vehPassengers;
 
 extern std::vector<short> vehCurrentVariations[212];
 extern std::map<short, short> vehOriginalModels;
+extern std::vector<short> vehCarGenExclude;
+extern int loadAllVehicles;
 
+extern int changeCarGenerators;
 extern bool isPlayerInTaxi;
 extern bool enableSideMissions;
 
 extern std::vector<short> iniLineParser(eVariationType type, int section, const char key[12], CIniReader* ini);
 extern void vectorUnion(std::vector<short>& vec1, std::vector<short>& vec2, std::vector<short>& dest);
+extern bool isGameModelPolice(int model);
 
 void installVehicleHooks();
 void readVehicleIni();

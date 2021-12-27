@@ -61,6 +61,7 @@ std::map<short, std::vector<short>> vehPassengers;
 std::array<std::vector<short>, 16> vehWantedVariations[212];
 
 std::vector<short> vehCurrentVariations[212];
+std::vector<short> vehCarGenExclude;
 
 std::map<short, BYTE> pedWepVariationTypes;
 
@@ -69,9 +70,34 @@ std::stack<CPed*> pedStack;
 BYTE dealersFixed = 0;
 short modelIndex = -1;
 
+int changeCarGenerators = 0;
 bool isPlayerInTaxi = false;
 bool enableSideMissions = false;
 int enableVehicles = 0;
+int loadAllVehicles = 0;
+
+bool isGameModelPolice(int model)
+{
+    switch (model)
+    {
+        case 427: //Enforcer
+        case 430: //Predator
+        case 432: //Rhino
+        case 433: //Barracks
+        case 470: //Patriot
+        case 490: //FBI Rancher
+        case 496: //Police Maverick
+        case 523: //HPV1000
+        case 528: //FBI Truck
+        case 596: //Police LS
+        case 597: //Police SF
+        case 598: //Police LV
+        case 599: //Police Ranger
+        case 601: //S.W.A.T.
+            return true;
+    }
+    return false;
+}
 
 void vectorUnion(std::vector<short> &vec1, std::vector<short> &vec2, std::vector<short> &dest)
 {
@@ -158,10 +184,14 @@ std::vector<short> iniLineParser(eVariationType type, int section, const char ke
     if (ini == NULL)
         return retVector;
 
-    std::string sectionString = std::to_string(section);
+    std::string sectionString;
+    if (type == MODEL_SETTINGS)
+        sectionString = (char*)section;
+    else
+        sectionString = std::to_string(section);
 
     std::string keyString;
-    if (type == PED_VARIATION || type == VEHICLE_VARIATION) 
+    if (type == PED_VARIATION || type == VEHICLE_VARIATION || type == MODEL_SETTINGS) 
         keyString = key;
     else
         keyString = std::to_string((int)(key));
@@ -309,7 +339,7 @@ public:
 
                 if (!vec.empty()) //if veh id 'j+400' has variations in zone 'i'
                     for (auto& k : vec) //for every variation 'k' of veh id 'j+400' in zone 'i'
-                        if (j + 400 != k)
+                        if (j + 400 != k && !(isGameModelPolice(j+400) && isGameModelPolice(k)))
                             vehOriginalModels.insert({k, j+400});
             }
         }
@@ -417,6 +447,10 @@ public:
 
         Events::initScriptsEvent += []
         {
+            if (loadAllVehicles)
+                for (int i = 400; i < 612; i++)
+                    CStreaming::RequestModel(i, KEEP_IN_MEMORY);
+
             dealersFixed = 0;
         };
 

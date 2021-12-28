@@ -23,6 +23,7 @@ extern int loadAllVehicles;
 extern int changeCarGenerators;
 extern bool isPlayerInTaxi;
 extern bool enableSideMissions;
+extern int enableAllSideMissions;
 
 extern std::vector<short> iniLineParser(eVariationType type, int section, const char key[12], CIniReader* ini);
 extern void vectorUnion(std::vector<short>& vec1, std::vector<short>& vec2, std::vector<short>& dest);

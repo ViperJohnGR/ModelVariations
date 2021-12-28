@@ -73,6 +73,7 @@ short modelIndex = -1;
 int changeCarGenerators = 0;
 bool isPlayerInTaxi = false;
 bool enableSideMissions = false;
+int enableAllSideMissions = 0;
 int enableVehicles = 0;
 int loadAllVehicles = 0;
 

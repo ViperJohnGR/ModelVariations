@@ -221,8 +221,9 @@ void readVehicleIni()
     }
 
     changeCarGenerators = iniVeh.ReadInteger("Settings", "ChangeCarGenerators", 0);
-    vehCarGenExclude = iniLineParser(MODEL_SETTINGS, (int)"Settings", "ExcludeCarGeneratorVehicles", &iniVeh);
+    vehCarGenExclude = iniLineParser(MODEL_SETTINGS, (int)"Settings", "ExcludeCarGeneratorModels", &iniVeh);
     loadAllVehicles = iniVeh.ReadInteger("Settings", "LoadAllVehicles", 0);
+    enableAllSideMissions = iniVeh.ReadInteger("Settings", "EnableSideMissionsForAllScripts", 0);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -460,12 +461,15 @@ DWORD __cdecl FindSpecificDriverModelForCar_ToUseHooked(int carModel)
 void __fastcall CollectParametersHooked(CRunningScript* script, void*, unsigned __int16 a2)
 {
     script->CollectParameters(a2);
-    if (!hasModelSideMission(CTheScripts::ScriptParams[1].uParam))
-        return;
+    if (enableAllSideMissions == 0)
+    {
+        if (!hasModelSideMission(CTheScripts::ScriptParams[1].uParam))
+            return;
 
-    if (strcmp(script->m_szName, "r3") != 0 && strcmp(script->m_szName, "ambulan") != 0 && strcmp(script->m_szName, "firetru") != 0 &&
-        strcmp(script->m_szName, "freight") != 0)
-        return;
+        if (strcmp(script->m_szName, "r3") != 0 && strcmp(script->m_szName, "ambulan") != 0 && strcmp(script->m_szName, "firetru") != 0 &&
+            strcmp(script->m_szName, "freight") != 0)
+            return;
+    }
 
     CPlayerPed* player = FindPlayerPed();  
     if (player == NULL)

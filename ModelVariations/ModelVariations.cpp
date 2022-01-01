@@ -77,6 +77,16 @@ int enableAllSideMissions = 0;
 int enableVehicles = 0;
 int loadAllVehicles = 0;
 
+void(*PreRenderOriginal)(CAutomobile*) = NULL;
+void(*ProcessSuspensionOriginal)(CAutomobile*) = NULL;
+void(*SetupSuspensionLinesOriginal)(CAutomobile*) = NULL;
+void(*DoBurstAndSoftGroundRatiosOriginal)(CAutomobile*) = NULL;
+void(*CAutomobileRenderOriginal)(CAutomobile*) = NULL;
+void(__fastcall *VehicleDamageOriginal)(CAutomobile*, void*, float, __int16, int, RwV3d*, RwV3d*, signed int) = NULL;
+char(__fastcall* BurstTyreOriginal)(CAutomobile*, void*, char, char) = NULL;
+int(__fastcall* ProcessEntityCollisionOriginal)(CAutomobile*, void*, CVehicle*, CColPoint*) = NULL;
+
+
 bool isGameModelPolice(int model)
 {
     switch (model)

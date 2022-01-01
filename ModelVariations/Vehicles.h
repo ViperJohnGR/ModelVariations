@@ -3,6 +3,7 @@
 #include "IniReader/IniReader.h"
 
 #include "CPed.h"
+#include "CAutomobile.h"
 
 #include <vector>
 #include <unordered_set>
@@ -24,6 +25,14 @@ extern int changeCarGenerators;
 extern bool isPlayerInTaxi;
 extern bool enableSideMissions;
 extern int enableAllSideMissions;
+extern void(*PreRenderOriginal)(CAutomobile*);
+extern void(*ProcessSuspensionOriginal)(CAutomobile*);
+extern void(*SetupSuspensionLinesOriginal)(CAutomobile*);
+extern void(*DoBurstAndSoftGroundRatiosOriginal)(CAutomobile*);
+extern void(*CAutomobileRenderOriginal)(CAutomobile*);
+extern void(__fastcall *VehicleDamageOriginal)(CAutomobile*, void*, float, __int16, int, RwV3d*, RwV3d*, signed int);
+extern char(__fastcall *BurstTyreOriginal)(CAutomobile*, void*, char, char);
+extern int(__fastcall *ProcessEntityCollisionOriginal)(CAutomobile*, void*, CVehicle*, CColPoint*);
 
 extern std::vector<short> iniLineParser(eVariationType type, int section, const char key[12], CIniReader* ini);
 extern void vectorUnion(std::vector<short>& vec1, std::vector<short>& vec2, std::vector<short>& dest);

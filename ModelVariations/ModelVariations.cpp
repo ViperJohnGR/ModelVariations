@@ -1,83 +1,80 @@
 #include "plugin.h"
-#include "Vehicles.h"
-#include "commonDef.h"
+#include "IniParse.hpp"
+#include "LogUtil.hpp"
+#include "Vehicles.hpp"
 
-#include "IniReader/IniReader.h"
 #include "extensions/ScriptCommands.h"
 
 #include "CGeneral.h"
 #include "CMessages.h"
 #include "CStreaming.h"
 #include "CTheZones.h"
+#include "CVector.h"
 #include "CWorld.h"
 
-#include <stack>
 #include <array>
+#include <iomanip>
+#include <map>
+#include <set>
+#include <stack>
 #include <unordered_set>
 
-/*
---ZONES--
+#include <Psapi.h>
+#include <shlwapi.h>
 
-DESERT
-    TIERRA ROBADA
-        ROBAD
-        ROBAD1
-    BONE COUNTY
-        BONE
-
-COUNTRYSIDE
-    RED COUNTY
-            RED
-        BLUEBERRY
-            BLUEB
-            BLUEB1
-        MONTGOMERY
-            MONT
-        DILLIMORE
-            DILLI
-        PALOMINO CREEK
-            PALO
-
-    FLINT COUNTY
-        FLINTC
-
-    WHETSTONE
-            WHET
-        ANGEL PINE
-            ANGPI
-*/
+#include "Hooks.hpp"
 
 using namespace plugin;
+
+std::string exeHashes[2] = { "a559aa772fd136379155efa71f00c47aad34bbfeae6196b0fe1047d0645cbd26",     //HOODLUM
+                             "25580ae242c6ecb6f6175ca9b4c912aa042f33986ded87f20721b48302adc9c9" };   //Compact
+
+std::ofstream logfile;
+std::set<std::pair<unsigned int, std::string>> modulesSet;
+std::set<unsigned int> callChecks;
+
 
 CIniReader iniVeh("ModelVariations_Vehicles.ini");
 
 std::array<std::vector<short>, 16> pedVariations[300];
-
 std::array<std::vector<short>, 16> vehVariations[212];
+std::array<std::vector<short>, 16> vehWantedVariations[212];
+
 std::map<short, short> vehOriginalModels;
 std::map<short, std::vector<short>> vehDrivers;
 std::map<short, std::vector<short>> vehPassengers;
-
-std::array<std::vector<short>, 16> vehWantedVariations[212];
+std::map<short, std::vector<short>> vehDriverGroups[9];
+std::map<short, std::vector<short>> vehPassengerGroups[9];
+std::map<short, BYTE> modelNumGroups;
+std::map<short, BYTE> pedWepVariationTypes;
+std::map<unsigned int, std::pair<void*, void*>> hookedCalls;
+std::map<int, CVector> LightPositions;
 
 std::vector<short> vehCurrentVariations[212];
-std::vector<short> vehCarGenExclude;
+std::vector<short> pedCurrentVariations[300];
 
-std::map<short, BYTE> pedWepVariationTypes;
+std::vector<short> vehCarGenExclude;
 
 std::stack<CPed*> pedStack;
 
 BYTE dealersFixed = 0;
+BYTE callsChecked = 0;
 short modelIndex = -1;
 
+//ini options
+int enableLog = 0;
 int changeCarGenerators = 0;
-bool isPlayerInTaxi = false;
 bool enableSideMissions = false;
 int enableAllSideMissions = 0;
 int enableVehicles = 0;
 int loadAllVehicles = 0;
+int enableLights = 0;
+int enableSiren = 0;
+int disablePayAndSpray = 0;
 
-void(*PreRenderOriginal)(CAutomobile*) = NULL;
+void(__fastcall *ProcessControlOriginal)(CAutomobile*) = NULL;
+void(__fastcall *PreRenderOriginal)(CAutomobile*) = NULL;
+/*
 void(*ProcessSuspensionOriginal)(CAutomobile*) = NULL;
 void(*SetupSuspensionLinesOriginal)(CAutomobile*) = NULL;
 void(*DoBurstAndSoftGroundRatiosOriginal)(CAutomobile*) = NULL;
@@ -85,6 +82,7 @@ void(*CAutomobileRenderOriginal)(CAutomobile*) = NULL;
 void(__fastcall *VehicleDamageOriginal)(CAutomobile*, void*, float, __int16, int, RwV3d*, RwV3d*, signed int) = NULL;
 char(__fastcall* BurstTyreOriginal)(CAutomobile*, void*, char, char) = NULL;
 int(__fastcall* ProcessEntityCollisionOriginal)(CAutomobile*, void*, CVehicle*, CColPoint*) = NULL;
+*/
 
 
 bool isGameModelPolice(int model)
@@ -183,59 +181,24 @@ void drugDealerFix(void)
 
     for (int i = 0; i < (int)(variationsProcessed.size()); i++)
     {
+        if (enableLog == 1)
+            logfile << variationsProcessed[i] << "\n";
         Command<COMMAND_ALLOCATE_STREAMED_SCRIPT_TO_RANDOM_PED>(19, variationsProcessed[i], 100);
         Command<COMMAND_ATTACH_ANIMS_TO_MODEL>(variationsProcessed[i], "DEALER");
     }
 }
 
-
-std::vector<short> iniLineParser(eVariationType type, int section, const char key[12], CIniReader *ini)
-{
-    std::vector<short> retVector;
-    if (ini == NULL)
-        return retVector;
-
-    std::string sectionString;
-    if (type == MODEL_SETTINGS)
-        sectionString = (char*)section;
-    else
-        sectionString = std::to_string(section);
-
-    std::string keyString;
-    if (type == PED_VARIATION || type == VEHICLE_VARIATION || type == MODEL_SETTINGS) 
-        keyString = key;
-    else
-        keyString = std::to_string((int)(key));
-
-    std::string iniString = ini->ReadString(sectionString, keyString, "");
-
-    if (!iniString.empty())
-    {
-        char* tkString = new char[iniString.size() + 1];
-        strcpy(tkString, iniString.c_str());
-
-        char* token = strtok(tkString, ",");
-
-        while (token != NULL)
-        {
-            retVector.push_back(atoi(token));
-            token = strtok(NULL, ",");
-        }
-
-        delete[] tkString;
-    }
-    return retVector;
-}
-
+template <unsigned int address>
 void __fastcall UpdateRpHAnimHooked(CEntity* entity)
 {
-    entity->UpdateRpHAnim();
+    callMethodOriginal<address>(entity);
+    //entity->UpdateRpHAnim();
     if (modelIndex != -1)
         entity->m_nModelIndex = modelIndex;
     modelIndex = -1;
 }
 
-void updateVariations(std::vector<short> *currentPedVariations, CZone *zInfo, CIniReader *iniPed, CIniReader *iniVeh)
+void updateVariations(CZone *zInfo, CIniReader *iniPed, CIniReader *iniVeh)
 {
     //zInfo->m_szTextKey = BLUEB | zInfo->m_szLabel = BLUEB1
 
@@ -267,20 +230,20 @@ void updateVariations(std::vector<short> *currentPedVariations, CZone *zInfo, CI
 
     for (int i = 0; i < 300; i++)
     {
-        vectorUnion(pedVariations[i][LV_GLOBAL], pedVariations[i][merge], currentPedVariations[i]);
+        vectorUnion(pedVariations[i][4], pedVariations[i][merge], pedCurrentVariations[i]);
 
         std::vector<short> vecPed = iniLineParser(PED_VARIATION, i, zInfo->m_szLabel, iniPed);
         if (!vecPed.empty())
         {
             std::vector<short> vec2;
             std::sort(vecPed.begin(), vecPed.end());
-            vectorUnion(currentPedVariations[i], vecPed, vec2);
-            currentPedVariations[i] = vec2;
+            vectorUnion(pedCurrentVariations[i], vecPed, vec2);
+            pedCurrentVariations[i] = vec2;
         }
 
         if (i < 212)
         {
-            vectorUnion(vehVariations[i][LV_GLOBAL], vehVariations[i][merge], vehCurrentVariations[i]);
+            vectorUnion(vehVariations[i][4], vehVariations[i][merge], vehCurrentVariations[i]);
 
             std::vector<short> vec = iniLineParser(VEHICLE_VARIATION, i+400, zInfo->m_szLabel, iniVeh);
             if (!vec.empty())
@@ -309,23 +272,115 @@ void updateVariations(std::vector<short> *currentPedVariations, CZone *zInfo, CI
     }
 }
 
+void printCurrentVariations()
+{
+    logfile << std::dec << "pedCurrentVariations\n";
+    for (int i = 0; i < 300; i++)
+        if (!pedCurrentVariations[i].empty())
+        {
+            logfile << i << ": ";
+            for (short j : pedCurrentVariations[i])
+                logfile << j << " ";
+            logfile << "\n";
+        }
+
+    logfile << std::endl;
+
+    if (enableVehicles == 1)
+    {
+
+        logfile << "vehCurrentVariations\n";
+        for (int i = 0; i < 212; i++)
+            if (!vehCurrentVariations[i].empty())
+            {
+                logfile << i + 400 << ": ";
+                for (short j : vehCurrentVariations[i])
+                    logfile << j << " ";
+                logfile << "\n";
+            }
+        logfile << "\n" << std::endl;
+    }
+    else
+        logfile << std::endl;
+}
+
 class ModelVariations {
 public:
     ModelVariations() {
-
         static CIniReader iniPed("ModelVariations_Peds.ini");
         static CIniReader iniWeap("ModelVariations_PedWeapons.ini");
 
         static char currentZone[8] = {};
 
         static int currentWanted = 0;
-        static std::vector<short> pedCurrentVariations[300];
+
+        if (enableLog = iniVeh.ReadInteger("Settings", "EnableLog", 0))
+        {
+            logfile.open("ModelVariations.log");
+            if (logfile.is_open())
+            {
+                HMODULE modules[500] = {};
+                HANDLE hProcess = GetCurrentProcess();
+                DWORD cbNeeded = 0;
+
+                if (EnumProcessModules(hProcess, modules, sizeof(modules), &cbNeeded))
+                    for (int i = 0; i < (int)(cbNeeded / sizeof(HMODULE)); i++)
+                    {
+                        char szModName[MAX_PATH];
+                        if (GetModuleFileNameEx(hProcess, modules[i], szModName, sizeof(szModName) / sizeof(TCHAR)))
+                            modulesSet.insert(std::make_pair((unsigned int)modules[i], PathFindFileName(szModName)));
+                    }
+
+                //for (auto &i : modulesSet)
+                //    logfile << std::hex << i.first << " " << i.second << std::endl;
+                //logfile << std::endl;
+
+
+                logfile << "Model Variations " MOD_VERSION << "\n\n\n";
+
+                char exePath[256] = {};
+                GetModuleFileName(NULL, exePath, 255);
+                char* exeName = PathFindFileName(exePath);
+
+                int filesize = 0;
+                std::string hash = hashFile(exePath, filesize);
+                if (hash == exeHashes[0])
+                    logfile << "Supported exe detected: 1.0 US HOODLUM" << std::endl;
+                else if (hash == exeHashes[1])
+                    logfile << "Supported exe detected: 1.0 US Compact" << std::endl;
+                else
+                    logfile << "Unsupported exe detected: " << exeName << " " << filesize << " bytes " << hash << std::endl;
+
+                logfile << std::endl;
+            }
+            else
+                enableLog = 0;
+        }
 
         //https://stackoverflow.com/questions/48467994/how-to-read-only-the-first-value-on-each-line-of-a-csv-file-in-c
         std::string str;
         std::vector <std::string> result;    
         std::ifstream zoneFile("data\\info.zon");
+
+        if (!zoneFile.is_open())
+        {
+            zoneFile.open("..\\data\\info.zon"); //If asi is in scripts folder
+            if (!zoneFile.is_open())
+            {
+                zoneFile.open("..\\..\\data\\info.zon"); //If asi is in folder in modloader
+                if (!zoneFile.is_open())
+                    zoneFile.open("..\\..\\..\\data\\info.zon"); //If asi is in folder in folder in modloader
+            }
+        }
     
+        if (enableLog == 1)
+        {
+            if (zoneFile.is_open())
+                logfile << "Zone file 'info.zon' found.\n" << std::endl;
+            else
+                logfile << "Zone file 'info.zon' NOT found!\n" << std::endl;
+        }
+
         while (std::getline(zoneFile, str)) 
         {
             std::stringstream ss(str);
@@ -442,6 +497,31 @@ public:
             pedVariations[i][15] = vec;
         }
 
+        if (enableLog == 1)
+        {
+            std::ifstream pedIni("ModelVariations_Peds.ini");
+            if (!pedIni.is_open())
+                logfile << "ModelVariations_Peds.ini not found!\n" << std::endl;
+            else
+                logfile << "--ModelVariations_Peds.ini--\n" << pedIni.rdbuf() << "\n" << std::endl;
+
+
+            std::ifstream wepIni("ModelVariations_PedWeapons.ini");
+            if (!wepIni.is_open())
+                logfile << "ModelVariations_PedWeapons.ini not found!\n" << std::endl;
+            else
+                logfile << "--ModelVariations_PedWeapons.ini--\n" << wepIni.rdbuf() << "\n" << std::endl;
+
+
+            std::ifstream vehIni("ModelVariations_Vehicles.ini");
+            if (!vehIni.is_open())
+                logfile << "ModelVariations_Vehicles.ini not found!" << "\n" << std::endl;
+            else
+                logfile << "--ModelVariations_Vehicles.ini--\n" << vehIni.rdbuf() << "\n" << std::endl;
+
+            logfile << std::endl;
+        }
+
         for (short i = 0; i < 32000; i++)
         {
             BYTE wepVariationType = iniWeap.ReadInteger(std::to_string(i), "VariationType", -1);
@@ -449,12 +529,25 @@ public:
                 pedWepVariationTypes.insert(std::make_pair(i, wepVariationType));
         }
 
+        if (enableLog == 1)
+        {
+            logfile << "pedWepVariationTypes\n";
+            for (int i = 0; i < 32000; i++)
+            {
+                auto it = pedWepVariationTypes.find(i);
+                if (it != pedWepVariationTypes.end())
+                    logfile << std::dec << i << ": " << (int)(it->second) << "\n";
+            }
+            logfile << std::endl;
+        }
+
         if (enableVehicles = iniVeh.ReadInteger("Settings", "Enable", 0))
         {
             readVehicleIni();
             installVehicleHooks();
         }
-        patch::RedirectCall(0x5E49EF, UpdateRpHAnimHooked);            
+
+        hookCall(0x5E49EF, UpdateRpHAnimHooked<0x5E49EF>);
 
         Events::initScriptsEvent += []
         {
@@ -463,15 +556,29 @@ public:
                     CStreaming::RequestModel(i, KEEP_IN_MEMORY);
 
             dealersFixed = 0;
+            callsChecked = 0;
         };
 
         Events::processScriptsEvent += []
         {
             if (dealersFixed < 10)
                 dealersFixed++;
+            if (callsChecked < 100)
+                callsChecked++;
+
+            if (callsChecked == 100 && enableLog == 1)
+            {
+                checkAllCalls();
+                callsChecked = 101;
+            }
+
             if (dealersFixed == 10)
             {
+                if (enableLog == 1)
+                    logfile << "Applying drug dealer fix..." << std::endl;
                 drugDealerFix();
+                if (enableLog == 1)
+                    logfile << std::endl;
                 dealersFixed = 11;
             }
         };
@@ -509,15 +616,35 @@ public:
             CWanted* wanted = FindPlayerWanted(-1);
             if (wanted && wanted->m_nWantedLevel != currentWanted)
             {
+                if (enableLog == 1)
+                {
+                    logfile << "Wanted level changed. Updating variations...\n";
+                    logfile << "currentWanted = " << currentWanted << " wanted->m_nWantedLevel = " << wanted->m_nWantedLevel << "\n";
+                    logfile << "currentZone = " << currentZone << " zInfo->m_szLabel = " << zInfo->m_szLabel << "\n" << std::endl;
+                }
+
+
                 currentWanted = wanted->m_nWantedLevel;
-                updateVariations(pedCurrentVariations, zInfo, &iniPed, &iniVeh);
+                updateVariations(zInfo, &iniPed, &iniVeh);
+
+                if (enableLog == 1)
+                    printCurrentVariations();
             }
 
             if (zInfo && strncmp(zInfo->m_szLabel, currentZone, 7) != 0)
             {
-                strncpy(currentZone, zInfo->m_szLabel, 7);
+                if (enableLog == 1)
+                {
+                    logfile << "Zone changed. Updating variations...\n";
+                    logfile << "currentWanted = " << currentWanted << " wanted->m_nWantedLevel = " << wanted->m_nWantedLevel << "\n";
+                    logfile << "currentZone = " << currentZone << " zInfo->m_szLabel = " << zInfo->m_szLabel << "\n" << std::endl;
+                }
 
-                updateVariations(pedCurrentVariations, zInfo, &iniPed, &iniVeh);
+                strncpy(currentZone, zInfo->m_szLabel, 7);
+                updateVariations(zInfo, &iniPed, &iniVeh);
+
+                if (enableLog == 1)
+                    printCurrentVariations();
             }
 
 

@@ -3,9 +3,12 @@
   <ItemGroup>
     <ClCompile Include="ModelVariations.cpp" />
     <ClCompile Include="Vehicles.cpp" />
+    <ClCompile Include="LogUtil.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Vehicles.h" />
-    <ClInclude Include="commonDef.h" />
+    <ClInclude Include="Vehicles.hpp" />
+    <ClInclude Include="LogUtil.hpp" />
+    <ClInclude Include="IniParse.hpp" />
+    <ClInclude Include="Hooks.hpp" />
   </ItemGroup>
 </Project>

@@ -93,12 +93,15 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="LogUtil.cpp" />
     <ClCompile Include="ModelVariations.cpp" />
     <ClCompile Include="Vehicles.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="commonDef.h" />
-    <ClInclude Include="Vehicles.h" />
+    <ClInclude Include="IniParse.hpp" />
+    <ClInclude Include="LogUtil.hpp" />
+    <ClInclude Include="Hooks.hpp" />
+    <ClInclude Include="Vehicles.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -218,12 +218,13 @@ void readVehicleIni()
     {
         if (enableLights)
         {
+            float lightWidth = iniVeh.ReadFloat(std::to_string(i), "LightWidth", -999.0);
             float lightX = iniVeh.ReadFloat(std::to_string(i), "LightX", -999.0);
             float lightY = iniVeh.ReadFloat(std::to_string(i), "LightY", -999.0);
             float lightZ = iniVeh.ReadFloat(std::to_string(i), "LightZ", -999.0);
 
             if (lightX > -900.0 || lightY > -900.0 || lightZ > -900.0)
-                LightPositions.insert({ i, { lightX, lightY, lightZ } });
+                LightPositions.insert({ (short)i, {{ lightX, lightY, lightZ }, lightWidth} });
         }
         int numGroups = 0;
         for (int j = 0; j < 9; j++)
@@ -720,12 +721,14 @@ void __cdecl RegisterCoronaHooked(CCoronas* _this, unsigned int a2, CEntity* a3,
         auto it = LightPositions.find(lightsModel);
         if (it != LightPositions.end())
         {
-            if (it->second.x > -900.0)
-                a7->x *= it->second.x;
-            if (it->second.y > -900.0)
-                a7->y *= it->second.y;
-            if (it->second.z > -900.0)
-                a7->z *= it->second.z;
+            if (it->second.second > -900.0)
+                a7->x *= it->second.second;
+            if (it->second.first.x > -900.0)
+                a7->x += it->second.first.x;
+            if (it->second.first.y > -900.0)
+                a7->y *= it->second.first.y;
+            if (it->second.first.z > -900.0)
+                a7->z *= it->second.first.z;
         }
     }
     callOriginal<address>(_this, a2, a3, a4, a5, a6, a7, a8, a9, texture, a11, a12, a13, a14, a15, a16, a17, a18, a19, a20, a21);
@@ -740,12 +743,14 @@ void __cdecl AddLightHooked(char type, float x, float y, float z, float dir_x, f
         auto it = LightPositions.find(lightsModel);
         if (it != LightPositions.end())
         {
-            if (it->second.x > -900.0)
-                x *= it->second.x;
-            if (it->second.y > -900.0)
-                y *= it->second.y;
-            if (it->second.z > -900.0)
-                z *= it->second.z;
+            if (it->second.second > -900.0)
+                x *= it->second.second;
+            if (it->second.first.x > -900.0)
+                x += it->second.first.x;
+            if (it->second.first.y > -900.0)
+                y *= it->second.first.y;
+            if (it->second.first.z > -900.0)
+                z *= it->second.first.z;
         }
     }
 

@@ -48,7 +48,7 @@ std::map<short, std::vector<short>> vehPassengerGroups[9];
 std::map<short, BYTE> modelNumGroups;
 std::map<short, BYTE> pedWepVariationTypes;
 std::map<unsigned int, std::pair<void*, void*>> hookedCalls;
-std::map<int, CVector> LightPositions;
+std::map<short, std::pair<CVector, float>> LightPositions;
 
 std::vector<short> vehCurrentVariations[212];
 std::vector<short> pedCurrentVariations[300];
@@ -93,7 +93,7 @@ bool isGameModelPolice(int model)
         case 430: //Predator
         case 432: //Rhino
         case 433: //Barracks
-        case 470: //Patriot
+        //case 470: //Patriot
         case 490: //FBI Rancher
         case 496: //Police Maverick
         case 523: //HPV1000

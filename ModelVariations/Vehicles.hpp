@@ -5,6 +5,7 @@
 #include "CPed.h"
 #include "CVector.h"
 
+#include <set>
 #include <vector>
 #include <unordered_set>
 
@@ -20,7 +21,7 @@ extern std::map<short, std::vector<short>> vehPassengers;
 extern std::map<short, std::vector<short>> vehDriverGroups[9];
 extern std::map<short, std::vector<short>> vehPassengerGroups[9];
 extern std::map<short, BYTE> modelNumGroups;
-extern std::map<int, CVector> LightPositions;
+extern std::map<short, std::pair<CVector, float>> LightPositions;
 
 extern std::vector<short> vehCurrentVariations[212];
 extern std::map<short, short> vehOriginalModels;

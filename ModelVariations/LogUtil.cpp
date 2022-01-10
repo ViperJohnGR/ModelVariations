@@ -3,10 +3,12 @@
 #include <iomanip>
 #include <fstream>
 #include <sstream>
+#include <Windows.h>
 #include <shlwapi.h>
 #include <bcrypt.h>
 #include <Psapi.h>
 
+#pragma comment (lib, "Advapi32.lib")
 #pragma comment (lib, "bcrypt.lib")
 #pragma comment (lib, "shlwapi.lib")
 
@@ -41,7 +43,7 @@ std::string hashFile(const char* filename, int& filesize)
     BCRYPT_ALG_HANDLE hProvider = NULL;
     BCRYPT_HASH_HANDLE ctx = NULL;
 
-    BCryptOpenAlgorithmProvider(&hProvider, BCRYPT_SHA256_ALGORITHM, NULL, BCRYPT_HASH_REUSABLE_FLAG);
+    BCryptOpenAlgorithmProvider(&hProvider, BCRYPT_SHA256_ALGORITHM, NULL, 0);
 
     BCryptCreateHash(hProvider, &ctx, NULL, 0, NULL, 0, 0);
     if (ctx != NULL)
@@ -93,12 +95,12 @@ std::string getParentModuleName(unsigned int address)
     return emptyString;
 }
 
-void checkCallModified(const char *callName, unsigned int originalAddress)
+void checkCallModified(const char *callName, unsigned int originalAddress, bool directAddress = false)
 {
     if (callChecks.find(*((unsigned int*)originalAddress)) != callChecks.end())
         return;
 
-    unsigned int changedAddress = getAddressFromCall((BYTE*)originalAddress);
+    unsigned int changedAddress = (directAddress == false) ? getAddressFromCall((BYTE*)originalAddress) : directAddress;
     std::string moduleName = getParentModuleName(changedAddress);
     unsigned int baseAddress = 0;
 
@@ -129,6 +131,26 @@ void checkCallModified(const char *callName, unsigned int originalAddress)
     logfile << moduleName << " 0x" << baseAddress << std::endl;
 }
 
+std::string getWindowsVersion()
+{
+    std::string retString;
+    char str[255] = {};
+    DWORD cbData = 254;
+    HKEY hkey;
+
+    if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", 0, KEY_QUERY_VALUE, &hkey) == ERROR_SUCCESS)
+    {
+        if (RegQueryValueEx(hkey, "CurrentBuild", NULL, NULL, (LPBYTE)str, &cbData) == ERROR_SUCCESS)
+        {
+            retString += "OS build ";
+            retString += str;
+        }
+        RegCloseKey(hkey);
+    }
+
+
+    return retString;
+}
 
 void checkAllCalls()
 {
@@ -192,15 +214,27 @@ void checkAllCalls()
     checkCallModified("PossiblyRemoveVehicle", 0x60C4E8);
     checkCallModified("PossiblyRemoveVehicle", 0x42CD55);
 
-    if (enableLights == 1)
+    if (changeScriptedCars == 1)
+        checkCallModified("CreateCarForScript", 0x467B01);
+
+    if (enableSpecialFeatures == 1)
     {
-        checkCallModified("RegisterCorona", 0x6ABA60);
-        checkCallModified("RegisterCorona", 0x6ABB35);
-        checkCallModified("RegisterCorona", 0x6ABC69);
+        checkCallModified("ProcessControl", 0x871148, true);
+        checkCallModified("PreRender", 0x871164, true);
     }
 
     if (enableSiren == 1)
         checkCallModified("HasCarSiren", 0x6D8492);
+
+    if (enableLights == 1 && enableSpecialFeatures == 1 && enableSiren == 1)
+    {
+        checkCallModified("RegisterCorona", 0x6ABA60);
+        checkCallModified("RegisterCorona", 0x6ABB35);
+        checkCallModified("RegisterCorona", 0x6ABC69);
+
+        checkCallModified("AddLight", 0x6AB80F);
+        checkCallModified("AddLight", 0x6ABBA6);
+    }
 
     if (disablePayAndSpray == 1)
         checkCallModified("IsCarSprayable", 0x44AC75);

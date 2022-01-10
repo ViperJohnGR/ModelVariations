@@ -52,8 +52,9 @@ std::map<short, std::pair<CVector, float>> LightPositions;
 
 std::vector<short> vehCurrentVariations[212];
 std::vector<short> pedCurrentVariations[300];
-
 std::vector<short> vehCarGenExclude;
+
+std::set<short> parkedCars;
 
 std::stack<CPed*> pedStack;
 
@@ -71,6 +72,8 @@ int loadAllVehicles = 0;
 int enableLights = 0;
 int enableSiren = 0;
 int disablePayAndSpray = 0;
+int enableSpecialFeatures = 0;
+int changeScriptedCars = 0;
 
 void(__fastcall *ProcessControlOriginal)(CAutomobile*) = NULL;
 void(__fastcall *PreRenderOriginal)(CAutomobile*) = NULL;
@@ -336,7 +339,7 @@ public:
                 //logfile << std::endl;
 
 
-                logfile << "Model Variations " MOD_VERSION << "\n\n\n";
+                logfile << "Model Variations " MOD_VERSION << "\n" << getWindowsVersion() << "\n\n";
 
                 char exePath[256] = {};
                 GetModuleFileName(NULL, exePath, 255);
@@ -563,22 +566,22 @@ public:
         {
             if (dealersFixed < 10)
                 dealersFixed++;
-            if (callsChecked < 100)
+            if (callsChecked < 1000)
                 callsChecked++;
 
-            if (callsChecked == 100 && enableLog == 1)
+            if (callsChecked == 1000 && enableLog == 1)
             {
                 checkAllCalls();
-                callsChecked = 101;
+                callsChecked = 0;
             }
 
             if (dealersFixed == 10)
             {
                 if (enableLog == 1)
-                    logfile << "Applying drug dealer fix..." << std::endl;
+                    logfile << "Applying drug dealer fix... ";
                 drugDealerFix();
                 if (enableLog == 1)
-                    logfile << std::endl;
+                    logfile << "OK" << std::endl;
                 dealersFixed = 11;
             }
         };

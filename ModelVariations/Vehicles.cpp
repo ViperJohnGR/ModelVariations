@@ -5,6 +5,7 @@
 #include "../../injector/assembly.hpp"
 
 #include "CBoat.h"
+#include "CCarCtrl.h"
 #include "CCarGenerator.h"
 #include "CCoronas.h"
 #include "CGeneral.h"
@@ -83,12 +84,19 @@ int getVariationOriginalModel(int modelIndex)
     return originalModel;
 }
 
-int getRandomVariation(int modelid)
+int getRandomVariation(int modelid, bool parked = false)
 {
     if (modelid < 400 || modelid > 611)
         return modelid;
     if (vehCurrentVariations[modelid - 400].empty())
         return modelid;
+
+    if (parked == false)
+    {
+        auto it = parkedCars.find(modelid);
+        if (it != parkedCars.end())
+            return modelid;
+    }
 
     int random = CGeneral::GetRandomNumberInRange(0, vehCurrentVariations[modelid - 400].size());
     int variationModel = vehCurrentVariations[modelid - 400][random];
@@ -106,6 +114,9 @@ void readVehicleIni()
 {
     for (int i = 400; i < 612; i++)
     {
+        if (iniVeh.ReadInteger(std::to_string(i), "ChangeOnlyParked", 0) == 1)
+            parkedCars.insert(i);
+
         std::vector<short> vec = iniLineParser(VEHICLE_VARIATION, i, "Countryside", &iniVeh);
         vehVariations[i - 400][0] = vec;
         std::sort(vehVariations[i - 400][0].begin(), vehVariations[i - 400][0].end());
@@ -362,7 +373,7 @@ signed int __fastcall PickRandomCarHooked(CLoadedCarGroup* cargrp, void*, char a
 {
     if (cargrp == NULL)
         return -1;
-    return getRandomVariation(callMethodOriginalAndReturn<signed int, address>(cargrp, a2, a3));
+    return getRandomVariation(callMethodOriginalAndReturn<signed int, address>(cargrp, a2, a3), true);
 }
 
 template <unsigned int address>
@@ -380,7 +391,7 @@ void __fastcall DoInternalProcessingHooked(CCarGenerator* park) //for non-random
                     return;
                 }
 
-            park->m_nModelId = getRandomVariation(park->m_nModelId);
+            park->m_nModelId = getRandomVariation(park->m_nModelId, true);
             callMethodOriginal<address>(park);
             park->m_nModelId = model;
             return;
@@ -405,7 +416,7 @@ void __fastcall DoInternalProcessingHooked(CCarGenerator* park) //for non-random
             case 430: //Predator
             case 496: //Police Maverick
             case 488: //News Chopper
-                park->m_nModelId = getRandomVariation(park->m_nModelId);
+                park->m_nModelId = getRandomVariation(park->m_nModelId, true);
                 callMethodOriginal<address>(park);
                 park->m_nModelId = model;
                 break;
@@ -775,6 +786,12 @@ void __cdecl PossiblyRemoveVehicleHooked(CVehicle* car)
 
 }
 
+template <unsigned int address>
+CVehicle* __cdecl CreateCarForScriptHooked(int modelId, float posX, float posY, float posZ, char doMissionCleanup)
+{
+    return callOriginalAndReturn<CVehicle*, address>(getRandomVariation(modelId), posX, posY, posZ, doMissionCleanup);
+}
+
 /*
 0x053A926
 void __declspec(naked) ()
@@ -1036,8 +1053,7 @@ void __fastcall CAutomobileRenderHooked(CAutomobile* veh)
 void installVehicleHooks()
 {
     if (enableLog == 1)
-        logfile << "Installing vehicle hooks..." << std::endl;
-
+        logfile << "Installing vehicle hooks... ";
 
     hookCall(0x43022A, ChooseModelHooked<0x43022A>); //CCarCtrl::GenerateOneRandomCar
    //patch::RedirectJump(0x424E20, ChoosePoliceCarModelHooked);
@@ -1104,18 +1120,10 @@ void installVehicleHooks()
     hookCall(0x60C4E8, PossiblyRemoveVehicleHooked<0x60C4E8>); //CPlayerPed::KeepAreaAroundPlayerClear
     hookCall(0x42CD55, PossiblyRemoveVehicleHooked<0x42CD55>); //CCarCtrl::RemoveDistantCars
 
+    if (changeScriptedCars = iniVeh.ReadInteger("Settings", "ChangeScriptedCars", 0))
+        hookCall(0x467B01, CreateCarForScriptHooked<0x467B01>);
 
-    if (enableLights == 1)
-    {
-        hookCall(0x6ABA60, RegisterCoronaHooked<0x6ABA60>); //CAutomobile::PreRender
-        hookCall(0x6ABB35, RegisterCoronaHooked<0x6ABB35>); //CAutomobile::PreRender
-        hookCall(0x6ABC69, RegisterCoronaHooked<0x6ABC69>); //CAutomobile::PreRender
-
-        hookCall(0x6AB80F, AddLightHooked<0x6AB80F>); //CAutomobile::PreRender
-        hookCall(0x6ABBA6, AddLightHooked<0x6ABBA6>); //CAutomobile::PreRender
-    }
-
-    if (iniVeh.ReadInteger("Settings", "EnableSpecialFeatures", 0))
+    if (enableSpecialFeatures = iniVeh.ReadInteger("Settings", "EnableSpecialFeatures", 0))
     {
         void(__fastcall **p)(CAutomobile*) = reinterpret_cast<void(__fastcall**)(CAutomobile*)>(0x871148);
         ProcessControlOriginal = *p;
@@ -1161,6 +1169,16 @@ void installVehicleHooks()
     if ((enableSiren = iniVeh.ReadInteger("Settings", "EnableSiren", 0)) == 1)
         patch::RedirectCall(0x6D8492, HasCarSiren); //CVehicle::UsesSiren
 
+    if (enableLights == 1 && enableSpecialFeatures == 1 && enableSiren == 1)
+    {
+        hookCall(0x6ABA60, RegisterCoronaHooked<0x6ABA60>); //CAutomobile::PreRender
+        hookCall(0x6ABB35, RegisterCoronaHooked<0x6ABB35>); //CAutomobile::PreRender
+        hookCall(0x6ABC69, RegisterCoronaHooked<0x6ABC69>); //CAutomobile::PreRender
+
+        hookCall(0x6AB80F, AddLightHooked<0x6AB80F>); //CAutomobile::PreRender
+        hookCall(0x6ABBA6, AddLightHooked<0x6ABBA6>); //CAutomobile::PreRender
+    }
+
     if ((disablePayAndSpray = iniVeh.ReadInteger("Settings", "DisablePayAndSpray", 0)) == 1)
         hookCall(0x44AC75, IsCarSprayableHooked<0x44AC75>); //CGarage::Update
 
@@ -1170,4 +1188,7 @@ void installVehicleHooks()
         hookCall(0x48DA81, IsLawEnforcementVehicleHooked<0x48DA81>);
         hookCall(0x469612, CollectParametersHooked<0x469612>);
     }
+
+    if (enableLog == 1)
+        logfile << "OK" << std::endl;
 }

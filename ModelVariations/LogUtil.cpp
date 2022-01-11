@@ -12,7 +12,17 @@
 #pragma comment (lib, "bcrypt.lib")
 #pragma comment (lib, "shlwapi.lib")
 
-std::string hashFile(const char* filename, int& filesize)
+int getFilesize(const char* filename)
+{
+    HANDLE hFile = CreateFile(filename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (hFile == INVALID_HANDLE_VALUE)
+        return -1;
+    int filesize = GetFileSize(hFile, NULL);
+    CloseHandle(hFile);
+    return filesize;
+}
+
+std::string hashFile(const char* filename)
 //NTSTATUS hashFile(BYTE* hash, BYTE* data, unsigned int len)
 {
     FILE* fp = fopen(filename, "rb");
@@ -27,7 +37,7 @@ std::string hashFile(const char* filename, int& filesize)
     }
 
     fseek(fp, 0, SEEK_END);
-    filesize = ftell(fp);
+    int filesize = ftell(fp);
     fseek(fp, 0, SEEK_SET);
 
     BYTE* filebuf = (BYTE*)calloc(filesize, 1);
@@ -144,7 +154,16 @@ std::string getWindowsVersion()
         {
             retString += "OS build ";
             retString += str;
+            retString += " ";
         }
+        RegCloseKey(hkey);
+    }
+	
+	
+    if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, "SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Environment", 0, KEY_QUERY_VALUE, &hkey) == ERROR_SUCCESS)
+    {
+        if (RegQueryValueEx(hkey, "PROCESSOR_ARCHITECTURE", NULL, NULL, (LPBYTE)str, &cbData) == ERROR_SUCCESS)
+            retString += str;
         RegCloseKey(hkey);
     }
 

@@ -4,7 +4,7 @@
 #include <string>
 #include <iostream>
 
-#define MOD_VERSION "5.2"
+#define MOD_VERSION "5.3"
 #ifdef _DEBUG
 #define MOD_NAME "ModelVariations_d.asi"
 #else
@@ -23,7 +23,8 @@ extern int disablePayAndSpray;
 extern int enableSpecialFeatures;
 extern int changeScriptedCars;
 
-std::string hashFile(const char* filename, int& filesize);
+int getFilesize(const char* filename);
+std::string hashFile(const char* filename);
 unsigned int getAddressFromCall(unsigned char* data);
 void checkCallModified(const char* callName, unsigned int originalAddress, bool directAccess);
 std::string getWindowsVersion();

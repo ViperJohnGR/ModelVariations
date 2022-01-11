@@ -869,6 +869,8 @@ void __fastcall PreRenderHooked(CAutomobile* veh)
     if (veh == NULL)
         return;
 
+    sirenModel = -1;
+    lightsModel = -1;
     bool hasSiren = false;
 
     if (enableLights && HasCarSiren(veh))

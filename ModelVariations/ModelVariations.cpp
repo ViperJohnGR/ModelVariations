@@ -2,6 +2,7 @@
 #include "IniParse.hpp"
 #include "LogUtil.hpp"
 #include "Vehicles.hpp"
+#include "Hooks.hpp"
 
 #include "extensions/ScriptCommands.h"
 
@@ -21,8 +22,6 @@
 
 #include <Psapi.h>
 #include <shlwapi.h>
-
-#include "Hooks.hpp"
 
 using namespace plugin;
 
@@ -344,9 +343,8 @@ public:
                 char exePath[256] = {};
                 GetModuleFileName(NULL, exePath, 255);
                 char* exeName = PathFindFileName(exePath);
-
-                int filesize = 0;
-                std::string hash = hashFile(exePath, filesize);
+                int filesize = getFilesize(exeName);
+                std::string hash = hashFile(exePath);
                 if (hash == exeHashes[0])
                     logfile << "Supported exe detected: 1.0 US HOODLUM" << std::endl;
                 else if (hash == exeHashes[1])
@@ -360,7 +358,6 @@ public:
                 enableLog = 0;
         }
 
-        //https://stackoverflow.com/questions/48467994/how-to-read-only-the-first-value-on-each-line-of-a-csv-file-in-c
         std::string str;
         std::vector <std::string> result;    
         std::ifstream zoneFile("data\\info.zon");

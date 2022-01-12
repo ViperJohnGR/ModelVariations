@@ -10,7 +10,6 @@
     <ClInclude Include="LogUtil.hpp" />
     <ClInclude Include="IniParse.hpp" />
     <ClInclude Include="Hooks.hpp" />
-    <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="ModelVariations.rc" />

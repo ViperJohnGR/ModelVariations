@@ -90,8 +90,6 @@
       <AdditionalLibraryDirectories>$(PLUGIN_SDK_DIR)\output\lib\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>plugin_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SubSystem>Windows</SubSystem>
-      <Version>
-      </Version>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -103,7 +101,6 @@
     <ClInclude Include="IniParse.hpp" />
     <ClInclude Include="LogUtil.hpp" />
     <ClInclude Include="Hooks.hpp" />
-    <ClInclude Include="resource.h" />
     <ClInclude Include="Vehicles.hpp" />
   </ItemGroup>
   <ItemGroup>

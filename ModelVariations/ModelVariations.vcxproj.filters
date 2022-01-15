@@ -11,7 +11,4 @@
     <ClInclude Include="IniParse.hpp" />
     <ClInclude Include="Hooks.hpp" />
   </ItemGroup>
-  <ItemGroup>
-    <ResourceCompile Include="ModelVariations.rc" />
-  </ItemGroup>
 </Project>

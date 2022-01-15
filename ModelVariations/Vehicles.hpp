@@ -26,6 +26,7 @@ extern std::map<short, std::pair<CVector, float>> LightPositions;
 
 extern std::vector<short> vehCurrentVariations[212];
 extern std::vector<short> vehCarGenExclude;
+extern std::vector<short> vehInheritExclude;
 
 extern std::set<short> parkedCars;
 
@@ -52,7 +53,7 @@ extern int(__fastcall *ProcessEntityCollisionOriginal)(CAutomobile*, void*, CVeh
 */
 
 extern void vectorUnion(std::vector<short>& vec1, std::vector<short>& vec2, std::vector<short>& dest);
-extern bool isGameModelPolice(int model);
+extern bool IdExists(std::vector<short>& vec, int id);
 
 void installVehicleHooks();
 void readVehicleIni();

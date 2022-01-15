@@ -73,7 +73,7 @@ bool isModelTaxi(int model)
     return false;
 }
 
-int getVariationOriginalModel(int modelIndex)
+static int getVariationOriginalModel(int modelIndex)
 {
     int originalModel = modelIndex;
 
@@ -112,6 +112,62 @@ int getRandomVariation(int modelid, bool parked = false)
 
 void readVehicleIni()
 {
+    std::string str;
+    std::vector <std::string> result;
+    std::ifstream zoneFile("data\\info.zon");
+
+    vehInheritExclude = iniLineParser(MODEL_SETTINGS, (int)"Settings", "ExcludeModelsFromInheritance", &iniVeh);
+
+    if (!zoneFile.is_open())
+    {
+        zoneFile.open("..\\data\\info.zon"); //If asi is in scripts folder
+        if (!zoneFile.is_open())
+        {
+            zoneFile.open("..\\..\\data\\info.zon"); //If asi is in folder in modloader
+            if (!zoneFile.is_open())
+                zoneFile.open("..\\..\\..\\data\\info.zon"); //If asi is in folder in folder in modloader
+        }
+    }
+
+    if (enableLog == 1)
+    {
+        if (zoneFile.is_open())
+            logfile << "Zone file 'info.zon' found.\n" << std::endl;
+        else
+            logfile << "Zone file 'info.zon' NOT found!\n" << std::endl;
+    }
+
+    while (std::getline(zoneFile, str))
+    {
+        std::stringstream ss(str);
+        if (ss.good())
+        {
+            std::string substr;
+            std::getline(ss, substr, ','); // Grab first names till first comma
+            if (substr != "zone" && substr != "end")
+            {
+                std::for_each(substr.begin(), substr.end(), [](char& c) {
+                    c = ::toupper(c);
+                });
+                result.push_back(substr);
+            }
+        }
+    }
+    for (auto& i : result) //for every zone name
+    {
+        for (int j = 0; j < 212; j++) //for every vehicle id
+        {
+            std::vector<short> vec = iniLineParser(PED_VARIATION, j + 400, i.c_str(), &iniVeh); //get zone name 'i' of veh id 'j+400'
+
+            if (!vec.empty()) //if veh id 'j+400' has variations in zone 'i'
+                for (auto& k : vec) //for every variation 'k' of veh id 'j+400' in zone 'i'
+                    if (j + 400 != k && !(IdExists(vehInheritExclude, k)))
+                        vehOriginalModels.insert({ k, j + 400 });
+        }
+    }
+    if (zoneFile.is_open())
+        zoneFile.close();
+
     for (int i = 400; i < 612; i++)
     {
         if (iniVeh.ReadInteger(std::to_string(i), "ChangeOnlyParked", 0) == 1)
@@ -218,8 +274,7 @@ void readVehicleIni()
 
         for (int j = 0; j < 16; j++)
             for (int k = 0; k < (int)(vehVariations[i-400][j].size()); k++)
-                if (vehVariations[i-400][j][k] > 0 && vehVariations[i-400][j][k] < 30000  && vehVariations[i-400][j][k] != i && 
-                    !(isGameModelPolice(i) && isGameModelPolice(vehVariations[i - 400][j][k])))
+                if (vehVariations[i-400][j][k] > 0 && vehVariations[i-400][j][k] < 32000  && vehVariations[i-400][j][k] != i && !(IdExists(vehInheritExclude, vehVariations[i - 400][j][k])))
                     vehOriginalModels.insert({ vehVariations[i - 400][j][k], i });
     }
 

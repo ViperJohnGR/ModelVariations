@@ -8,6 +8,7 @@
 
 #include "CGeneral.h"
 #include "CMessages.h"
+#include "CPopulation.h"
 #include "CStreaming.h"
 #include "CTheZones.h"
 #include "CVector.h"
@@ -48,10 +49,13 @@ std::map<short, BYTE> modelNumGroups;
 std::map<short, BYTE> pedWepVariationTypes;
 std::map<unsigned int, std::pair<void*, void*>> hookedCalls;
 std::map<short, std::pair<CVector, float>> LightPositions;
+std::map<short, int> pedFramesSinceLastSpawned;
+std::map<short, short> pedOriginalModels;
 
 std::vector<short> vehCurrentVariations[212];
 std::vector<short> pedCurrentVariations[300];
 std::vector<short> vehCarGenExclude;
+std::vector<short> vehInheritExclude;
 
 std::set<short> parkedCars;
 
@@ -73,6 +77,8 @@ int enableSiren = 0;
 int disablePayAndSpray = 0;
 int enableSpecialFeatures = 0;
 int changeScriptedCars = 0;
+int enableCloneRemover = 0;
+int cloneRemoverIncludeVariations = 0;
 
 void(__fastcall *ProcessControlOriginal)(CAutomobile*) = NULL;
 void(__fastcall *PreRenderOriginal)(CAutomobile*) = NULL;
@@ -86,28 +92,15 @@ char(__fastcall* BurstTyreOriginal)(CAutomobile*, void*, char, char) = NULL;
 int(__fastcall* ProcessEntityCollisionOriginal)(CAutomobile*, void*, CVehicle*, CColPoint*) = NULL;
 */
 
-
-bool isGameModelPolice(int model)
+static int getVariationOriginalModel(int modelIndex)
 {
-    switch (model)
-    {
-        case 427: //Enforcer
-        case 430: //Predator
-        case 432: //Rhino
-        case 433: //Barracks
-        //case 470: //Patriot
-        case 490: //FBI Rancher
-        case 496: //Police Maverick
-        case 523: //HPV1000
-        case 528: //FBI Truck
-        case 596: //Police LS
-        case 597: //Police SF
-        case 598: //Police LV
-        case 599: //Police Ranger
-        case 601: //S.W.A.T.
-            return true;
-    }
-    return false;
+    int originalModel = modelIndex;
+
+    auto it = pedOriginalModels.find(modelIndex);
+    if (it != pedOriginalModels.end())
+        return it->second;
+
+    return originalModel;
 }
 
 void vectorUnion(std::vector<short> &vec1, std::vector<short> &vec2, std::vector<short> &dest)
@@ -134,7 +127,6 @@ bool isPlayerInCountry()
 
     return false;
 }
-
 
 bool IdExists(std::vector<short>& vec, int id)
 {
@@ -188,16 +180,6 @@ void drugDealerFix(void)
         Command<COMMAND_ALLOCATE_STREAMED_SCRIPT_TO_RANDOM_PED>(19, variationsProcessed[i], 100);
         Command<COMMAND_ATTACH_ANIMS_TO_MODEL>(variationsProcessed[i], "DEALER");
     }
-}
-
-template <unsigned int address>
-void __fastcall UpdateRpHAnimHooked(CEntity* entity)
-{
-    callMethodOriginal<address>(entity);
-    //entity->UpdateRpHAnim();
-    if (modelIndex != -1)
-        entity->m_nModelIndex = modelIndex;
-    modelIndex = -1;
 }
 
 void updateVariations(CZone *zInfo, CIniReader *iniPed, CIniReader *iniVeh)
@@ -306,6 +288,42 @@ void printCurrentVariations()
         logfile << std::endl;
 }
 
+template <unsigned int address>
+void __fastcall UpdateRpHAnimHooked(CEntity* entity)
+{
+    callMethodOriginal<address>(entity);
+    //entity->UpdateRpHAnim();
+    if (modelIndex != -1)
+        entity->m_nModelIndex = modelIndex;
+    modelIndex = -1;
+}
+
+template <unsigned int address>
+CPed* __cdecl AddPedHooked(ePedType pedType, int modelIndex, CVector* posn, bool unknown)
+{
+    auto it = pedFramesSinceLastSpawned.find((cloneRemoverIncludeVariations == 1) ? getVariationOriginalModel(modelIndex) : modelIndex);
+    if (it != pedFramesSinceLastSpawned.end())
+    {
+        CPed* ped = CPopulation::AddPed(pedType, modelIndex, { 6000.0F, 6000.0F, 1000.0F }, unknown);
+        ped->m_nPedFlags.bDontRender = 1;
+        ped->m_nPedFlags.bFadeOut = 1;
+        return ped;
+    }
+
+    pedFramesSinceLastSpawned.insert({ ((cloneRemoverIncludeVariations == 1) ? getVariationOriginalModel(modelIndex) : modelIndex), 1 });
+    if (CPools::ms_pPedPool)
+        for (CPed* ped : CPools::ms_pPedPool)
+            if (ped && ped->m_nModelIndex == modelIndex)
+            {
+                CPed* ped = CPopulation::AddPed(pedType, modelIndex, { 6000.0F, 6000.0F, 1000.0F }, unknown);
+                ped->m_nPedFlags.bDontRender = 1;
+                ped->m_nPedFlags.bFadeOut = 1;
+                return ped;
+            }
+
+    return CPopulation::AddPed(pedType, modelIndex, *posn, unknown);
+}
+
 class ModelVariations {
 public:
     ModelVariations() {
@@ -338,7 +356,14 @@ public:
                 //logfile << std::endl;
 
 
-                logfile << "Model Variations " MOD_VERSION << "\n" << getWindowsVersion() << "\n\n";
+                SYSTEMTIME systime;
+                GetSystemTime(&systime);
+                logfile << "Model Variations " MOD_VERSION << "\n" << getWindowsVersion() << "\n"
+                        << systime.wDay << "/" << systime.wMonth << "/" << systime.wYear << " " 
+                        << std::setfill('0') << std::setw(2) << systime.wHour <<  ":" 
+                        << std::setfill('0') << std::setw(2) << systime.wMinute << ":"
+                        << std::setfill('0') << std::setw(2) << systime.wSecond << "\n\n";
+                
 
                 char exePath[256] = {};
                 GetModuleFileName(NULL, exePath, 255);
@@ -356,58 +381,6 @@ public:
             }
             else
                 enableLog = 0;
-        }
-
-        std::string str;
-        std::vector <std::string> result;    
-        std::ifstream zoneFile("data\\info.zon");
-
-        if (!zoneFile.is_open())
-        {
-            zoneFile.open("..\\data\\info.zon"); //If asi is in scripts folder
-            if (!zoneFile.is_open())
-            {
-                zoneFile.open("..\\..\\data\\info.zon"); //If asi is in folder in modloader
-                if (!zoneFile.is_open())
-                    zoneFile.open("..\\..\\..\\data\\info.zon"); //If asi is in folder in folder in modloader
-            }
-        }
-    
-        if (enableLog == 1)
-        {
-            if (zoneFile.is_open())
-                logfile << "Zone file 'info.zon' found.\n" << std::endl;
-            else
-                logfile << "Zone file 'info.zon' NOT found!\n" << std::endl;
-        }
-
-        while (std::getline(zoneFile, str)) 
-        {
-            std::stringstream ss(str);
-            if (ss.good())
-            {
-                std::string substr;
-                std::getline(ss, substr, ','); // Grab first names till first comma
-                if (substr != "zone" && substr != "end")
-                {
-                    std::for_each(substr.begin(), substr.end(), [](char& c) {
-                        c = ::toupper(c);
-                    });
-                    result.push_back(substr);
-                }
-            }
-        }
-        for (auto &i : result) //for every zone name
-        {
-            for (int j = 0; j < 212; j++) //for every vehicle id
-            {
-                std::vector<short> vec = iniLineParser(PED_VARIATION, j+400, i.c_str(), &iniVeh); //get zone name 'i' of veh id 'j+400'
-
-                if (!vec.empty()) //if veh id 'j+400' has variations in zone 'i'
-                    for (auto& k : vec) //for every variation 'k' of veh id 'j+400' in zone 'i'
-                        if (j + 400 != k && !(isGameModelPolice(j+400) && isGameModelPolice(k)))
-                            vehOriginalModels.insert({k, j+400});
-            }
         }
 
         for (int i = 0; i < 300; i++)
@@ -495,6 +468,12 @@ public:
             std::sort(pedVariations[i][15].begin(), pedVariations[i][15].end());
             vectorUnion(pedVariations[i][15], pedVariations[i][14], vec);
             pedVariations[i][15] = vec;
+        
+        
+            for (int j = 0; j < 16; j++)
+                for (int k = 0; k < (int)(pedVariations[i][j].size()); k++)
+                    if (pedVariations[i][j][k] > 0 && pedVariations[i][j][k] < 32000 && pedVariations[i][j][k] != i)
+                        pedOriginalModels.insert({ pedVariations[i][j][k], i });
         }
 
         if (enableLog == 1)
@@ -503,21 +482,21 @@ public:
             if (!pedIni.is_open())
                 logfile << "ModelVariations_Peds.ini not found!\n" << std::endl;
             else
-                logfile << "--ModelVariations_Peds.ini--\n" << pedIni.rdbuf() << "\n" << std::endl;
+                logfile << "--ModelVariations_Peds.ini--\n" << pedIni.rdbuf() << std::endl;
 
 
             std::ifstream wepIni("ModelVariations_PedWeapons.ini");
             if (!wepIni.is_open())
                 logfile << "ModelVariations_PedWeapons.ini not found!\n" << std::endl;
             else
-                logfile << "--ModelVariations_PedWeapons.ini--\n" << wepIni.rdbuf() << "\n" << std::endl;
+                logfile << "--ModelVariations_PedWeapons.ini--\n" << wepIni.rdbuf() << std::endl;
 
 
             std::ifstream vehIni("ModelVariations_Vehicles.ini");
             if (!vehIni.is_open())
-                logfile << "ModelVariations_Vehicles.ini not found!" << "\n" << std::endl;
+                logfile << "ModelVariations_Vehicles.ini not found!\n" << std::endl;
             else
-                logfile << "--ModelVariations_Vehicles.ini--\n" << vehIni.rdbuf() << "\n" << std::endl;
+                logfile << "--ModelVariations_Vehicles.ini--\n" << vehIni.rdbuf() << std::endl;
 
             logfile << std::endl;
         }
@@ -545,6 +524,15 @@ public:
         {
             readVehicleIni();
             installVehicleHooks();
+        }
+
+        cloneRemoverIncludeVariations = iniPed.ReadInteger("Settings", "CloneRemoverIncludeVariations", 0);
+        if ((enableCloneRemover = iniPed.ReadInteger("Settings", "EnableCloneRemover", 0)) == 1)
+        {
+            hookCall(0x614D26, AddPedHooked<0x614D26>);
+            hookCall(0x614D79, AddPedHooked<0x614D79>);
+            hookCall(0x6153AB, AddPedHooked<0x6153AB>);
+            hookCall(0x6142FB, AddPedHooked<0x6142FB>);
         }
 
         hookCall(0x5E49EF, UpdateRpHAnimHooked<0x5E49EF>);
@@ -583,10 +571,11 @@ public:
             }
         };
 
-        Events::pedCtorEvent += [](CPed* ped) 
-        {
-            pedStack.push(ped);
-        };
+        if (!pedWepVariationTypes.empty())
+            Events::pedCtorEvent += [](CPed* ped)
+            {
+                pedStack.push(ped);
+            };
 
         Events::pedSetModelEvent.after += [](CPed* ped, int model)
         {
@@ -609,6 +598,13 @@ public:
 
         Events::gameProcessEvent += []
         {
+            if (enableCloneRemover == 1)
+                for (auto it : pedFramesSinceLastSpawned)
+                    if (it.second < 300)
+                        it.second++;
+                    else
+                        pedFramesSinceLastSpawned.erase(it.first);
+
             CVector pPos = FindPlayerCoors(-1);
             CZone *zInfo = NULL;
             CTheZones::GetZoneInfo(&pPos, &zInfo);

@@ -39,7 +39,8 @@ CIniReader iniVeh("ModelVariations_Vehicles.ini");
 
 std::array<std::vector<short>, 16> pedVariations[300];
 std::array<std::vector<short>, 16> vehVariations[212];
-std::array<std::vector<short>, 16> vehWantedVariations[212];
+std::array<std::vector<short>, 6> pedWantedVariations[300];
+std::array<std::vector<short>, 6> vehWantedVariations[212];
 
 std::map<short, short> vehOriginalModels;
 std::map<short, std::vector<short>> vehDrivers;
@@ -217,6 +218,7 @@ void updateVariations(CZone *zInfo, CIniReader *iniPed, CIniReader *iniVeh)
     for (int i = 0; i < 300; i++)
     {
         vectorUnion(pedVariations[i][4], pedVariations[i][merge], pedCurrentVariations[i]);
+        CWanted* wanted = FindPlayerWanted(-1);
 
         std::vector<short> vecPed = iniLineParser(PED_VARIATION, i, zInfo->m_szLabel, iniPed);
         if (!vecPed.empty())
@@ -225,6 +227,20 @@ void updateVariations(CZone *zInfo, CIniReader *iniPed, CIniReader *iniVeh)
             std::sort(vecPed.begin(), vecPed.end());
             vectorUnion(pedCurrentVariations[i], vecPed, vec2);
             pedCurrentVariations[i] = vec2;
+        }
+
+        if (wanted)
+        {
+            int wantedLevel = (wanted->m_nWantedLevel > 0) ? (wanted->m_nWantedLevel - 1) : (wanted->m_nWantedLevel);
+            if (!pedWantedVariations[i][wantedLevel].empty() && !pedCurrentVariations[i].empty())
+            {
+                std::vector<short>::iterator it = pedCurrentVariations[i].begin();
+                while (it != pedCurrentVariations[i].end())
+                    if (std::find(pedWantedVariations[i][wantedLevel].begin(), pedWantedVariations[i][wantedLevel].end(), *it) != pedWantedVariations[i][wantedLevel].end())
+                        ++it;
+                    else
+                        it = pedCurrentVariations[i].erase(it);
+            }
         }
 
         if (i < 212)
@@ -240,7 +256,6 @@ void updateVariations(CZone *zInfo, CIniReader *iniPed, CIniReader *iniVeh)
                 vehCurrentVariations[i] = vec2;
             }
 
-            CWanted* wanted = FindPlayerWanted(-1);
             if (wanted)
             {
                 int wantedLevel = (wanted->m_nWantedLevel > 0) ? (wanted->m_nWantedLevel - 1) : (wanted->m_nWantedLevel);
@@ -456,6 +471,20 @@ public:
             vectorUnion(pedVariations[i][15], pedVariations[i][14], vec);
             pedVariations[i][15] = vec;
         
+
+            vec = iniLineParser(PED_VARIATION, i, "Wanted1", &iniPed);
+            pedWantedVariations[i][0] = vec;
+            vec = iniLineParser(PED_VARIATION, i, "Wanted2", &iniPed);
+            pedWantedVariations[i][1] = vec;
+            vec = iniLineParser(PED_VARIATION, i, "Wanted3", &iniPed);
+            pedWantedVariations[i][2] = vec;
+            vec = iniLineParser(PED_VARIATION, i, "Wanted4", &iniPed);
+            pedWantedVariations[i][3] = vec;
+            vec = iniLineParser(PED_VARIATION, i, "Wanted5", &iniPed);
+            pedWantedVariations[i][4] = vec;
+            vec = iniLineParser(PED_VARIATION, i, "Wanted6", &iniPed);
+            pedWantedVariations[i][5] = vec;
+
         
             for (int j = 0; j < 16; j++)
                 for (int k = 0; k < (int)(pedVariations[i][j].size()); k++)

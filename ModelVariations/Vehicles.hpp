@@ -15,7 +15,7 @@ extern CIniReader iniVeh;
 extern std::ofstream logfile;
 
 extern std::array<std::vector<short>, 16> vehVariations[212];
-extern std::array<std::vector<short>, 16> vehWantedVariations[212];
+extern std::array<std::vector<short>, 6> vehWantedVariations[212];
 extern std::map<short, short> vehOriginalModels;
 extern std::map<short, std::vector<short>> vehDrivers;
 extern std::map<short, std::vector<short>> vehPassengers;

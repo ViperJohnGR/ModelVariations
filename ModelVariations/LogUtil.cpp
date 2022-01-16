@@ -178,6 +178,15 @@ void checkAllCalls()
     //Peds
     checkCallModified("UpdateRpHAnim", 0x5E49EF);
 
+    if (enableCloneRemover == 1)
+    {
+        checkCallModified("AddPed", 0x614D26);
+        checkCallModified("AddPed", 0x614D79);
+        checkCallModified("AddPed", 0x6153AB);
+        checkCallModified("AddPed", 0x6142FB);
+    }
+
+
     //Vehicles
     checkCallModified("ChooseModel", 0x43022A);
     checkCallModified("ChoosePoliceCarModel", 0x42C320);
@@ -262,5 +271,7 @@ void checkAllCalls()
         checkCallModified("IsLawEnforcementVehicle", 0x48DA81);
         checkCallModified("CollectParameters", 0x469612);
     }
+
+
 
 }

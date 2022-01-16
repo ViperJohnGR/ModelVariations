@@ -22,6 +22,7 @@ extern int enableSiren;
 extern int disablePayAndSpray;
 extern int enableSpecialFeatures;
 extern int changeScriptedCars;
+extern int enableCloneRemover;
 
 int getFilesize(const char* filename);
 std::string hashFile(const char* filename);

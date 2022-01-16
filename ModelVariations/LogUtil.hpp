@@ -13,7 +13,7 @@
 
 extern std::ofstream logfile;
 extern std::set<std::pair<unsigned int, std::string>> modulesSet;
-extern std::set<unsigned int> callChecks;
+extern std::set<std::pair<unsigned int, std::string>> callChecks;
 
 extern int enableLog;
 extern int enableLights;

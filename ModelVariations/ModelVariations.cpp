@@ -20,6 +20,7 @@
 #include <set>
 #include <stack>
 #include <unordered_set>
+#include <ctime>
 
 #include <Psapi.h>
 #include <shlwapi.h>
@@ -31,7 +32,7 @@ std::string exeHashes[2] = { "a559aa772fd136379155efa71f00c47aad34bbfeae6196b0fe
 
 std::ofstream logfile;
 std::set<std::pair<unsigned int, std::string>> modulesSet;
-std::set<unsigned int> callChecks;
+std::set<std::pair<unsigned int, std::string>> callChecks;
 
 
 CIniReader iniVeh("ModelVariations_Vehicles.ini");
@@ -62,7 +63,7 @@ std::set<short> parkedCars;
 std::stack<CPed*> pedStack;
 
 BYTE dealersFixed = 0;
-BYTE callsChecked = 0;
+short callsChecked = 0;
 short modelIndex = -1;
 
 //ini options
@@ -79,6 +80,7 @@ int enableSpecialFeatures = 0;
 int changeScriptedCars = 0;
 int enableCloneRemover = 0;
 int cloneRemoverIncludeVariations = 0;
+int spawnDelay = 3;
 
 void(__fastcall *ProcessControlOriginal)(CAutomobile*) = NULL;
 void(__fastcall *PreRenderOriginal)(CAutomobile*) = NULL;
@@ -304,22 +306,24 @@ CPed* __cdecl AddPedHooked(ePedType pedType, int modelIndex, CVector* posn, bool
     auto it = pedFramesSinceLastSpawned.find((cloneRemoverIncludeVariations == 1) ? getVariationOriginalModel(modelIndex) : modelIndex);
     if (it != pedFramesSinceLastSpawned.end())
     {
-        CPed* ped = CPopulation::AddPed(pedType, modelIndex, { 6000.0F, 6000.0F, 1000.0F }, unknown);
+        CPed* ped = CPopulation::AddPed(pedType, modelIndex, { 0.0F, 0.0F, 0.0F }, unknown);
         ped->m_nPedFlags.bDontRender = 1;
         ped->m_nPedFlags.bFadeOut = 1;
         return ped;
     }
 
-    pedFramesSinceLastSpawned.insert({ ((cloneRemoverIncludeVariations == 1) ? getVariationOriginalModel(modelIndex) : modelIndex), 1 });
+    pedFramesSinceLastSpawned.insert({ ((cloneRemoverIncludeVariations == 1) ? getVariationOriginalModel(modelIndex) : modelIndex), clock() });
     if (CPools::ms_pPedPool)
         for (CPed* ped : CPools::ms_pPedPool)
-            if (ped && ped->m_nModelIndex == modelIndex)
-            {
-                CPed* ped = CPopulation::AddPed(pedType, modelIndex, { 6000.0F, 6000.0F, 1000.0F }, unknown);
-                ped->m_nPedFlags.bDontRender = 1;
-                ped->m_nPedFlags.bFadeOut = 1;
-                return ped;
-            }
+            if (ped)
+                if ((cloneRemoverIncludeVariations == 1) ? (getVariationOriginalModel(ped->m_nModelIndex) == getVariationOriginalModel(modelIndex)) : (ped->m_nModelIndex == modelIndex))
+                {
+                    CPed* ped2 = CPopulation::AddPed(pedType, modelIndex, { 0.0F, 0.0F, 0.0F }, unknown);
+                    ped2->m_nPedFlags.bDontRender = 1;
+                    ped2->m_nPedFlags.bFadeOut = 1;
+                    return ped2;
+                }
+
 
     return CPopulation::AddPed(pedType, modelIndex, *posn, unknown);
 }
@@ -339,23 +343,6 @@ public:
             logfile.open("ModelVariations.log");
             if (logfile.is_open())
             {
-                HMODULE modules[500] = {};
-                HANDLE hProcess = GetCurrentProcess();
-                DWORD cbNeeded = 0;
-
-                if (EnumProcessModules(hProcess, modules, sizeof(modules), &cbNeeded))
-                    for (int i = 0; i < (int)(cbNeeded / sizeof(HMODULE)); i++)
-                    {
-                        char szModName[MAX_PATH];
-                        if (GetModuleFileNameEx(hProcess, modules[i], szModName, sizeof(szModName) / sizeof(TCHAR)))
-                            modulesSet.insert(std::make_pair((unsigned int)modules[i], PathFindFileName(szModName)));
-                    }
-
-                //for (auto &i : modulesSet)
-                //    logfile << std::hex << i.first << " " << i.second << std::endl;
-                //logfile << std::endl;
-
-
                 SYSTEMTIME systime;
                 GetSystemTime(&systime);
                 logfile << "Model Variations " MOD_VERSION << "\n" << getWindowsVersion() << "\n"
@@ -527,6 +514,7 @@ public:
         }
 
         cloneRemoverIncludeVariations = iniPed.ReadInteger("Settings", "CloneRemoverIncludeVariations", 0);
+        spawnDelay = iniPed.ReadInteger("Settings", "SpawnDelay", 3);
         if ((enableCloneRemover = iniPed.ReadInteger("Settings", "EnableCloneRemover", 0)) == 1)
         {
             hookCall(0x614D26, AddPedHooked<0x614D26>);
@@ -545,28 +533,42 @@ public:
 
             dealersFixed = 0;
             callsChecked = 0;
+
+            if (logfile.is_open())
+            {
+                modulesSet.clear();
+
+                HMODULE modules[500] = {};
+                HANDLE hProcess = GetCurrentProcess();
+                DWORD cbNeeded = 0;
+
+                if (EnumProcessModules(hProcess, modules, sizeof(modules), &cbNeeded))
+                    for (unsigned int i = 0; i < (cbNeeded / sizeof(HMODULE)); i++)
+                    {
+                        char szModName[MAX_PATH];
+                        if (GetModuleFileNameEx(hProcess, modules[i], szModName, sizeof(szModName) / sizeof(TCHAR)))
+                            modulesSet.insert(std::make_pair((unsigned int)modules[i], PathFindFileName(szModName)));
+                    }
+
+                //for (auto& i : modulesSet)
+                //    logfile << std::hex << i.first << " " << i.second << std::endl;
+                //logfile << std::endl;
+            }
+
         };
 
         Events::processScriptsEvent += []
         {
             if (dealersFixed < 10)
                 dealersFixed++;
-            if (callsChecked < 1000)
-                callsChecked++;
-
-            if (callsChecked == 1000 && enableLog == 1)
-            {
-                checkAllCalls();
-                callsChecked = 0;
-            }
 
             if (dealersFixed == 10)
             {
                 if (enableLog == 1)
-                    logfile << "Applying drug dealer fix... ";
+                    logfile << "Applying drug dealer fix...\n";
                 drugDealerFix();
                 if (enableLog == 1)
-                    logfile << "OK" << std::endl;
+                    logfile << std::endl;
                 dealersFixed = 11;
             }
         };
@@ -598,13 +600,25 @@ public:
 
         Events::gameProcessEvent += []
         {
-            if (enableCloneRemover == 1)
-                for (auto it : pedFramesSinceLastSpawned)
-                    if (it.second < 300)
-                        it.second++;
-                    else
-                        pedFramesSinceLastSpawned.erase(it.first);
+            if (callsChecked < 1000)
+                callsChecked++;
 
+            if (callsChecked == 1000 && logfile.is_open())
+            {
+                checkAllCalls();
+                callsChecked = 0;
+            }
+
+            if (enableCloneRemover == 1)
+            {
+                auto it = pedFramesSinceLastSpawned.begin();
+                while (it != pedFramesSinceLastSpawned.end())
+                    if ((clock() - it->second) / CLOCKS_PER_SEC < spawnDelay)
+                        it++;
+                    else
+                        it = pedFramesSinceLastSpawned.erase(it);
+            }
+  
             CVector pPos = FindPlayerCoors(-1);
             CZone *zInfo = NULL;
             CTheZones::GetZoneInfo(&pPos, &zInfo);
@@ -618,7 +632,6 @@ public:
                     logfile << "currentWanted = " << currentWanted << " wanted->m_nWantedLevel = " << wanted->m_nWantedLevel << "\n";
                     logfile << "currentZone = " << currentZone << " zInfo->m_szLabel = " << zInfo->m_szLabel << "\n" << std::endl;
                 }
-
 
                 currentWanted = wanted->m_nWantedLevel;
                 updateVariations(zInfo, &iniPed, &iniVeh);

@@ -105,19 +105,18 @@ std::string getParentModuleName(unsigned int address)
     return emptyString;
 }
 
-void checkCallModified(const char *callName, unsigned int originalAddress, bool directAddress = false)
+void checkCallModified(const char* callName, unsigned int originalAddress, bool directAddress = false)
 {
-    if (callChecks.find(*((unsigned int*)originalAddress)) != callChecks.end())
-        return;
-
-    unsigned int changedAddress = (directAddress == false) ? getAddressFromCall((BYTE*)originalAddress) : directAddress;
+    unsigned int changedAddress = (directAddress == false) ? getAddressFromCall((BYTE*)originalAddress) : *(unsigned int*)originalAddress;
     std::string moduleName = getParentModuleName(changedAddress);
     unsigned int baseAddress = 0;
 
     if (moduleName == MOD_NAME)
         return;
+    if (callChecks.find({ originalAddress , moduleName}) != callChecks.end())
+        return;
 
-    callChecks.insert(originalAddress);
+    callChecks.insert({ originalAddress, moduleName});
 
     if (changedAddress > 0)
     {

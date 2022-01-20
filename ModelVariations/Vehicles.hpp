@@ -16,6 +16,7 @@ extern std::ofstream logfile;
 
 extern std::array<std::vector<short>, 16> vehVariations[212];
 extern std::array<std::vector<short>, 6> vehWantedVariations[212];
+extern std::array<std::vector<short>, 6> vehGroupWantedVariations[212];
 extern std::map<short, short> vehOriginalModels;
 extern std::map<short, std::vector<short>> vehDrivers;
 extern std::map<short, std::vector<short>> vehPassengers;
@@ -39,6 +40,8 @@ extern int enableAllSideMissions;
 extern int enableLights;
 extern int enableSpecialFeatures;
 extern int changeScriptedCars;
+
+extern bool vehUseOnlyGroups[212];
 
 extern void(__fastcall *ProcessControlOriginal)(CAutomobile*);
 extern void(__fastcall *PreRenderOriginal)(CAutomobile*);

@@ -11,7 +11,7 @@ enum eVariationType
     MODEL_SETTINGS
 };
 
-inline std::vector<short> iniLineParser(int type, int section, const char key[12], CIniReader* ini)
+inline std::vector<short> iniLineParser(int type, int section, const char key[12], CIniReader* ini, bool parseGroups = false)
 {
     std::vector<short> retVector;
     if (ini == NULL)
@@ -40,7 +40,14 @@ inline std::vector<short> iniLineParser(int type, int section, const char key[12
 
         while (token != NULL)
         {
-            retVector.push_back(atoi(token));
+            if (parseGroups)
+            {
+                if (strncmp(token, "Group", 5) == 0)
+                    retVector.push_back(token[5] - '0');
+            }
+            else if(token[0] >= '0' && token[0] <= '9')
+                retVector.push_back(atoi(token));
+
             token = strtok(NULL, ",");
         }
 

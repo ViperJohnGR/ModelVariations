@@ -41,6 +41,7 @@ std::array<std::vector<short>, 16> pedVariations[300];
 std::array<std::vector<short>, 16> vehVariations[212];
 std::array<std::vector<short>, 6> pedWantedVariations[300];
 std::array<std::vector<short>, 6> vehWantedVariations[212];
+std::array<std::vector<short>, 6> vehGroupWantedVariations[212];
 
 std::map<short, short> vehOriginalModels;
 std::map<short, std::vector<short>> vehDrivers;
@@ -66,6 +67,7 @@ std::stack<CPed*> pedStack;
 BYTE dealersFixed = 0;
 short callsChecked = 0;
 short modelIndex = -1;
+bool vehUseOnlyGroups[212] = {};
 
 //ini options
 int enableLog = 0;

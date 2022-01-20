@@ -170,6 +170,8 @@ void readVehicleIni()
 
     for (int i = 400; i < 612; i++)
     {
+        vehUseOnlyGroups[i-400] = iniVeh.ReadInteger(std::to_string(i), "UseOnlyGroups", 0);
+
         if (iniVeh.ReadInteger(std::to_string(i), "ChangeOnlyParked", 0) == 1)
             parkedCars.insert(i);
 
@@ -271,6 +273,19 @@ void readVehicleIni()
         vec = iniLineParser(VEHICLE_VARIATION, i, "Wanted6", &iniVeh);
         vehWantedVariations[i - 400][5] = vec;
 
+        vec = iniLineParser(VEHICLE_VARIATION, i, "Wanted1", &iniVeh, true);
+        vehGroupWantedVariations[i - 400][0] = vec;
+        vec = iniLineParser(VEHICLE_VARIATION, i, "Wanted2", &iniVeh, true);
+        vehGroupWantedVariations[i - 400][1] = vec;
+        vec = iniLineParser(VEHICLE_VARIATION, i, "Wanted3", &iniVeh, true);
+        vehGroupWantedVariations[i - 400][2] = vec;
+        vec = iniLineParser(VEHICLE_VARIATION, i, "Wanted4", &iniVeh, true);
+        vehGroupWantedVariations[i - 400][3] = vec;
+        vec = iniLineParser(VEHICLE_VARIATION, i, "Wanted5", &iniVeh, true);
+        vehGroupWantedVariations[i - 400][4] = vec;
+        vec = iniLineParser(VEHICLE_VARIATION, i, "Wanted6", &iniVeh, true);
+        vehGroupWantedVariations[i - 400][5] = vec;
+
 
         for (int j = 0; j < 16; j++)
             for (int k = 0; k < (int)(vehVariations[i-400][j].size()); k++)
@@ -303,7 +318,7 @@ void readVehicleIni()
                 numGroups++;
             }
             if (numGroups > 0)
-                modelNumGroups.insert({ i, numGroups });
+                modelNumGroups[i] = numGroups;
             else
                 continue;
 
@@ -393,6 +408,24 @@ int __cdecl ChoosePoliceCarModelHooked(int a1)
 template <unsigned int address>
 void __cdecl AddPoliceCarOccupantsHooked(CVehicle* a2, char a3)
 {
+    if (a2 == NULL)
+        return;
+
+    if (vehUseOnlyGroups[a2->m_nModelIndex-400] || (CGeneral::GetRandomNumberInRange(0, 100) > 50))
+    {
+        auto it = modelNumGroups.find(a2->m_nModelIndex);
+        if (it != modelNumGroups.end())
+        {
+            CWanted* wanted = FindPlayerWanted(-1);
+            int wantedLevel = (wanted->m_nWantedLevel > 0) ? (wanted->m_nWantedLevel - 1) : (wanted->m_nWantedLevel);
+            int i = CGeneral::GetRandomNumberInRange(0, vehGroupWantedVariations[a2->m_nModelIndex - 400][wantedLevel].size());
+            if (!vehGroupWantedVariations[a2->m_nModelIndex - 400][wantedLevel].empty() && vehGroupWantedVariations[a2->m_nModelIndex - 400][wantedLevel][i] <= it->second)
+                currentOccupantsGroup = vehGroupWantedVariations[a2->m_nModelIndex - 400][wantedLevel][i]-1;
+            else
+                currentOccupantsGroup = CGeneral::GetRandomNumberInRange(0, it->second);
+        }
+    }
+
     int model = a2->m_nModelIndex;
     a2->m_nModelIndex = getVariationOriginalModel(a2->m_nModelIndex);
 
@@ -400,6 +433,7 @@ void __cdecl AddPoliceCarOccupantsHooked(CVehicle* a2, char a3)
     //CCarAI::AddPoliceCarOccupants(a2, a3);
 
     a2->m_nModelIndex = model;
+    currentOccupantsGroup = -1;
 }
 
 template <unsigned int address>
@@ -666,13 +700,19 @@ void __cdecl SetUpDriverAndPassengersForVehicleHooked(CVehicle* car, int a3, int
     if (car == NULL)
         return;
 
-    int useOnlyGroups = iniVeh.ReadInteger(std::to_string(car->m_nModelIndex), "UseOnlyGroups", 0);
-
-    if (useOnlyGroups == 1 || (CGeneral::GetRandomNumberInRange(0, 100) > 50))
+    if (vehUseOnlyGroups[car->m_nModelIndex-400] || (CGeneral::GetRandomNumberInRange(0, 100) > 50))
     {
         auto it = modelNumGroups.find(car->m_nModelIndex);
         if (it != modelNumGroups.end())
-            currentOccupantsGroup = CGeneral::GetRandomNumberInRange(0, it->second);            
+        {
+            CWanted* wanted = FindPlayerWanted(-1);
+            int wantedLevel = (wanted->m_nWantedLevel > 0) ? (wanted->m_nWantedLevel - 1) : (wanted->m_nWantedLevel);
+            int i = CGeneral::GetRandomNumberInRange(0, vehGroupWantedVariations[car->m_nModelIndex - 400][wantedLevel].size());
+            if (!vehGroupWantedVariations[car->m_nModelIndex - 400][wantedLevel].empty() && vehGroupWantedVariations[car->m_nModelIndex - 400][wantedLevel][i] <= it->second)
+                currentOccupantsGroup = vehGroupWantedVariations[car->m_nModelIndex - 400][wantedLevel][i]-1;
+            else
+                currentOccupantsGroup = CGeneral::GetRandomNumberInRange(0, it->second);
+        }
     }
 
     CStreaming::RequestModel(274, 2);//laemt1

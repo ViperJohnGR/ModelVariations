@@ -41,7 +41,6 @@ std::array<std::vector<short>, 16> pedVariations[300];
 std::array<std::vector<short>, 16> vehVariations[212];
 std::array<std::vector<short>, 6> pedWantedVariations[300];
 std::array<std::vector<short>, 6> vehWantedVariations[212];
-std::array<std::vector<short>, 6> vehGroupWantedVariations[212];
 
 std::map<short, short> vehOriginalModels;
 std::map<short, std::vector<short>> vehDrivers;
@@ -49,25 +48,27 @@ std::map<short, std::vector<short>> vehPassengers;
 std::map<short, std::vector<short>> vehDriverGroups[9];
 std::map<short, std::vector<short>> vehPassengerGroups[9];
 std::map<short, BYTE> modelNumGroups;
-std::map<short, BYTE> pedWepVariationTypes;
 std::map<unsigned int, std::pair<void*, void*>> hookedCalls;
 std::map<short, std::pair<CVector, float>> LightPositions;
 std::map<short, int> pedFramesSinceLastSpawned;
 std::map<short, short> pedOriginalModels;
+std::map<short, std::array<std::vector<short>, 6>> vehGroupWantedVariations;
+
+std::set<short> parkedCars;
+std::set<short> vehUseOnlyGroups;
+
+std::stack<CPed*> pedStack;
 
 std::vector<short> vehCurrentVariations[212];
 std::vector<short> pedCurrentVariations[300];
 std::vector<short> vehCarGenExclude;
 std::vector<short> vehInheritExclude;
 
-std::set<short> parkedCars;
-
-std::stack<CPed*> pedStack;
-
 BYTE dealersFixed = 0;
 short callsChecked = 0;
 short modelIndex = -1;
-bool vehUseOnlyGroups[212] = {};
+char currentInterior[16] = {};
+char lastInterior[16] = {};
 
 //ini options
 int enableLog = 0;
@@ -222,7 +223,16 @@ void updateVariations(CZone *zInfo, CIniReader *iniPed, CIniReader *iniVeh)
         vectorUnion(pedVariations[i][4], pedVariations[i][merge], pedCurrentVariations[i]);
         CWanted* wanted = FindPlayerWanted(-1);
 
-        std::vector<short> vecPed = iniLineParser(PED_VARIATION, i, zInfo->m_szLabel, iniPed);
+        std::vector<short> vecPed = iniLineParser(std::to_string(i), zInfo->m_szLabel, iniPed);
+        if (!vecPed.empty())
+        {
+            std::vector<short> vec2;
+            std::sort(vecPed.begin(), vecPed.end());
+            vectorUnion(pedCurrentVariations[i], vecPed, vec2);
+            pedCurrentVariations[i] = vec2;
+        }
+
+        vecPed = iniLineParser(std::to_string(i), currentInterior, iniPed);
         if (!vecPed.empty())
         {
             std::vector<short> vec2;
@@ -249,7 +259,7 @@ void updateVariations(CZone *zInfo, CIniReader *iniPed, CIniReader *iniVeh)
         {
             vectorUnion(vehVariations[i][4], vehVariations[i][merge], vehCurrentVariations[i]);
 
-            std::vector<short> vec = iniLineParser(VEHICLE_VARIATION, i+400, zInfo->m_szLabel, iniVeh);
+            std::vector<short> vec = iniLineParser(std::to_string(i+400), zInfo->m_szLabel, iniVeh);
             if (!vec.empty())
             {
                 std::vector<short> vec2;
@@ -389,102 +399,102 @@ public:
 
         for (int i = 0; i < 300; i++)
         {
-            std::vector<short> vec = iniLineParser(PED_VARIATION, i, "Countryside", &iniPed);
+            std::vector<short> vec = iniLineParser(std::to_string(i), "Countryside", &iniPed);
             pedVariations[i][0] = vec;
             std::sort(pedVariations[i][0].begin(), pedVariations[i][0].end());
 
-            vec = iniLineParser(PED_VARIATION, i, "LosSantos", &iniPed);
+            vec = iniLineParser(std::to_string(i), "LosSantos", &iniPed);
             pedVariations[i][1] = vec;
             std::sort(pedVariations[i][1].begin(), pedVariations[i][1].end());
 
-            vec = iniLineParser(PED_VARIATION, i, "SanFierro", &iniPed);
+            vec = iniLineParser(std::to_string(i), "SanFierro", &iniPed);
             pedVariations[i][2] = vec;
             std::sort(pedVariations[i][2].begin(), pedVariations[i][2].end());
 
-            vec = iniLineParser(PED_VARIATION, i, "LasVenturas", &iniPed);
+            vec = iniLineParser(std::to_string(i), "LasVenturas", &iniPed);
             pedVariations[i][3] = vec;
             std::sort(pedVariations[i][3].begin(), pedVariations[i][3].end());
 
-            vec = iniLineParser(PED_VARIATION, i, "Global", &iniPed);
+            vec = iniLineParser(std::to_string(i), "Global", &iniPed);
             pedVariations[i][4] = vec;
             std::sort(pedVariations[i][4].begin(), pedVariations[i][4].end());
 
-            vec = iniLineParser(PED_VARIATION, i, "Desert", &iniPed);
+            vec = iniLineParser(std::to_string(i), "Desert", &iniPed);
             pedVariations[i][5] = vec;
             std::sort(pedVariations[i][5].begin(), pedVariations[i][5].end());
 
-            vec = iniLineParser(PED_VARIATION, i, "TierraRobada", &iniPed);
+            vec = iniLineParser(std::to_string(i), "TierraRobada", &iniPed);
             pedVariations[i][6] = vec;
             std::sort(pedVariations[i][6].begin(), pedVariations[i][6].end());
             vectorUnion(pedVariations[i][6], pedVariations[i][5], vec);
             pedVariations[i][6] = vec;
 
-            vec = iniLineParser(PED_VARIATION, i, "BoneCounty", &iniPed);
+            vec = iniLineParser(std::to_string(i), "BoneCounty", &iniPed);
             pedVariations[i][7] = vec;
             std::sort(pedVariations[i][7].begin(), pedVariations[i][7].end());
             vectorUnion(pedVariations[i][7], pedVariations[i][5], vec);
             pedVariations[i][7] = vec;
 
-            vec = iniLineParser(PED_VARIATION, i, "RedCounty", &iniPed);
+            vec = iniLineParser(std::to_string(i), "RedCounty", &iniPed);
             pedVariations[i][8] = vec;
             std::sort(pedVariations[i][8].begin(), pedVariations[i][8].end());
             vectorUnion(pedVariations[i][8], pedVariations[i][0], vec);
             pedVariations[i][8] = vec;
 
-            vec = iniLineParser(PED_VARIATION, i, "Blueberry", &iniPed);
+            vec = iniLineParser(std::to_string(i), "Blueberry", &iniPed);
             pedVariations[i][9] = vec;
             std::sort(pedVariations[i][9].begin(), pedVariations[i][9].end());
             vectorUnion(pedVariations[i][9], pedVariations[i][8], vec);
             pedVariations[i][9] = vec;
 
-            vec = iniLineParser(PED_VARIATION, i, "Montgomery", &iniPed);
+            vec = iniLineParser(std::to_string(i), "Montgomery", &iniPed);
             pedVariations[i][10] = vec;
             std::sort(pedVariations[i][10].begin(), pedVariations[i][10].end());
             vectorUnion(pedVariations[i][10], pedVariations[i][8], vec);
             pedVariations[i][10] = vec;
 
-            vec = iniLineParser(PED_VARIATION, i, "Dillimore", &iniPed);
+            vec = iniLineParser(std::to_string(i), "Dillimore", &iniPed);
             pedVariations[i][11] = vec;
             std::sort(pedVariations[i][11].begin(), pedVariations[i][11].end());
             vectorUnion(pedVariations[i][11], pedVariations[i][8], vec);
             pedVariations[i][10] = vec;
 
-            vec = iniLineParser(PED_VARIATION, i, "PalominoCreek", &iniPed);
+            vec = iniLineParser(std::to_string(i), "PalominoCreek", &iniPed);
             pedVariations[i][12] = vec;
             std::sort(pedVariations[i][12].begin(), pedVariations[i][12].end());
             vectorUnion(pedVariations[i][12], pedVariations[i][8], vec);
             pedVariations[i][10] = vec;
 
-            vec = iniLineParser(PED_VARIATION, i, "FlintCounty", &iniPed);
+            vec = iniLineParser(std::to_string(i), "FlintCounty", &iniPed);
             pedVariations[i][13] = vec;
             std::sort(pedVariations[i][13].begin(), pedVariations[i][13].end());
             vectorUnion(pedVariations[i][13], pedVariations[i][0], vec);
             pedVariations[i][13] = vec;
 
-            vec = iniLineParser(PED_VARIATION, i, "Whetstone", &iniPed);
+            vec = iniLineParser(std::to_string(i), "Whetstone", &iniPed);
             pedVariations[i][14] = vec;
             std::sort(pedVariations[i][14].begin(), pedVariations[i][14].end());
             vectorUnion(pedVariations[i][14], pedVariations[i][0], vec);
             pedVariations[i][14] = vec;
 
-            vec = iniLineParser(PED_VARIATION, i, "AngelPine", &iniPed);
+            vec = iniLineParser(std::to_string(i), "AngelPine", &iniPed);
             pedVariations[i][15] = vec;
             std::sort(pedVariations[i][15].begin(), pedVariations[i][15].end());
             vectorUnion(pedVariations[i][15], pedVariations[i][14], vec);
             pedVariations[i][15] = vec;
         
 
-            vec = iniLineParser(PED_VARIATION, i, "Wanted1", &iniPed);
+            vec = iniLineParser(std::to_string(i), "Wanted1", &iniPed);
             pedWantedVariations[i][0] = vec;
-            vec = iniLineParser(PED_VARIATION, i, "Wanted2", &iniPed);
+            vec = iniLineParser(std::to_string(i), "Wanted2", &iniPed);
             pedWantedVariations[i][1] = vec;
-            vec = iniLineParser(PED_VARIATION, i, "Wanted3", &iniPed);
+            vec = iniLineParser(std::to_string(i), "Wanted3", &iniPed);
             pedWantedVariations[i][2] = vec;
-            vec = iniLineParser(PED_VARIATION, i, "Wanted4", &iniPed);
+            vec = iniLineParser(std::to_string(i), "Wanted4", &iniPed);
             pedWantedVariations[i][3] = vec;
-            vec = iniLineParser(PED_VARIATION, i, "Wanted5", &iniPed);
+            vec = iniLineParser(std::to_string(i), "Wanted5", &iniPed);
             pedWantedVariations[i][4] = vec;
-            vec = iniLineParser(PED_VARIATION, i, "Wanted6", &iniPed);
+            vec = iniLineParser(std::to_string(i), "Wanted6", &iniPed);
             pedWantedVariations[i][5] = vec;
 
         
@@ -496,45 +506,21 @@ public:
 
         if (enableLog == 1)
         {
-            std::ifstream pedIni("ModelVariations_Peds.ini");
-            if (!pedIni.is_open())
+            if (!fileExists("ModelVariations_Peds.ini"))
                 logfile << "ModelVariations_Peds.ini not found!\n" << std::endl;
             else
-                logfile << "--ModelVariations_Peds.ini--\n" << pedIni.rdbuf() << std::endl;
+                logfile << "--ModelVariations_Peds.ini--\n" << fileToString("ModelVariations_Peds.ini") << std::endl;
 
-
-            std::ifstream wepIni("ModelVariations_PedWeapons.ini");
-            if (!wepIni.is_open())
+            if (!fileExists("ModelVariations_PedWeapons.ini"))
                 logfile << "ModelVariations_PedWeapons.ini not found!\n" << std::endl;
             else
-                logfile << "--ModelVariations_PedWeapons.ini--\n" << wepIni.rdbuf() << std::endl;
+                logfile << "--ModelVariations_PedWeapons.ini--\n" << fileToString("ModelVariations_PedWeapons.ini") << std::endl;
 
-
-            std::ifstream vehIni("ModelVariations_Vehicles.ini");
-            if (!vehIni.is_open())
+            if (!fileExists("ModelVariations_Vehicles.ini"))
                 logfile << "ModelVariations_Vehicles.ini not found!\n" << std::endl;
             else
-                logfile << "--ModelVariations_Vehicles.ini--\n" << vehIni.rdbuf() << std::endl;
+                logfile << "--ModelVariations_Vehicles.ini--\n" << fileToString("ModelVariations_Vehicles.ini") << std::endl;
 
-            logfile << std::endl;
-        }
-
-        for (short i = 0; i < 32000; i++)
-        {
-            BYTE wepVariationType = iniWeap.ReadInteger(std::to_string(i), "VariationType", -1);
-            if (wepVariationType == 1 || wepVariationType == 2)
-                pedWepVariationTypes.insert(std::make_pair(i, wepVariationType));
-        }
-
-        if (enableLog == 1)
-        {
-            logfile << "pedWepVariationTypes\n";
-            for (int i = 0; i < 32000; i++)
-            {
-                auto it = pedWepVariationTypes.find(i);
-                if (it != pedWepVariationTypes.end())
-                    logfile << std::dec << i << ": " << (int)(it->second) << "\n";
-            }
             logfile << std::endl;
         }
 
@@ -604,11 +590,10 @@ public:
             }
         };
 
-        if (!pedWepVariationTypes.empty())
-            Events::pedCtorEvent += [](CPed* ped)
-            {
-                pedStack.push(ped);
-            };
+        Events::pedCtorEvent += [](CPed* ped)
+        {
+            pedStack.push(ped);
+        };
 
         Events::pedSetModelEvent.after += [](CPed* ped, int model)
         {
@@ -649,19 +634,42 @@ public:
                     else
                         it = pedFramesSinceLastSpawned.erase(it);
             }
-  
+
             CVector pPos = FindPlayerCoors(-1);
-            CZone *zInfo = NULL;
+            CZone* zInfo = NULL;
             CTheZones::GetZoneInfo(&pPos, &zInfo);
             CPlayerPed* player = FindPlayerPed();
             CWanted* wanted = FindPlayerWanted(-1);
+
+            Command<COMMAND_GET_NAME_OF_ENTRY_EXIT_CHAR_USED>(FindPlayerPed(), &currentInterior);
+            if (strncmp(currentInterior, lastInterior, 16) != 0)
+            {
+                if (enableLog == 1)
+                {
+                    logfile << "Interior changed. Updating variations...\n";
+                    logfile << "currentWanted = " << currentWanted << " wanted->m_nWantedLevel = " << wanted->m_nWantedLevel << "\n";
+                    logfile << "currentZone = " << currentZone << " zInfo->m_szLabel = " << zInfo->m_szLabel << "\n";
+                    logfile << "currentInterior = " << currentInterior << " lastInterior = " << lastInterior << "\n" << std::endl;
+                }
+
+                strncpy(lastInterior, currentInterior, 16);
+                updateVariations(zInfo, &iniPed, &iniVeh);
+
+                if (enableLog == 1)
+                    printCurrentVariations();
+            }
+
             if (wanted && wanted->m_nWantedLevel != currentWanted)
             {
                 if (enableLog == 1)
                 {
                     logfile << "Wanted level changed. Updating variations...\n";
                     logfile << "currentWanted = " << currentWanted << " wanted->m_nWantedLevel = " << wanted->m_nWantedLevel << "\n";
-                    logfile << "currentZone = " << currentZone << " zInfo->m_szLabel = " << zInfo->m_szLabel << "\n" << std::endl;
+                    logfile << "currentZone = " << currentZone << " zInfo->m_szLabel = " << zInfo->m_szLabel << "\n";
+                    if (currentInterior[0] != 0 || lastInterior[0] != 0)
+                        logfile << "currentInterior = " << currentInterior << " lastInterior = " << lastInterior << "\n" << std::endl;
+                    else
+                        logfile << std::endl;
                 }
 
                 currentWanted = wanted->m_nWantedLevel;
@@ -677,7 +685,11 @@ public:
                 {
                     logfile << "Zone changed. Updating variations...\n";
                     logfile << "currentWanted = " << currentWanted << " wanted->m_nWantedLevel = " << wanted->m_nWantedLevel << "\n";
-                    logfile << "currentZone = " << currentZone << " zInfo->m_szLabel = " << zInfo->m_szLabel << "\n" << std::endl;
+                    logfile << "currentZone = " << currentZone << " zInfo->m_szLabel = " << zInfo->m_szLabel << "\n";
+                    if (currentInterior[0] != 0 || lastInterior[0] != 0)
+                        logfile << "currentInterior = " << currentInterior << " lastInterior = " << lastInterior << "\n" << std::endl;
+                    else
+                        logfile << std::endl;
                 }
 
                 strncpy(currentZone, zInfo->m_szLabel, 7);
@@ -694,40 +706,92 @@ public:
             {
                 CPed* ped = pedStack.top();
                 pedStack.pop();
-                auto it = pedWepVariationTypes.find(ped->m_nModelIndex);
-                if (it != pedWepVariationTypes.end())
+                
+                for (int i = 0; i < 13; i++)
                 {
-                    int activeSlot = ped->m_nActiveWeaponSlot;
-                    int loopMax = it->second == 1 ? 13 : 47;
-
-                    for (int i = 0; i < loopMax; i++)
+                    if (ped->m_aWeapons[i].m_nType > 0)
                     {
-                        std::vector<short> wvec = iniLineParser(PED_WEAPON_VARIATION, ped->m_nModelIndex, (const char *)i, &iniWeap);
+                        bool slotChanged = false;
+                        bool wepChanged = false;
 
-                        if (!wvec.empty())
+                        std::string slot = "SLOT" + std::to_string(i);
+                        std::vector<short> vec = iniLineParser(std::to_string(ped->m_nModelIndex), slot, &iniWeap);
+                        if (!vec.empty())
                         {
-                            int slot = i;
-                            int random = CGeneral::GetRandomNumberInRange(0, wvec.size());
-                            if (it->second == 2)
-                                slot = ped->GetWeaponSlot((eWeaponType)i);
+                            int activeSlot = ped->m_nActiveWeaponSlot;
+                            int random = CGeneral::GetRandomNumberInRange(0, vec.size());
 
-                            if (ped->m_aWeapons[slot].m_nType > 0 && ped->m_aWeapons[slot].m_nType != wvec[random])
+                            ped->ClearWeapon(ped->m_aWeapons[i].m_nType);
+
+                            CStreaming::RequestModel(CWeaponInfo::GetWeaponInfo((eWeaponType)(vec[random]), 0)->m_nModelId1, 2);
+                            CStreaming::LoadAllRequestedModels(false);
+
+                            ped->GiveWeapon((eWeaponType)(vec[random]), 9999, 0);
+                            ped->SetCurrentWeapon(activeSlot);
+                            slotChanged = true;
+                        }
+
+                        std::string wep = "WEAPON" + std::to_string(ped->m_aWeapons[i].m_nType);
+                        vec = iniLineParser(std::to_string(ped->m_nModelIndex), wep, &iniWeap);
+                        if (!vec.empty())
+                        {
+                            int activeSlot = ped->m_nActiveWeaponSlot;
+                            int random = CGeneral::GetRandomNumberInRange(0, vec.size());
+
+                            ped->ClearWeapon(ped->m_aWeapons[i].m_nType);
+
+                            CStreaming::RequestModel(CWeaponInfo::GetWeaponInfo((eWeaponType)(vec[random]), 0)->m_nModelId1, 2);
+                            CStreaming::LoadAllRequestedModels(false);
+
+                            ped->GiveWeapon((eWeaponType)(vec[random]), 9999, 0);
+                            ped->SetCurrentWeapon(activeSlot);
+                            wepChanged = true;
+                        }
+                        
+                        if ((slotChanged && CGeneral::GetRandomNumberInRange(0, 100) > 50) || !slotChanged)
+                        {
+                            std::string curZone(currentZone);
+                            slot = curZone + "_SLOT" + std::to_string(i);
+                            vec = iniLineParser(std::to_string(ped->m_nModelIndex), slot, &iniWeap);
+                            if (!vec.empty())
                             {
-                                ped->ClearWeapon(ped->m_aWeapons[slot].m_nType);
+                                int activeSlot = ped->m_nActiveWeaponSlot;
+                                int random = CGeneral::GetRandomNumberInRange(0, vec.size());
 
-                                CStreaming::RequestModel(CWeaponInfo::GetWeaponInfo((eWeaponType)(wvec[random]), 0)->m_nModelId1, 2);
+                                ped->ClearWeapon(ped->m_aWeapons[i].m_nType);
+
+                                CStreaming::RequestModel(CWeaponInfo::GetWeaponInfo((eWeaponType)(vec[random]), 0)->m_nModelId1, 2);
                                 CStreaming::LoadAllRequestedModels(false);
 
-                                ped->GiveWeapon((eWeaponType)(wvec[random]), 9999, 0);
+                                ped->GiveWeapon((eWeaponType)(vec[random]), 9999, 0);
+                                ped->SetCurrentWeapon(activeSlot);
+                            }
+                        }
+
+                        if ((wepChanged && CGeneral::GetRandomNumberInRange(0, 100) > 50) || !wepChanged)
+                        {
+                            std::string curZone(currentZone);
+                            wep = curZone + "_WEAPON" + std::to_string(ped->m_aWeapons[i].m_nType);
+                            vec = iniLineParser(std::to_string(ped->m_nModelIndex), wep, &iniWeap);
+                            if (!vec.empty())
+                            {
+                                int activeSlot = ped->m_nActiveWeaponSlot;
+                                int random = CGeneral::GetRandomNumberInRange(0, vec.size());
+
+                                ped->ClearWeapon(ped->m_aWeapons[i].m_nType);
+
+                                CStreaming::RequestModel(CWeaponInfo::GetWeaponInfo((eWeaponType)(vec[random]), 0)->m_nModelId1, 2);
+                                CStreaming::LoadAllRequestedModels(false);
+
+                                ped->GiveWeapon((eWeaponType)(vec[random]), 9999, 0);
+                                ped->SetCurrentWeapon(activeSlot);
+                                wepChanged = true;
                             }
                         }
                     }
-
-                    ped->SetCurrentWeapon(activeSlot);
                 }
             }
         };
 
-        
     }
 } modelVariations;

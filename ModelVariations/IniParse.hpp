@@ -3,33 +3,47 @@
 #include <vector>
 #include "IniReader/IniReader.h"
 
-enum eVariationType
+inline bool fileExists(const char* filename)
 {
-    PED_VARIATION,
-    VEHICLE_VARIATION,
-    PED_WEAPON_VARIATION,
-    MODEL_SETTINGS
-};
+    FILE* fp = fopen(filename, "rb");
+    if (fp == NULL)
+        return false;
+    fclose(fp);
+    return true;
+}
 
-inline std::vector<short> iniLineParser(int type, int section, const char key[12], CIniReader* ini, bool parseGroups = false)
+inline std::string fileToString(const char* filename)
+{
+    FILE* fp = fopen(filename, "rb");
+    if (fp == NULL)
+        return "";
+
+    fseek(fp, 0, SEEK_END);
+    int filesize = ftell(fp);
+    fseek(fp, 0, SEEK_SET);
+
+    char* filebuf = (char*)calloc(filesize+1, 1);
+    if (fread(filebuf, 1, filesize, fp) != filesize)
+    {
+        fclose(fp);
+        free(filebuf);
+        return "";
+    }
+    fclose(fp);
+
+    std::string retString(filebuf);
+    free(filebuf);
+    retString.erase(std::remove(retString.begin(), retString.end(), 0x0D), retString.end());
+    return retString;
+}
+
+inline std::vector<short> iniLineParser(std::string section, std::string key, CIniReader* ini, bool parseGroups = false)
 {
     std::vector<short> retVector;
     if (ini == NULL)
         return retVector;
 
-    std::string sectionString;
-    if (type == MODEL_SETTINGS)
-        sectionString = (char*)section;
-    else
-        sectionString = std::to_string(section);
-
-    std::string keyString;
-    if (type == PED_VARIATION || type == VEHICLE_VARIATION || type == MODEL_SETTINGS)
-        keyString = key;
-    else
-        keyString = std::to_string((int)(key));
-
-    std::string iniString = ini->ReadString(sectionString, keyString, "");
+    std::string iniString = ini->ReadString(section, key, "");
 
     if (!iniString.empty())
     {

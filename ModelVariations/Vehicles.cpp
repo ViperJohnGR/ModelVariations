@@ -116,7 +116,7 @@ void readVehicleIni()
     std::vector <std::string> result;
     std::ifstream zoneFile("data\\info.zon");
 
-    vehInheritExclude = iniLineParser(MODEL_SETTINGS, (int)"Settings", "ExcludeModelsFromInheritance", &iniVeh);
+    vehInheritExclude = iniLineParser("Settings", "ExcludeModelsFromInheritance", &iniVeh);
 
     if (!zoneFile.is_open())
     {
@@ -157,7 +157,7 @@ void readVehicleIni()
     {
         for (int j = 0; j < 212; j++) //for every vehicle id
         {
-            std::vector<short> vec = iniLineParser(PED_VARIATION, j + 400, i.c_str(), &iniVeh); //get zone name 'i' of veh id 'j+400'
+            std::vector<short> vec = iniLineParser(std::to_string(j + 400), i, &iniVeh); //get zone name 'i' of veh id 'j+400'
 
             if (!vec.empty()) //if veh id 'j+400' has variations in zone 'i'
                 for (auto& k : vec) //for every variation 'k' of veh id 'j+400' in zone 'i'
@@ -170,121 +170,106 @@ void readVehicleIni()
 
     for (int i = 400; i < 612; i++)
     {
-        vehUseOnlyGroups[i-400] = iniVeh.ReadInteger(std::to_string(i), "UseOnlyGroups", 0);
-
         if (iniVeh.ReadInteger(std::to_string(i), "ChangeOnlyParked", 0) == 1)
             parkedCars.insert(i);
 
-        std::vector<short> vec = iniLineParser(VEHICLE_VARIATION, i, "Countryside", &iniVeh);
+        std::vector<short> vec = iniLineParser(std::to_string(i), "Countryside", &iniVeh);
         vehVariations[i - 400][0] = vec;
         std::sort(vehVariations[i - 400][0].begin(), vehVariations[i - 400][0].end());
 
-        vec = iniLineParser(VEHICLE_VARIATION, i, "LosSantos", &iniVeh);
+        vec = iniLineParser(std::to_string(i), "LosSantos", &iniVeh);
         vehVariations[i - 400][1] = vec;
         std::sort(vehVariations[i - 400][1].begin(), vehVariations[i - 400][1].end());
 
-        vec = iniLineParser(VEHICLE_VARIATION, i, "SanFierro", &iniVeh);
+        vec = iniLineParser(std::to_string(i), "SanFierro", &iniVeh);
         vehVariations[i - 400][2] = vec;
         std::sort(vehVariations[i - 400][2].begin(), vehVariations[i - 400][2].end());
 
-        vec = iniLineParser(VEHICLE_VARIATION, i, "LasVenturas", &iniVeh);
+        vec = iniLineParser(std::to_string(i), "LasVenturas", &iniVeh);
         vehVariations[i - 400][3] = vec;
         std::sort(vehVariations[i - 400][3].begin(), vehVariations[i - 400][3].end());
 
-        vec = iniLineParser(VEHICLE_VARIATION, i, "Global", &iniVeh);
+        vec = iniLineParser(std::to_string(i), "Global", &iniVeh);
         vehVariations[i - 400][4] = vec;
         std::sort(vehVariations[i - 400][4].begin(), vehVariations[i - 400][4].end());
 
-        vec = iniLineParser(VEHICLE_VARIATION, i, "Desert", &iniVeh);
+        vec = iniLineParser(std::to_string(i), "Desert", &iniVeh);
         vehVariations[i - 400][5] = vec;
         std::sort(vehVariations[i - 400][5].begin(), vehVariations[i - 400][5].end());
 
-        vec = iniLineParser(VEHICLE_VARIATION, i, "TierraRobada", &iniVeh);
+        vec = iniLineParser(std::to_string(i), "TierraRobada", &iniVeh);
         vehVariations[i - 400][6] = vec;
         std::sort(vehVariations[i - 400][6].begin(), vehVariations[i - 400][6].end());
         vectorUnion(vehVariations[i - 400][6], vehVariations[i - 400][5], vec);
         vehVariations[i - 400][6] = vec;
 
-        vec = iniLineParser(VEHICLE_VARIATION, i, "BoneCounty", &iniVeh);
+        vec = iniLineParser(std::to_string(i), "BoneCounty", &iniVeh);
         vehVariations[i - 400][7] = vec;
         std::sort(vehVariations[i - 400][7].begin(), vehVariations[i - 400][7].end());
         vectorUnion(vehVariations[i - 400][7], vehVariations[i - 400][5], vec);
         vehVariations[i - 400][7] = vec;
 
-        vec = iniLineParser(VEHICLE_VARIATION, i, "RedCounty", &iniVeh);
+        vec = iniLineParser(std::to_string(i), "RedCounty", &iniVeh);
         vehVariations[i - 400][8] = vec;
         std::sort(vehVariations[i - 400][8].begin(), vehVariations[i - 400][8].end());
         vectorUnion(vehVariations[i - 400][8], vehVariations[i - 400][0], vec);
         vehVariations[i - 400][8] = vec;
 
-        vec = iniLineParser(VEHICLE_VARIATION, i, "Blueberry", &iniVeh);
+        vec = iniLineParser(std::to_string(i), "Blueberry", &iniVeh);
         vehVariations[i - 400][9] = vec;
         std::sort(vehVariations[i - 400][9].begin(), vehVariations[i - 400][9].end());
         vectorUnion(vehVariations[i-400][9], vehVariations[i - 400][8], vec);
         vehVariations[i - 400][9] = vec;
 
-        vec = iniLineParser(VEHICLE_VARIATION, i, "Montgomery", &iniVeh);
+        vec = iniLineParser(std::to_string(i), "Montgomery", &iniVeh);
         vehVariations[i - 400][10] = vec;
         std::sort(vehVariations[i - 400][10].begin(), vehVariations[i - 400][10].end());
         vectorUnion(vehVariations[i - 400][10], vehVariations[i - 400][8], vec);
         vehVariations[i - 400][10] = vec;
 
-        vec = iniLineParser(VEHICLE_VARIATION, i, "Dillimore", &iniVeh);
+        vec = iniLineParser(std::to_string(i), "Dillimore", &iniVeh);
         vehVariations[i - 400][11] = vec;
         std::sort(vehVariations[i - 400][11].begin(), vehVariations[i - 400][11].end());
         vectorUnion(vehVariations[i - 400][11], vehVariations[i - 400][8], vec);
         vehVariations[i - 400][11] = vec;
 
-        vec = iniLineParser(VEHICLE_VARIATION, i, "PalominoCreek", &iniVeh);
+        vec = iniLineParser(std::to_string(i), "PalominoCreek", &iniVeh);
         vehVariations[i - 400][12] = vec;
         std::sort(vehVariations[i - 400][12].begin(), vehVariations[i - 400][12].end());
         vectorUnion(vehVariations[i - 400][12], vehVariations[i - 400][8], vec);
         vehVariations[i - 400][12] = vec;
 
-        vec = iniLineParser(VEHICLE_VARIATION, i, "FlintCounty", &iniVeh);
+        vec = iniLineParser(std::to_string(i), "FlintCounty", &iniVeh);
         vehVariations[i - 400][13] = vec;
         std::sort(vehVariations[i - 400][13].begin(), vehVariations[i - 400][13].end());
         vectorUnion(vehVariations[i - 400][13], vehVariations[i - 400][0], vec);
         vehVariations[i - 400][13] = vec;
 
-        vec = iniLineParser(VEHICLE_VARIATION, i, "Whetstone", &iniVeh);
+        vec = iniLineParser(std::to_string(i), "Whetstone", &iniVeh);
         vehVariations[i - 400][14] = vec;
         std::sort(vehVariations[i - 400][14].begin(), vehVariations[i - 400][14].end());
         vectorUnion(vehVariations[i - 400][14], vehVariations[i - 400][0], vec);
         vehVariations[i - 400][14] = vec;
 
-        vec = iniLineParser(VEHICLE_VARIATION, i, "AngelPine", &iniVeh);
+        vec = iniLineParser(std::to_string(i), "AngelPine", &iniVeh);
         vehVariations[i - 400][15] = vec;
         std::sort(vehVariations[i - 400][15].begin(), vehVariations[i - 400][15].end());
         vectorUnion(vehVariations[i - 400][15], vehVariations[i - 400][14], vec);
         vehVariations[i - 400][15] = vec;
 
 
-        vec = iniLineParser(VEHICLE_VARIATION, i, "Wanted1", &iniVeh);
+        vec = iniLineParser(std::to_string(i), "Wanted1", &iniVeh);
         vehWantedVariations[i - 400][0] = vec;
-        vec = iniLineParser(VEHICLE_VARIATION, i, "Wanted2", &iniVeh);
+        vec = iniLineParser(std::to_string(i), "Wanted2", &iniVeh);
         vehWantedVariations[i - 400][1] = vec;
-        vec = iniLineParser(VEHICLE_VARIATION, i, "Wanted3", &iniVeh);
+        vec = iniLineParser(std::to_string(i), "Wanted3", &iniVeh);
         vehWantedVariations[i - 400][2] = vec;
-        vec = iniLineParser(VEHICLE_VARIATION, i, "Wanted4", &iniVeh);
+        vec = iniLineParser(std::to_string(i), "Wanted4", &iniVeh);
         vehWantedVariations[i - 400][3] = vec;
-        vec = iniLineParser(VEHICLE_VARIATION, i, "Wanted5", &iniVeh);
+        vec = iniLineParser(std::to_string(i), "Wanted5", &iniVeh);
         vehWantedVariations[i - 400][4] = vec;
-        vec = iniLineParser(VEHICLE_VARIATION, i, "Wanted6", &iniVeh);
+        vec = iniLineParser(std::to_string(i), "Wanted6", &iniVeh);
         vehWantedVariations[i - 400][5] = vec;
-
-        vec = iniLineParser(VEHICLE_VARIATION, i, "Wanted1", &iniVeh, true);
-        vehGroupWantedVariations[i - 400][0] = vec;
-        vec = iniLineParser(VEHICLE_VARIATION, i, "Wanted2", &iniVeh, true);
-        vehGroupWantedVariations[i - 400][1] = vec;
-        vec = iniLineParser(VEHICLE_VARIATION, i, "Wanted3", &iniVeh, true);
-        vehGroupWantedVariations[i - 400][2] = vec;
-        vec = iniLineParser(VEHICLE_VARIATION, i, "Wanted4", &iniVeh, true);
-        vehGroupWantedVariations[i - 400][3] = vec;
-        vec = iniLineParser(VEHICLE_VARIATION, i, "Wanted5", &iniVeh, true);
-        vehGroupWantedVariations[i - 400][4] = vec;
-        vec = iniLineParser(VEHICLE_VARIATION, i, "Wanted6", &iniVeh, true);
-        vehGroupWantedVariations[i - 400][5] = vec;
 
 
         for (int j = 0; j < 16; j++)
@@ -297,49 +282,71 @@ void readVehicleIni()
 
     for (int i = 400; i < 32000; i++)
     {
-        if (enableLights)
+        std::string section = std::to_string(i);
+        if (iniVeh.data.find(section) != iniVeh.data.end())
         {
-            float lightWidth = iniVeh.ReadFloat(std::to_string(i), "LightWidth", -999.0);
-            float lightX = iniVeh.ReadFloat(std::to_string(i), "LightX", -999.0);
-            float lightY = iniVeh.ReadFloat(std::to_string(i), "LightY", -999.0);
-            float lightZ = iniVeh.ReadFloat(std::to_string(i), "LightZ", -999.0);
+            if (iniVeh.ReadInteger(section, "UseOnlyGroups", 0) == 1)
+                vehUseOnlyGroups.insert(i);
 
-            if (lightX > -900.0 || lightY > -900.0 || lightZ > -900.0)
-                LightPositions.insert({ (short)i, {{ lightX, lightY, lightZ }, lightWidth} });
-        }
-        int numGroups = 0;
-        for (int j = 0; j < 9; j++)
-        {
-            std::string str = "DriverGroup" + std::to_string(j+1);
-            std::vector<short> vec = iniLineParser(VEHICLE_VARIATION, i, str.c_str(), &iniVeh);
-            if (!vec.empty())
+            if (enableLights)
             {
-                vehDriverGroups[j].insert({ i, vec });
-                numGroups++;
+                float lightWidth = iniVeh.ReadFloat(section, "LightWidth", -999.0);
+                float lightX = iniVeh.ReadFloat(section, "LightX", -999.0);
+                float lightY = iniVeh.ReadFloat(section, "LightY", -999.0);
+                float lightZ = iniVeh.ReadFloat(section, "LightZ", -999.0);
+
+                if (lightX > -900.0 || lightY > -900.0 || lightZ > -900.0)
+                    LightPositions.insert({ (short)i, {{ lightX, lightY, lightZ }, lightWidth} });
             }
-            if (numGroups > 0)
-                modelNumGroups[i] = numGroups;
-            else
-                continue;
 
-            str = "PassengerGroup" + std::to_string(j + 1);
-            vec = iniLineParser(VEHICLE_VARIATION, i, str.c_str(), &iniVeh);
+            std::vector<short> vec = iniLineParser(section, "Wanted1", &iniVeh, true);
+            if (!vec.empty()) vehGroupWantedVariations[i][0] = vec;
+            vec = iniLineParser(section, "Wanted2", &iniVeh, true);
+            if (!vec.empty()) vehGroupWantedVariations[i][1] = vec;
+            vec = iniLineParser(section, "Wanted3", &iniVeh, true);
+            if (!vec.empty()) vehGroupWantedVariations[i][2] = vec;
+            vec = iniLineParser(section, "Wanted4", &iniVeh, true);
+            if (!vec.empty()) vehGroupWantedVariations[i][3] = vec;
+            vec = iniLineParser(section, "Wanted5", &iniVeh, true);
+            if (!vec.empty()) vehGroupWantedVariations[i][4] = vec;
+            vec = iniLineParser(section, "Wanted6", &iniVeh, true);
+            if (!vec.empty()) vehGroupWantedVariations[i][5] = vec;
+
+
+            int numGroups = 0;
+            for (int j = 0; j < 9; j++)
+            {
+                std::string str = "DriverGroup" + std::to_string(j + 1);
+                vec = iniLineParser(std::to_string(i), str, &iniVeh);
+                if (!vec.empty())
+                {
+                    vehDriverGroups[j].insert({ i, vec });
+                    numGroups++;
+                }
+                if (numGroups > 0)
+                    modelNumGroups[i] = numGroups;
+                else
+                    continue;
+
+                str = "PassengerGroup" + std::to_string(j + 1);
+                vec = iniLineParser(std::to_string(i), str, &iniVeh);
+                if (!vec.empty())
+                    vehPassengerGroups[j].insert({ i, vec });
+            }
+
+
+            vec = iniLineParser(std::to_string(i), "Drivers", &iniVeh);
             if (!vec.empty())
-                vehPassengerGroups[j].insert({ i, vec });
+                vehDrivers.insert({ i, vec });
+
+            vec = iniLineParser(std::to_string(i), "Passengers", &iniVeh);
+            if (!vec.empty())
+                vehPassengers.insert({ i, vec });
         }
-
-
-        std::vector<short> vec = iniLineParser(VEHICLE_VARIATION, i, "Drivers", &iniVeh);
-        if (!vec.empty())
-            vehDrivers.insert({ i, vec });
-
-        vec = iniLineParser(VEHICLE_VARIATION, i, "Passengers", &iniVeh);
-        if (!vec.empty())
-            vehPassengers.insert({ i, vec });
     }
 
     changeCarGenerators = iniVeh.ReadInteger("Settings", "ChangeCarGenerators", 0);
-    vehCarGenExclude = iniLineParser(MODEL_SETTINGS, (int)"Settings", "ExcludeCarGeneratorModels", &iniVeh);
+    vehCarGenExclude = iniLineParser("Settings", "ExcludeCarGeneratorModels", &iniVeh);
     loadAllVehicles = iniVeh.ReadInteger("Settings", "LoadAllVehicles", 0);
     enableAllSideMissions = iniVeh.ReadInteger("Settings", "EnableSideMissionsForAllScripts", 0);
 }
@@ -411,16 +418,16 @@ void __cdecl AddPoliceCarOccupantsHooked(CVehicle* a2, char a3)
     if (a2 == NULL)
         return;
 
-    if (vehUseOnlyGroups[a2->m_nModelIndex-400] || (CGeneral::GetRandomNumberInRange(0, 100) > 50))
+    if (vehUseOnlyGroups.find(a2->m_nModelIndex) != vehUseOnlyGroups.end() || (CGeneral::GetRandomNumberInRange(0, 100) > 50))
     {
         auto it = modelNumGroups.find(a2->m_nModelIndex);
         if (it != modelNumGroups.end())
         {
             CWanted* wanted = FindPlayerWanted(-1);
             int wantedLevel = (wanted->m_nWantedLevel > 0) ? (wanted->m_nWantedLevel - 1) : (wanted->m_nWantedLevel);
-            int i = CGeneral::GetRandomNumberInRange(0, vehGroupWantedVariations[a2->m_nModelIndex - 400][wantedLevel].size());
-            if (!vehGroupWantedVariations[a2->m_nModelIndex - 400][wantedLevel].empty() && vehGroupWantedVariations[a2->m_nModelIndex - 400][wantedLevel][i] <= it->second)
-                currentOccupantsGroup = vehGroupWantedVariations[a2->m_nModelIndex - 400][wantedLevel][i]-1;
+            int i = CGeneral::GetRandomNumberInRange(0, vehGroupWantedVariations[a2->m_nModelIndex][wantedLevel].size());
+            if (!vehGroupWantedVariations[a2->m_nModelIndex][wantedLevel].empty() && vehGroupWantedVariations[a2->m_nModelIndex][wantedLevel][i] <= it->second)
+                currentOccupantsGroup = vehGroupWantedVariations[a2->m_nModelIndex][wantedLevel][i]-1;
             else
                 currentOccupantsGroup = CGeneral::GetRandomNumberInRange(0, it->second);
         }
@@ -700,16 +707,16 @@ void __cdecl SetUpDriverAndPassengersForVehicleHooked(CVehicle* car, int a3, int
     if (car == NULL)
         return;
 
-    if (vehUseOnlyGroups[car->m_nModelIndex-400] || (CGeneral::GetRandomNumberInRange(0, 100) > 50))
+    if (vehUseOnlyGroups.find(car->m_nModelIndex) != vehUseOnlyGroups.end() || (CGeneral::GetRandomNumberInRange(0, 100) > 50))
     {
         auto it = modelNumGroups.find(car->m_nModelIndex);
         if (it != modelNumGroups.end())
         {
             CWanted* wanted = FindPlayerWanted(-1);
             int wantedLevel = (wanted->m_nWantedLevel > 0) ? (wanted->m_nWantedLevel - 1) : (wanted->m_nWantedLevel);
-            int i = CGeneral::GetRandomNumberInRange(0, vehGroupWantedVariations[car->m_nModelIndex - 400][wantedLevel].size());
-            if (!vehGroupWantedVariations[car->m_nModelIndex - 400][wantedLevel].empty() && vehGroupWantedVariations[car->m_nModelIndex - 400][wantedLevel][i] <= it->second)
-                currentOccupantsGroup = vehGroupWantedVariations[car->m_nModelIndex - 400][wantedLevel][i]-1;
+            int i = CGeneral::GetRandomNumberInRange(0, vehGroupWantedVariations[car->m_nModelIndex][wantedLevel].size());
+            if (!vehGroupWantedVariations[car->m_nModelIndex][wantedLevel].empty() && vehGroupWantedVariations[car->m_nModelIndex][wantedLevel][i] <= it->second)
+                currentOccupantsGroup = vehGroupWantedVariations[car->m_nModelIndex][wantedLevel][i]-1;
             else
                 currentOccupantsGroup = CGeneral::GetRandomNumberInRange(0, it->second);
         }

@@ -399,102 +399,103 @@ public:
 
         for (int i = 0; i < 300; i++)
         {
-            std::vector<short> vec = iniLineParser(std::to_string(i), "Countryside", &iniPed);
+            std::string section = std::to_string(i);
+            std::vector<short> vec = iniLineParser(section, "Countryside", &iniPed);
             pedVariations[i][0] = vec;
             std::sort(pedVariations[i][0].begin(), pedVariations[i][0].end());
 
-            vec = iniLineParser(std::to_string(i), "LosSantos", &iniPed);
+            vec = iniLineParser(section, "LosSantos", &iniPed);
             pedVariations[i][1] = vec;
             std::sort(pedVariations[i][1].begin(), pedVariations[i][1].end());
 
-            vec = iniLineParser(std::to_string(i), "SanFierro", &iniPed);
+            vec = iniLineParser(section, "SanFierro", &iniPed);
             pedVariations[i][2] = vec;
             std::sort(pedVariations[i][2].begin(), pedVariations[i][2].end());
 
-            vec = iniLineParser(std::to_string(i), "LasVenturas", &iniPed);
+            vec = iniLineParser(section, "LasVenturas", &iniPed);
             pedVariations[i][3] = vec;
             std::sort(pedVariations[i][3].begin(), pedVariations[i][3].end());
 
-            vec = iniLineParser(std::to_string(i), "Global", &iniPed);
+            vec = iniLineParser(section, "Global", &iniPed);
             pedVariations[i][4] = vec;
             std::sort(pedVariations[i][4].begin(), pedVariations[i][4].end());
 
-            vec = iniLineParser(std::to_string(i), "Desert", &iniPed);
+            vec = iniLineParser(section, "Desert", &iniPed);
             pedVariations[i][5] = vec;
             std::sort(pedVariations[i][5].begin(), pedVariations[i][5].end());
 
-            vec = iniLineParser(std::to_string(i), "TierraRobada", &iniPed);
+            vec = iniLineParser(section, "TierraRobada", &iniPed);
             pedVariations[i][6] = vec;
             std::sort(pedVariations[i][6].begin(), pedVariations[i][6].end());
             vectorUnion(pedVariations[i][6], pedVariations[i][5], vec);
             pedVariations[i][6] = vec;
 
-            vec = iniLineParser(std::to_string(i), "BoneCounty", &iniPed);
+            vec = iniLineParser(section, "BoneCounty", &iniPed);
             pedVariations[i][7] = vec;
             std::sort(pedVariations[i][7].begin(), pedVariations[i][7].end());
             vectorUnion(pedVariations[i][7], pedVariations[i][5], vec);
             pedVariations[i][7] = vec;
 
-            vec = iniLineParser(std::to_string(i), "RedCounty", &iniPed);
+            vec = iniLineParser(section, "RedCounty", &iniPed);
             pedVariations[i][8] = vec;
             std::sort(pedVariations[i][8].begin(), pedVariations[i][8].end());
             vectorUnion(pedVariations[i][8], pedVariations[i][0], vec);
             pedVariations[i][8] = vec;
 
-            vec = iniLineParser(std::to_string(i), "Blueberry", &iniPed);
+            vec = iniLineParser(section, "Blueberry", &iniPed);
             pedVariations[i][9] = vec;
             std::sort(pedVariations[i][9].begin(), pedVariations[i][9].end());
             vectorUnion(pedVariations[i][9], pedVariations[i][8], vec);
             pedVariations[i][9] = vec;
 
-            vec = iniLineParser(std::to_string(i), "Montgomery", &iniPed);
+            vec = iniLineParser(section, "Montgomery", &iniPed);
             pedVariations[i][10] = vec;
             std::sort(pedVariations[i][10].begin(), pedVariations[i][10].end());
             vectorUnion(pedVariations[i][10], pedVariations[i][8], vec);
             pedVariations[i][10] = vec;
 
-            vec = iniLineParser(std::to_string(i), "Dillimore", &iniPed);
+            vec = iniLineParser(section, "Dillimore", &iniPed);
             pedVariations[i][11] = vec;
             std::sort(pedVariations[i][11].begin(), pedVariations[i][11].end());
             vectorUnion(pedVariations[i][11], pedVariations[i][8], vec);
             pedVariations[i][10] = vec;
 
-            vec = iniLineParser(std::to_string(i), "PalominoCreek", &iniPed);
+            vec = iniLineParser(section, "PalominoCreek", &iniPed);
             pedVariations[i][12] = vec;
             std::sort(pedVariations[i][12].begin(), pedVariations[i][12].end());
             vectorUnion(pedVariations[i][12], pedVariations[i][8], vec);
             pedVariations[i][10] = vec;
 
-            vec = iniLineParser(std::to_string(i), "FlintCounty", &iniPed);
+            vec = iniLineParser(section, "FlintCounty", &iniPed);
             pedVariations[i][13] = vec;
             std::sort(pedVariations[i][13].begin(), pedVariations[i][13].end());
             vectorUnion(pedVariations[i][13], pedVariations[i][0], vec);
             pedVariations[i][13] = vec;
 
-            vec = iniLineParser(std::to_string(i), "Whetstone", &iniPed);
+            vec = iniLineParser(section, "Whetstone", &iniPed);
             pedVariations[i][14] = vec;
             std::sort(pedVariations[i][14].begin(), pedVariations[i][14].end());
             vectorUnion(pedVariations[i][14], pedVariations[i][0], vec);
             pedVariations[i][14] = vec;
 
-            vec = iniLineParser(std::to_string(i), "AngelPine", &iniPed);
+            vec = iniLineParser(section, "AngelPine", &iniPed);
             pedVariations[i][15] = vec;
             std::sort(pedVariations[i][15].begin(), pedVariations[i][15].end());
             vectorUnion(pedVariations[i][15], pedVariations[i][14], vec);
             pedVariations[i][15] = vec;
         
 
-            vec = iniLineParser(std::to_string(i), "Wanted1", &iniPed);
+            vec = iniLineParser(section, "Wanted1", &iniPed);
             pedWantedVariations[i][0] = vec;
-            vec = iniLineParser(std::to_string(i), "Wanted2", &iniPed);
+            vec = iniLineParser(section, "Wanted2", &iniPed);
             pedWantedVariations[i][1] = vec;
-            vec = iniLineParser(std::to_string(i), "Wanted3", &iniPed);
+            vec = iniLineParser(section, "Wanted3", &iniPed);
             pedWantedVariations[i][2] = vec;
-            vec = iniLineParser(std::to_string(i), "Wanted4", &iniPed);
+            vec = iniLineParser(section, "Wanted4", &iniPed);
             pedWantedVariations[i][3] = vec;
-            vec = iniLineParser(std::to_string(i), "Wanted5", &iniPed);
+            vec = iniLineParser(section, "Wanted5", &iniPed);
             pedWantedVariations[i][4] = vec;
-            vec = iniLineParser(std::to_string(i), "Wanted6", &iniPed);
+            vec = iniLineParser(section, "Wanted6", &iniPed);
             pedWantedVariations[i][5] = vec;
 
         

@@ -24,6 +24,7 @@ int roadblockModel = -1;
 int sirenModel = -1;
 int lightsModel = -1;
 int currentOccupantsGroup = -1;
+int currentOccupantsModel = -1;
 
 int fireCmpModel = -1;
 
@@ -426,6 +427,7 @@ void __cdecl AddPoliceCarOccupantsHooked(CVehicle* a2, char a3)
             CWanted* wanted = FindPlayerWanted(-1);
             int wantedLevel = (wanted->m_nWantedLevel > 0) ? (wanted->m_nWantedLevel - 1) : (wanted->m_nWantedLevel);
             int i = CGeneral::GetRandomNumberInRange(0, vehGroupWantedVariations[a2->m_nModelIndex][wantedLevel].size());
+            currentOccupantsModel = a2->m_nModelIndex;
             if (!vehGroupWantedVariations[a2->m_nModelIndex][wantedLevel].empty() && vehGroupWantedVariations[a2->m_nModelIndex][wantedLevel][i] <= it->second)
                 currentOccupantsGroup = vehGroupWantedVariations[a2->m_nModelIndex][wantedLevel][i]-1;
             else
@@ -441,6 +443,7 @@ void __cdecl AddPoliceCarOccupantsHooked(CVehicle* a2, char a3)
 
     a2->m_nModelIndex = model;
     currentOccupantsGroup = -1;
+    currentOccupantsModel = -1;
 }
 
 template <unsigned int address>
@@ -621,9 +624,9 @@ DWORD __cdecl FindSpecificDriverModelForCar_ToUseHooked(int carModel)
 {
     auto it = vehDrivers.find(carModel);
     int replaceDriver = iniVeh.ReadInteger(std::to_string(carModel), "ReplaceDriver", 0);
-    if (currentOccupantsGroup > -1 && currentOccupantsGroup < 9)
+    if (currentOccupantsGroup > -1 && currentOccupantsGroup < 9 && currentOccupantsModel > -1)
     {
-        auto itGroup = vehDriverGroups[currentOccupantsGroup].find(carModel);
+        auto itGroup = vehDriverGroups[currentOccupantsGroup].find(currentOccupantsModel);
         if (itGroup != vehDriverGroups[currentOccupantsGroup].end())
         {
             int random = CGeneral::GetRandomNumberInRange(0, itGroup->second.size());
@@ -715,6 +718,7 @@ void __cdecl SetUpDriverAndPassengersForVehicleHooked(CVehicle* car, int a3, int
             CWanted* wanted = FindPlayerWanted(-1);
             int wantedLevel = (wanted->m_nWantedLevel > 0) ? (wanted->m_nWantedLevel - 1) : (wanted->m_nWantedLevel);
             int i = CGeneral::GetRandomNumberInRange(0, vehGroupWantedVariations[car->m_nModelIndex][wantedLevel].size());
+            currentOccupantsModel = car->m_nModelIndex;
             if (!vehGroupWantedVariations[car->m_nModelIndex][wantedLevel].empty() && vehGroupWantedVariations[car->m_nModelIndex][wantedLevel][i] <= it->second)
                 currentOccupantsGroup = vehGroupWantedVariations[car->m_nModelIndex][wantedLevel][i]-1;
             else
@@ -749,6 +753,7 @@ void __cdecl SetUpDriverAndPassengersForVehicleHooked(CVehicle* car, int a3, int
 
     car->m_nModelIndex = model;
     currentOccupantsGroup = -1;
+    currentOccupantsModel = -1;
 }
 
 template <unsigned int address>
@@ -795,9 +800,9 @@ CPed* __cdecl AddPedInCarHooked(CVehicle* a1, char a2, int a3, signed int a4, in
     {
         int replacePassenger = iniVeh.ReadInteger(std::to_string(a1->m_nModelIndex), "ReplacePassengers", 0);
         auto it = vehPassengers.find(a1->m_nModelIndex);
-        if (currentOccupantsGroup > -1 && currentOccupantsGroup < 9)
+        if (currentOccupantsGroup > -1 && currentOccupantsGroup < 9 && currentOccupantsModel > -1)
         {
-            auto itGroup = vehPassengerGroups[currentOccupantsGroup].find(a1->m_nModelIndex);
+            auto itGroup = vehPassengerGroups[currentOccupantsGroup].find(currentOccupantsModel);
             if (itGroup != vehPassengerGroups[currentOccupantsGroup].end())
             {
                 random = CGeneral::GetRandomNumberInRange(0, itGroup->second.size());

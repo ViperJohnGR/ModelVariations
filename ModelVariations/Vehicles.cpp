@@ -171,112 +171,63 @@ void readVehicleIni()
 
     for (int i = 400; i < 612; i++)
     {
-        if (iniVeh.ReadInteger(std::to_string(i), "ChangeOnlyParked", 0) == 1)
-            parkedCars.insert(i);
+        std::string section = std::to_string(i);
+        if (iniVeh.data.find(section) != iniVeh.data.end())
+        {
+            if (iniVeh.ReadInteger(section, "ChangeOnlyParked", 0) == 1)
+                parkedCars.insert(i);
 
-        std::vector<short> vec = iniLineParser(std::to_string(i), "Countryside", &iniVeh);
-        vehVariations[i - 400][0] = vec;
-        std::sort(vehVariations[i - 400][0].begin(), vehVariations[i - 400][0].end());
+            vehVariations[i - 400][0] = iniLineParser(section, "Countryside", &iniVeh);
+            vehVariations[i - 400][1] = iniLineParser(section, "LosSantos", &iniVeh);
+            vehVariations[i - 400][2] = iniLineParser(section, "SanFierro", &iniVeh);
+            vehVariations[i - 400][3] = iniLineParser(section, "LasVenturas", &iniVeh);
+            vehVariations[i - 400][4] = iniLineParser(section, "Global", &iniVeh);
+            vehVariations[i - 400][5] = iniLineParser(section, "Desert", &iniVeh);
 
-        vec = iniLineParser(std::to_string(i), "LosSantos", &iniVeh);
-        vehVariations[i - 400][1] = vec;
-        std::sort(vehVariations[i - 400][1].begin(), vehVariations[i - 400][1].end());
+            std::vector<short> vec = iniLineParser(section, "TierraRobada", &iniVeh);
+            vehVariations[i - 400][6] = vectorUnion(vec, vehVariations[i - 400][5]);
 
-        vec = iniLineParser(std::to_string(i), "SanFierro", &iniVeh);
-        vehVariations[i - 400][2] = vec;
-        std::sort(vehVariations[i - 400][2].begin(), vehVariations[i - 400][2].end());
+            vec = iniLineParser(section, "BoneCounty", &iniVeh);
+            vehVariations[i - 400][7] = vectorUnion(vec, vehVariations[i - 400][5]);
 
-        vec = iniLineParser(std::to_string(i), "LasVenturas", &iniVeh);
-        vehVariations[i - 400][3] = vec;
-        std::sort(vehVariations[i - 400][3].begin(), vehVariations[i - 400][3].end());
+            vec = iniLineParser(section, "RedCounty", &iniVeh);
+            vehVariations[i - 400][8] = vectorUnion(vec, vehVariations[i - 400][0]);
 
-        vec = iniLineParser(std::to_string(i), "Global", &iniVeh);
-        vehVariations[i - 400][4] = vec;
-        std::sort(vehVariations[i - 400][4].begin(), vehVariations[i - 400][4].end());
+            vec = iniLineParser(section, "Blueberry", &iniVeh);
+            vehVariations[i - 400][9] = vectorUnion(vec, vehVariations[i - 400][8]);
 
-        vec = iniLineParser(std::to_string(i), "Desert", &iniVeh);
-        vehVariations[i - 400][5] = vec;
-        std::sort(vehVariations[i - 400][5].begin(), vehVariations[i - 400][5].end());
+            vec = iniLineParser(section, "Montgomery", &iniVeh);
+            vehVariations[i - 400][10] = vectorUnion(vec, vehVariations[i - 400][8]);
 
-        vec = iniLineParser(std::to_string(i), "TierraRobada", &iniVeh);
-        vehVariations[i - 400][6] = vec;
-        std::sort(vehVariations[i - 400][6].begin(), vehVariations[i - 400][6].end());
-        vectorUnion(vehVariations[i - 400][6], vehVariations[i - 400][5], vec);
-        vehVariations[i - 400][6] = vec;
+            vec = iniLineParser(section, "Dillimore", &iniVeh);
+            vehVariations[i - 400][11] = vectorUnion(vec, vehVariations[i - 400][8]);
 
-        vec = iniLineParser(std::to_string(i), "BoneCounty", &iniVeh);
-        vehVariations[i - 400][7] = vec;
-        std::sort(vehVariations[i - 400][7].begin(), vehVariations[i - 400][7].end());
-        vectorUnion(vehVariations[i - 400][7], vehVariations[i - 400][5], vec);
-        vehVariations[i - 400][7] = vec;
+            vec = iniLineParser(section, "PalominoCreek", &iniVeh);
+            vehVariations[i - 400][12] = vectorUnion(vec, vehVariations[i - 400][8]);
 
-        vec = iniLineParser(std::to_string(i), "RedCounty", &iniVeh);
-        vehVariations[i - 400][8] = vec;
-        std::sort(vehVariations[i - 400][8].begin(), vehVariations[i - 400][8].end());
-        vectorUnion(vehVariations[i - 400][8], vehVariations[i - 400][0], vec);
-        vehVariations[i - 400][8] = vec;
+            vec = iniLineParser(section, "FlintCounty", &iniVeh);
+            vehVariations[i - 400][13] = vectorUnion(vec, vehVariations[i - 400][0]);
 
-        vec = iniLineParser(std::to_string(i), "Blueberry", &iniVeh);
-        vehVariations[i - 400][9] = vec;
-        std::sort(vehVariations[i - 400][9].begin(), vehVariations[i - 400][9].end());
-        vectorUnion(vehVariations[i-400][9], vehVariations[i - 400][8], vec);
-        vehVariations[i - 400][9] = vec;
+            vec = iniLineParser(section, "Whetstone", &iniVeh);
+            vehVariations[i - 400][14] = vectorUnion(vec, vehVariations[i - 400][0]);
 
-        vec = iniLineParser(std::to_string(i), "Montgomery", &iniVeh);
-        vehVariations[i - 400][10] = vec;
-        std::sort(vehVariations[i - 400][10].begin(), vehVariations[i - 400][10].end());
-        vectorUnion(vehVariations[i - 400][10], vehVariations[i - 400][8], vec);
-        vehVariations[i - 400][10] = vec;
-
-        vec = iniLineParser(std::to_string(i), "Dillimore", &iniVeh);
-        vehVariations[i - 400][11] = vec;
-        std::sort(vehVariations[i - 400][11].begin(), vehVariations[i - 400][11].end());
-        vectorUnion(vehVariations[i - 400][11], vehVariations[i - 400][8], vec);
-        vehVariations[i - 400][11] = vec;
-
-        vec = iniLineParser(std::to_string(i), "PalominoCreek", &iniVeh);
-        vehVariations[i - 400][12] = vec;
-        std::sort(vehVariations[i - 400][12].begin(), vehVariations[i - 400][12].end());
-        vectorUnion(vehVariations[i - 400][12], vehVariations[i - 400][8], vec);
-        vehVariations[i - 400][12] = vec;
-
-        vec = iniLineParser(std::to_string(i), "FlintCounty", &iniVeh);
-        vehVariations[i - 400][13] = vec;
-        std::sort(vehVariations[i - 400][13].begin(), vehVariations[i - 400][13].end());
-        vectorUnion(vehVariations[i - 400][13], vehVariations[i - 400][0], vec);
-        vehVariations[i - 400][13] = vec;
-
-        vec = iniLineParser(std::to_string(i), "Whetstone", &iniVeh);
-        vehVariations[i - 400][14] = vec;
-        std::sort(vehVariations[i - 400][14].begin(), vehVariations[i - 400][14].end());
-        vectorUnion(vehVariations[i - 400][14], vehVariations[i - 400][0], vec);
-        vehVariations[i - 400][14] = vec;
-
-        vec = iniLineParser(std::to_string(i), "AngelPine", &iniVeh);
-        vehVariations[i - 400][15] = vec;
-        std::sort(vehVariations[i - 400][15].begin(), vehVariations[i - 400][15].end());
-        vectorUnion(vehVariations[i - 400][15], vehVariations[i - 400][14], vec);
-        vehVariations[i - 400][15] = vec;
+            vec = iniLineParser(section, "AngelPine", &iniVeh);
+            vehVariations[i - 400][15] = vectorUnion(vec, vehVariations[i - 400][14]);
 
 
-        vec = iniLineParser(std::to_string(i), "Wanted1", &iniVeh);
-        vehWantedVariations[i - 400][0] = vec;
-        vec = iniLineParser(std::to_string(i), "Wanted2", &iniVeh);
-        vehWantedVariations[i - 400][1] = vec;
-        vec = iniLineParser(std::to_string(i), "Wanted3", &iniVeh);
-        vehWantedVariations[i - 400][2] = vec;
-        vec = iniLineParser(std::to_string(i), "Wanted4", &iniVeh);
-        vehWantedVariations[i - 400][3] = vec;
-        vec = iniLineParser(std::to_string(i), "Wanted5", &iniVeh);
-        vehWantedVariations[i - 400][4] = vec;
-        vec = iniLineParser(std::to_string(i), "Wanted6", &iniVeh);
-        vehWantedVariations[i - 400][5] = vec;
+            vehWantedVariations[i - 400][0] = iniLineParser(section, "Wanted1", &iniVeh);
+            vehWantedVariations[i - 400][1] = iniLineParser(section, "Wanted2", &iniVeh);
+            vehWantedVariations[i - 400][2] = iniLineParser(section, "Wanted3", &iniVeh);
+            vehWantedVariations[i - 400][3] = iniLineParser(section, "Wanted4", &iniVeh);
+            vehWantedVariations[i - 400][4] = iniLineParser(section, "Wanted5", &iniVeh);
+            vehWantedVariations[i - 400][5] = iniLineParser(section, "Wanted6", &iniVeh);
 
 
-        for (int j = 0; j < 16; j++)
-            for (int k = 0; k < (int)(vehVariations[i-400][j].size()); k++)
-                if (vehVariations[i-400][j][k] > 0 && vehVariations[i-400][j][k] < 32000  && vehVariations[i-400][j][k] != i && !(IdExists(vehInheritExclude, vehVariations[i - 400][j][k])))
-                    vehOriginalModels.insert({ vehVariations[i - 400][j][k], i });
+            for (int j = 0; j < 16; j++)
+                for (int k = 0; k < (int)(vehVariations[i - 400][j].size()); k++)
+                    if (vehVariations[i - 400][j][k] > 0 && vehVariations[i - 400][j][k] < 32000 && vehVariations[i - 400][j][k] != i && !(IdExists(vehInheritExclude, vehVariations[i - 400][j][k])))
+                        vehOriginalModels.insert({ vehVariations[i - 400][j][k], i });
+        }
     }
 
     enableLights = iniVeh.ReadInteger("Settings", "EnableLights", 0);
@@ -301,17 +252,28 @@ void readVehicleIni()
             }
 
             std::vector<short> vec = iniLineParser(section, "Wanted1", &iniVeh, true);
-            if (!vec.empty()) vehGroupWantedVariations[i][0] = vec;
+            if (!vec.empty()) 
+                vehGroupWantedVariations[i][0] = vec;
+
             vec = iniLineParser(section, "Wanted2", &iniVeh, true);
-            if (!vec.empty()) vehGroupWantedVariations[i][1] = vec;
+            if (!vec.empty()) 
+                vehGroupWantedVariations[i][1] = vec;
+
             vec = iniLineParser(section, "Wanted3", &iniVeh, true);
-            if (!vec.empty()) vehGroupWantedVariations[i][2] = vec;
+            if (!vec.empty()) 
+                vehGroupWantedVariations[i][2] = vec;
+
             vec = iniLineParser(section, "Wanted4", &iniVeh, true);
-            if (!vec.empty()) vehGroupWantedVariations[i][3] = vec;
+            if (!vec.empty()) 
+                vehGroupWantedVariations[i][3] = vec;
+
             vec = iniLineParser(section, "Wanted5", &iniVeh, true);
-            if (!vec.empty()) vehGroupWantedVariations[i][4] = vec;
+            if (!vec.empty()) 
+                vehGroupWantedVariations[i][4] = vec;
+
             vec = iniLineParser(section, "Wanted6", &iniVeh, true);
-            if (!vec.empty()) vehGroupWantedVariations[i][5] = vec;
+            if (!vec.empty()) 
+                vehGroupWantedVariations[i][5] = vec;
 
 
             int numGroups = 0;

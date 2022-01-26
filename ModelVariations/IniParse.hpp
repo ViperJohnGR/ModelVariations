@@ -3,6 +3,19 @@
 #include <vector>
 #include "IniReader/IniReader.h"
 
+inline std::vector<short> vectorUnion(std::vector<short>& vec1, std::vector<short>& vec2)
+{
+    std::vector<short> vec;
+    std::set_union(vec1.begin(), vec1.end(), vec2.begin(), vec2.end(), std::back_inserter(vec));
+    return vec;
+}
+
+inline void vectorUnion(std::vector<short>& vec1, std::vector<short>& vec2, std::vector<short>& dest)
+{
+    dest.clear();
+    std::set_union(vec1.begin(), vec1.end(), vec2.begin(), vec2.end(), std::back_inserter(dest));
+}
+
 inline bool fileExists(const char* filename)
 {
     FILE* fp = fopen(filename, "rb");
@@ -67,5 +80,6 @@ inline std::vector<short> iniLineParser(std::string section, std::string key, CI
 
         delete[] tkString;
     }
+    std::sort(retVector.begin(), retVector.end());
     return retVector;
 }

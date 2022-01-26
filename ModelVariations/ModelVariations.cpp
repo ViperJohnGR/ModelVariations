@@ -50,7 +50,7 @@ std::map<short, std::vector<short>> vehPassengerGroups[9];
 std::map<short, BYTE> modelNumGroups;
 std::map<unsigned int, std::pair<void*, void*>> hookedCalls;
 std::map<short, std::pair<CVector, float>> LightPositions;
-std::map<short, int> pedFramesSinceLastSpawned;
+std::map<short, int> pedTimeSinceLastSpawned;
 std::map<short, short> pedOriginalModels;
 std::map<short, std::array<std::vector<short>, 6>> vehGroupWantedVariations;
 
@@ -59,8 +59,9 @@ std::set<short> vehUseOnlyGroups;
 
 std::stack<CPed*> pedStack;
 
-std::vector<short> vehCurrentVariations[212];
+std::vector<short> cloneRemoverExclusions;
 std::vector<short> pedCurrentVariations[300];
+std::vector<short> vehCurrentVariations[212];
 std::vector<short> vehCarGenExclude;
 std::vector<short> vehInheritExclude;
 
@@ -83,6 +84,7 @@ int disablePayAndSpray = 0;
 int enableSpecialFeatures = 0;
 int changeScriptedCars = 0;
 int enableCloneRemover = 0;
+int cloneRemoverVehicleOccupants = 0;
 int cloneRemoverIncludeVariations = 0;
 int spawnDelay = 3;
 
@@ -107,12 +109,6 @@ static int getVariationOriginalModel(int modelIndex)
         return it->second;
 
     return originalModel;
-}
-
-void vectorUnion(std::vector<short> &vec1, std::vector<short> &vec2, std::vector<short> &dest)
-{
-    dest.clear();
-    std::set_union(vec1.begin(), vec1.end(), vec2.begin(), vec2.end(), std::back_inserter(dest));
 }
 
 bool isPlayerInDesert()
@@ -227,7 +223,6 @@ void updateVariations(CZone *zInfo, CIniReader *iniPed, CIniReader *iniVeh)
         if (!vecPed.empty())
         {
             std::vector<short> vec2;
-            std::sort(vecPed.begin(), vecPed.end());
             vectorUnion(pedCurrentVariations[i], vecPed, vec2);
             pedCurrentVariations[i] = vec2;
         }
@@ -236,7 +231,6 @@ void updateVariations(CZone *zInfo, CIniReader *iniPed, CIniReader *iniVeh)
         if (!vecPed.empty())
         {
             std::vector<short> vec2;
-            std::sort(vecPed.begin(), vecPed.end());
             vectorUnion(pedCurrentVariations[i], vecPed, vec2);
             pedCurrentVariations[i] = vec2;
         }
@@ -263,7 +257,6 @@ void updateVariations(CZone *zInfo, CIniReader *iniPed, CIniReader *iniVeh)
             if (!vec.empty())
             {
                 std::vector<short> vec2;
-                std::sort(vec.begin(), vec.end());
                 vectorUnion(vehCurrentVariations[i], vec, vec2);
                 vehCurrentVariations[i] = vec2;
             }
@@ -327,34 +320,6 @@ void __fastcall UpdateRpHAnimHooked(CEntity* entity)
     modelIndex = -1;
 }
 
-template <unsigned int address>
-CPed* __cdecl AddPedHooked(ePedType pedType, int modelIndex, CVector* posn, bool unknown)
-{
-    auto it = pedFramesSinceLastSpawned.find((cloneRemoverIncludeVariations == 1) ? getVariationOriginalModel(modelIndex) : modelIndex);
-    if (it != pedFramesSinceLastSpawned.end())
-    {
-        CPed* ped = CPopulation::AddPed(pedType, modelIndex, { 0.0F, 0.0F, 0.0F }, unknown);
-        ped->m_nPedFlags.bDontRender = 1;
-        ped->m_nPedFlags.bFadeOut = 1;
-        return ped;
-    }
-
-    pedFramesSinceLastSpawned.insert({ ((cloneRemoverIncludeVariations == 1) ? getVariationOriginalModel(modelIndex) : modelIndex), clock() });
-    if (CPools::ms_pPedPool)
-        for (CPed* ped : CPools::ms_pPedPool)
-            if (ped)
-                if ((cloneRemoverIncludeVariations == 1) ? (getVariationOriginalModel(ped->m_nModelIndex) == getVariationOriginalModel(modelIndex)) : (ped->m_nModelIndex == modelIndex))
-                {
-                    CPed* ped2 = CPopulation::AddPed(pedType, modelIndex, { 0.0F, 0.0F, 0.0F }, unknown);
-                    ped2->m_nPedFlags.bDontRender = 1;
-                    ped2->m_nPedFlags.bFadeOut = 1;
-                    return ped2;
-                }
-
-
-    return CPopulation::AddPed(pedType, modelIndex, *posn, unknown);
-}
-
 class ModelVariations {
 public:
     ModelVariations() {
@@ -382,7 +347,7 @@ public:
                 char exePath[256] = {};
                 GetModuleFileName(NULL, exePath, 255);
                 char* exeName = PathFindFileName(exePath);
-                int filesize = getFilesize(exeName);
+                int filesize = getFilesize(exePath);
                 std::string hash = hashFile(exePath);
                 if (hash == exeHashes[0])
                     logfile << "Supported exe detected: 1.0 US HOODLUM" << std::endl;
@@ -400,127 +365,85 @@ public:
         for (int i = 0; i < 300; i++)
         {
             std::string section = std::to_string(i);
-            std::vector<short> vec = iniLineParser(section, "Countryside", &iniPed);
-            pedVariations[i][0] = vec;
-            std::sort(pedVariations[i][0].begin(), pedVariations[i][0].end());
 
-            vec = iniLineParser(section, "LosSantos", &iniPed);
-            pedVariations[i][1] = vec;
-            std::sort(pedVariations[i][1].begin(), pedVariations[i][1].end());
+            if (iniPed.data.find(section) != iniPed.data.end())
+            {
+                pedVariations[i][0] = iniLineParser(section, "Countryside", &iniPed);
+                pedVariations[i][1] = iniLineParser(section, "LosSantos", &iniPed);
+                pedVariations[i][2] = iniLineParser(section, "SanFierro", &iniPed);
+                pedVariations[i][3] = iniLineParser(section, "LasVenturas", &iniPed);
+                pedVariations[i][4] = iniLineParser(section, "Global", &iniPed);
+                pedVariations[i][5] = iniLineParser(section, "Desert", &iniPed);
 
-            vec = iniLineParser(section, "SanFierro", &iniPed);
-            pedVariations[i][2] = vec;
-            std::sort(pedVariations[i][2].begin(), pedVariations[i][2].end());
+                std::vector<short> vec = iniLineParser(section, "TierraRobada", &iniPed);
+                pedVariations[i][6] = vectorUnion(vec, pedVariations[i][5]);
 
-            vec = iniLineParser(section, "LasVenturas", &iniPed);
-            pedVariations[i][3] = vec;
-            std::sort(pedVariations[i][3].begin(), pedVariations[i][3].end());
+                vec = iniLineParser(section, "BoneCounty", &iniPed);
+                pedVariations[i][7] = vectorUnion(vec, pedVariations[i][5]);
 
-            vec = iniLineParser(section, "Global", &iniPed);
-            pedVariations[i][4] = vec;
-            std::sort(pedVariations[i][4].begin(), pedVariations[i][4].end());
+                vec = iniLineParser(section, "RedCounty", &iniPed);
+                pedVariations[i][8] = vectorUnion(vec, pedVariations[i][0]);
 
-            vec = iniLineParser(section, "Desert", &iniPed);
-            pedVariations[i][5] = vec;
-            std::sort(pedVariations[i][5].begin(), pedVariations[i][5].end());
+                vec = iniLineParser(section, "Blueberry", &iniPed);
+                pedVariations[i][9] = vectorUnion(vec, pedVariations[i][8]);
 
-            vec = iniLineParser(section, "TierraRobada", &iniPed);
-            pedVariations[i][6] = vec;
-            std::sort(pedVariations[i][6].begin(), pedVariations[i][6].end());
-            vectorUnion(pedVariations[i][6], pedVariations[i][5], vec);
-            pedVariations[i][6] = vec;
+                vec = iniLineParser(section, "Montgomery", &iniPed);
+                pedVariations[i][10] = vectorUnion(vec, pedVariations[i][8]);
 
-            vec = iniLineParser(section, "BoneCounty", &iniPed);
-            pedVariations[i][7] = vec;
-            std::sort(pedVariations[i][7].begin(), pedVariations[i][7].end());
-            vectorUnion(pedVariations[i][7], pedVariations[i][5], vec);
-            pedVariations[i][7] = vec;
+                vec = iniLineParser(section, "Dillimore", &iniPed);
+                pedVariations[i][11] = vectorUnion(vec, pedVariations[i][8]);
 
-            vec = iniLineParser(section, "RedCounty", &iniPed);
-            pedVariations[i][8] = vec;
-            std::sort(pedVariations[i][8].begin(), pedVariations[i][8].end());
-            vectorUnion(pedVariations[i][8], pedVariations[i][0], vec);
-            pedVariations[i][8] = vec;
+                vec = iniLineParser(section, "PalominoCreek", &iniPed);
+                pedVariations[i][12] = vectorUnion(vec, pedVariations[i][8]);
 
-            vec = iniLineParser(section, "Blueberry", &iniPed);
-            pedVariations[i][9] = vec;
-            std::sort(pedVariations[i][9].begin(), pedVariations[i][9].end());
-            vectorUnion(pedVariations[i][9], pedVariations[i][8], vec);
-            pedVariations[i][9] = vec;
+                vec = iniLineParser(section, "FlintCounty", &iniPed);
+                pedVariations[i][13] = vectorUnion(vec, pedVariations[i][0]);
 
-            vec = iniLineParser(section, "Montgomery", &iniPed);
-            pedVariations[i][10] = vec;
-            std::sort(pedVariations[i][10].begin(), pedVariations[i][10].end());
-            vectorUnion(pedVariations[i][10], pedVariations[i][8], vec);
-            pedVariations[i][10] = vec;
+                vec = iniLineParser(section, "Whetstone", &iniPed);
+                pedVariations[i][14] = vectorUnion(vec, pedVariations[i][0]);
 
-            vec = iniLineParser(section, "Dillimore", &iniPed);
-            pedVariations[i][11] = vec;
-            std::sort(pedVariations[i][11].begin(), pedVariations[i][11].end());
-            vectorUnion(pedVariations[i][11], pedVariations[i][8], vec);
-            pedVariations[i][10] = vec;
+                vec = iniLineParser(section, "AngelPine", &iniPed);
+                pedVariations[i][15] = vectorUnion(vec, pedVariations[i][14]);
 
-            vec = iniLineParser(section, "PalominoCreek", &iniPed);
-            pedVariations[i][12] = vec;
-            std::sort(pedVariations[i][12].begin(), pedVariations[i][12].end());
-            vectorUnion(pedVariations[i][12], pedVariations[i][8], vec);
-            pedVariations[i][10] = vec;
 
-            vec = iniLineParser(section, "FlintCounty", &iniPed);
-            pedVariations[i][13] = vec;
-            std::sort(pedVariations[i][13].begin(), pedVariations[i][13].end());
-            vectorUnion(pedVariations[i][13], pedVariations[i][0], vec);
-            pedVariations[i][13] = vec;
+                pedWantedVariations[i][0] = iniLineParser(section, "Wanted1", &iniPed);
+                pedWantedVariations[i][1] = iniLineParser(section, "Wanted2", &iniPed);
+                pedWantedVariations[i][2] = iniLineParser(section, "Wanted3", &iniPed);
+                pedWantedVariations[i][3] = iniLineParser(section, "Wanted4", &iniPed);
+                pedWantedVariations[i][4] = iniLineParser(section, "Wanted5", &iniPed);
+                pedWantedVariations[i][5] = iniLineParser(section, "Wanted6", &iniPed);
 
-            vec = iniLineParser(section, "Whetstone", &iniPed);
-            pedVariations[i][14] = vec;
-            std::sort(pedVariations[i][14].begin(), pedVariations[i][14].end());
-            vectorUnion(pedVariations[i][14], pedVariations[i][0], vec);
-            pedVariations[i][14] = vec;
 
-            vec = iniLineParser(section, "AngelPine", &iniPed);
-            pedVariations[i][15] = vec;
-            std::sort(pedVariations[i][15].begin(), pedVariations[i][15].end());
-            vectorUnion(pedVariations[i][15], pedVariations[i][14], vec);
-            pedVariations[i][15] = vec;
-        
-
-            vec = iniLineParser(section, "Wanted1", &iniPed);
-            pedWantedVariations[i][0] = vec;
-            vec = iniLineParser(section, "Wanted2", &iniPed);
-            pedWantedVariations[i][1] = vec;
-            vec = iniLineParser(section, "Wanted3", &iniPed);
-            pedWantedVariations[i][2] = vec;
-            vec = iniLineParser(section, "Wanted4", &iniPed);
-            pedWantedVariations[i][3] = vec;
-            vec = iniLineParser(section, "Wanted5", &iniPed);
-            pedWantedVariations[i][4] = vec;
-            vec = iniLineParser(section, "Wanted6", &iniPed);
-            pedWantedVariations[i][5] = vec;
-
-        
-            for (int j = 0; j < 16; j++)
-                for (int k = 0; k < (int)(pedVariations[i][j].size()); k++)
-                    if (pedVariations[i][j][k] > 0 && pedVariations[i][j][k] < 32000 && pedVariations[i][j][k] != i)
-                        pedOriginalModels.insert({ pedVariations[i][j][k], i });
+                for (int j = 0; j < 16; j++)
+                    for (int k = 0; k < (int)(pedVariations[i][j].size()); k++)
+                        if (pedVariations[i][j][k] > 0 && pedVariations[i][j][k] < 32000 && pedVariations[i][j][k] != i)
+                            pedOriginalModels.insert({ pedVariations[i][j][k], i });
+            }
         }
 
         if (enableLog == 1)
         {
             if (!fileExists("ModelVariations_Peds.ini"))
-                logfile << "ModelVariations_Peds.ini not found!\n" << std::endl;
+                logfile << "\nModelVariations_Peds.ini not found!\n" << std::endl;
             else
-                logfile << "--ModelVariations_Peds.ini--\n" << fileToString("ModelVariations_Peds.ini") << std::endl;
+                logfile <<  "##############################\n"
+                            "## ModelVariations_Peds.ini ##\n" 
+                            "##############################\n" << fileToString("ModelVariations_Peds.ini") << std::endl;
 
             if (!fileExists("ModelVariations_PedWeapons.ini"))
-                logfile << "ModelVariations_PedWeapons.ini not found!\n" << std::endl;
+                logfile << "\nModelVariations_PedWeapons.ini not found!\n" << std::endl;
             else
-                logfile << "--ModelVariations_PedWeapons.ini--\n" << fileToString("ModelVariations_PedWeapons.ini") << std::endl;
+                logfile << "####################################\n"
+                           "## ModelVariations_PedWeapons.ini ##\n" 
+                           "####################################\n" << fileToString("ModelVariations_PedWeapons.ini") << std::endl;
 
             if (!fileExists("ModelVariations_Vehicles.ini"))
-                logfile << "ModelVariations_Vehicles.ini not found!\n" << std::endl;
+                logfile << "\nModelVariations_Vehicles.ini not found!\n" << std::endl;
             else
-                logfile << "--ModelVariations_Vehicles.ini--\n" << fileToString("ModelVariations_Vehicles.ini") << std::endl;
+                logfile << "##################################\n"
+                           "## ModelVariations_Vehicles.ini ##\n" 
+                           "##################################\n" << fileToString("ModelVariations_Vehicles.ini") << std::endl;
+
 
             logfile << std::endl;
         }
@@ -531,15 +454,12 @@ public:
             installVehicleHooks();
         }
 
+        enableCloneRemover = iniPed.ReadInteger("Settings", "EnableCloneRemover", 0);
         cloneRemoverIncludeVariations = iniPed.ReadInteger("Settings", "CloneRemoverIncludeVariations", 0);
+        cloneRemoverVehicleOccupants = iniPed.ReadInteger("Settings", "CloneRemoverIncludeVehicleOccupants", 0);
+        cloneRemoverExclusions = iniLineParser("Settings", "CloneRemoverExcludeModels", &iniPed);
         spawnDelay = iniPed.ReadInteger("Settings", "SpawnDelay", 3);
-        if ((enableCloneRemover = iniPed.ReadInteger("Settings", "EnableCloneRemover", 0)) == 1)
-        {
-            hookCall(0x614D26, AddPedHooked<0x614D26>);
-            hookCall(0x614D79, AddPedHooked<0x614D79>);
-            hookCall(0x6153AB, AddPedHooked<0x6153AB>);
-            hookCall(0x6142FB, AddPedHooked<0x6142FB>);
-        }
+        
 
         hookCall(0x5E49EF, UpdateRpHAnimHooked<0x5E49EF>);
 
@@ -608,7 +528,7 @@ public:
                     CStreaming::LoadAllRequestedModels(false);
                     unsigned short index = ped->m_nModelIndex;
                     ped->DeleteRwObject();
-                    ((CEntity*)ped)->SetModelIndex(variationModel);
+                    (reinterpret_cast<CEntity*>(ped))->SetModelIndex(variationModel);
                     ped->m_nModelIndex = index;
                     modelIndex = variationModel;
                 }
@@ -628,12 +548,12 @@ public:
 
             if (enableCloneRemover == 1)
             {
-                auto it = pedFramesSinceLastSpawned.begin();
-                while (it != pedFramesSinceLastSpawned.end())
+                auto it = pedTimeSinceLastSpawned.begin();
+                while (it != pedTimeSinceLastSpawned.end())
                     if ((clock() - it->second) / CLOCKS_PER_SEC < spawnDelay)
                         it++;
                     else
-                        it = pedFramesSinceLastSpawned.erase(it);
+                        it = pedTimeSinceLastSpawned.erase(it);
             }
 
             CVector pPos = FindPlayerCoors(-1);
@@ -653,7 +573,7 @@ public:
                     logfile << "currentInterior = " << currentInterior << " lastInterior = " << lastInterior << "\n" << std::endl;
                 }
 
-                strncpy(lastInterior, currentInterior, 16);
+                strncpy(lastInterior, currentInterior, 15);
                 updateVariations(zInfo, &iniPed, &iniVeh);
 
                 if (enableLog == 1)
@@ -703,57 +623,86 @@ public:
 
             if (enableVehicles == 1)
                 hookTaxi();
+
             while (!pedStack.empty())
             {
-                CPed* ped = pedStack.top();
+                CPed *ped = pedStack.top();
                 pedStack.pop();
-                
-                for (int i = 0; i < 13; i++)
+                bool pedRemoved = false;
+
+                if (enableCloneRemover == 1 && ped->m_nCreatedBy != 2 && CPools::ms_pPedPool)
                 {
-                    if (ped->m_aWeapons[i].m_nType > 0)
+                    if (pedTimeSinceLastSpawned.find((cloneRemoverIncludeVariations == 1) ? getVariationOriginalModel(ped->m_nModelIndex) : ped->m_nModelIndex) != pedTimeSinceLastSpawned.end())
                     {
-                        bool slotChanged = false;
-                        bool wepChanged = false;
-
-                        std::string slot = "SLOT" + std::to_string(i);
-                        std::vector<short> vec = iniLineParser(std::to_string(ped->m_nModelIndex), slot, &iniWeap);
-                        if (!vec.empty())
+                        if (ped->m_pVehicle == NULL)
                         {
-                            int activeSlot = ped->m_nActiveWeaponSlot;
-                            int random = CGeneral::GetRandomNumberInRange(0, vec.size());
-
-                            ped->ClearWeapon(ped->m_aWeapons[i].m_nType);
-
-                            CStreaming::RequestModel(CWeaponInfo::GetWeaponInfo((eWeaponType)(vec[random]), 0)->m_nModelId1, 2);
-                            CStreaming::LoadAllRequestedModels(false);
-
-                            ped->GiveWeapon((eWeaponType)(vec[random]), 9999, 0);
-                            ped->SetCurrentWeapon(activeSlot);
-                            slotChanged = true;
+                            ped->m_nPedFlags.bDontRender = 1;
+                            ped->m_nPedFlags.bFadeOut = 1;
+                            pedRemoved = true;
                         }
-
-                        std::string wep = "WEAPON" + std::to_string(ped->m_aWeapons[i].m_nType);
-                        vec = iniLineParser(std::to_string(ped->m_nModelIndex), wep, &iniWeap);
-                        if (!vec.empty())
+                        else if (cloneRemoverVehicleOccupants == 1)
                         {
-                            int activeSlot = ped->m_nActiveWeaponSlot;
-                            int random = CGeneral::GetRandomNumberInRange(0, vec.size());
+                            for (CPed* occupant : ped->m_pVehicle->m_apPassengers)
+                                if (occupant != NULL)
+                                {
+                                    occupant->m_nPedFlags.bDontRender = 1;
+                                    occupant->m_nPedFlags.bFadeOut = 1;
+                                }
 
-                            ped->ClearWeapon(ped->m_aWeapons[i].m_nType);
-
-                            CStreaming::RequestModel(CWeaponInfo::GetWeaponInfo((eWeaponType)(vec[random]), 0)->m_nModelId1, 2);
-                            CStreaming::LoadAllRequestedModels(false);
-
-                            ped->GiveWeapon((eWeaponType)(vec[random]), 9999, 0);
-                            ped->SetCurrentWeapon(activeSlot);
-                            wepChanged = true;
+                            ped->m_pVehicle->m_nVehicleFlags.bFadeOut = 1;
+                            ped->m_nPedFlags.bDontRender = 1;
+                            ped->m_nPedFlags.bFadeOut = 1;
+                            pedRemoved = true;
                         }
-                        
-                        if ((slotChanged && CGeneral::GetRandomNumberInRange(0, 100) > 50) || !slotChanged)
+                    }
+
+                    if (!pedRemoved)
+                    {
+                        pedTimeSinceLastSpawned.insert({ ((cloneRemoverIncludeVariations == 1) ? getVariationOriginalModel(ped->m_nModelIndex) : ped->m_nModelIndex), clock() });
+                        for (CPed* ped2 : CPools::ms_pPedPool)
+                            if (ped2 != NULL  &&  ped2 != ped  &&  ((cloneRemoverIncludeVariations == 1) ?
+                                                                    (getVariationOriginalModel(ped->m_nModelIndex) == getVariationOriginalModel(ped2->m_nModelIndex)) :
+                                                                    (ped->m_nModelIndex == ped2->m_nModelIndex)) &&
+                                ped->m_nModelIndex == ped2->m_nModelIndex  &&  ped2->m_nModelIndex > 0  &&  !IdExists(cloneRemoverExclusions, ped2->m_nModelIndex))
+                            {
+                                if (ped->m_pVehicle != NULL && cloneRemoverVehicleOccupants == 1)
+                                {
+                                    for (CPed* occupant : ped->m_pVehicle->m_apPassengers)
+                                        if (occupant != NULL)
+                                        {
+                                            occupant->m_nPedFlags.bDontRender = 1;
+                                            occupant->m_nPedFlags.bFadeOut = 1;
+                                        }
+
+                                    ped->m_pVehicle->m_nVehicleFlags.bFadeOut = 1;
+
+                                    ped->m_nPedFlags.bDontRender = 1;
+                                    ped->m_nPedFlags.bFadeOut = 1;
+                                    pedRemoved = true;
+                                    break;
+                                }
+                                else if (ped->m_pVehicle == NULL)
+                                {
+                                    ped->m_nPedFlags.bDontRender = 1;
+                                    ped->m_nPedFlags.bFadeOut = 1;
+                                    pedRemoved = true;
+                                    break;
+                                }
+                            }
+                    }
+                }
+
+
+                if (!pedRemoved)
+                    for (int i = 0; i < 13; i++)
+                    {
+                        if (ped->m_aWeapons[i].m_nType > 0)
                         {
-                            std::string curZone(currentZone);
-                            slot = curZone + "_SLOT" + std::to_string(i);
-                            vec = iniLineParser(std::to_string(ped->m_nModelIndex), slot, &iniWeap);
+                            bool slotChanged = false;
+                            bool wepChanged = false;
+
+                            std::string slot = "SLOT" + std::to_string(i);
+                            std::vector<short> vec = iniLineParser(std::to_string(ped->m_nModelIndex), slot, &iniWeap);
                             if (!vec.empty())
                             {
                                 int activeSlot = ped->m_nActiveWeaponSlot;
@@ -766,13 +715,10 @@ public:
 
                                 ped->GiveWeapon((eWeaponType)(vec[random]), 9999, 0);
                                 ped->SetCurrentWeapon(activeSlot);
+                                slotChanged = true;
                             }
-                        }
 
-                        if ((wepChanged && CGeneral::GetRandomNumberInRange(0, 100) > 50) || !wepChanged)
-                        {
-                            std::string curZone(currentZone);
-                            wep = curZone + "_WEAPON" + std::to_string(ped->m_aWeapons[i].m_nType);
+                            std::string wep = "WEAPON" + std::to_string(ped->m_aWeapons[i].m_nType);
                             vec = iniLineParser(std::to_string(ped->m_nModelIndex), wep, &iniWeap);
                             if (!vec.empty())
                             {
@@ -788,9 +734,49 @@ public:
                                 ped->SetCurrentWeapon(activeSlot);
                                 wepChanged = true;
                             }
+                        
+                            if ((slotChanged && CGeneral::GetRandomNumberInRange(0, 100) > 50) || !slotChanged)
+                            {
+                                std::string curZone(currentZone);
+                                slot = curZone + "_SLOT" + std::to_string(i);
+                                vec = iniLineParser(std::to_string(ped->m_nModelIndex), slot, &iniWeap);
+                                if (!vec.empty())
+                                {
+                                    int activeSlot = ped->m_nActiveWeaponSlot;
+                                    int random = CGeneral::GetRandomNumberInRange(0, vec.size());
+
+                                    ped->ClearWeapon(ped->m_aWeapons[i].m_nType);
+
+                                    CStreaming::RequestModel(CWeaponInfo::GetWeaponInfo((eWeaponType)(vec[random]), 0)->m_nModelId1, 2);
+                                    CStreaming::LoadAllRequestedModels(false);
+
+                                    ped->GiveWeapon((eWeaponType)(vec[random]), 9999, 0);
+                                    ped->SetCurrentWeapon(activeSlot);
+                                }
+                            }
+
+                            if ((wepChanged && CGeneral::GetRandomNumberInRange(0, 100) > 50) || !wepChanged)
+                            {
+                                std::string curZone(currentZone);
+                                wep = curZone + "_WEAPON" + std::to_string(ped->m_aWeapons[i].m_nType);
+                                vec = iniLineParser(std::to_string(ped->m_nModelIndex), wep, &iniWeap);
+                                if (!vec.empty())
+                                {
+                                    int activeSlot = ped->m_nActiveWeaponSlot;
+                                    int random = CGeneral::GetRandomNumberInRange(0, vec.size());
+
+                                    ped->ClearWeapon(ped->m_aWeapons[i].m_nType);
+
+                                    CStreaming::RequestModel(CWeaponInfo::GetWeaponInfo((eWeaponType)(vec[random]), 0)->m_nModelId1, 2);
+                                    CStreaming::LoadAllRequestedModels(false);
+
+                                    ped->GiveWeapon((eWeaponType)(vec[random]), 9999, 0);
+                                    ped->SetCurrentWeapon(activeSlot);
+                                    wepChanged = true;
+                                }
+                            }
                         }
                     }
-                }
             }
         };
 

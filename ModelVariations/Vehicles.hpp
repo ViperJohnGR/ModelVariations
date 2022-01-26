@@ -54,7 +54,6 @@ extern char(__fastcall *BurstTyreOriginal)(CAutomobile*, void*, char, char);
 extern int(__fastcall *ProcessEntityCollisionOriginal)(CAutomobile*, void*, CVehicle*, CColPoint*);
 */
 
-extern void vectorUnion(std::vector<short>& vec1, std::vector<short>& vec2, std::vector<short>& dest);
 extern bool IdExists(std::vector<short>& vec, int id);
 
 void installVehicleHooks();

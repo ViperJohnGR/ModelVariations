@@ -656,14 +656,13 @@ public:
                         }
                     }
 
-                    if (!pedRemoved)
+                    if (!pedRemoved && !IdExists(cloneRemoverExclusions, ped->m_nModelIndex) && ped->m_nModelIndex > 0)
                     {
                         pedTimeSinceLastSpawned.insert({ ((cloneRemoverIncludeVariations == 1) ? getVariationOriginalModel(ped->m_nModelIndex) : ped->m_nModelIndex), clock() });
                         for (CPed* ped2 : CPools::ms_pPedPool)
                             if (ped2 != NULL  &&  ped2 != ped  &&  ((cloneRemoverIncludeVariations == 1) ?
                                                                     (getVariationOriginalModel(ped->m_nModelIndex) == getVariationOriginalModel(ped2->m_nModelIndex)) :
-                                                                    (ped->m_nModelIndex == ped2->m_nModelIndex)) &&
-                                ped->m_nModelIndex == ped2->m_nModelIndex  &&  ped2->m_nModelIndex > 0  &&  !IdExists(cloneRemoverExclusions, ped2->m_nModelIndex))
+                                                                    (ped->m_nModelIndex == ped2->m_nModelIndex)) &&  ped->m_nModelIndex == ped2->m_nModelIndex)
                             {
                                 if (ped->m_pVehicle != NULL && cloneRemoverVehicleOccupants == 1)
                                 {

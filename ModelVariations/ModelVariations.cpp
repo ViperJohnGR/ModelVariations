@@ -34,7 +34,6 @@ std::ofstream logfile;
 std::set<std::pair<unsigned int, std::string>> modulesSet;
 std::set<std::pair<unsigned int, std::string>> callChecks;
 
-
 CIniReader iniVeh("ModelVariations_Vehicles.ini");
 
 std::array<std::vector<short>, 16> pedVariations[300];
@@ -42,13 +41,13 @@ std::array<std::vector<short>, 16> vehVariations[212];
 std::array<std::vector<short>, 6> pedWantedVariations[300];
 std::array<std::vector<short>, 6> vehWantedVariations[212];
 
+std::map<unsigned int, hookinfo> hookedCalls;
 std::map<short, short> vehOriginalModels;
 std::map<short, std::vector<short>> vehDrivers;
 std::map<short, std::vector<short>> vehPassengers;
 std::map<short, std::vector<short>> vehDriverGroups[9];
 std::map<short, std::vector<short>> vehPassengerGroups[9];
 std::map<short, BYTE> modelNumGroups;
-std::map<unsigned int, std::pair<void*, void*>> hookedCalls;
 std::map<short, std::pair<CVector, float>> LightPositions;
 std::map<short, int> pedTimeSinceLastSpawned;
 std::map<short, short> pedOriginalModels;
@@ -58,6 +57,7 @@ std::set<short> parkedCars;
 std::set<short> vehUseOnlyGroups;
 
 std::stack<CPed*> pedStack;
+std::stack<CVehicle*> vehStack;
 
 std::vector<short> cloneRemoverExclusions;
 std::vector<short> pedCurrentVariations[300];
@@ -66,10 +66,11 @@ std::vector<short> vehCarGenExclude;
 std::vector<short> vehInheritExclude;
 
 BYTE dealersFixed = 0;
-short callsChecked = 0;
+short framesSinceCallsChecked = 0;
 short modelIndex = -1;
 char currentInterior[16] = {};
 char lastInterior[16] = {};
+char currentZone[8] = {};
 
 //ini options
 int enableLog = 0;
@@ -88,17 +89,24 @@ int cloneRemoverVehicleOccupants = 0;
 int cloneRemoverIncludeVariations = 0;
 int spawnDelay = 3;
 
-void(__fastcall *ProcessControlOriginal)(CAutomobile*) = NULL;
-void(__fastcall *PreRenderOriginal)(CAutomobile*) = NULL;
-/*
-void(*ProcessSuspensionOriginal)(CAutomobile*) = NULL;
-void(*SetupSuspensionLinesOriginal)(CAutomobile*) = NULL;
-void(*DoBurstAndSoftGroundRatiosOriginal)(CAutomobile*) = NULL;
-void(*CAutomobileRenderOriginal)(CAutomobile*) = NULL;
-void(__fastcall *VehicleDamageOriginal)(CAutomobile*, void*, float, __int16, int, RwV3d*, RwV3d*, signed int) = NULL;
-char(__fastcall* BurstTyreOriginal)(CAutomobile*, void*, char, char) = NULL;
-int(__fastcall* ProcessEntityCollisionOriginal)(CAutomobile*, void*, CVehicle*, CColPoint*) = NULL;
-*/
+void filterWantedVariations(std::vector<short>& vec, std::vector<short>& wantedVec)
+{
+    bool matchFound = false;
+    std::vector<short> vec2 = vec;
+
+    std::vector<short>::iterator it = vec.begin();
+    while (it != vec.end())
+        if (std::find(wantedVec.begin(), wantedVec.end(), *it) != wantedVec.end())
+        {
+            matchFound = true;
+            ++it;
+        }
+        else
+            it = vec.erase(it);
+
+    if (matchFound == false)
+        vec = vec2;
+}
 
 static int getVariationOriginalModel(int modelIndex)
 {
@@ -239,14 +247,7 @@ void updateVariations(CZone *zInfo, CIniReader *iniPed, CIniReader *iniVeh)
         {
             int wantedLevel = (wanted->m_nWantedLevel > 0) ? (wanted->m_nWantedLevel - 1) : (wanted->m_nWantedLevel);
             if (!pedWantedVariations[i][wantedLevel].empty() && !pedCurrentVariations[i].empty())
-            {
-                std::vector<short>::iterator it = pedCurrentVariations[i].begin();
-                while (it != pedCurrentVariations[i].end())
-                    if (std::find(pedWantedVariations[i][wantedLevel].begin(), pedWantedVariations[i][wantedLevel].end(), *it) != pedWantedVariations[i][wantedLevel].end())
-                        ++it;
-                    else
-                        it = pedCurrentVariations[i].erase(it);
-            }
+                filterWantedVariations(pedCurrentVariations[i], pedWantedVariations[i][wantedLevel]);
         }
 
         if (i < 212)
@@ -265,14 +266,7 @@ void updateVariations(CZone *zInfo, CIniReader *iniPed, CIniReader *iniVeh)
             {
                 int wantedLevel = (wanted->m_nWantedLevel > 0) ? (wanted->m_nWantedLevel - 1) : (wanted->m_nWantedLevel);
                 if (!vehWantedVariations[i][wantedLevel].empty() && !vehCurrentVariations[i].empty())
-                {
-                    std::vector<short>::iterator it = vehCurrentVariations[i].begin();
-                    while (it != vehCurrentVariations[i].end())
-                        if (std::find(vehWantedVariations[i][wantedLevel].begin(), vehWantedVariations[i][wantedLevel].end(), *it) != vehWantedVariations[i][wantedLevel].end())
-                            ++it;
-                        else 
-                            it = vehCurrentVariations[i].erase(it);
-                }       
+                    filterWantedVariations(vehCurrentVariations[i], vehWantedVariations[i][wantedLevel]);     
             }
         }
     }
@@ -325,8 +319,6 @@ public:
     ModelVariations() {
         static CIniReader iniPed("ModelVariations_Peds.ini");
         static CIniReader iniWeap("ModelVariations_PedWeapons.ini");
-
-        static char currentZone[8] = {};
 
         static int currentWanted = 0;
 
@@ -461,7 +453,7 @@ public:
         spawnDelay = iniPed.ReadInteger("Settings", "SpawnDelay", 3);
         
 
-        hookCall(0x5E49EF, UpdateRpHAnimHooked<0x5E49EF>);
+        hookCall(0x5E49EF, UpdateRpHAnimHooked<0x5E49EF>, "UpdateRpHAnim");
 
         Events::initScriptsEvent += []
         {
@@ -470,7 +462,7 @@ public:
                     CStreaming::RequestModel(i, KEEP_IN_MEMORY);
 
             dealersFixed = 0;
-            callsChecked = 0;
+            framesSinceCallsChecked = 700;
 
             if (logfile.is_open())
             {
@@ -516,6 +508,11 @@ public:
             pedStack.push(ped);
         };
 
+        Events::vehicleCtorEvent += [](CVehicle* veh)
+        {
+            vehStack.push(veh);
+        };
+
         Events::pedSetModelEvent.after += [](CPed* ped, int model)
         {
             if (ped->m_nModelIndex > 0 && ped->m_nModelIndex < 300 && !pedCurrentVariations[ped->m_nModelIndex].empty())
@@ -537,13 +534,13 @@ public:
 
         Events::gameProcessEvent += []
         {
-            if (callsChecked < 1000)
-                callsChecked++;
+            if (framesSinceCallsChecked < 1000)
+                framesSinceCallsChecked++;
 
-            if (callsChecked == 1000 && logfile.is_open())
+            if (framesSinceCallsChecked == 1000 && logfile.is_open())
             {
                 checkAllCalls();
-                callsChecked = 0;
+                framesSinceCallsChecked = 0;
             }
 
             if (enableCloneRemover == 1)
@@ -624,6 +621,18 @@ public:
             if (enableVehicles == 1)
                 hookTaxi();
 
+            while (!vehStack.empty())
+            {
+                CVehicle* veh = vehStack.top();
+                vehStack.pop();
+
+                auto it = vehPassengers.find(veh->m_nModelIndex);
+                if (it != vehPassengers.end() && it->second[0] == 0)
+                    for (int i = 0; i < 8; i++)
+                        if (veh->m_apPassengers[i] != NULL)
+                            veh->RemovePassenger(veh->m_apPassengers[i]);
+            }
+
             while (!pedStack.empty())
             {
                 CPed *ped = pedStack.top();
@@ -642,16 +651,7 @@ public:
                         }
                         else if (cloneRemoverVehicleOccupants == 1)
                         {
-                            for (CPed* occupant : ped->m_pVehicle->m_apPassengers)
-                                if (occupant != NULL)
-                                {
-                                    occupant->m_nPedFlags.bDontRender = 1;
-                                    occupant->m_nPedFlags.bFadeOut = 1;
-                                }
-
-                            ped->m_pVehicle->m_nVehicleFlags.bFadeOut = 1;
-                            ped->m_nPedFlags.bDontRender = 1;
-                            ped->m_nPedFlags.bFadeOut = 1;
+                            DestroyVehicleAndDriverAndPassengers(ped->m_pVehicle);
                             pedRemoved = true;
                         }
                     }
@@ -664,26 +664,16 @@ public:
                                                                     (getVariationOriginalModel(ped->m_nModelIndex) == getVariationOriginalModel(ped2->m_nModelIndex)) :
                                                                     (ped->m_nModelIndex == ped2->m_nModelIndex)) &&  ped->m_nModelIndex == ped2->m_nModelIndex)
                             {
-                                if (ped->m_pVehicle != NULL && cloneRemoverVehicleOccupants == 1)
+                                if (ped->m_pVehicle == NULL)
                                 {
-                                    for (CPed* occupant : ped->m_pVehicle->m_apPassengers)
-                                        if (occupant != NULL)
-                                        {
-                                            occupant->m_nPedFlags.bDontRender = 1;
-                                            occupant->m_nPedFlags.bFadeOut = 1;
-                                        }
-
-                                    ped->m_pVehicle->m_nVehicleFlags.bFadeOut = 1;
-
                                     ped->m_nPedFlags.bDontRender = 1;
                                     ped->m_nPedFlags.bFadeOut = 1;
                                     pedRemoved = true;
                                     break;
                                 }
-                                else if (ped->m_pVehicle == NULL)
+                                else if (cloneRemoverVehicleOccupants == 1)
                                 {
-                                    ped->m_nPedFlags.bDontRender = 1;
-                                    ped->m_nPedFlags.bFadeOut = 1;
+                                    DestroyVehicleAndDriverAndPassengers(ped->m_pVehicle);
                                     pedRemoved = true;
                                     break;
                                 }

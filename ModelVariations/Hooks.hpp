@@ -1,12 +1,33 @@
 #pragma once
 
 #include <map>
+#include <string>
+#include <memory>
 
-extern std::map<unsigned int, std::pair<void*, void*>> hookedCalls;
 
-inline void hookCall(unsigned int address, void* pFunction)
+#include "../../injector/assembly.hpp"
+
+struct hookinfo {
+    std::string name;
+    void* originalFunction;
+    void* changedFunction;
+    bool isVTableAddress;
+};
+
+extern std::map<unsigned int, hookinfo> hookedCalls;
+
+inline void hookCall(unsigned int address, void* pFunction, std::string name, bool isVTableAddress = false)
 {
-    hookedCalls.insert(std::make_pair(address, std::make_pair(pFunction, (void*)injector::MakeCALL(address, pFunction).as_int())));
+    void* originalAddress;
+    if (isVTableAddress)
+    {
+        originalAddress = *(void**)address;
+        *(void**)address = pFunction;
+    }
+    else
+        originalAddress = (void*)injector::MakeCALL(address, pFunction).as_int();
+
+    hookedCalls.insert({ address, {name, originalAddress, pFunction, isVTableAddress} });
 }
 
 template <unsigned int address, typename... Args>
@@ -15,7 +36,7 @@ inline void callOriginal(Args... args)
     auto it = hookedCalls.find(address);
     if (it != hookedCalls.end())
     {
-        unsigned int originalCall = (unsigned int)(it->second.second);
+        unsigned int originalCall = (unsigned int)(it->second.originalFunction);
         reinterpret_cast<void(__cdecl*)(Args...)>(originalCall)(args...);
     }
 }
@@ -26,7 +47,7 @@ inline Ret callOriginalAndReturn(Args... args)
     auto it = hookedCalls.find(address);
     if (it != hookedCalls.end())
     {
-        unsigned int originalCall = (unsigned int)(it->second.second);
+        unsigned int originalCall = (unsigned int)(it->second.originalFunction);
         return reinterpret_cast<Ret(__cdecl*)(Args...)>(originalCall)(args...);
     }
     return 0;
@@ -39,7 +60,7 @@ inline void callMethodOriginal(C _this, Args... args)
     auto it = hookedCalls.find(address);
     if (it != hookedCalls.end())
     {
-        unsigned int originalCall = (unsigned int)(it->second.second);
+        unsigned int originalCall = (unsigned int)(it->second.originalFunction);
         reinterpret_cast<void(__thiscall*)(C, Args...)>(originalCall)(_this, args...);
     }
 }
@@ -50,7 +71,7 @@ inline Ret callMethodOriginalAndReturn(C _this, Args... args)
     auto it = hookedCalls.find(address);
     if (it != hookedCalls.end())
     {
-        unsigned int originalCall = (unsigned int)(it->second.second);
+        unsigned int originalCall = (unsigned int)(it->second.originalFunction);
         return reinterpret_cast<Ret(__thiscall*)(C, Args...)>(originalCall)(_this, args...);
     }
     return 0;

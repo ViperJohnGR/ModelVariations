@@ -37,23 +37,16 @@ extern int changeCarGenerators;
 extern bool enableSideMissions;
 extern int enableAllSideMissions;
 extern int enableLights;
+extern int enableSiren;
+extern int disablePayAndSpray;
 extern int enableSpecialFeatures;
 extern int changeScriptedCars;
 
+extern char currentZone[8];
+
 extern std::set<short> vehUseOnlyGroups;
 
-extern void(__fastcall *ProcessControlOriginal)(CAutomobile*);
-extern void(__fastcall *PreRenderOriginal)(CAutomobile*);
-/*
-extern void(*ProcessSuspensionOriginal)(CAutomobile*);
-extern void(*SetupSuspensionLinesOriginal)(CAutomobile*);
-extern void(*DoBurstAndSoftGroundRatiosOriginal)(CAutomobile*);
-extern void(*CAutomobileRenderOriginal)(CAutomobile*);
-extern void(__fastcall *VehicleDamageOriginal)(CAutomobile*, void*, float, __int16, int, RwV3d*, RwV3d*, signed int);
-extern char(__fastcall *BurstTyreOriginal)(CAutomobile*, void*, char, char);
-extern int(__fastcall *ProcessEntityCollisionOriginal)(CAutomobile*, void*, CVehicle*, CColPoint*);
-*/
-
+extern void filterWantedVariations(std::vector<short>& vec, std::vector<short>& wantedVec);
 extern bool IdExists(std::vector<short>& vec, int id);
 
 void installVehicleHooks();

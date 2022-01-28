@@ -105,24 +105,24 @@ std::string getParentModuleName(unsigned int address)
     return emptyString;
 }
 
-void checkCallModified(const char* callName, unsigned int originalAddress, bool directAddress = false)
+void checkCallModified(std::string callName, unsigned int callAddress, bool isDirectAddress)
 {
-    unsigned int changedAddress = (directAddress == false) ? getAddressFromCall((BYTE*)originalAddress) : *(unsigned int*)originalAddress;
-    std::string moduleName = getParentModuleName(changedAddress);
+    unsigned int functionAddress = (isDirectAddress == false) ? getAddressFromCall((BYTE*)callAddress) : *(unsigned int*)callAddress;
+    std::string moduleName = getParentModuleName(functionAddress);
     unsigned int baseAddress = 0;
 
     if (moduleName == MOD_NAME)
         return;
-    if (callChecks.find({ originalAddress , moduleName}) != callChecks.end())
+    if (callChecks.find({ callAddress , moduleName}) != callChecks.end())
         return;
 
-    callChecks.insert({ originalAddress, moduleName});
+    callChecks.insert({ callAddress, moduleName});
 
-    if (changedAddress > 0)
+    if (functionAddress > 0)
     {
         std::pair<unsigned int, std::string> prev;
         for (auto it = modulesSet.begin(); it != modulesSet.end(); it++)
-            if (it->first > changedAddress)
+            if (it->first > functionAddress)
             {
                 baseAddress = prev.first;
                 break;
@@ -136,7 +136,7 @@ void checkCallModified(const char* callName, unsigned int originalAddress, bool 
             }
     }
 
-    logfile << "Modified call found: " << callName << " 0x" << std::uppercase << std::hex << originalAddress << " 0x" << changedAddress << " ";
+    logfile << "Modified call found: " << callName << " 0x" << std::uppercase << std::hex << callAddress << " 0x" << functionAddress << " ";
     logfile << moduleName << " 0x" << baseAddress << std::endl;
 }
 
@@ -175,103 +175,6 @@ void checkAllCalls()
     if (enableLog == 0)
         return;
 
-    //Peds
-    checkCallModified("UpdateRpHAnim", 0x5E49EF);
-
-    if (enableCloneRemover == 1)
-    {
-        checkCallModified("AddPed", 0x614D26);
-        checkCallModified("AddPed", 0x614D79);
-        checkCallModified("AddPed", 0x6153AB);
-        checkCallModified("AddPed", 0x6142FB);
-    }
-
-
-    //Vehicles
-    checkCallModified("ChooseModel", 0x43022A);
-    checkCallModified("ChoosePoliceCarModel", 0x42C320);
-    checkCallModified("ChoosePoliceCarModel", 0x43020E);
-    checkCallModified("ChoosePoliceCarModel", 0x430283);
-
-    checkCallModified("AddPoliceCarOccupants", 0x42BC26);
-    checkCallModified("AddPoliceCarOccupants", 0x42C620);
-    checkCallModified("AddPoliceCarOccupants", 0x431EE5);
-    checkCallModified("AddPoliceCarOccupants", 0x499CBB);
-    checkCallModified("AddPoliceCarOccupants", 0x499D6A);
-    checkCallModified("AddPoliceCarOccupants", 0x49A5EB);
-    checkCallModified("AddPoliceCarOccupants", 0x49A85E);
-    checkCallModified("AddPoliceCarOccupants", 0x49A9AF);
-
-    checkCallModified("CAutomobile", 0x42B909);
-    checkCallModified("CAutomobile", 0x4998F0);
-    checkCallModified("CAutomobile", 0x462217);
-    checkCallModified("CAutomobile", 0x61354A);
-
-    checkCallModified("PickRandomCar", 0x6F3583);
-    checkCallModified("DoInternalProcessing", 0x6F3EC1);
-
-    checkCallModified("CTrain", 0x6F7634);
-
-    checkCallModified("CBoat", 0x42149E);
-    checkCallModified("CBoat", 0x431FD0);
-    checkCallModified("CBoat", 0x5D2ADC);
-
-    checkCallModified("CHeli", 0x6CD3C3);
-    checkCallModified("CHeli", 0x6C6590);
-    checkCallModified("CHeli", 0x6C6568);
-    checkCallModified("CHeli", 0x5D2C46);
-    checkCallModified("GenerateHeli", 0x6C7ACA);
-
-    checkCallModified("IsLawEnforcementVehicle", 0x42CDDD);
-    checkCallModified("GenerateRoadBlockCopsForCar", 0x42CE07);
-    checkCallModified("GetColModel", 0x4613EB);
-
-    checkCallModified("AddAmbulanceOccupants", 0x42BBFB);
-    checkCallModified("AddFiretruckOccupants", 0x42BC1A);
-
-    checkCallModified("FindSpecificDriverModelForCar_ToUse", 0x613A43);
-    checkCallModified("AddPedInCar", 0x6D1B0E);
-
-    checkCallModified("SetUpDriverAndPassengersForVehicle", 0x431DE2);
-    checkCallModified("SetUpDriverAndPassengersForVehicle", 0x431DF9);
-    checkCallModified("SetUpDriverAndPassengersForVehicle", 0x431ED1);
-
-    checkCallModified("IsLawEnforcementVehicle", 0x6B11C2);
-
-    checkCallModified("PossiblyRemoveVehicle", 0x60C4E8);
-    checkCallModified("PossiblyRemoveVehicle", 0x42CD55);
-
-    if (changeScriptedCars == 1)
-        checkCallModified("CreateCarForScript", 0x467B01);
-
-    if (enableSpecialFeatures == 1)
-    {
-        checkCallModified("ProcessControl", 0x871148, true);
-        checkCallModified("PreRender", 0x871164, true);
-    }
-
-    if (enableSiren == 1)
-        checkCallModified("HasCarSiren", 0x6D8492);
-
-    if (enableLights == 1 && enableSpecialFeatures == 1 && enableSiren == 1)
-    {
-        checkCallModified("RegisterCorona", 0x6ABA60);
-        checkCallModified("RegisterCorona", 0x6ABB35);
-        checkCallModified("RegisterCorona", 0x6ABC69);
-
-        checkCallModified("AddLight", 0x6AB80F);
-        checkCallModified("AddLight", 0x6ABBA6);
-    }
-
-    if (disablePayAndSpray == 1)
-        checkCallModified("IsCarSprayable", 0x44AC75);
-
-    if (enableSideMissions)
-    {
-        checkCallModified("IsLawEnforcementVehicle", 0x48DA81);
-        checkCallModified("CollectParameters", 0x469612);
-    }
-
-
-
+    for (auto it : hookedCalls)
+        checkCallModified(it.second.name, it.first, (it.second.isVTableAddress == true) ? true : false);
 }

@@ -12,6 +12,36 @@
 #pragma comment (lib, "bcrypt.lib")
 #pragma comment (lib, "shlwapi.lib")
 
+std::string tolower(const char *orgStr)
+{
+    if (orgStr == NULL)
+    {
+        std::string str;
+        return str;
+    }
+    std::string str(orgStr);
+
+    for (char &i : str)
+    {
+        if (i >= 'A' && i <= 'Z')
+            i += 32;
+    }
+
+    return str;
+}
+
+std::string tolower(std::string &orgStr)
+{
+    std::string str(orgStr);
+    for (char &i : str)
+    {
+        if (i >= 'A' && i <= 'Z')
+            i += 32;
+    }
+
+    return str;
+}
+
 int getFilesize(const char* filename)
 {
     HANDLE hFile = CreateFile(filename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
@@ -111,7 +141,7 @@ void checkCallModified(std::string callName, unsigned int callAddress, bool isDi
     std::string moduleName = getParentModuleName(functionAddress);
     unsigned int baseAddress = 0;
 
-    if (moduleName == MOD_NAME)
+    if (tolower(moduleName) == tolower(MOD_NAME))
         return;
     if (callChecks.find({ callAddress , moduleName}) != callChecks.end())
         return;

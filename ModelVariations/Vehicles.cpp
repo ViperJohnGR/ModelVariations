@@ -1000,7 +1000,7 @@ void __fastcall PreRenderHooked(CAutomobile* veh)
     lightsModel = -1;
     bool hasSiren = false;
 
-    if (enableLights && HasCarSiren<0>(veh))
+    if (enableLights && (HasCarSiren<0>(veh) || getVariationOriginalModel(veh->m_nModelIndex) == 420 || getVariationOriginalModel(veh->m_nModelIndex) == 438))
     {
         sirenModel = getVariationOriginalModel(veh->m_nModelIndex);
         lightsModel = veh->m_nModelIndex;

@@ -16,45 +16,6 @@ inline void vectorUnion(std::vector<unsigned short>& vec1, std::vector<unsigned 
     std::set_union(vec1.begin(), vec1.end(), vec2.begin(), vec2.end(), std::back_inserter(dest));
 }
 
-inline bool fileExists(const char* filename)
-{
-    FILE* fp = fopen(filename, "rb");
-    if (fp == NULL)
-        return false;
-    fclose(fp);
-    return true;
-}
-
-inline std::string fileToString(const char* filename)
-{
-    FILE* fp = fopen(filename, "rb");
-    if (fp == NULL)
-        return "";
-
-    fseek(fp, 0, SEEK_END);
-    int filesize = ftell(fp);
-    if (filesize < 1)
-    {
-        fclose(fp);
-        return "";
-    }
-    fseek(fp, 0, SEEK_SET);
-
-    char* filebuf = (char*)calloc((size_t)filesize+1, 1);
-    if (fread(filebuf, 1, (size_t)filesize, fp) != (size_t)filesize)
-    {
-        fclose(fp);
-        free(filebuf);
-        return "";
-    }
-    fclose(fp);
-
-    std::string retString(filebuf);
-    free(filebuf);
-    retString.erase(std::remove(retString.begin(), retString.end(), 0x0D), retString.end());
-    return retString;
-}
-
 inline std::vector<unsigned short> iniLineParser(std::string section, std::string key, CIniReader* ini, bool parseGroups = false)
 {
     std::vector<unsigned short> retVector;

@@ -4,11 +4,13 @@
     <ClCompile Include="ModelVariations.cpp" />
     <ClCompile Include="Vehicles.cpp" />
     <ClCompile Include="LogUtil.cpp" />
+    <ClCompile Include="FileUtil.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Vehicles.hpp" />
     <ClInclude Include="LogUtil.hpp" />
     <ClInclude Include="IniParse.hpp" />
     <ClInclude Include="Hooks.hpp" />
+    <ClInclude Include="FileUtil.hpp" />
   </ItemGroup>
 </Project>

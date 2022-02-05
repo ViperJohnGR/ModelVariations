@@ -19,7 +19,6 @@ extern std::set<std::pair<unsigned int, std::string>> callChecks;
 
 extern int enableLog;
 
-DWORD getFilesize(const char* filename);
 std::string hashFile(const char* filename);
 std::string getWindowsVersion();
 void checkAllCalls();

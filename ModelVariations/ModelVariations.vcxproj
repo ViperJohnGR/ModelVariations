@@ -93,11 +93,13 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="FileUtil.cpp" />
     <ClCompile Include="LogUtil.cpp" />
     <ClCompile Include="ModelVariations.cpp" />
     <ClCompile Include="Vehicles.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="FileUtil.hpp" />
     <ClInclude Include="IniParse.hpp" />
     <ClInclude Include="LogUtil.hpp" />
     <ClInclude Include="Hooks.hpp" />

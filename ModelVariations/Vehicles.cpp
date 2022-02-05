@@ -170,7 +170,7 @@ void readVehicleIni()
 
     for (auto& i : result) //for every zone name
         for (auto &j : iniVeh.data)
-            if (j.first[0] >= '4' && j.first[0] <= '6')
+            if (j.first[0] >= '0' && j.first[0] <= '9')
             {
                 int modelid = std::stoi(j.first);
 
@@ -249,9 +249,60 @@ void readVehicleIni()
     enableLights = iniVeh.ReadInteger("Settings", "EnableLights", 0);
     
     for (auto& i : iniVeh.data)
-        if (i.first[0] >= '4' && i.first[0] <= '6')
+        if (i.first[0] >= '0' && i.first[0] <= '9')
         {
             unsigned short modelid = (unsigned short)std::stoi(i.first);
+
+            std::vector<unsigned short> vec = iniLineParser(i.first, "Countryside", &iniVeh, true);
+            if (!vec.empty()) vehGroups[modelid][0] = vec;
+
+            vec = iniLineParser(i.first, "LosSantos", &iniVeh, true);
+            if (!vec.empty()) vehGroups[modelid][1] = vec;
+
+            vec = iniLineParser(i.first, "SanFierro", &iniVeh, true);
+            if (!vec.empty()) vehGroups[modelid][2] = vec;
+
+            vec = iniLineParser(i.first, "LasVenturas", &iniVeh, true);
+            if (!vec.empty()) vehGroups[modelid][3] = vec;
+
+            vec = iniLineParser(i.first, "Global", &iniVeh, true);
+            if (!vec.empty()) vehGroups[modelid][4] = vec;
+
+            vec = iniLineParser(i.first, "Desert", &iniVeh, true);
+            if (!vec.empty()) vehGroups[modelid][5] = vec;
+
+
+            vec = iniLineParser(i.first, "TierraRobada", &iniVeh, true);
+            if (!vec.empty()) vehGroups[modelid][6] = vectorUnion(vec, vehGroups[modelid][5]);
+
+            vec = iniLineParser(i.first, "BoneCounty", &iniVeh, true);
+            if (!vec.empty()) vehGroups[modelid][7] = vectorUnion(vec, vehGroups[modelid][5]);
+
+            vec = iniLineParser(i.first, "RedCounty", &iniVeh, true);
+            if (!vec.empty()) vehGroups[modelid][8] = vectorUnion(vec, vehGroups[modelid][0]);
+
+            vec = iniLineParser(i.first, "Blueberry", &iniVeh, true);
+            if (!vec.empty()) vehGroups[modelid][9] = vectorUnion(vec, vehGroups[modelid][8]);
+
+            vec = iniLineParser(i.first, "Montgomery", &iniVeh, true);
+            if (!vec.empty()) vehGroups[modelid][10] = vectorUnion(vec, vehGroups[modelid][8]);
+
+            vec = iniLineParser(i.first, "Dillimore", &iniVeh, true);
+            if (!vec.empty()) vehGroups[modelid][11] = vectorUnion(vec, vehGroups[modelid][8]);
+
+            vec = iniLineParser(i.first, "PalominoCreek", &iniVeh, true);
+            if (!vec.empty()) vehGroups[modelid][12] = vectorUnion(vec, vehGroups[modelid][8]);
+
+            vec = iniLineParser(i.first, "FlintCounty", &iniVeh, true);
+            if (!vec.empty()) vehGroups[modelid][13] = vectorUnion(vec, vehGroups[modelid][0]);
+
+            vec = iniLineParser(i.first, "Whetstone", &iniVeh, true);
+            if (!vec.empty()) vehGroups[modelid][14] = vectorUnion(vec, vehGroups[modelid][0]);
+
+            vec = iniLineParser(i.first, "AngelPine", &iniVeh, true);
+            if (!vec.empty()) vehGroups[modelid][15] = vectorUnion(vec, vehGroups[modelid][14]);
+
+
 
             if (iniVeh.ReadInteger(i.first, "UseOnlyGroups", 0) == 1)
                 vehUseOnlyGroups.insert(modelid);
@@ -272,7 +323,7 @@ void readVehicleIni()
             for (int j = 0; j < 9; j++)
             {
                 str = "DriverGroup" + std::to_string(j + 1);
-                std::vector<unsigned short> vec = iniLineParser(i.first, str, &iniVeh);
+                vec = iniLineParser(i.first, str, &iniVeh);
                 if (!vec.empty())
                 {
                     vehDriverGroups[j].insert({ modelid, vec });
@@ -289,7 +340,7 @@ void readVehicleIni()
                     vehPassengerGroups[j].insert({ modelid, vec });
             }
 
-            std::vector<unsigned short> vec = iniLineParser(i.first, "Wanted1", &iniVeh, true);
+            vec = iniLineParser(i.first, "Wanted1", &iniVeh, true);
             if (!vec.empty())
             {
                 vec.erase(unique(vec.begin(), vec.end()), vec.end());
@@ -336,6 +387,10 @@ void readVehicleIni()
                 checkNumGroups(vec, modelNumGroups[modelid]);
                 vehGroupWantedVariations[modelid][5] = vec;
             }
+
+            if (vehGroups.find(modelid) != vehGroups.end())
+                for (int j = 0; j < 16; j++)
+                    checkNumGroups(vehGroups[modelid][j], modelNumGroups[modelid]);
 
 
             vec = iniLineParser(i.first, "Drivers", &iniVeh);
@@ -432,6 +487,13 @@ void __cdecl AddPoliceCarOccupantsHooked(CVehicle* a2, char a3)
 
             std::vector<unsigned short> zoneGroups = iniLineParser(std::to_string(a2->m_nModelIndex), currentZone, &iniVeh, true);
             checkNumGroups(zoneGroups, it->second);
+            if (vehGroups.find(a2->m_nModelIndex) != vehGroups.end())
+            {
+                std::vector<unsigned short> vec;
+                vectorUnion(zoneGroups, vehGroups[a2->m_nModelIndex][currentTown], vec);
+                zoneGroups = vec;
+            }
+
             if (zoneGroups.empty() && !vehGroupWantedVariations[a2->m_nModelIndex][wantedLevel].empty())
                 currentOccupantsGroup = vehGroupWantedVariations[a2->m_nModelIndex][wantedLevel][i] - 1;
             else
@@ -738,6 +800,13 @@ void __cdecl SetUpDriverAndPassengersForVehicleHooked(CVehicle* car, int a3, int
 
             std::vector<unsigned short> zoneGroups = iniLineParser(std::to_string(car->m_nModelIndex), currentZone, &iniVeh, true);
             checkNumGroups(zoneGroups, it->second);
+            if (vehGroups.find(car->m_nModelIndex) != vehGroups.end())
+            {
+                std::vector<unsigned short> vec;
+                vectorUnion(zoneGroups, vehGroups[car->m_nModelIndex][currentTown], vec);
+                zoneGroups = vec;
+            }
+
             if (zoneGroups.empty() && !vehGroupWantedVariations[car->m_nModelIndex][wantedLevel].empty())
                 currentOccupantsGroup = vehGroupWantedVariations[car->m_nModelIndex][wantedLevel][i] - 1;
             else

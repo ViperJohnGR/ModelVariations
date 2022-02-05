@@ -42,16 +42,6 @@ std::string tolower(std::string &orgStr)
     return str;
 }
 
-DWORD getFilesize(const char* filename)
-{
-    HANDLE hFile = CreateFile(filename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-    if (hFile == INVALID_HANDLE_VALUE)
-        return 0;
-    DWORD filesize = GetFileSize(hFile, NULL);
-    CloseHandle(hFile);
-    return filesize;
-}
-
 std::string hashFile(const char* filename)
 //NTSTATUS hashFile(BYTE* hash, BYTE* data, unsigned int len)
 {

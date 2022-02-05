@@ -15,6 +15,7 @@ extern std::ofstream logfile;
 
 extern std::array<std::vector<unsigned short>, 16> vehVariations[212];
 extern std::array<std::vector<unsigned short>, 6> vehWantedVariations[212];
+extern std::map<unsigned short, std::array<std::vector<unsigned short>, 16>> vehGroups;
 extern std::map<unsigned short, std::array<std::vector<unsigned short>, 6>> vehGroupWantedVariations;
 extern std::map<unsigned short, unsigned short> vehOriginalModels;
 extern std::map<unsigned short, std::vector<unsigned short>> vehDrivers;
@@ -43,6 +44,7 @@ extern int enableSpecialFeatures;
 extern int changeScriptedCars;
 
 extern char currentZone[8];
+extern BYTE currentTown;
 
 extern std::set<unsigned short> vehUseOnlyGroups;
 

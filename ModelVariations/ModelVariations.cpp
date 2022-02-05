@@ -3,6 +3,7 @@
 #include "LogUtil.hpp"
 #include "Vehicles.hpp"
 #include "Hooks.hpp"
+#include "FileUtil.hpp"
 
 #include "extensions/ScriptCommands.h"
 
@@ -27,6 +28,10 @@
 
 using namespace plugin;
 
+std::string pedIniPath("ModelVariations_Peds.ini");
+std::string pedWepIniPath("ModelVariations_PedWeapons.ini");
+std::string vehIniPath("ModelVariations_Vehicles.ini");
+
 std::string exeHashes[2] = { "a559aa772fd136379155efa71f00c47aad34bbfeae6196b0fe1047d0645cbd26",     //HOODLUM
                              "25580ae242c6ecb6f6175ca9b4c912aa042f33986ded87f20721b48302adc9c9" };   //Compact
 
@@ -34,12 +39,14 @@ std::ofstream logfile;
 std::set<std::pair<unsigned int, std::string>> modulesSet;
 std::set<std::pair<unsigned int, std::string>> callChecks;
 
-CIniReader iniVeh("ModelVariations_Vehicles.ini");
+CIniReader iniVeh;
 
 std::array<std::vector<unsigned short>, 16> pedVariations[300];
 std::array<std::vector<unsigned short>, 16> vehVariations[212];
 std::array<std::vector<unsigned short>, 6> pedWantedVariations[300];
 std::array<std::vector<unsigned short>, 6> vehWantedVariations[212];
+
+std::map<unsigned short, std::array<std::vector<unsigned short>, 16>> vehGroups;
 
 std::map<unsigned int, hookinfo> hookedCalls;
 std::map<unsigned short, unsigned short> vehOriginalModels;
@@ -71,6 +78,7 @@ unsigned short modelIndex = 0;
 char currentInterior[16] = {};
 char lastInterior[16] = {};
 char currentZone[8] = {};
+BYTE currentTown = 0;
 
 //ini options
 int enableLog = 0;
@@ -197,32 +205,32 @@ void updateVariations(CZone *zInfo, CIniReader *iniPed, CIniReader *pIniVeh)
     if (zInfo == NULL || iniPed == NULL || pIniVeh == NULL)
         return;
 
-    unsigned int merge = CTheZones::m_CurrLevel;
+    currentTown = (BYTE)CTheZones::m_CurrLevel;
     if (strncmp(zInfo->m_szTextKey, "ROBAD", 7) == 0)
-        merge = 6;
+        currentTown = 6;
     else if (strncmp(zInfo->m_szTextKey, "BONE", 7) == 0)
-        merge = 7;
+        currentTown = 7;
     else if (strncmp(zInfo->m_szTextKey, "RED", 7) == 0)
-        merge = 8;
+        currentTown = 8;
     else if (strncmp(zInfo->m_szTextKey, "BLUEB", 7) == 0)
-        merge = 9;
+        currentTown = 9;
     else if (strncmp(zInfo->m_szTextKey, "MONT", 7) == 0)
-        merge = 10;
+        currentTown = 10;
     else if (strncmp(zInfo->m_szTextKey, "DILLI", 7) == 0)
-        merge = 11;
+        currentTown = 11;
     else if (strncmp(zInfo->m_szTextKey, "PALO", 7) == 0)
-        merge = 12;
+        currentTown = 12;
     else if (strncmp(zInfo->m_szTextKey, "FLINTC", 7) == 0)
-        merge = 13;
+        currentTown = 13;
     else if (strncmp(zInfo->m_szTextKey, "WHET", 7) == 0)
-        merge = 14;
+        currentTown = 14;
     else if (strncmp(zInfo->m_szTextKey, "ANGPI", 7) == 0)
-        merge = 15;
+        currentTown = 15;
 
 
     for (int i = 0; i < 300; i++)
     {
-        vectorUnion(pedVariations[i][4], pedVariations[i][merge], pedCurrentVariations[i]);
+        vectorUnion(pedVariations[i][4], pedVariations[i][currentTown], pedCurrentVariations[i]);
         CWanted* wanted = FindPlayerWanted(-1);
 
         std::vector<unsigned short> vecPed = iniLineParser(std::to_string(i), zInfo->m_szLabel, iniPed);
@@ -250,7 +258,7 @@ void updateVariations(CZone *zInfo, CIniReader *iniPed, CIniReader *pIniVeh)
 
         if (i < 212)
         {
-            vectorUnion(vehVariations[i][4], vehVariations[i][merge], vehCurrentVariations[i]);
+            vectorUnion(vehVariations[i][4], vehVariations[i][currentTown], vehCurrentVariations[i]);
 
             std::vector<unsigned short> vec = iniLineParser(std::to_string(i+400), zInfo->m_szLabel, pIniVeh);
             if (!vec.empty())
@@ -315,14 +323,29 @@ void __fastcall UpdateRpHAnimHooked(CEntity* entity)
 class ModelVariations {
 public:
     ModelVariations() {
-        static CIniReader iniPed("ModelVariations_Peds.ini");
-        static CIniReader iniWeap("ModelVariations_PedWeapons.ini");
+
+        if (!fileExists(pedIniPath.c_str()))
+            pedIniPath = "ModelVariations\\" + pedIniPath;
+
+        if (!fileExists(pedWepIniPath.c_str()))
+            pedWepIniPath = "ModelVariations\\" + pedWepIniPath;
+
+        if (!fileExists(vehIniPath.c_str()))
+            vehIniPath = "ModelVariations\\" + vehIniPath;
+
+        static CIniReader iniPed(pedIniPath);
+        static CIniReader iniWeap(pedWepIniPath);
+        iniVeh.SetIniPath(vehIniPath);
 
         static int currentWanted = 0;
 
         if ((enableLog = iniVeh.ReadInteger("Settings", "EnableLog", 0)) == 1)
         {
-            logfile.open("ModelVariations.log");
+            if (folderExists("ModelVariations"))
+                logfile.open("ModelVariations\\ModelVariations.log");
+            else
+                logfile.open("ModelVariations.log");
+
             if (logfile.is_open())
             {
                 SYSTEMTIME systime;
@@ -413,26 +436,26 @@ public:
 
         if (enableLog == 1)
         {
-            if (!fileExists("ModelVariations_Peds.ini"))
+            if (!fileExists(pedIniPath.c_str()))
                 logfile << "\nModelVariations_Peds.ini not found!\n" << std::endl;
             else
                 logfile <<  "##############################\n"
                             "## ModelVariations_Peds.ini ##\n" 
-                            "##############################\n" << fileToString("ModelVariations_Peds.ini") << std::endl;
+                            "##############################\n" << fileToString(pedIniPath.c_str()) << std::endl;
 
-            if (!fileExists("ModelVariations_PedWeapons.ini"))
+            if (!fileExists(pedWepIniPath.c_str()))
                 logfile << "\nModelVariations_PedWeapons.ini not found!\n" << std::endl;
             else
                 logfile << "####################################\n"
                            "## ModelVariations_PedWeapons.ini ##\n" 
-                           "####################################\n" << fileToString("ModelVariations_PedWeapons.ini") << std::endl;
+                           "####################################\n" << fileToString(pedWepIniPath.c_str()) << std::endl;
 
-            if (!fileExists("ModelVariations_Vehicles.ini"))
+            if (!fileExists(vehIniPath.c_str()))
                 logfile << "\nModelVariations_Vehicles.ini not found!\n" << std::endl;
             else
                 logfile << "##################################\n"
                            "## ModelVariations_Vehicles.ini ##\n" 
-                           "##################################\n" << fileToString("ModelVariations_Vehicles.ini") << std::endl;
+                           "##################################\n" << fileToString(vehIniPath.c_str()) << std::endl;
 
 
             logfile << std::endl;

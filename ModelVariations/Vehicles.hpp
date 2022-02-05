@@ -13,22 +13,22 @@ extern CIniReader iniVeh;
 
 extern std::ofstream logfile;
 
-extern std::array<std::vector<short>, 16> vehVariations[212];
-extern std::array<std::vector<short>, 6> vehWantedVariations[212];
-extern std::map<short, std::array<std::vector<short>, 6>> vehGroupWantedVariations;
-extern std::map<short, short> vehOriginalModels;
-extern std::map<short, std::vector<short>> vehDrivers;
-extern std::map<short, std::vector<short>> vehPassengers;
-extern std::map<short, std::vector<short>> vehDriverGroups[9];
-extern std::map<short, std::vector<short>> vehPassengerGroups[9];
-extern std::map<short, BYTE> modelNumGroups;
-extern std::map<short, std::pair<CVector, float>> LightPositions;
+extern std::array<std::vector<unsigned short>, 16> vehVariations[212];
+extern std::array<std::vector<unsigned short>, 6> vehWantedVariations[212];
+extern std::map<unsigned short, std::array<std::vector<unsigned short>, 6>> vehGroupWantedVariations;
+extern std::map<unsigned short, unsigned short> vehOriginalModels;
+extern std::map<unsigned short, std::vector<unsigned short>> vehDrivers;
+extern std::map<unsigned short, std::vector<unsigned short>> vehPassengers;
+extern std::map<unsigned short, std::vector<unsigned short>> vehDriverGroups[9];
+extern std::map<unsigned short, std::vector<unsigned short>> vehPassengerGroups[9];
+extern std::map<unsigned short, BYTE> modelNumGroups;
+extern std::map<unsigned short, std::pair<CVector, float>> LightPositions;
 
-extern std::vector<short> vehCurrentVariations[212];
-extern std::vector<short> vehCarGenExclude;
-extern std::vector<short> vehInheritExclude;
+extern std::vector<unsigned short> vehCurrentVariations[212];
+extern std::vector<unsigned short> vehCarGenExclude;
+extern std::vector<unsigned short> vehInheritExclude;
 
-extern std::set<short> parkedCars;
+extern std::set<unsigned short> parkedCars;
 
 extern int loadAllVehicles;
 
@@ -44,10 +44,10 @@ extern int changeScriptedCars;
 
 extern char currentZone[8];
 
-extern std::set<short> vehUseOnlyGroups;
+extern std::set<unsigned short> vehUseOnlyGroups;
 
-extern void filterWantedVariations(std::vector<short>& vec, std::vector<short>& wantedVec);
-extern bool IdExists(std::vector<short>& vec, int id);
+extern void filterWantedVariations(std::vector<unsigned short>& vec, std::vector<unsigned short>& wantedVec);
+extern bool IdExists(std::vector<unsigned short>& vec, int id);
 
 void installVehicleHooks();
 void readVehicleIni();

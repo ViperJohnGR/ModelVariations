@@ -42,12 +42,12 @@ std::string tolower(std::string &orgStr)
     return str;
 }
 
-int getFilesize(const char* filename)
+DWORD getFilesize(const char* filename)
 {
     HANDLE hFile = CreateFile(filename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
     if (hFile == INVALID_HANDLE_VALUE)
-        return -1;
-    int filesize = GetFileSize(hFile, NULL);
+        return 0;
+    DWORD filesize = GetFileSize(hFile, NULL);
     CloseHandle(hFile);
     return filesize;
 }
@@ -59,19 +59,18 @@ std::string hashFile(const char* filename)
     if (fp == NULL)
         return "";
 
+    fseek(fp, 0, SEEK_END);
+    int filesize = ftell(fp);
     BYTE* hash = (BYTE*)calloc(50, 1);
-    if (hash == NULL)
+    if (hash == NULL || filesize < 1)
     {
         fclose(fp);
         return "";
     }
-
-    fseek(fp, 0, SEEK_END);
-    int filesize = ftell(fp);
     fseek(fp, 0, SEEK_SET);
 
-    BYTE* filebuf = (BYTE*)calloc(filesize, 1);
-    if (fread(filebuf, 1, filesize, fp) != filesize)
+    BYTE* filebuf = (BYTE*)calloc((size_t)filesize, 1);
+    if ((int)fread(filebuf, 1, (size_t)filesize, fp) != filesize)
     {
         fclose(fp);
         free(hash);
@@ -88,7 +87,7 @@ std::string hashFile(const char* filename)
     BCryptCreateHash(hProvider, &ctx, NULL, 0, NULL, 0, 0);
     if (ctx != NULL)
     {
-        BCryptHashData(ctx, filebuf, filesize, 0);
+        BCryptHashData(ctx, filebuf, (ULONG)filesize, 0);
         BCryptFinishHash(ctx, hash, 32, 0);
     }
     free(filebuf);
@@ -135,7 +134,7 @@ std::string getParentModuleName(unsigned int address)
     return emptyString;
 }
 
-void checkCallModified(std::string callName, unsigned int callAddress, bool isDirectAddress)
+void checkCallModified(const std::string &callName, unsigned int callAddress, bool isDirectAddress)
 {
     unsigned int functionAddress = (isDirectAddress == false) ? getAddressFromCall((BYTE*)callAddress) : *(unsigned int*)callAddress;
     std::string moduleName = getParentModuleName(functionAddress);

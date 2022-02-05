@@ -20,11 +20,11 @@
 
 using namespace plugin;
 
-int roadblockModel = -1;
+unsigned short roadblockModel = 0;
 int sirenModel = -1;
-int lightsModel = -1;
+unsigned short lightsModel = 0;
 int currentOccupantsGroup = -1;
-int currentOccupantsModel = -1;
+unsigned short currentOccupantsModel = 0;
 
 int fireCmpModel = -1;
 
@@ -32,7 +32,7 @@ int passengerModelIndex = -1;
 const unsigned int jmp613B7E = 0x613B7E;
 const unsigned int jmp6AB35A = 0x6AB35A;
 
-void checkNumGroups(std::vector<short>& vec, BYTE numGroups)
+void checkNumGroups(std::vector<unsigned short>& vec, BYTE numGroups)
 {
     auto it = vec.begin();
     while (it != vec.end())
@@ -59,7 +59,7 @@ bool hasModelSideMission(int model)
     return false;
 }
 
-bool isModelAmbulance(int model)
+bool isModelAmbulance(const unsigned short model)
 {
     auto it = vehOriginalModels.find(model);
     if (it != vehOriginalModels.end() && it->second == 416)
@@ -68,7 +68,7 @@ bool isModelAmbulance(int model)
     return false;
 }
 
-bool isModelFiretruck(int model)
+bool isModelFiretruck(const unsigned short model)
 {
     auto it = vehOriginalModels.find(model);
     if (it != vehOriginalModels.end() && it->second == 407)
@@ -77,7 +77,7 @@ bool isModelFiretruck(int model)
     return false;
 }
 
-bool isModelTaxi(int model)
+bool isModelTaxi(const unsigned short model)
 {
     auto it = vehOriginalModels.find(model);
     if (it != vehOriginalModels.end() && (it->second == 438 || it->second == 420))
@@ -86,18 +86,19 @@ bool isModelTaxi(int model)
     return false;
 }
 
-static int getVariationOriginalModel(int modelIndex)
+static int getVariationOriginalModel(const int modelIndex)
 {
-    int originalModel = modelIndex;
+    if (modelIndex < 400)
+        return modelIndex;
 
-    auto it = vehOriginalModels.find(modelIndex);
+    auto it = vehOriginalModels.find((unsigned short)modelIndex);
     if (it != vehOriginalModels.end())
         return it->second;
 
-    return originalModel;
+    return modelIndex;
 }
 
-int getRandomVariation(int modelid, bool parked = false)
+int getRandomVariation(const int modelid, bool parked = false)
 {
     if (modelid < 400 || modelid > 611)
         return modelid;
@@ -106,14 +107,14 @@ int getRandomVariation(int modelid, bool parked = false)
 
     if (parked == false)
     {
-        auto it = parkedCars.find(modelid);
+        auto it = parkedCars.find((unsigned short)modelid);
         if (it != parkedCars.end())
             return modelid;
     }
 
-    int random = CGeneral::GetRandomNumberInRange(0, vehCurrentVariations[modelid - 400].size());
-    int variationModel = vehCurrentVariations[modelid - 400][random];
-    if (variationModel > -1)
+    unsigned int random = CGeneral::GetRandomNumberInRange(0, (int)vehCurrentVariations[modelid - 400].size());
+    unsigned short variationModel = vehCurrentVariations[modelid - 400][random];
+    if (variationModel > 0)
     {
         CStreaming::RequestModel(variationModel, 2);
         CStreaming::LoadAllRequestedModels(false);
@@ -160,28 +161,31 @@ void readVehicleIni()
             if (substr != "zone" && substr != "end")
             {
                 std::for_each(substr.begin(), substr.end(), [](char& c) {
-                    c = ::toupper(c);
+                    c = (char)::toupper(c);
                 });
                 result.push_back(substr);
             }
         }
     }
-    for (auto& i : result) //for every zone name
-    {
-        for (int j = 0; j < 212; j++) //for every vehicle id
-        {
-            std::vector<short> vec = iniLineParser(std::to_string(j + 400), i, &iniVeh); //get zone name 'i' of veh id 'j+400'
 
-            if (!vec.empty()) //if veh id 'j+400' has variations in zone 'i'
-                for (auto& k : vec) //for every variation 'k' of veh id 'j+400' in zone 'i'
-                    if (j + 400 != k && !(IdExists(vehInheritExclude, k)))
-                        vehOriginalModels.insert({ k, j + 400 });
-        }
-    }
+    for (auto& i : result) //for every zone name
+        for (auto &j : iniVeh.data)
+            if (j.first[0] >= '4' && j.first[0] <= '6')
+            {
+                int modelid = std::stoi(j.first);
+
+                std::vector<unsigned short> vec = iniLineParser(j.first, i, &iniVeh); //get zone name 'i' of veh id 'j'
+
+                if (!vec.empty()) //if veh id 'j' has variations in zone 'i'
+                    for (auto& k : vec) //for every variation 'k' of veh id 'j' in zone 'i'
+                        if (modelid != k && !(IdExists(vehInheritExclude, k)))
+                            vehOriginalModels.insert({ k, modelid });
+            }
+
     if (zoneFile.is_open())
         zoneFile.close();
 
-    for (int i = 400; i < 612; i++)
+    for (unsigned short i = 400; i < 612; i++)
     {
         std::string section = std::to_string(i);
         if (iniVeh.data.find(section) != iniVeh.data.end())
@@ -196,7 +200,7 @@ void readVehicleIni()
             vehVariations[i - 400][4] = iniLineParser(section, "Global", &iniVeh);
             vehVariations[i - 400][5] = iniLineParser(section, "Desert", &iniVeh);
 
-            std::vector<short> vec = iniLineParser(section, "TierraRobada", &iniVeh);
+            std::vector<unsigned short> vec = iniLineParser(section, "TierraRobada", &iniVeh);
             vehVariations[i - 400][6] = vectorUnion(vec, vehVariations[i - 400][5]);
 
             vec = iniLineParser(section, "BoneCounty", &iniVeh);
@@ -235,114 +239,113 @@ void readVehicleIni()
             vehWantedVariations[i - 400][5] = iniLineParser(section, "Wanted6", &iniVeh);
 
 
-            for (int j = 0; j < 16; j++)
-                for (int k = 0; k < (int)(vehVariations[i - 400][j].size()); k++)
+            for (unsigned int j = 0; j < 16; j++)
+                for (unsigned int k = 0; k < vehVariations[i - 400][j].size(); k++)
                     if (vehVariations[i - 400][j][k] > 0 && vehVariations[i - 400][j][k] < 32000 && vehVariations[i - 400][j][k] != i && !(IdExists(vehInheritExclude, vehVariations[i - 400][j][k])))
                         vehOriginalModels.insert({ vehVariations[i - 400][j][k], i });
         }
     }
 
     enableLights = iniVeh.ReadInteger("Settings", "EnableLights", 0);
-
-    for (int i = 400; i < 32000; i++)
-    {
-        std::string section = std::to_string(i);
-        if (iniVeh.data.find(section) != iniVeh.data.end())
+    
+    for (auto& i : iniVeh.data)
+        if (i.first[0] >= '4' && i.first[0] <= '6')
         {
-            if (iniVeh.ReadInteger(section, "UseOnlyGroups", 0) == 1)
-                vehUseOnlyGroups.insert(i);
+            unsigned short modelid = (unsigned short)std::stoi(i.first);
+
+            if (iniVeh.ReadInteger(i.first, "UseOnlyGroups", 0) == 1)
+                vehUseOnlyGroups.insert(modelid);
 
             if (enableLights)
             {
-                float lightWidth = iniVeh.ReadFloat(section, "LightWidth", -999.0);
-                float lightX = iniVeh.ReadFloat(section, "LightX", -999.0);
-                float lightY = iniVeh.ReadFloat(section, "LightY", -999.0);
-                float lightZ = iniVeh.ReadFloat(section, "LightZ", -999.0);
+                float lightWidth = iniVeh.ReadFloat(i.first, "LightWidth", -999.0);
+                float lightX = iniVeh.ReadFloat(i.first, "LightX", -999.0);
+                float lightY = iniVeh.ReadFloat(i.first, "LightY", -999.0);
+                float lightZ = iniVeh.ReadFloat(i.first, "LightZ", -999.0);
 
                 if (lightX > -900.0 || lightY > -900.0 || lightZ > -900.0)
-                    LightPositions.insert({ (short)i, {{ lightX, lightY, lightZ }, lightWidth} });
+                    LightPositions.insert({ modelid, {{ lightX, lightY, lightZ }, lightWidth} });
             }
 
 
-            int numGroups = 0;
+            BYTE numGroups = 0;
             for (int j = 0; j < 9; j++)
             {
-                std::string str = "DriverGroup" + std::to_string(j + 1);
-                std::vector<short> vec = iniLineParser(std::to_string(i), str, &iniVeh);
+                str = "DriverGroup" + std::to_string(j + 1);
+                std::vector<unsigned short> vec = iniLineParser(i.first, str, &iniVeh);
                 if (!vec.empty())
                 {
-                    vehDriverGroups[j].insert({ i, vec });
+                    vehDriverGroups[j].insert({ modelid, vec });
                     numGroups++;
                 }
                 if (numGroups > 0)
-                    modelNumGroups[i] = numGroups;
+                    modelNumGroups[modelid] = numGroups;
                 else
                     continue;
 
                 str = "PassengerGroup" + std::to_string(j + 1);
-                vec = iniLineParser(std::to_string(i), str, &iniVeh);
+                vec = iniLineParser(i.first, str, &iniVeh);
                 if (!vec.empty())
-                    vehPassengerGroups[j].insert({ i, vec });
+                    vehPassengerGroups[j].insert({ modelid, vec });
             }
 
-            std::vector<short> vec = iniLineParser(section, "Wanted1", &iniVeh, true);
+            std::vector<unsigned short> vec = iniLineParser(i.first, "Wanted1", &iniVeh, true);
             if (!vec.empty())
             {
                 vec.erase(unique(vec.begin(), vec.end()), vec.end());
-                checkNumGroups(vec, modelNumGroups[i]);
-                vehGroupWantedVariations[i][0] = vec;
+                checkNumGroups(vec, modelNumGroups[modelid]);
+                vehGroupWantedVariations[modelid][0] = vec;
             }
 
-            vec = iniLineParser(section, "Wanted2", &iniVeh, true);
+            vec = iniLineParser(i.first, "Wanted2", &iniVeh, true);
             if (!vec.empty())
             {
                 vec.erase(unique(vec.begin(), vec.end()), vec.end());
-                checkNumGroups(vec, modelNumGroups[i]);
-                vehGroupWantedVariations[i][1] = vec;
+                checkNumGroups(vec, modelNumGroups[modelid]);
+                vehGroupWantedVariations[modelid][1] = vec;
             }
 
-            vec = iniLineParser(section, "Wanted3", &iniVeh, true);
+            vec = iniLineParser(i.first, "Wanted3", &iniVeh, true);
             if (!vec.empty())
             {
                 vec.erase(unique(vec.begin(), vec.end()), vec.end());
-                checkNumGroups(vec, modelNumGroups[i]);
-                vehGroupWantedVariations[i][2] = vec;
+                checkNumGroups(vec, modelNumGroups[modelid]);
+                vehGroupWantedVariations[modelid][2] = vec;
             }
 
-            vec = iniLineParser(section, "Wanted4", &iniVeh, true);
+            vec = iniLineParser(i.first, "Wanted4", &iniVeh, true);
             if (!vec.empty())
             {
                 vec.erase(unique(vec.begin(), vec.end()), vec.end());
-                checkNumGroups(vec, modelNumGroups[i]);
-                vehGroupWantedVariations[i][3] = vec;
+                checkNumGroups(vec, modelNumGroups[modelid]);
+                vehGroupWantedVariations[modelid][3] = vec;
             }
 
-            vec = iniLineParser(section, "Wanted5", &iniVeh, true);
+            vec = iniLineParser(i.first, "Wanted5", &iniVeh, true);
             if (!vec.empty())
             {
                 vec.erase(unique(vec.begin(), vec.end()), vec.end());
-                checkNumGroups(vec, modelNumGroups[i]);
-                vehGroupWantedVariations[i][4] = vec;
+                checkNumGroups(vec, modelNumGroups[modelid]);
+                vehGroupWantedVariations[modelid][4] = vec;
             }
 
-            vec = iniLineParser(section, "Wanted6", &iniVeh, true);
+            vec = iniLineParser(i.first, "Wanted6", &iniVeh, true);
             if (!vec.empty())
             {
                 vec.erase(unique(vec.begin(), vec.end()), vec.end());
-                checkNumGroups(vec, modelNumGroups[i]);
-                vehGroupWantedVariations[i][5] = vec;
+                checkNumGroups(vec, modelNumGroups[modelid]);
+                vehGroupWantedVariations[modelid][5] = vec;
             }
 
 
-            vec = iniLineParser(std::to_string(i), "Drivers", &iniVeh);
+            vec = iniLineParser(i.first, "Drivers", &iniVeh);
             if (!vec.empty())
-                vehDrivers.insert({ i, vec });
+                vehDrivers.insert({ modelid, vec });
 
-            vec = iniLineParser(std::to_string(i), "Passengers", &iniVeh);
+            vec = iniLineParser(i.first, "Passengers", &iniVeh);
             if (!vec.empty())
-                vehPassengers.insert({ i, vec });
+                vehPassengers.insert({ modelid, vec });
         }
-    }
 
     changeCarGenerators = iniVeh.ReadInteger("Settings", "ChangeCarGenerators", 0);
     vehCarGenExclude = iniLineParser("Settings", "ExcludeCarGeneratorModels", &iniVeh);
@@ -393,7 +396,7 @@ int __cdecl ChooseModelHooked(int* a1)
     if (vehCurrentVariations[model - 400].empty())
         return model;
 
-    return getRandomVariation(model);
+    return getRandomVariation((unsigned short)model);
 }
 
 template <unsigned int address>
@@ -408,7 +411,7 @@ int __cdecl ChoosePoliceCarModelHooked(int a1)
     if (vehCurrentVariations[model - 400].empty())
         return model;
 
-    return getRandomVariation(model);
+    return getRandomVariation((unsigned short)model);
 }
 
 template <unsigned int address>
@@ -423,11 +426,11 @@ void __cdecl AddPoliceCarOccupantsHooked(CVehicle* a2, char a3)
         if (it != modelNumGroups.end())
         {
             CWanted* wanted = FindPlayerWanted(-1);
-            int wantedLevel = (wanted->m_nWantedLevel > 0) ? (wanted->m_nWantedLevel - 1) : (wanted->m_nWantedLevel);
-            int i = CGeneral::GetRandomNumberInRange(0, vehGroupWantedVariations[a2->m_nModelIndex][wantedLevel].size());
+            unsigned int wantedLevel = (wanted->m_nWantedLevel > 0) ? (wanted->m_nWantedLevel - 1) : (wanted->m_nWantedLevel);
+            unsigned int i = CGeneral::GetRandomNumberInRange(0, (int)vehGroupWantedVariations[a2->m_nModelIndex][wantedLevel].size());
             currentOccupantsModel = a2->m_nModelIndex;
 
-            std::vector<short> zoneGroups = iniLineParser(std::to_string(a2->m_nModelIndex), currentZone, &iniVeh, true);
+            std::vector<unsigned short> zoneGroups = iniLineParser(std::to_string(a2->m_nModelIndex), currentZone, &iniVeh, true);
             checkNumGroups(zoneGroups, it->second);
             if (zoneGroups.empty() && !vehGroupWantedVariations[a2->m_nModelIndex][wantedLevel].empty())
                 currentOccupantsGroup = vehGroupWantedVariations[a2->m_nModelIndex][wantedLevel][i] - 1;
@@ -436,22 +439,22 @@ void __cdecl AddPoliceCarOccupantsHooked(CVehicle* a2, char a3)
                 if (!vehGroupWantedVariations[a2->m_nModelIndex][wantedLevel].empty())
                     filterWantedVariations(zoneGroups, vehGroupWantedVariations[a2->m_nModelIndex][wantedLevel]);
                 if (!zoneGroups.empty())
-                    currentOccupantsGroup = zoneGroups[CGeneral::GetRandomNumberInRange(0, zoneGroups.size())] - 1;
+                    currentOccupantsGroup = zoneGroups[CGeneral::GetRandomNumberInRange(0, (int)zoneGroups.size())] - 1;
                 else
-                    currentOccupantsGroup = CGeneral::GetRandomNumberInRange(0, it->second);
+                    currentOccupantsGroup = (int)CGeneral::GetRandomNumberInRange(0, (int)it->second);
             }
         }
     }
 
-    int model = a2->m_nModelIndex;
-    a2->m_nModelIndex = getVariationOriginalModel(a2->m_nModelIndex);
+    unsigned short model = a2->m_nModelIndex;
+    a2->m_nModelIndex = (unsigned short)getVariationOriginalModel(a2->m_nModelIndex);
 
     callOriginal<address>(a2, a3);
     //CCarAI::AddPoliceCarOccupants(a2, a3);
 
     a2->m_nModelIndex = model;
     currentOccupantsGroup = -1;
-    currentOccupantsModel = -1;
+    currentOccupantsModel = 0;
 }
 
 template <unsigned int address>
@@ -488,7 +491,7 @@ void __fastcall DoInternalProcessingHooked(CCarGenerator* park) //for non-random
 {
     if (park != NULL)
     {
-        int model = park->m_nModelId;
+        short model = park->m_nModelId;
         if (changeCarGenerators == 1)
         {
             if (!vehCarGenExclude.empty())
@@ -498,7 +501,7 @@ void __fastcall DoInternalProcessingHooked(CCarGenerator* park) //for non-random
                     return;
                 }
 
-            park->m_nModelId = getRandomVariation(park->m_nModelId, true);
+            park->m_nModelId = (short)getRandomVariation(park->m_nModelId, true);
             callMethodOriginal<address>(park);
             park->m_nModelId = model;
             return;
@@ -523,7 +526,7 @@ void __fastcall DoInternalProcessingHooked(CCarGenerator* park) //for non-random
             case 430: //Predator
             case 496: //Police Maverick
             case 488: //News Chopper
-                park->m_nModelId = getRandomVariation(park->m_nModelId, true);
+                park->m_nModelId = (short)getRandomVariation(park->m_nModelId, true);
                 callMethodOriginal<address>(park);
                 park->m_nModelId = model;
                 break;
@@ -556,12 +559,12 @@ char __fastcall IsLawEnforcementVehicleHooked(CVehicle* vehicle)
 {
     if (vehicle == NULL)
         return 0;
-    int modelIndex = vehicle->m_nModelIndex;
+    unsigned short modelIndex = vehicle->m_nModelIndex;
 
-    vehicle->m_nModelIndex = getVariationOriginalModel(vehicle->m_nModelIndex);
+    vehicle->m_nModelIndex = (unsigned short)getVariationOriginalModel(vehicle->m_nModelIndex);
 
     char isLawEnforcement = 0;
-    if (address == 0)
+    if constexpr (address == 0)
         isLawEnforcement = vehicle->IsLawEnforcementVehicle();
     else
         isLawEnforcement = callMethodOriginalAndReturn<char, address>(vehicle);
@@ -604,7 +607,7 @@ void __cdecl AddAmbulanceOccupantsHooked(CVehicle* pVehicle)
     if (pVehicle == NULL)
         return;
     
-    int model = pVehicle->m_nModelIndex;
+    auto model = pVehicle->m_nModelIndex;
 
     if (isModelAmbulance(pVehicle->m_nModelIndex))
         pVehicle->m_nModelIndex = 416;
@@ -619,7 +622,7 @@ void __cdecl AddFiretruckOccupantsHooked(CVehicle* pVehicle)
     if (pVehicle == NULL)
         return;
 
-    int model = pVehicle->m_nModelIndex;
+    auto model = pVehicle->m_nModelIndex;
 
     if (isModelFiretruck(pVehicle->m_nModelIndex))
         pVehicle->m_nModelIndex = 407;
@@ -631,14 +634,17 @@ void __cdecl AddFiretruckOccupantsHooked(CVehicle* pVehicle)
 template <unsigned int address>
 DWORD __cdecl FindSpecificDriverModelForCar_ToUseHooked(int carModel)
 {
-    auto it = vehDrivers.find(carModel);
+    if (carModel < 400)
+        return (DWORD)callOriginalAndReturn<int, address>(getVariationOriginalModel(carModel));
+
+    auto it = vehDrivers.find((unsigned short)carModel);
     int replaceDriver = iniVeh.ReadInteger(std::to_string(carModel), "ReplaceDriver", 0);
-    if (currentOccupantsGroup > -1 && currentOccupantsGroup < 9 && currentOccupantsModel > -1)
+    if (currentOccupantsGroup > -1 && currentOccupantsGroup < 9 && currentOccupantsModel > 0)
     {
         auto itGroup = vehDriverGroups[currentOccupantsGroup].find(currentOccupantsModel);
         if (itGroup != vehDriverGroups[currentOccupantsGroup].end())
         {
-            int random = CGeneral::GetRandomNumberInRange(0, itGroup->second.size());
+            unsigned int random = CGeneral::GetRandomNumberInRange(0, (int)itGroup->second.size());
             CStreaming::RequestModel(itGroup->second[random], 2);
             CStreaming::LoadAllRequestedModels(false);
             return itGroup->second[random];
@@ -646,13 +652,13 @@ DWORD __cdecl FindSpecificDriverModelForCar_ToUseHooked(int carModel)
     }
     if (it != vehDrivers.end() && ((replaceDriver == 0 && CGeneral::GetRandomNumberInRange(0, 100) > 50) || replaceDriver == 1))
     {
-        int random = CGeneral::GetRandomNumberInRange(0, it->second.size());
+        unsigned int random = CGeneral::GetRandomNumberInRange(0, (int)it->second.size());
         CStreaming::RequestModel(it->second[random], 2);
         CStreaming::LoadAllRequestedModels(false);
         return it->second[random];
     }
 
-    return callOriginalAndReturn<int, address>(getVariationOriginalModel(carModel));
+    return (DWORD)callOriginalAndReturn<int, address>(getVariationOriginalModel(carModel));
     //return CPopulation::FindSpecificDriverModelForCar_ToUse(getVariationOriginalModel(carModel));
 }
 
@@ -663,7 +669,7 @@ void __fastcall CollectParametersHooked(CRunningScript* script, void*, unsigned 
     callMethodOriginal<address>(script, a2);
     if (enableAllSideMissions == 0)
     {
-        if (!hasModelSideMission(CTheScripts::ScriptParams[1].uParam))
+        if (!hasModelSideMission((int)CTheScripts::ScriptParams[1].uParam))
             return;
 
         if (strcmp(script->m_szName, "r3") != 0 && strcmp(script->m_szName, "ambulan") != 0 && strcmp(script->m_szName, "firetru") != 0 &&
@@ -677,13 +683,13 @@ void __fastcall CollectParametersHooked(CRunningScript* script, void*, unsigned 
 
     int hplayer = CPools::GetPedRef(player);
 
-    if (CTheScripts::ScriptParams[0].uParam != hplayer)
+    if ((int)(CTheScripts::ScriptParams[0].uParam) != hplayer)
         return;
 
     if (player->m_pVehicle)
     {
         int originalModel = getVariationOriginalModel(player->m_pVehicle->m_nModelIndex);
-        if (CTheScripts::ScriptParams[1].uParam == originalModel)
+        if ((int)(CTheScripts::ScriptParams[1].uParam) == originalModel)
             CTheScripts::ScriptParams[1].uParam = player->m_pVehicle->m_nModelIndex;
     }
 }
@@ -695,15 +701,16 @@ char __cdecl GenerateRoadBlockCopsForCarHooked(CVehicle* a1, int pedsPositionsTy
         return 0;
 
     roadblockModel = a1->m_nModelIndex;
-    a1->m_nModelIndex = getVariationOriginalModel(a1->m_nModelIndex);
+    a1->m_nModelIndex = (unsigned short)getVariationOriginalModel(a1->m_nModelIndex);
     //CRoadBlocks::GenerateRoadBlockCopsForCar(a1, pedsPositionsType, type);
     callOriginal<address>(a1, pedsPositionsType, type);
     if (roadblockModel >= 400)
         a1->m_nModelIndex = roadblockModel;
-    roadblockModel = -1;
+    roadblockModel = 0;
 
     return 1;
 }
+
 template <unsigned int address>
 CColModel* __fastcall GetColModelHooked(CVehicle* entity)
 {
@@ -725,11 +732,11 @@ void __cdecl SetUpDriverAndPassengersForVehicleHooked(CVehicle* car, int a3, int
         if (it != modelNumGroups.end())
         {
             CWanted* wanted = FindPlayerWanted(-1);
-            int wantedLevel = (wanted->m_nWantedLevel > 0) ? (wanted->m_nWantedLevel - 1) : (wanted->m_nWantedLevel);
-            int i = CGeneral::GetRandomNumberInRange(0, vehGroupWantedVariations[car->m_nModelIndex][wantedLevel].size());
+            unsigned int wantedLevel = (wanted->m_nWantedLevel > 0) ? (wanted->m_nWantedLevel - 1) : (wanted->m_nWantedLevel);
+            unsigned int i = CGeneral::GetRandomNumberInRange(0, (int)vehGroupWantedVariations[car->m_nModelIndex][wantedLevel].size());
             currentOccupantsModel = car->m_nModelIndex;
 
-            std::vector<short> zoneGroups = iniLineParser(std::to_string(car->m_nModelIndex), currentZone, &iniVeh, true);
+            std::vector<unsigned short> zoneGroups = iniLineParser(std::to_string(car->m_nModelIndex), currentZone, &iniVeh, true);
             checkNumGroups(zoneGroups, it->second);
             if (zoneGroups.empty() && !vehGroupWantedVariations[car->m_nModelIndex][wantedLevel].empty())
                 currentOccupantsGroup = vehGroupWantedVariations[car->m_nModelIndex][wantedLevel][i] - 1;
@@ -738,9 +745,9 @@ void __cdecl SetUpDriverAndPassengersForVehicleHooked(CVehicle* car, int a3, int
                 if (!vehGroupWantedVariations[car->m_nModelIndex][wantedLevel].empty())
                     filterWantedVariations(zoneGroups, vehGroupWantedVariations[car->m_nModelIndex][wantedLevel]);
                 if (!zoneGroups.empty())
-                    currentOccupantsGroup = zoneGroups[CGeneral::GetRandomNumberInRange(0, zoneGroups.size())] - 1;
+                    currentOccupantsGroup = zoneGroups[CGeneral::GetRandomNumberInRange(0, (int)zoneGroups.size())] - 1;
                 else
-                    currentOccupantsGroup = CGeneral::GetRandomNumberInRange(0, it->second);
+                    currentOccupantsGroup = (int)CGeneral::GetRandomNumberInRange(0, it->second);
             }
         }
     }
@@ -763,16 +770,16 @@ void __cdecl SetUpDriverAndPassengersForVehicleHooked(CVehicle* car, int a3, int
     
     CStreaming::LoadAllRequestedModels(false);
 
-    int model = car->m_nModelIndex;
+    auto model = car->m_nModelIndex;
 
-    car->m_nModelIndex = getVariationOriginalModel(car->m_nModelIndex);
+    car->m_nModelIndex = (unsigned short)getVariationOriginalModel(car->m_nModelIndex);
 
     callOriginal<address>(car, a3, a4, a5, a6, a7);
     //CCarCtrl::SetUpDriverAndPassengersForVehicle(car, a3, a4, a5, a6, a7);
 
     car->m_nModelIndex = model;
     currentOccupantsGroup = -1;
-    currentOccupantsModel = -1;
+    currentOccupantsModel = 0;
 }
 
 template <unsigned int address>
@@ -814,24 +821,24 @@ template <unsigned int address>
 CPed* __cdecl AddPedInCarHooked(CVehicle* a1, char a2, int a3, signed int a4, int a5, char a6)
 {
     const unsigned char originalData[5] = { 0x8D, 0x54, 0x24, 0x10, 0x52 };
-    int random = 0;
+    unsigned int random = 0;
     if (a1)
     {
         int replacePassenger = iniVeh.ReadInteger(std::to_string(a1->m_nModelIndex), "ReplacePassengers", 0);
         auto it = vehPassengers.find(a1->m_nModelIndex);
-        if (currentOccupantsGroup > -1 && currentOccupantsGroup < 9 && currentOccupantsModel > -1)
+        if (currentOccupantsGroup > -1 && currentOccupantsGroup < 9 && currentOccupantsModel > 0)
         {
             auto itGroup = vehPassengerGroups[currentOccupantsGroup].find(currentOccupantsModel);
             if (itGroup != vehPassengerGroups[currentOccupantsGroup].end())
             {
-                random = CGeneral::GetRandomNumberInRange(0, itGroup->second.size());
+                random = CGeneral::GetRandomNumberInRange(0, (int)itGroup->second.size());
                 passengerModelIndex = itGroup->second[random];
                 goto ModelChosen;
             }
         }
         if (it != vehPassengers.end() && ((replacePassenger == 0 && CGeneral::GetRandomNumberInRange(0, 100) > 50) || replacePassenger == 1))
         {
-            random = CGeneral::GetRandomNumberInRange(0, it->second.size());
+            random = CGeneral::GetRandomNumberInRange(0, (int)it->second.size());
             passengerModelIndex = it->second[random];
 ModelChosen:
             CStreaming::RequestModel(passengerModelIndex, 2);
@@ -906,10 +913,9 @@ void __cdecl PossiblyRemoveVehicleHooked(CVehicle* car)
         callOriginal<address>(car);
         return;
     }
-    *((short*)0x4250AC) = car->m_nModelIndex;
+    *((unsigned short*)0x4250AC) = car->m_nModelIndex;
     callOriginal<address>(car);
-    *((short*)0x4250AC) = 0x1A0;
-
+    *((unsigned short*)0x4250AC) = 0x1A0;
 }
 
 template <unsigned int address>
@@ -997,7 +1003,7 @@ void __fastcall PreRenderHooked(CAutomobile* veh)
         return;
 
     sirenModel = -1;
-    lightsModel = -1;
+    lightsModel = 0;
     bool hasSiren = false;
 
     if (enableLights && (HasCarSiren<0>(veh) || getVariationOriginalModel(veh->m_nModelIndex) == 420 || getVariationOriginalModel(veh->m_nModelIndex) == 438))
@@ -1008,7 +1014,7 @@ void __fastcall PreRenderHooked(CAutomobile* veh)
         hasSiren = true;
     }
 
-    if (getVariationOriginalModel(veh->m_nModelIndex) == 407)
+    if (getVariationOriginalModel(veh->m_nModelIndex) == 407) //Firetruck
     {
         *((BYTE*)0x6ACA57) = 0xEB;
         *((BYTE*)0x6ACA58) = 0x04;
@@ -1032,11 +1038,11 @@ void __fastcall PreRenderHooked(CAutomobile* veh)
         *((short*)0x6AC029) = 0x1B0;
         *((short*)0x6ACA4D) = 0x1B0;
     }*/
-    else if (getVariationOriginalModel(veh->m_nModelIndex) == 601)
+    else if (getVariationOriginalModel(veh->m_nModelIndex) == 601) //SWAT Tank
     {
-        *((short*)0x6ACA53) = veh->m_nModelIndex;
+        *((unsigned short*)0x6ACA53) = veh->m_nModelIndex;
         callMethodOriginal<address>(veh);
-        *((short*)0x6ACA53) = 0x259;
+        *((unsigned short*)0x6ACA53) = 0x259;
         if (hasSiren)
             sirenRestore();
     }
@@ -1249,10 +1255,10 @@ void installVehicleHooks()
     hookCall(0x60C4E8, PossiblyRemoveVehicleHooked<0x60C4E8>, "PossiblyRemoveVehicle"); //CPlayerPed::KeepAreaAroundPlayerClear
     hookCall(0x42CD55, PossiblyRemoveVehicleHooked<0x42CD55>, "PossiblyRemoveVehicle"); //CCarCtrl::RemoveDistantCars
 
-    if (changeScriptedCars = iniVeh.ReadInteger("Settings", "ChangeScriptedCars", 0))
+    if ((changeScriptedCars = iniVeh.ReadInteger("Settings", "ChangeScriptedCars", 0)) == 1)
         hookCall(0x467B01, CreateCarForScriptHooked<0x467B01>, "CreateCarForScript");
 
-    if (enableSpecialFeatures = iniVeh.ReadInteger("Settings", "EnableSpecialFeatures", 0))
+    if ((enableSpecialFeatures = iniVeh.ReadInteger("Settings", "EnableSpecialFeatures", 0)) == 1)
     {
         hookCall(0x871148, ProcessControlHooked<0x871148>, "ProcessControl", true);
         hookCall(0x871164, PreRenderHooked<0x871164>, "PreRender", true);

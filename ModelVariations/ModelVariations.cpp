@@ -36,38 +36,38 @@ std::set<std::pair<unsigned int, std::string>> callChecks;
 
 CIniReader iniVeh("ModelVariations_Vehicles.ini");
 
-std::array<std::vector<short>, 16> pedVariations[300];
-std::array<std::vector<short>, 16> vehVariations[212];
-std::array<std::vector<short>, 6> pedWantedVariations[300];
-std::array<std::vector<short>, 6> vehWantedVariations[212];
+std::array<std::vector<unsigned short>, 16> pedVariations[300];
+std::array<std::vector<unsigned short>, 16> vehVariations[212];
+std::array<std::vector<unsigned short>, 6> pedWantedVariations[300];
+std::array<std::vector<unsigned short>, 6> vehWantedVariations[212];
 
 std::map<unsigned int, hookinfo> hookedCalls;
-std::map<short, short> vehOriginalModels;
-std::map<short, std::vector<short>> vehDrivers;
-std::map<short, std::vector<short>> vehPassengers;
-std::map<short, std::vector<short>> vehDriverGroups[9];
-std::map<short, std::vector<short>> vehPassengerGroups[9];
-std::map<short, BYTE> modelNumGroups;
-std::map<short, std::pair<CVector, float>> LightPositions;
-std::map<short, int> pedTimeSinceLastSpawned;
-std::map<short, short> pedOriginalModels;
-std::map<short, std::array<std::vector<short>, 6>> vehGroupWantedVariations;
+std::map<unsigned short, unsigned short> vehOriginalModels;
+std::map<unsigned short, std::vector<unsigned short>> vehDrivers;
+std::map<unsigned short, std::vector<unsigned short>> vehPassengers;
+std::map<unsigned short, std::vector<unsigned short>> vehDriverGroups[9];
+std::map<unsigned short, std::vector<unsigned short>> vehPassengerGroups[9];
+std::map<unsigned short, BYTE> modelNumGroups;
+std::map<unsigned short, std::pair<CVector, float>> LightPositions;
+std::map<unsigned short, int> pedTimeSinceLastSpawned;
+std::map<unsigned short, unsigned short> pedOriginalModels;
+std::map<unsigned short, std::array<std::vector<unsigned short>, 6>> vehGroupWantedVariations;
 
-std::set<short> parkedCars;
-std::set<short> vehUseOnlyGroups;
+std::set<unsigned short> parkedCars;
+std::set<unsigned short> vehUseOnlyGroups;
 
 std::stack<CPed*> pedStack;
 std::stack<CVehicle*> vehStack;
 
-std::vector<short> cloneRemoverExclusions;
-std::vector<short> pedCurrentVariations[300];
-std::vector<short> vehCurrentVariations[212];
-std::vector<short> vehCarGenExclude;
-std::vector<short> vehInheritExclude;
+std::vector<unsigned short> cloneRemoverExclusions;
+std::vector<unsigned short> pedCurrentVariations[300];
+std::vector<unsigned short> vehCurrentVariations[212];
+std::vector<unsigned short> vehCarGenExclude;
+std::vector<unsigned short> vehInheritExclude;
 
 BYTE dealersFixed = 0;
 short framesSinceCallsChecked = 0;
-short modelIndex = -1;
+unsigned short modelIndex = 0;
 char currentInterior[16] = {};
 char lastInterior[16] = {};
 char currentZone[8] = {};
@@ -89,12 +89,12 @@ int cloneRemoverVehicleOccupants = 0;
 int cloneRemoverIncludeVariations = 0;
 int spawnDelay = 3;
 
-void filterWantedVariations(std::vector<short>& vec, std::vector<short>& wantedVec)
+void filterWantedVariations(std::vector<unsigned short>& vec, std::vector<unsigned short>& wantedVec)
 {
     bool matchFound = false;
-    std::vector<short> vec2 = vec;
+    std::vector<unsigned short> vec2 = vec;
 
-    std::vector<short>::iterator it = vec.begin();
+    std::vector<unsigned short>::iterator it = vec.begin();
     while (it != vec.end())
         if (std::find(wantedVec.begin(), wantedVec.end(), *it) != wantedVec.end())
         {
@@ -108,15 +108,13 @@ void filterWantedVariations(std::vector<short>& vec, std::vector<short>& wantedV
         vec = vec2;
 }
 
-static int getVariationOriginalModel(int modelIndex)
+static unsigned short getVariationOriginalModel(unsigned short model)
 {
-    int originalModel = modelIndex;
-
-    auto it = pedOriginalModels.find(modelIndex);
+    auto it = pedOriginalModels.find(model);
     if (it != pedOriginalModels.end())
         return it->second;
 
-    return originalModel;
+    return model;
 }
 
 bool isPlayerInDesert()
@@ -138,7 +136,7 @@ bool isPlayerInCountry()
     return false;
 }
 
-bool IdExists(std::vector<short>& vec, int id)
+bool IdExists(std::vector<unsigned short>& vec, int id)
 {
     if (vec.size() < 1)
         return false;
@@ -153,37 +151,37 @@ void drugDealerFix(void)
 {
     bool enableFix = false;
 
-    for (int i = 0; i < 6; i++)
+    for (unsigned int i = 0; i < 6; i++)
         if (!pedVariations[28][i].empty() || !pedVariations[29][i].empty() || !pedVariations[30][i].empty() || !pedVariations[254][i].empty())
             enableFix = true;
 
     if (!enableFix)
         return;       
 
-    std::vector<short> totalVariations;
+    std::vector<unsigned short> totalVariations;
 
-    for (int i = 0; i < 6; i++)
+    for (unsigned int i = 0; i < 6; i++)
         totalVariations.insert(totalVariations.end(), pedVariations[28][i].begin(), pedVariations[28][i].end());
 
-    for (int i = 0; i < 6; i++)
+    for (unsigned int i = 0; i < 6; i++)
         totalVariations.insert(totalVariations.end(), pedVariations[29][i].begin(), pedVariations[29][i].end());
 
-    for (int i = 0; i < 6; i++)
+    for (unsigned int i = 0; i < 6; i++)
         totalVariations.insert(totalVariations.end(), pedVariations[30][i].begin(), pedVariations[30][0].end());
 
-    for (int i = 0; i < 6; i++)
+    for (unsigned int i = 0; i < 6; i++)
         totalVariations.insert(totalVariations.end(), pedVariations[254][i].begin(), pedVariations[254][0].end());
 
-    std::vector<short> variationsProcessed;
+    std::vector<unsigned short> variationsProcessed;
 
-    for (int i = 0; i < (int)totalVariations.size(); i++)
+    for (unsigned int i = 0; i < totalVariations.size(); i++)
     {
-        short variationModel = totalVariations[i];
+        unsigned short variationModel = totalVariations[i];
         if (variationModel > 300 && IdExists(variationsProcessed, variationModel) == false)
             variationsProcessed.push_back(variationModel);
     }
 
-    for (int i = 0; i < (int)(variationsProcessed.size()); i++)
+    for (unsigned int i = 0; i < variationsProcessed.size(); i++)
     {
         if (enableLog == 1)
             logfile << variationsProcessed[i] << "\n";
@@ -192,14 +190,14 @@ void drugDealerFix(void)
     }
 }
 
-void updateVariations(CZone *zInfo, CIniReader *iniPed, CIniReader *iniVeh)
+void updateVariations(CZone *zInfo, CIniReader *iniPed, CIniReader *pIniVeh)
 {
     //zInfo->m_szTextKey = BLUEB | zInfo->m_szLabel = BLUEB1
 
-    if (zInfo == NULL || iniPed == NULL || iniVeh == NULL)
+    if (zInfo == NULL || iniPed == NULL || pIniVeh == NULL)
         return;
 
-    int merge = CTheZones::m_CurrLevel;
+    unsigned int merge = CTheZones::m_CurrLevel;
     if (strncmp(zInfo->m_szTextKey, "ROBAD", 7) == 0)
         merge = 6;
     else if (strncmp(zInfo->m_szTextKey, "BONE", 7) == 0)
@@ -227,10 +225,10 @@ void updateVariations(CZone *zInfo, CIniReader *iniPed, CIniReader *iniVeh)
         vectorUnion(pedVariations[i][4], pedVariations[i][merge], pedCurrentVariations[i]);
         CWanted* wanted = FindPlayerWanted(-1);
 
-        std::vector<short> vecPed = iniLineParser(std::to_string(i), zInfo->m_szLabel, iniPed);
+        std::vector<unsigned short> vecPed = iniLineParser(std::to_string(i), zInfo->m_szLabel, iniPed);
         if (!vecPed.empty())
         {
-            std::vector<short> vec2;
+            std::vector<unsigned short> vec2;
             vectorUnion(pedCurrentVariations[i], vecPed, vec2);
             pedCurrentVariations[i] = vec2;
         }
@@ -238,14 +236,14 @@ void updateVariations(CZone *zInfo, CIniReader *iniPed, CIniReader *iniVeh)
         vecPed = iniLineParser(std::to_string(i), currentInterior, iniPed);
         if (!vecPed.empty())
         {
-            std::vector<short> vec2;
+            std::vector<unsigned short> vec2;
             vectorUnion(pedCurrentVariations[i], vecPed, vec2);
             pedCurrentVariations[i] = vec2;
         }
 
         if (wanted)
         {
-            int wantedLevel = (wanted->m_nWantedLevel > 0) ? (wanted->m_nWantedLevel - 1) : (wanted->m_nWantedLevel);
+            unsigned int wantedLevel = (wanted->m_nWantedLevel > 0) ? (wanted->m_nWantedLevel - 1) : (wanted->m_nWantedLevel);
             if (!pedWantedVariations[i][wantedLevel].empty() && !pedCurrentVariations[i].empty())
                 filterWantedVariations(pedCurrentVariations[i], pedWantedVariations[i][wantedLevel]);
         }
@@ -254,17 +252,17 @@ void updateVariations(CZone *zInfo, CIniReader *iniPed, CIniReader *iniVeh)
         {
             vectorUnion(vehVariations[i][4], vehVariations[i][merge], vehCurrentVariations[i]);
 
-            std::vector<short> vec = iniLineParser(std::to_string(i+400), zInfo->m_szLabel, iniVeh);
+            std::vector<unsigned short> vec = iniLineParser(std::to_string(i+400), zInfo->m_szLabel, pIniVeh);
             if (!vec.empty())
             {
-                std::vector<short> vec2;
+                std::vector<unsigned short> vec2;
                 vectorUnion(vehCurrentVariations[i], vec, vec2);
                 vehCurrentVariations[i] = vec2;
             }
 
             if (wanted)
             {
-                int wantedLevel = (wanted->m_nWantedLevel > 0) ? (wanted->m_nWantedLevel - 1) : (wanted->m_nWantedLevel);
+                unsigned int wantedLevel = (wanted->m_nWantedLevel > 0) ? (wanted->m_nWantedLevel - 1) : (wanted->m_nWantedLevel);
                 if (!vehWantedVariations[i][wantedLevel].empty() && !vehCurrentVariations[i].empty())
                     filterWantedVariations(vehCurrentVariations[i], vehWantedVariations[i][wantedLevel]);     
             }
@@ -279,7 +277,7 @@ void printCurrentVariations()
         if (!pedCurrentVariations[i].empty())
         {
             logfile << i << ": ";
-            for (short j : pedCurrentVariations[i])
+            for (auto j : pedCurrentVariations[i])
                 logfile << j << " ";
             logfile << "\n";
         }
@@ -294,7 +292,7 @@ void printCurrentVariations()
             if (!vehCurrentVariations[i].empty())
             {
                 logfile << i + 400 << ": ";
-                for (short j : vehCurrentVariations[i])
+                for (auto j : vehCurrentVariations[i])
                     logfile << j << " ";
                 logfile << "\n";
             }
@@ -309,9 +307,9 @@ void __fastcall UpdateRpHAnimHooked(CEntity* entity)
 {
     callMethodOriginal<address>(entity);
     //entity->UpdateRpHAnim();
-    if (modelIndex != -1)
+    if (modelIndex > 0)
         entity->m_nModelIndex = modelIndex;
-    modelIndex = -1;
+    modelIndex = 0;
 }
 
 class ModelVariations {
@@ -322,7 +320,7 @@ public:
 
         static int currentWanted = 0;
 
-        if (enableLog = iniVeh.ReadInteger("Settings", "EnableLog", 0))
+        if ((enableLog = iniVeh.ReadInteger("Settings", "EnableLog", 0)) == 1)
         {
             logfile.open("ModelVariations.log");
             if (logfile.is_open())
@@ -339,7 +337,7 @@ public:
                 char exePath[256] = {};
                 GetModuleFileName(NULL, exePath, 255);
                 char* exeName = PathFindFileName(exePath);
-                int filesize = getFilesize(exePath);
+                unsigned int filesize = getFilesize(exePath);
                 std::string hash = hashFile(exePath);
                 if (hash == exeHashes[0])
                     logfile << "Supported exe detected: 1.0 US HOODLUM" << std::endl;
@@ -367,7 +365,7 @@ public:
                 pedVariations[i][4] = iniLineParser(section, "Global", &iniPed);
                 pedVariations[i][5] = iniLineParser(section, "Desert", &iniPed);
 
-                std::vector<short> vec = iniLineParser(section, "TierraRobada", &iniPed);
+                std::vector<unsigned short> vec = iniLineParser(section, "TierraRobada", &iniPed);
                 pedVariations[i][6] = vectorUnion(vec, pedVariations[i][5]);
 
                 vec = iniLineParser(section, "BoneCounty", &iniPed);
@@ -406,8 +404,8 @@ public:
                 pedWantedVariations[i][5] = iniLineParser(section, "Wanted6", &iniPed);
 
 
-                for (int j = 0; j < 16; j++)
-                    for (int k = 0; k < (int)(pedVariations[i][j].size()); k++)
+                for (unsigned int j = 0; j < 16; j++)
+                    for (unsigned int k = 0; k < pedVariations[i][j].size(); k++)
                         if (pedVariations[i][j][k] > 0 && pedVariations[i][j][k] < 32000 && pedVariations[i][j][k] != i)
                             pedOriginalModels.insert({ pedVariations[i][j][k], i });
             }
@@ -440,7 +438,7 @@ public:
             logfile << std::endl;
         }
 
-        if (enableVehicles = iniVeh.ReadInteger("Settings", "Enable", 0))
+        if ((enableVehicles = iniVeh.ReadInteger("Settings", "Enable", 0)) == 1)
         {
             readVehicleIni();
             installVehicleHooks();
@@ -513,19 +511,19 @@ public:
             vehStack.push(veh);
         };
 
-        Events::pedSetModelEvent.after += [](CPed* ped, int model)
+        Events::pedSetModelEvent.after += [](CPed* ped, int)
         {
             if (ped->m_nModelIndex > 0 && ped->m_nModelIndex < 300 && !pedCurrentVariations[ped->m_nModelIndex].empty())
             {
-                int random = CGeneral::GetRandomNumberInRange(0, pedCurrentVariations[ped->m_nModelIndex].size());
-                int variationModel = pedCurrentVariations[ped->m_nModelIndex][random];
-                if (variationModel > -1 && variationModel != ped->m_nModelIndex)
+                unsigned int random = CGeneral::GetRandomNumberInRange(0, (int)pedCurrentVariations[ped->m_nModelIndex].size());
+                unsigned short variationModel = pedCurrentVariations[ped->m_nModelIndex][random];
+                if (variationModel > 0 && variationModel != ped->m_nModelIndex)
                 {
                     CStreaming::RequestModel(variationModel, 2);
                     CStreaming::LoadAllRequestedModels(false);
                     unsigned short index = ped->m_nModelIndex;
                     ped->DeleteRwObject();
-                    (reinterpret_cast<CEntity*>(ped))->SetModelIndex(variationModel);
+                    (static_cast<CEntity*>(ped))->SetModelIndex(variationModel);
                     ped->m_nModelIndex = index;
                     modelIndex = variationModel;
                 }
@@ -556,7 +554,6 @@ public:
             CVector pPos = FindPlayerCoors(-1);
             CZone* zInfo = NULL;
             CTheZones::GetZoneInfo(&pPos, &zInfo);
-            CPlayerPed* player = FindPlayerPed();
             CWanted* wanted = FindPlayerWanted(-1);
 
             Command<COMMAND_GET_NAME_OF_ENTRY_EXIT_CHAR_USED>(FindPlayerPed(), &currentInterior);
@@ -577,7 +574,7 @@ public:
                     printCurrentVariations();
             }
 
-            if (wanted && wanted->m_nWantedLevel != currentWanted)
+            if (wanted && (int)(wanted->m_nWantedLevel) != currentWanted)
             {
                 if (enableLog == 1)
                 {
@@ -590,7 +587,7 @@ public:
                         logfile << std::endl;
                 }
 
-                currentWanted = wanted->m_nWantedLevel;
+                currentWanted = (int)wanted->m_nWantedLevel;
                 updateVariations(zInfo, &iniPed, &iniVeh);
 
                 if (enableLog == 1)
@@ -691,11 +688,11 @@ public:
                             bool wepChanged = false;
 
                             std::string slot = "SLOT" + std::to_string(i);
-                            std::vector<short> vec = iniLineParser(std::to_string(ped->m_nModelIndex), slot, &iniWeap);
+                            std::vector<unsigned short> vec = iniLineParser(std::to_string(ped->m_nModelIndex), slot, &iniWeap);
                             if (!vec.empty())
                             {
                                 int activeSlot = ped->m_nActiveWeaponSlot;
-                                int random = CGeneral::GetRandomNumberInRange(0, vec.size());
+                                unsigned int random = CGeneral::GetRandomNumberInRange(0, (int)vec.size());
 
                                 ped->ClearWeapon(ped->m_aWeapons[i].m_nType);
 
@@ -712,7 +709,7 @@ public:
                             if (!vec.empty())
                             {
                                 int activeSlot = ped->m_nActiveWeaponSlot;
-                                int random = CGeneral::GetRandomNumberInRange(0, vec.size());
+                                unsigned int random = CGeneral::GetRandomNumberInRange(0, (int)vec.size());
 
                                 ped->ClearWeapon(ped->m_aWeapons[i].m_nType);
 
@@ -732,7 +729,7 @@ public:
                                 if (!vec.empty())
                                 {
                                     int activeSlot = ped->m_nActiveWeaponSlot;
-                                    int random = CGeneral::GetRandomNumberInRange(0, vec.size());
+                                    unsigned int random = CGeneral::GetRandomNumberInRange(0, (int)vec.size());
 
                                     ped->ClearWeapon(ped->m_aWeapons[i].m_nType);
 
@@ -752,7 +749,7 @@ public:
                                 if (!vec.empty())
                                 {
                                     int activeSlot = ped->m_nActiveWeaponSlot;
-                                    int random = CGeneral::GetRandomNumberInRange(0, vec.size());
+                                    unsigned int random = CGeneral::GetRandomNumberInRange(0, (int)vec.size());
 
                                     ped->ClearWeapon(ped->m_aWeapons[i].m_nType);
 

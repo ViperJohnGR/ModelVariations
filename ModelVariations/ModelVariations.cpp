@@ -1,19 +1,19 @@
-#include "plugin.h"
+#include <plugin.h>
 #include "IniParse.hpp"
 #include "LogUtil.hpp"
 #include "Vehicles.hpp"
 #include "Hooks.hpp"
 #include "FileUtil.hpp"
 
-#include "extensions/ScriptCommands.h"
+#include <extensions/ScriptCommands.h>
 
-#include "CGeneral.h"
-#include "CMessages.h"
-#include "CPopulation.h"
-#include "CStreaming.h"
-#include "CTheZones.h"
-#include "CVector.h"
-#include "CWorld.h"
+#include <CGeneral.h>
+#include <CMessages.h>
+#include <CPopulation.h>
+#include <CStreaming.h>
+#include <CTheZones.h>
+#include <CVector.h>
+#include <CWorld.h>
 
 #include <array>
 #include <iomanip>
@@ -324,13 +324,13 @@ class ModelVariations {
 public:
     ModelVariations() {
 
-        if (!fileExists(pedIniPath.c_str()))
+        if (!fileExists(pedIniPath))
             pedIniPath = "ModelVariations\\" + pedIniPath;
 
-        if (!fileExists(pedWepIniPath.c_str()))
+        if (!fileExists(pedWepIniPath))
             pedWepIniPath = "ModelVariations\\" + pedWepIniPath;
 
-        if (!fileExists(vehIniPath.c_str()))
+        if (!fileExists(vehIniPath))
             vehIniPath = "ModelVariations\\" + vehIniPath;
 
         static CIniReader iniPed(pedIniPath);
@@ -436,26 +436,26 @@ public:
 
         if (enableLog == 1)
         {
-            if (!fileExists(pedIniPath.c_str()))
+            if (!fileExists(pedIniPath))
                 logfile << "\nModelVariations_Peds.ini not found!\n" << std::endl;
             else
                 logfile <<  "##############################\n"
                             "## ModelVariations_Peds.ini ##\n" 
-                            "##############################\n" << fileToString(pedIniPath.c_str()) << std::endl;
+                            "##############################\n" << fileToString(pedIniPath) << std::endl;
 
-            if (!fileExists(pedWepIniPath.c_str()))
+            if (!fileExists(pedWepIniPath))
                 logfile << "\nModelVariations_PedWeapons.ini not found!\n" << std::endl;
             else
                 logfile << "####################################\n"
                            "## ModelVariations_PedWeapons.ini ##\n" 
-                           "####################################\n" << fileToString(pedWepIniPath.c_str()) << std::endl;
+                           "####################################\n" << fileToString(pedWepIniPath) << std::endl;
 
-            if (!fileExists(vehIniPath.c_str()))
+            if (!fileExists(vehIniPath))
                 logfile << "\nModelVariations_Vehicles.ini not found!\n" << std::endl;
             else
                 logfile << "##################################\n"
                            "## ModelVariations_Vehicles.ini ##\n" 
-                           "##################################\n" << fileToString(vehIniPath.c_str()) << std::endl;
+                           "##################################\n" << fileToString(vehIniPath) << std::endl;
 
 
             logfile << std::endl;
@@ -646,11 +646,17 @@ public:
                 CVehicle* veh = vehStack.top();
                 vehStack.pop();
 
-                auto it = vehPassengers.find(veh->m_nModelIndex);
-                if (it != vehPassengers.end() && it->second[0] == 0)
-                    for (int i = 0; i < 8; i++)
-                        if (veh->m_apPassengers[i] != NULL)
-                            veh->RemovePassenger(veh->m_apPassengers[i]);
+                if (veh->m_nModelIndex >= 400 && veh->m_nModelIndex < 612 && !vehCurrentVariations[veh->m_nModelIndex - 400].empty() &&
+                    vehCurrentVariations[veh->m_nModelIndex - 400][0] == 0 && veh->m_nCreatedBy != eVehicleCreatedBy::MISSION_VEHICLE)
+                    veh->m_nVehicleFlags.bFadeOut = 1;
+                else
+                {
+                    auto it = vehPassengers.find(veh->m_nModelIndex);
+                    if (it != vehPassengers.end() && it->second[0] == 0)
+                        for (int i = 0; i < 8; i++)
+                            if (veh->m_apPassengers[i] != NULL)
+                                veh->RemovePassenger(veh->m_apPassengers[i]);
+                }
             }
 
             while (!pedStack.empty())
@@ -659,7 +665,17 @@ public:
                 pedStack.pop();
                 bool pedRemoved = false;
 
-                if (enableCloneRemover == 1 && ped->m_nCreatedBy != 2 && CPools::ms_pPedPool)
+                if (ped->m_nModelIndex > 0 && ped->m_nModelIndex < 300)
+                    if (!pedCurrentVariations[ped->m_nModelIndex].empty() && pedCurrentVariations[ped->m_nModelIndex][0] == 0 && ped->m_nCreatedBy != 2)
+                    {
+                        ped->m_nPedFlags.bDontRender = 1;
+                        ped->m_nPedFlags.bFadeOut = 1;
+                        pedRemoved = true;
+                        if (ped->m_pVehicle != NULL)
+                            DestroyVehicleAndDriverAndPassengers(ped->m_pVehicle);
+                    }
+
+                if (enableCloneRemover == 1 && ped->m_nCreatedBy != 2 && CPools::ms_pPedPool && pedRemoved == false)
                 {
                     if (pedTimeSinceLastSpawned.find((cloneRemoverIncludeVariations == 1) ? getVariationOriginalModel(ped->m_nModelIndex) : ped->m_nModelIndex) != pedTimeSinceLastSpawned.end())
                     {

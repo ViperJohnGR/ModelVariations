@@ -1,7 +1,7 @@
 #pragma once
 
 #include <vector>
-#include "IniReader/IniReader.h"
+#include <IniReader.h>
 
 inline std::vector<unsigned short> vectorUnion(std::vector<unsigned short>& vec1, std::vector<unsigned short>& vec2)
 {

@@ -1,9 +1,9 @@
 #pragma once
 #include "IniParse.hpp"
 
-#include "CAutomobile.h"
-#include "CPed.h"
-#include "CVector.h"
+#include <CAutomobile.h>
+#include <CPed.h>
+#include <CVector.h>
 
 #include <set>
 #include <vector>

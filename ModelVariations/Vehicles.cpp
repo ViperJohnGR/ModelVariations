@@ -1,20 +1,21 @@
 #include "Vehicles.hpp"
 #include "Hooks.hpp"
 #include "LogUtil.hpp"
-#include "plugin.h"
-#include "../../injector/assembly.hpp"
+#include <plugin.h>
+#include <../../injector/assembly.hpp>
 
-#include "CBoat.h"
-#include "CCarCtrl.h"
-#include "CCarGenerator.h"
-#include "CCoronas.h"
-#include "CGeneral.h"
-#include "CHeli.h"
-#include "CPopulation.h"
-#include "CStreaming.h"
-#include "CTheScripts.h"
-#include "CTrain.h"
-#include "CVector.h"
+#include <CBoat.h>
+#include <CCarCtrl.h>
+#include <CCarGenerator.h>
+#include <CCoronas.h>
+#include <CDarkel.h>
+#include <CGeneral.h>
+#include <CHeli.h>
+#include <CPopulation.h>
+#include <CStreaming.h>
+#include <CTheScripts.h>
+#include <CTrain.h>
+#include <CVector.h>
 
 #include <array>
 
@@ -389,7 +390,7 @@ void readVehicleIni()
             }
 
             if (vehGroups.find(modelid) != vehGroups.end())
-                for (int j = 0; j < 16; j++)
+                for (unsigned int j = 0; j < 16; j++)
                     checkNumGroups(vehGroups[modelid][j], modelNumGroups[modelid]);
 
 
@@ -523,21 +524,24 @@ template <unsigned int address>
 CAutomobile* __fastcall CAutomobileHooked(CAutomobile* automobile, void*, int modelIndex, char usageType, char bSetupSuspensionLines)
 {
     return callMethodOriginalAndReturn<CAutomobile*, address>(automobile, getRandomVariation(modelIndex), usageType, bSetupSuspensionLines);
-    //return CallMethodAndReturn<CAutomobile*, 0x6B0A90>(automobile, getRandomVariation(modelIndex), usageType, bSetupSuspensionLines);
+
     /*
     if (modelIndex != 432)
-        return CallMethodAndReturn<CAutomobile*, 0x6B0A90>(automobile, getRandomVariation(modelIndex), usageType, bSetupSuspensionLines);
+        return callMethodOriginalAndReturn<CAutomobile*, address>(automobile, getRandomVariation(modelIndex), usageType, bSetupSuspensionLines);
     else
     {
-        int randomVariation = getRandomVariation(modelIndex);
-        *((short*)0x6B0CF4) = randomVariation;
-        *((short*)0x6B12D8) = randomVariation;
-        CAutomobile* retVal = CallMethodAndReturn<CAutomobile*, 0x6B0A90>(automobile, randomVariation, usageType, bSetupSuspensionLines);
-        *((short*)0x6B0CF4) = 0x1B0;
-        *((short*)0x6B12D8) = 0x1B0;
+        unsigned short randomVariation = (unsigned short)getRandomVariation(modelIndex);
+        CStreaming::RequestModel(randomVariation, 2);
+        CStreaming::LoadAllRequestedModels(false);
+        *((unsigned short*)0x6B0CF4) = randomVariation;
+        *((unsigned short*)0x6B12D8) = randomVariation;
+        CAutomobile* retVal = callMethodOriginalAndReturn<CAutomobile*, address>(automobile, randomVariation, usageType, bSetupSuspensionLines);
+        *((unsigned short*)0x6B0CF4) = 0x1B0;
+        *((unsigned short*)0x6B12D8) = 0x1B0;
         return retVal;
     }
     */
+    
 }
 
 template <unsigned int address>
@@ -674,7 +678,6 @@ void __cdecl AddAmbulanceOccupantsHooked(CVehicle* pVehicle)
     if (isModelAmbulance(pVehicle->m_nModelIndex))
         pVehicle->m_nModelIndex = 416;
     callOriginal<address>(pVehicle);
-    //CCarAI::AddAmbulanceOccupants(pVehicle);
     pVehicle->m_nModelIndex = model;
 }
 
@@ -689,7 +692,6 @@ void __cdecl AddFiretruckOccupantsHooked(CVehicle* pVehicle)
     if (isModelFiretruck(pVehicle->m_nModelIndex))
         pVehicle->m_nModelIndex = 407;
     callOriginal<address>(pVehicle);
-    //CCarAI::AddFiretruckOccupants(pVehicle);
     pVehicle->m_nModelIndex = model;
 }
 
@@ -721,13 +723,11 @@ DWORD __cdecl FindSpecificDriverModelForCar_ToUseHooked(int carModel)
     }
 
     return (DWORD)callOriginalAndReturn<int, address>(getVariationOriginalModel(carModel));
-    //return CPopulation::FindSpecificDriverModelForCar_ToUse(getVariationOriginalModel(carModel));
 }
 
 template <unsigned int address>
 void __fastcall CollectParametersHooked(CRunningScript* script, void*, unsigned __int16 a2)
 {
-    //script->CollectParameters(a2);
     callMethodOriginal<address>(script, a2);
     if (enableAllSideMissions == 0)
     {
@@ -764,7 +764,6 @@ char __cdecl GenerateRoadBlockCopsForCarHooked(CVehicle* a1, int pedsPositionsTy
 
     roadblockModel = a1->m_nModelIndex;
     a1->m_nModelIndex = (unsigned short)getVariationOriginalModel(a1->m_nModelIndex);
-    //CRoadBlocks::GenerateRoadBlockCopsForCar(a1, pedsPositionsType, type);
     callOriginal<address>(a1, pedsPositionsType, type);
     if (roadblockModel >= 400)
         a1->m_nModelIndex = roadblockModel;
@@ -779,7 +778,6 @@ CColModel* __fastcall GetColModelHooked(CVehicle* entity)
     if (roadblockModel >= 400)
         entity->m_nModelIndex = roadblockModel;
     return callMethodOriginalAndReturn<CColModel*, address>(entity);
-    //return entity->GetColModel();
 }
 
 template <unsigned int address>
@@ -1008,6 +1006,47 @@ void __declspec(naked) ()
     }
 }
 */
+/*
+template <unsigned int address>
+void __cdecl RegisterCarBlownUpByPlayerHooked(CVehicle* vehicle, int a2)
+{
+    if (vehicle != NULL)
+    {
+        auto model = vehicle->m_nModelIndex;
+        vehicle->m_nModelIndex = (unsigned short)getVariationOriginalModel(vehicle->m_nModelIndex);
+        callOriginal<address>(vehicle, a2);
+        vehicle->m_nModelIndex = model;
+    }
+}
+
+template <unsigned int address>
+void __fastcall TankControlHooked(CAutomobile* veh)
+{
+    if (getVariationOriginalModel(veh->m_nModelIndex) == 432)
+    {
+        *((unsigned short*)0x6AE9CB) = veh->m_nModelIndex;
+        callMethodOriginal<address>(veh);
+        *((unsigned short*)0x6AE9CB) = 0x1B0;
+    }
+    else
+        callMethodOriginal<address>(veh);
+}
+
+template <unsigned int address>
+void __fastcall DoSoftGroundResistanceHooked(CAutomobile* veh, void*, unsigned int& a3)
+{
+    if (getVariationOriginalModel(veh->m_nModelIndex) == 432)
+    {
+        *((unsigned short*)0x6A4BBA) = veh->m_nModelIndex;
+        *((unsigned short*)0x6A4E0E) = veh->m_nModelIndex;
+        callMethodOriginal<address>(veh, a3);
+        *((unsigned short*)0x6A4BBA) = 0x1B0;
+        *((unsigned short*)0x6A4E0E) = 0x1B0;
+    }
+    else
+        callMethodOriginal<address>(veh, a3);
+}
+*/
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////  VTABLE HOOKS    ////////////////////////////////////////////
@@ -1029,7 +1068,7 @@ void __fastcall ProcessControlHooked(CAutomobile* veh)
     {
         injector::MakeJMP(0x6B1F7B, 0x6B2026);
         injector::MakeNOP(0x6B36DA, 6);
-        plugin::CallMethod<0x6B1880>(veh);
+        callMethodOriginal<address>(veh);
         ((BYTE*)0x6B1F7B)[0] = 0x66;
         ((BYTE*)0x6B1F7B)[1] = 0x3D;
         ((BYTE*)0x6B1F7B)[2] = 0xB0;
@@ -1092,20 +1131,20 @@ void __fastcall PreRenderHooked(CAutomobile* veh)
         *((BYTE*)0x6ACA58) = 0x3D;
         if (hasSiren)
             sirenRestore();
-    }
-    /*else if (getVariationOriginalModel(veh->m_nModelIndex) == 432)
+    }/*
+    else if (getVariationOriginalModel(veh->m_nModelIndex) == 432)
     {
-        *((short*)0x6ABC83) = veh->m_nModelIndex;
-        *((short*)0x6ABD11) = veh->m_nModelIndex;
-        *((short*)0x6ABFCC) = veh->m_nModelIndex;
-        *((short*)0x6AC029) = veh->m_nModelIndex;
-        *((short*)0x6ACA4D) = veh->m_nModelIndex;
-        PreRenderOriginal(veh);
-        *((short*)0x6ABC83) = 0x1B0;
-        *((short*)0x6ABD11) = 0x1B0;
-        *((short*)0x6ABFCC) = 0x1B0;
-        *((short*)0x6AC029) = 0x1B0;
-        *((short*)0x6ACA4D) = 0x1B0;
+        *((unsigned short*)0x6ABC83) = veh->m_nModelIndex;
+        *((unsigned short*)0x6ABD11) = veh->m_nModelIndex;
+        *((unsigned short*)0x6ABFCC) = veh->m_nModelIndex;
+        *((unsigned short*)0x6AC029) = veh->m_nModelIndex;
+        *((unsigned short*)0x6ACA4D) = veh->m_nModelIndex;
+        callMethodOriginal<address>(veh);
+        *((unsigned short*)0x6ABC83) = 0x1B0;
+        *((unsigned short*)0x6ABD11) = 0x1B0;
+        *((unsigned short*)0x6ABFCC) = 0x1B0;
+        *((unsigned short*)0x6AC029) = 0x1B0;
+        *((unsigned short*)0x6ACA4D) = 0x1B0;
     }*/
     else if (getVariationOriginalModel(veh->m_nModelIndex) == 601) //SWAT Tank
     {
@@ -1123,136 +1162,118 @@ void __fastcall PreRenderHooked(CAutomobile* veh)
     }
 }
 /*
+template <unsigned int address>
 void __fastcall ProcessSuspensionHooked(CAutomobile* veh)
 {
     if (getVariationOriginalModel(veh->m_nModelIndex) == 432)
     {
         injector::MakeNOP(0x6B02A2, 6);
-        *((short*)0x6AFB48) = veh->m_nModelIndex;
+        *((unsigned short*)0x6AFB48) = veh->m_nModelIndex;
 
-        ProcessSuspensionOriginal(veh);
+        callMethodOriginal<address>(veh);
         ((BYTE*)0x6B02A2)[0] = 0x0F;
         ((BYTE*)0x6B02A2)[1] = 0x85;
         ((BYTE*)0x6B02A2)[2] = 0x7B;
         ((BYTE*)0x6B02A2)[3] = 0x01;
         ((BYTE*)0x6B02A2)[4] = 0x00;
         ((BYTE*)0x6B02A2)[5] = 0x00;
-        *((short*)0x6AFB48) = 0x1B0;
+        *((unsigned short*)0x6AFB48) = 0x1B0;
     }
     else
-        ProcessSuspensionOriginal(veh);
+        callMethodOriginal<address>(veh);
 }
 
+template <unsigned int address>
 void __fastcall SetupSuspensionLinesHooked(CAutomobile* veh)
 {
     if (getVariationOriginalModel(veh->m_nModelIndex) == 432)
     {
-        *((short*)0x6A6606) = veh->m_nModelIndex;
-        *((short*)0x6A6999) = veh->m_nModelIndex;
-        SetupSuspensionLinesOriginal(veh);
-        *((short*)0x6A6606) = 0x1B0;
-        *((short*)0x6A6999) = 0x1B0;
+        *((unsigned short*)0x6A6606) = veh->m_nModelIndex;
+        *((unsigned short*)0x6A6999) = veh->m_nModelIndex;
+        callMethodOriginal<address>(veh);
+        *((unsigned short*)0x6A6606) = 0x1B0;
+        *((unsigned short*)0x6A6999) = 0x1B0;
     }
     else
-        SetupSuspensionLinesOriginal(veh);
+        callMethodOriginal<address>(veh);
 }
 
-void __fastcall TankControlHooked(CAutomobile* veh)
+template <unsigned int address>
+void __fastcall VehicleDamageHooked(CAutomobile* veh, void*, float fDamageIntensity, __int16 tCollisionComponent, int Damager, RwV3d* vecCollisionCoors,  RwV3d* vecCollisionDirection, signed int a7)
 {
-    if (getVariationOriginalModel(veh->m_nModelIndex) == 432)
+    if (veh->m_pDamageEntity && getVariationOriginalModel(veh->m_pDamageEntity->m_nModelIndex) == 432)
     {
-        *((short*)0x6AE9CB) = veh->m_nModelIndex;
-        veh->TankControl();
-        *((short*)0x6AE9CB) = 0x1B0;
+        *((unsigned short*)0x6A80C0) = veh->m_pDamageEntity->m_nModelIndex;
+        *((unsigned short*)0x6A8384) = veh->m_pDamageEntity->m_nModelIndex;
+        callMethodOriginal<address>(veh, fDamageIntensity, tCollisionComponent, Damager, vecCollisionCoors, vecCollisionDirection, a7);
+        *((unsigned short*)0x6A80C0) = 0x1B0;
+        *((unsigned short*)0x6A8384) = 0x1B0;
     }
     else
-        veh->TankControl();
+        callMethodOriginal<address>(veh, fDamageIntensity, tCollisionComponent, Damager, vecCollisionCoors, vecCollisionDirection, a7);
 }
 
-void __fastcall VehicleDamageHooked(CAutomobile* veh, void* edx, float fDamageIntensity, __int16 tCollisionComponent, int Damager, RwV3d* vecCollisionCoors,  RwV3d* vecCollisionDirection, signed int a7)
-{
-    if (getVariationOriginalModel(veh->m_nModelIndex) == 432)
-    {
-        *((short*)0x6A80C0) = veh->m_nModelIndex;
-        *((short*)0x6A8384) = veh->m_nModelIndex;
-        VehicleDamageOriginal(veh, edx, fDamageIntensity, tCollisionComponent, Damager, vecCollisionCoors, vecCollisionDirection, a7);
-        *((short*)0x6A80C0) = 0x1B0;
-        *((short*)0x6A8384) = 0x1B0;
-    }
-    else
-        VehicleDamageOriginal(veh, edx, fDamageIntensity, tCollisionComponent, Damager, vecCollisionCoors, vecCollisionDirection, a7);
-}
-
-void __fastcall DoSoftGroundResistanceHooked(CAutomobile *veh, void*, unsigned int &a3)
-{
-    if (getVariationOriginalModel(veh->m_nModelIndex) == 432)
-    {
-        *((short*)0x6A4BBA) = veh->m_nModelIndex;
-        *((short*)0x6A4E0E) = veh->m_nModelIndex;
-        veh->DoSoftGroundResistance(a3);
-        *((short*)0x6A4BBA) = 0x1B0;
-        *((short*)0x6A4E0E) = 0x1B0;
-    }
-    else
-        veh->DoSoftGroundResistance(a3);
-}
-
+template <unsigned int address>
 void __fastcall DoBurstAndSoftGroundRatiosHooked(CAutomobile* a1)
 {
     if (getVariationOriginalModel(a1->m_nModelIndex) == 432)
     {
-        *((short*)0x6A4917) = a1->m_nModelIndex;
-        DoBurstAndSoftGroundRatiosOriginal(a1);
-        *((short*)0x6A4917) = 0x1B0;
+        *((unsigned short*)0x6A4917) = a1->m_nModelIndex;
+        callMethodOriginal<address>(a1);
+        *((unsigned short*)0x6A4917) = 0x1B0;
     }
     else
-        DoBurstAndSoftGroundRatiosOriginal(a1);
+        callMethodOriginal<address>(a1);
 }
 
-char __fastcall BurstTyreHooked(CAutomobile* veh, void *edx, char componentId, char a3)
+template <unsigned int address>
+char __fastcall BurstTyreHooked(CAutomobile* veh, void*, char componentId, char a3)
 {
     char retVal = 0;
     if (getVariationOriginalModel(veh->m_nModelIndex) == 432)
     {
-        *((short*)0x6A32BB) = veh->m_nModelIndex;
-        retVal = BurstTyreOriginal(veh, edx, componentId, a3);
-        *((short*)0x6A32BB) = 0x1B0;
+        *((unsigned short*)0x6A32BB) = veh->m_nModelIndex;
+        retVal = callMethodOriginalAndReturn<char, address>(veh, componentId, a3);
+        *((unsigned short*)0x6A32BB) = 0x1B0;
     }
     else
-        retVal = BurstTyreOriginal(veh, edx, componentId, a3);
+        retVal = callMethodOriginalAndReturn<char, address>(veh, componentId, a3);
 
     return retVal;
 }
 
+template <unsigned int address>
 void __fastcall CAutomobileRenderHooked(CAutomobile* veh)
 {
     if (getVariationOriginalModel(veh->m_nModelIndex) == 432)
     {
-        *((short*)0x6A2C2D) = veh->m_nModelIndex;
-        *((short*)0x6A2EAD) = veh->m_nModelIndex;
-        CAutomobileRenderOriginal(veh);
-        *((short*)0x6A2C2D) = 0x1B0;
-        *((short*)0x6A2EAD) = 0x1B0;
+        *((unsigned short*)0x6A2C2D) = veh->m_nModelIndex;
+        *((unsigned short*)0x6A2EAD) = veh->m_nModelIndex;
+        callMethodOriginal<address>(veh);
+        *((unsigned short*)0x6A2C2D) = 0x1B0;
+        *((unsigned short*)0x6A2EAD) = 0x1B0;
     }
     else
-        CAutomobileRenderOriginal(veh);
+        callMethodOriginal<address>(veh);
 }
 
-//int __fastcall ProcessEntityCollisionHooked(CAutomobile* veh, void* edx, CVehicle* collEntity, CColPoint* colPoint)
-//{
-//    if (getVariationOriginalModel(veh->m_nModelIndex) == 432)
-//    {
-//        *((short*)0x6ACEE9) = veh->m_nModelIndex;
-//        *((short*)0x6AD242) = veh->m_nModelIndex;
-//        int retVal = ProcessEntityCollisionOriginal(veh, edx, collEntity, colPoint);
-//        *((short*)0x6ACEE9) = 0x1B0;
-//        *((short*)0x6AD242) = 0x1B0;
-//        return retVal;
-//    }
-//
-//    return ProcessEntityCollisionOriginal(veh, edx, collEntity, colPoint);
-//}
-*/
+template <unsigned int address>
+int __fastcall ProcessEntityCollisionHooked(CAutomobile* _this, void*, CVehicle* collEntity, CColPoint* colPoint)
+{
+    int retVal = 0;
+    if (_this && getVariationOriginalModel(_this->m_nModelIndex) == 432)
+    {
+        *((unsigned short*)0x6ACEE9) = _this->m_nModelIndex;
+        *((unsigned short*)0x6AD242) = _this->m_nModelIndex;
+        retVal = callMethodOriginalAndReturn<int, address>(_this, collEntity, colPoint);
+        *((unsigned short*)0x6ACEE9) = 0x1B0;
+        *((unsigned short*)0x6AD242) = 0x1B0;
+    }
+    else
+        retVal = callMethodOriginalAndReturn<int, address>(_this, collEntity, colPoint);
+    
+    return retVal;
+}*/
 
 void installVehicleHooks()
 {
@@ -1332,36 +1353,23 @@ void installVehicleHooks()
         hookCall(0x871148, ProcessControlHooked<0x871148>, "ProcessControl", true);
         hookCall(0x871164, PreRenderHooked<0x871164>, "PreRender", true);
 
-        //p = reinterpret_cast<DWORD**>(0x871238);
-        //ProcessSuspensionOriginal = *((void(**)(CAutomobile*))0x871238);
-        //*p = (DWORD*)ProcessSuspensionHooked;
+        /*
+        hookCall(0x871238, ProcessSuspensionHooked<0x871238>, "ProcessSuspension", true);
+        hookCall(0x871200, VehicleDamageHooked<0x871200>, "VehicleDamage", true);
+        hookCall(0x8711E0, SetupSuspensionLinesHooked<0x8711E0>, "SetupSuspensionLines", true);
+        hookCall(0x8711F0, DoBurstAndSoftGroundRatiosHooked<0x8711F0>, "DoBurstAndSoftGroundRatios", true);
+        hookCall(0x8711D0, BurstTyreHooked<0x8711D0>, "BurstTyre", true);
+        hookCall(0x871168, CAutomobileRenderHooked<0x871168>, "CAutomobileRender", true);
+        hookCall(0x871178, ProcessEntityCollisionHooked<0x871178>, "ProcessEntityCollision", true);
 
-        //p = reinterpret_cast<DWORD**>(0x871200);
-        //VehicleDamageOriginal = *((void(__fastcall**)(CAutomobile*, void*, float, __int16, int, RwV3d*, RwV3d*, signed int))0x871200);
-        //*p = (DWORD*)VehicleDamageHooked;
 
-        //p = reinterpret_cast<DWORD**>(0x8711E0);
-        //SetupSuspensionLinesOriginal = *((void(**)(CAutomobile*))0x8711E0);
-        //*p = (DWORD*)SetupSuspensionLinesHooked;
+        hookCall(0x6B39E6, RegisterCarBlownUpByPlayerHooked<0x6B39E6>, "RegisterCarBlownUpByPlayer"); //CAutomobile::BlowUpCar
+        hookCall(0x6B3DEA, RegisterCarBlownUpByPlayerHooked<0x6B3DEA>, "RegisterCarBlownUpByPlayer"); //CAutomobile::BlowUpCarCutSceneNoExtras
+        hookCall(0x6E2D14, RegisterCarBlownUpByPlayerHooked<0x6E2D14>, "RegisterCarBlownUpByPlayer"); //CVehicle::~CVehicle
 
-        //p = reinterpret_cast<DWORD**>(0x8711F0);
-        //DoBurstAndSoftGroundRatiosOriginal = *((void(**)(CAutomobile*))0x8711F0);
-        //*p = (DWORD*)DoBurstAndSoftGroundRatiosHooked;
-
-        //p = reinterpret_cast<DWORD**>(0x8711D0);
-        //BurstTyreOriginal = *((char(__fastcall**)(CAutomobile*, void*, char, char))0x8711D0);
-        //*p = (DWORD*)BurstTyreHooked;
-
-        //p = reinterpret_cast<DWORD**>(0x871168);
-        //CAutomobileRenderOriginal = *((void(**)(CAutomobile*))0x871168);
-        //*p = (DWORD*)CAutomobileRenderHooked;
-
-        ////p = reinterpret_cast<DWORD**>(0x871178);
-        ////ProcessEntityCollisionOriginal = *((int(__fastcall**)(CAutomobile*, void*, CVehicle*, CColPoint*))0x871178);
-        ////*p = (DWORD*)ProcessEntityCollisionHooked;
-
-        //patch::RedirectCall(0x6B2028, TankControlHooked); //CAutomobile::ProcessControl
-        //patch::RedirectCall(0x6B51B8, DoSoftGroundResistanceHooked); //CAutomobile::ProcessAI
+        hookCall(0x6B2028, TankControlHooked<0x6B2028>, "TankControl"); //CAutomobile::ProcessControl
+        hookCall(0x6B51B8, DoSoftGroundResistanceHooked<0x6B51B8>, "DoSoftGroundResistance"); //CAutomobile::ProcessAI
+        */
 
     }
 

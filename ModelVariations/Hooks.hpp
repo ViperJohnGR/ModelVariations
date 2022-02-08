@@ -5,7 +5,7 @@
 #include <memory>
 
 
-#include "../../injector/assembly.hpp"
+#include <../../injector/assembly.hpp>
 
 struct hookinfo {
     std::string name;

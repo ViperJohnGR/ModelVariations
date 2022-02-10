@@ -319,6 +319,8 @@ void readVehicleIni()
                     LightPositions.insert({ modelid, {{ lightX, lightY, lightZ }, lightWidth} });
             }
 
+            if (iniVeh.ReadInteger(i.first, "MergeZonesWithCities", 0) == 1)
+                vehMergeZones.insert(modelid);
 
             BYTE numGroups = 0;
             for (int j = 0; j < 9; j++)
@@ -490,9 +492,10 @@ void __cdecl AddPoliceCarOccupantsHooked(CVehicle* a2, char a3)
             checkNumGroups(zoneGroups, it->second);
             if (vehGroups.find(a2->m_nModelIndex) != vehGroups.end())
             {
-                std::vector<unsigned short> vec;
-                vectorUnion(zoneGroups, vehGroups[a2->m_nModelIndex][currentTown], vec);
-                zoneGroups = vec;
+                if (vehMergeZones.find(a2->m_nModelIndex) != vehMergeZones.end())
+                    zoneGroups = vectorUnion(zoneGroups, vehGroups[a2->m_nModelIndex][currentTown]);
+                else if (zoneGroups.empty())
+                    zoneGroups = vehGroups[a2->m_nModelIndex][currentTown];
             }
 
             if (zoneGroups.empty() && !vehGroupWantedVariations[a2->m_nModelIndex][wantedLevel].empty())
@@ -800,9 +803,10 @@ void __cdecl SetUpDriverAndPassengersForVehicleHooked(CVehicle* car, int a3, int
             checkNumGroups(zoneGroups, it->second);
             if (vehGroups.find(car->m_nModelIndex) != vehGroups.end())
             {
-                std::vector<unsigned short> vec;
-                vectorUnion(zoneGroups, vehGroups[car->m_nModelIndex][currentTown], vec);
-                zoneGroups = vec;
+                if (vehMergeZones.find(car->m_nModelIndex) != vehMergeZones.end())
+                    zoneGroups = vectorUnion(zoneGroups, vehGroups[car->m_nModelIndex][currentTown]);
+                else if (zoneGroups.empty())
+                    zoneGroups = vehGroups[car->m_nModelIndex][currentTown];
             }
 
             if (zoneGroups.empty() && !vehGroupWantedVariations[car->m_nModelIndex][wantedLevel].empty())
@@ -1055,7 +1059,7 @@ void __fastcall DoSoftGroundResistanceHooked(CAutomobile* veh, void*, unsigned i
 template <unsigned int address>
 void __fastcall ProcessControlHooked(CAutomobile* veh)
 {
-    if (veh && getVariationOriginalModel(veh->m_nModelIndex) == 407 || getVariationOriginalModel(veh->m_nModelIndex) == 601)
+    if (veh && (getVariationOriginalModel(veh->m_nModelIndex) == 407 || getVariationOriginalModel(veh->m_nModelIndex) == 601))
     {
         //EB 0A
         *((BYTE*)0x6B1F4F) = 0xEB;

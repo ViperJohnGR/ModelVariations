@@ -62,6 +62,8 @@ std::map<unsigned short, std::array<std::vector<unsigned short>, 6>> vehGroupWan
 
 std::set<unsigned short> parkedCars;
 std::set<unsigned short> vehUseOnlyGroups;
+std::set<unsigned short> pedMergeZones;
+std::set<unsigned short> vehMergeZones;
 
 std::stack<CPed*> pedStack;
 std::stack<CVehicle*> vehStack;
@@ -198,11 +200,11 @@ void drugDealerFix(void)
     }
 }
 
-void updateVariations(CZone *zInfo, CIniReader *iniPed, CIniReader *pIniVeh)
+void updateVariations(CZone* zInfo, CIniReader* iniPed)
 {
     //zInfo->m_szTextKey = BLUEB | zInfo->m_szLabel = BLUEB1
 
-    if (zInfo == NULL || iniPed == NULL || pIniVeh == NULL)
+    if (zInfo == NULL || iniPed == NULL)
         return;
 
     currentTown = (BYTE)CTheZones::m_CurrLevel;
@@ -228,54 +230,64 @@ void updateVariations(CZone *zInfo, CIniReader *iniPed, CIniReader *pIniVeh)
         currentTown = 15;
 
 
-    for (int i = 0; i < 300; i++)
-    {
-        vectorUnion(pedVariations[i][4], pedVariations[i][currentTown], pedCurrentVariations[i]);
-        CWanted* wanted = FindPlayerWanted(-1);
+    CWanted* wanted = FindPlayerWanted(-1);
 
-        std::vector<unsigned short> vecPed = iniLineParser(std::to_string(i), zInfo->m_szLabel, iniPed);
-        if (!vecPed.empty())
+    for (auto& i : iniPed->data)
+        if (i.first[0] >= '0' && i.first[0] <= '9')
         {
-            std::vector<unsigned short> vec2;
-            vectorUnion(pedCurrentVariations[i], vecPed, vec2);
-            pedCurrentVariations[i] = vec2;
-        }
-
-        vecPed = iniLineParser(std::to_string(i), currentInterior, iniPed);
-        if (!vecPed.empty())
-        {
-            std::vector<unsigned short> vec2;
-            vectorUnion(pedCurrentVariations[i], vecPed, vec2);
-            pedCurrentVariations[i] = vec2;
-        }
-
-        if (wanted)
-        {
-            unsigned int wantedLevel = (wanted->m_nWantedLevel > 0) ? (wanted->m_nWantedLevel - 1) : (wanted->m_nWantedLevel);
-            if (!pedWantedVariations[i][wantedLevel].empty() && !pedCurrentVariations[i].empty())
-                filterWantedVariations(pedCurrentVariations[i], pedWantedVariations[i][wantedLevel]);
-        }
-
-        if (i < 212)
-        {
-            vectorUnion(vehVariations[i][4], vehVariations[i][currentTown], vehCurrentVariations[i]);
-
-            std::vector<unsigned short> vec = iniLineParser(std::to_string(i+400), zInfo->m_szLabel, pIniVeh);
-            if (!vec.empty())
+            int modelid = std::stoi(i.first);
+            if (modelid > 0 && modelid < 300)
             {
-                std::vector<unsigned short> vec2;
-                vectorUnion(vehCurrentVariations[i], vec, vec2);
-                vehCurrentVariations[i] = vec2;
-            }
+                vectorUnion(pedVariations[modelid][4], pedVariations[modelid][currentTown], pedCurrentVariations[modelid]);
 
-            if (wanted)
-            {
-                unsigned int wantedLevel = (wanted->m_nWantedLevel > 0) ? (wanted->m_nWantedLevel - 1) : (wanted->m_nWantedLevel);
-                if (!vehWantedVariations[i][wantedLevel].empty() && !vehCurrentVariations[i].empty())
-                    filterWantedVariations(vehCurrentVariations[i], vehWantedVariations[i][wantedLevel]);     
+                std::vector<unsigned short> vec = iniLineParser(i.first, zInfo->m_szLabel, iniPed);
+                if (!vec.empty())
+                {
+                    if (pedMergeZones.find(modelid) != pedMergeZones.end())
+                        pedCurrentVariations[modelid] = vectorUnion(pedCurrentVariations[modelid], vec);
+                    else
+                        pedCurrentVariations[modelid] = vec;
+                }
+
+                vec = iniLineParser(i.first, currentInterior, iniPed);
+                if (!vec.empty())
+                    pedCurrentVariations[modelid] = vectorUnion(pedCurrentVariations[modelid], vec);
+
+                if (wanted)
+                {
+                    unsigned int wantedLevel = (wanted->m_nWantedLevel > 0) ? (wanted->m_nWantedLevel - 1) : (wanted->m_nWantedLevel);
+                    if (!pedWantedVariations[modelid][wantedLevel].empty() && !pedCurrentVariations[modelid].empty())
+                        filterWantedVariations(pedCurrentVariations[modelid], pedWantedVariations[modelid][wantedLevel]);
+                }
             }
         }
-    }
+
+
+    for (auto& i : iniVeh.data)
+        if (i.first[0] >= '0' && i.first[0] <= '9')
+        {
+            int modelid = std::stoi(i.first) - 400;
+            if (modelid > 0 && modelid < 212)
+            {
+                vectorUnion(vehVariations[modelid][4], vehVariations[modelid][currentTown], vehCurrentVariations[modelid]);
+
+                std::vector<unsigned short> vec = iniLineParser(i.first, zInfo->m_szLabel, &iniVeh);
+                if (!vec.empty())
+                {
+                    if (vehMergeZones.find(modelid) != vehMergeZones.end())
+                        vehCurrentVariations[modelid] = vectorUnion(vehCurrentVariations[modelid], vec);
+                    else
+                        vehCurrentVariations[modelid] = vec;
+                }
+
+                if (wanted)
+                {
+                    unsigned int wantedLevel = (wanted->m_nWantedLevel > 0) ? (wanted->m_nWantedLevel - 1) : (wanted->m_nWantedLevel);
+                    if (!vehWantedVariations[modelid][wantedLevel].empty() && !vehCurrentVariations[modelid].empty())
+                        filterWantedVariations(vehCurrentVariations[modelid], vehWantedVariations[modelid][wantedLevel]);
+                }
+            }
+        }
 }
 
 void printCurrentVariations()
@@ -431,6 +443,9 @@ public:
                     for (unsigned int k = 0; k < pedVariations[i][j].size(); k++)
                         if (pedVariations[i][j][k] > 0 && pedVariations[i][j][k] < 32000 && pedVariations[i][j][k] != i)
                             pedOriginalModels.insert({ pedVariations[i][j][k], i });
+
+                if (iniPed.ReadInteger(section, "MergeZonesWithCities", 0) == 1)
+                    pedMergeZones.insert(i);
             }
         }
 
@@ -591,7 +606,7 @@ public:
                 }
 
                 strncpy(lastInterior, currentInterior, 15);
-                updateVariations(zInfo, &iniPed, &iniVeh);
+                updateVariations(zInfo, &iniPed);
 
                 if (enableLog == 1)
                     printCurrentVariations();
@@ -611,7 +626,7 @@ public:
                 }
 
                 currentWanted = (int)wanted->m_nWantedLevel;
-                updateVariations(zInfo, &iniPed, &iniVeh);
+                updateVariations(zInfo, &iniPed);
 
                 if (enableLog == 1)
                     printCurrentVariations();
@@ -631,7 +646,7 @@ public:
                 }
 
                 strncpy(currentZone, zInfo->m_szLabel, 7);
-                updateVariations(zInfo, &iniPed, &iniVeh);
+                updateVariations(zInfo, &iniPed);
 
                 if (enableLog == 1)
                     printCurrentVariations();

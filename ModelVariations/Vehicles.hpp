@@ -45,6 +45,7 @@ extern int changeScriptedCars;
 
 extern char currentZone[8];
 extern BYTE currentTown;
+extern std::set<unsigned short> vehMergeZones;
 
 extern std::set<unsigned short> vehUseOnlyGroups;
 

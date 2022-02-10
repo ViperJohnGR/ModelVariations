@@ -60,6 +60,13 @@ std::string hashFile(const char* filename)
     fseek(fp, 0, SEEK_SET);
 
     BYTE* filebuf = (BYTE*)calloc((size_t)filesize, 1);
+    if (filebuf == NULL)
+    {
+        fclose(fp);
+        free(hash);
+        return "";
+    }
+
     if ((int)fread(filebuf, 1, (size_t)filesize, fp) != filesize)
     {
         fclose(fp);

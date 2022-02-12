@@ -43,6 +43,12 @@ std::string fileToString(const std::string& filename)
     fseek(fp, 0, SEEK_SET);
 
     char* filebuf = (char*)calloc((size_t)filesize + 1, 1);
+    if (filebuf == NULL)
+    {
+        fclose(fp);
+        return "";
+    }
+
     if (fread(filebuf, 1, (size_t)filesize, fp) != (size_t)filesize)
     {
         fclose(fp);

@@ -53,6 +53,6 @@ extern void filterWantedVariations(std::vector<unsigned short>& vec, std::vector
 extern bool IdExists(std::vector<unsigned short>& vec, int id);
 
 void installVehicleHooks();
-void readVehicleIni();
+void readVehicleIni(bool firstTime);
 
 void hookTaxi();

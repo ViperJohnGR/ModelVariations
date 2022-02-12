@@ -125,13 +125,14 @@ int getRandomVariation(const int modelid, bool parked = false)
 }
 
 
-void readVehicleIni()
+void readVehicleIni(bool firstTime)
 {
     std::string str;
     std::vector <std::string> result;
     std::ifstream zoneFile("data\\info.zon");
 
-    vehInheritExclude = iniLineParser("Settings", "ExcludeModelsFromInheritance", &iniVeh);
+    if (firstTime)
+        vehInheritExclude = iniLineParser("Settings", "ExcludeModelsFromInheritance", &iniVeh);
 
     if (!zoneFile.is_open())
     {
@@ -147,9 +148,9 @@ void readVehicleIni()
     if (enableLog == 1)
     {
         if (zoneFile.is_open())
-            logfile << "Zone file 'info.zon' found.\n" << std::endl;
+            logfile << "Zone file 'info.zon' found." << std::endl;
         else
-            logfile << "Zone file 'info.zon' NOT found!\n" << std::endl;
+            logfile << "Zone file 'info.zon' NOT found!" << std::endl;
     }
 
     while (std::getline(zoneFile, str))
@@ -247,7 +248,8 @@ void readVehicleIni()
         }
     }
 
-    enableLights = iniVeh.ReadInteger("Settings", "EnableLights", 0);
+    if (firstTime)
+        enableLights = iniVeh.ReadInteger("Settings", "EnableLights", 0);
     
     for (auto& i : iniVeh.data)
         if (i.first[0] >= '0' && i.first[0] <= '9')
@@ -405,10 +407,13 @@ void readVehicleIni()
                 vehPassengers.insert({ modelid, vec });
         }
 
-    changeCarGenerators = iniVeh.ReadInteger("Settings", "ChangeCarGenerators", 0);
-    vehCarGenExclude = iniLineParser("Settings", "ExcludeCarGeneratorModels", &iniVeh);
-    loadAllVehicles = iniVeh.ReadInteger("Settings", "LoadAllVehicles", 0);
-    enableAllSideMissions = iniVeh.ReadInteger("Settings", "EnableSideMissionsForAllScripts", 0);
+    if (firstTime)
+    {
+        changeCarGenerators = iniVeh.ReadInteger("Settings", "ChangeCarGenerators", 0);
+        vehCarGenExclude = iniLineParser("Settings", "ExcludeCarGeneratorModels", &iniVeh);
+        loadAllVehicles = iniVeh.ReadInteger("Settings", "LoadAllVehicles", 0);
+        enableAllSideMissions = iniVeh.ReadInteger("Settings", "EnableSideMissionsForAllScripts", 0);
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -664,7 +669,7 @@ char __fastcall HasCarSiren(CVehicle* vehicle)
     if (it != vehOriginalModels.end() && (it->second == 432 || it->second == 564))
         return 0;
 
-    if (isModelAmbulance(vehicle->m_nModelIndex) || isModelFiretruck(vehicle->m_nModelIndex) || IsLawEnforcementVehicleHooked<0>(vehicle))
+    if (isModelAmbulance(vehicle->m_nModelIndex) || isModelFiretruck(vehicle->m_nModelIndex) || IsLawEnforcementVehicleHooked<0>(vehicle) || callMethodOriginalAndReturn<char, address>(vehicle))
         return 1;
 
     return 0;
@@ -878,6 +883,12 @@ CHeli* __cdecl GenerateHeliHooked(CPed* ped, char newsHeli)
     //return CHeli::GenerateHeli(ped, newsHeli);
 }
 
+template <unsigned int address>
+CPlane* __fastcall CPlaneHooked(CPlane* plane, void*, int a2, char a3)
+{
+    return callMethodOriginalAndReturn<CPlane*, address>(plane, getRandomVariation(a2), a3);
+}
+
 void __declspec(naked) patchPassengerModel()
 {
     __asm {
@@ -941,9 +952,9 @@ void __cdecl RegisterCoronaHooked(CCoronas* _this, unsigned int a2, CEntity* a3,
             if (it->second.first.x > -900.0)
                 a7->x += it->second.first.x;
             if (it->second.first.y > -900.0)
-                a7->y *= it->second.first.y;
+                a7->y += it->second.first.y;
             if (it->second.first.z > -900.0)
-                a7->z *= it->second.first.z;
+                a7->z += it->second.first.z;
         }
     }
     callOriginal<address>(_this, a2, a3, a4, a5, a6, a7, a8, a9, texture, a11, a12, a13, a14, a15, a16, a17, a18, a19, a20, a21);
@@ -963,9 +974,9 @@ void __cdecl AddLightHooked(char type, float x, float y, float z, float dir_x, f
             if (it->second.first.x > -900.0)
                 x += it->second.first.x;
             if (it->second.first.y > -900.0)
-                y *= it->second.first.y;
+                y += it->second.first.y;
             if (it->second.first.z > -900.0)
-                z *= it->second.first.z;
+                z += it->second.first.z;
         }
     }
 
@@ -1328,6 +1339,9 @@ void installVehicleHooks()
     hookCall(0x6C6568, CHeliHooked<0x6C6568>, "CHeli"); //CHeli::GenerateHeli
     hookCall(0x5D2C46, CHeliHooked<0x5D2C46>, "CHeli"); //CPools::LoadVehiclePool
     hookCall(0x6C7ACA, GenerateHeliHooked<0x6C7ACA>, "GenerateHeli"); //CHeli::UpdateHelis
+
+    hookCall(0x6CD6D6, CPlaneHooked<0x6CD6D6>, "CPlane"); //CPlane::DoPlaneGenerationAndRemoval
+    hookCall(0x42166F, CPlaneHooked<0x42166F>, "CPlane"); //CCarCtrl::GetNewVehicleDependingOnCarModel
 
     //Roadblocks
     hookCall(0x42CDDD, IsLawEnforcementVehicleHooked<0x42CDDD>, "IsLawEnforcementVehicle"); //CCarCtrl::RemoveDistantCars

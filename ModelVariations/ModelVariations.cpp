@@ -41,6 +41,8 @@ std::ofstream logfile;
 std::set<std::pair<unsigned int, std::string>> modulesSet;
 std::set<std::pair<unsigned int, std::string>> callChecks;
 
+CIniReader iniPed;
+CIniReader iniWeap;
 CIniReader iniVeh;
 CIniReader iniSettings;
 
@@ -104,6 +106,8 @@ int enableCloneRemover = 0;
 int cloneRemoverVehicleOccupants = 0;
 int cloneRemoverIncludeVariations = 0;
 int spawnDelay = 3;
+
+bool keyDown = false;
 
 void getLoadedModules()
 {
@@ -223,11 +227,11 @@ void drugDealerFix(void)
     }
 }
 
-void updateVariations(CZone* zInfo, CIniReader* iniPed)
+void updateVariations(CZone* zInfo)
 {
     //zInfo->m_szTextKey = BLUEB | zInfo->m_szLabel = BLUEB1
 
-    if (zInfo == NULL || iniPed == NULL)
+    if (zInfo == NULL)
         return;
 
     currentTown = (BYTE)CTheZones::m_CurrLevel;
@@ -255,7 +259,7 @@ void updateVariations(CZone* zInfo, CIniReader* iniPed)
 
     CWanted* wanted = FindPlayerWanted(-1);
 
-    for (auto& i : iniPed->data)
+    for (auto& i : iniPed.data)
         if (i.first[0] >= '0' && i.first[0] <= '9')
         {
             int modelid = std::stoi(i.first);
@@ -263,7 +267,7 @@ void updateVariations(CZone* zInfo, CIniReader* iniPed)
             {
                 vectorUnion(pedVariations[modelid][4], pedVariations[modelid][currentTown], pedCurrentVariations[modelid]);
 
-                std::vector<unsigned short> vec = iniLineParser(i.first, ((lastZone[0] == 0) ? zInfo->m_szLabel : lastZone), iniPed);
+                std::vector<unsigned short> vec = iniLineParser(i.first, ((lastZone[0] == 0) ? zInfo->m_szLabel : lastZone), &iniPed);
                 if (!vec.empty())
                 {
                     if (pedMergeZones.find((unsigned short)modelid) != pedMergeZones.end())
@@ -272,7 +276,7 @@ void updateVariations(CZone* zInfo, CIniReader* iniPed)
                         pedCurrentVariations[modelid] = vec;
                 }
 
-                vec = iniLineParser(i.first, currentInterior, iniPed);
+                vec = iniLineParser(i.first, currentInterior, &iniPed);
                 if (!vec.empty())
                     pedCurrentVariations[modelid] = vectorUnion(pedCurrentVariations[modelid], vec);
 
@@ -408,80 +412,79 @@ void installHooks()
         installVehicleHooks();
 }
 
-void loadIniData(CIniReader* iniPed, bool firstTime)
+void loadIniData(bool firstTime)
 {
-    if (iniPed != NULL)
+
+    for (unsigned short i = 0; i < 300; i++)
     {
-        for (unsigned short i = 0; i < 300; i++)
+        std::string section = std::to_string(i);
+
+        if (iniPed.data.find(section) != iniPed.data.end())
         {
-            std::string section = std::to_string(i);
+            pedVariations[i][0] = iniLineParser(section, "Countryside", &iniPed);
+            pedVariations[i][1] = iniLineParser(section, "LosSantos", &iniPed);
+            pedVariations[i][2] = iniLineParser(section, "SanFierro", &iniPed);
+            pedVariations[i][3] = iniLineParser(section, "LasVenturas", &iniPed);
+            pedVariations[i][4] = iniLineParser(section, "Global", &iniPed);
+            pedVariations[i][5] = iniLineParser(section, "Desert", &iniPed);
 
-            if (iniPed->data.find(section) != iniPed->data.end())
-            {
-                pedVariations[i][0] = iniLineParser(section, "Countryside", iniPed);
-                pedVariations[i][1] = iniLineParser(section, "LosSantos", iniPed);
-                pedVariations[i][2] = iniLineParser(section, "SanFierro", iniPed);
-                pedVariations[i][3] = iniLineParser(section, "LasVenturas", iniPed);
-                pedVariations[i][4] = iniLineParser(section, "Global", iniPed);
-                pedVariations[i][5] = iniLineParser(section, "Desert", iniPed);
+            std::vector<unsigned short> vec = iniLineParser(section, "TierraRobada", &iniPed);
+            pedVariations[i][6] = vectorUnion(vec, pedVariations[i][5]);
 
-                std::vector<unsigned short> vec = iniLineParser(section, "TierraRobada", iniPed);
-                pedVariations[i][6] = vectorUnion(vec, pedVariations[i][5]);
+            vec = iniLineParser(section, "BoneCounty", &iniPed);
+            pedVariations[i][7] = vectorUnion(vec, pedVariations[i][5]);
 
-                vec = iniLineParser(section, "BoneCounty", iniPed);
-                pedVariations[i][7] = vectorUnion(vec, pedVariations[i][5]);
+            vec = iniLineParser(section, "RedCounty", &iniPed);
+            pedVariations[i][8] = vectorUnion(vec, pedVariations[i][0]);
 
-                vec = iniLineParser(section, "RedCounty", iniPed);
-                pedVariations[i][8] = vectorUnion(vec, pedVariations[i][0]);
+            vec = iniLineParser(section, "Blueberry", &iniPed);
+            pedVariations[i][9] = vectorUnion(vec, pedVariations[i][8]);
 
-                vec = iniLineParser(section, "Blueberry", iniPed);
-                pedVariations[i][9] = vectorUnion(vec, pedVariations[i][8]);
+            vec = iniLineParser(section, "Montgomery", &iniPed);
+            pedVariations[i][10] = vectorUnion(vec, pedVariations[i][8]);
 
-                vec = iniLineParser(section, "Montgomery", iniPed);
-                pedVariations[i][10] = vectorUnion(vec, pedVariations[i][8]);
+            vec = iniLineParser(section, "Dillimore", &iniPed);
+            pedVariations[i][11] = vectorUnion(vec, pedVariations[i][8]);
 
-                vec = iniLineParser(section, "Dillimore", iniPed);
-                pedVariations[i][11] = vectorUnion(vec, pedVariations[i][8]);
+            vec = iniLineParser(section, "PalominoCreek", &iniPed);
+            pedVariations[i][12] = vectorUnion(vec, pedVariations[i][8]);
 
-                vec = iniLineParser(section, "PalominoCreek", iniPed);
-                pedVariations[i][12] = vectorUnion(vec, pedVariations[i][8]);
+            vec = iniLineParser(section, "FlintCounty", &iniPed);
+            pedVariations[i][13] = vectorUnion(vec, pedVariations[i][0]);
 
-                vec = iniLineParser(section, "FlintCounty", iniPed);
-                pedVariations[i][13] = vectorUnion(vec, pedVariations[i][0]);
+            vec = iniLineParser(section, "Whetstone", &iniPed);
+            pedVariations[i][14] = vectorUnion(vec, pedVariations[i][0]);
 
-                vec = iniLineParser(section, "Whetstone", iniPed);
-                pedVariations[i][14] = vectorUnion(vec, pedVariations[i][0]);
-
-                vec = iniLineParser(section, "AngelPine", iniPed);
-                pedVariations[i][15] = vectorUnion(vec, pedVariations[i][14]);
+            vec = iniLineParser(section, "AngelPine", &iniPed);
+            pedVariations[i][15] = vectorUnion(vec, pedVariations[i][14]);
 
 
-                pedWantedVariations[i][0] = iniLineParser(section, "Wanted1", iniPed);
-                pedWantedVariations[i][1] = iniLineParser(section, "Wanted2", iniPed);
-                pedWantedVariations[i][2] = iniLineParser(section, "Wanted3", iniPed);
-                pedWantedVariations[i][3] = iniLineParser(section, "Wanted4", iniPed);
-                pedWantedVariations[i][4] = iniLineParser(section, "Wanted5", iniPed);
-                pedWantedVariations[i][5] = iniLineParser(section, "Wanted6", iniPed);
+            pedWantedVariations[i][0] = iniLineParser(section, "Wanted1", &iniPed);
+            pedWantedVariations[i][1] = iniLineParser(section, "Wanted2", &iniPed);
+            pedWantedVariations[i][2] = iniLineParser(section, "Wanted3", &iniPed);
+            pedWantedVariations[i][3] = iniLineParser(section, "Wanted4", &iniPed);
+            pedWantedVariations[i][4] = iniLineParser(section, "Wanted5", &iniPed);
+            pedWantedVariations[i][5] = iniLineParser(section, "Wanted6", &iniPed);
 
 
-                for (unsigned int j = 0; j < 16; j++)
-                    for (unsigned int k = 0; k < pedVariations[i][j].size(); k++)
-                        if (pedVariations[i][j][k] > 0 && pedVariations[i][j][k] < 32000 && pedVariations[i][j][k] != i)
-                            pedOriginalModels.insert({ pedVariations[i][j][k], i });
+            for (unsigned int j = 0; j < 16; j++)
+                for (unsigned int k = 0; k < pedVariations[i][j].size(); k++)
+                    if (pedVariations[i][j][k] > 0 && pedVariations[i][j][k] < 32000 && pedVariations[i][j][k] != i)
+                        pedOriginalModels.insert({ pedVariations[i][j][k], i });
 
-                if (iniPed->ReadInteger(section, "MergeZonesWithCities", 0) == 1)
-                    pedMergeZones.insert(i);
-            }
+            if (iniPed.ReadInteger(section, "MergeZonesWithCities", 0) == 1)
+                pedMergeZones.insert(i);
         }
     }
 
+
     if (firstTime)
     {
-        enableCloneRemover = iniPed->ReadInteger("Settings", "EnableCloneRemover", 0);
-        cloneRemoverIncludeVariations = iniPed->ReadInteger("Settings", "CloneRemoverIncludeVariations", 0);
-        cloneRemoverVehicleOccupants = iniPed->ReadInteger("Settings", "CloneRemoverIncludeVehicleOccupants", 0);
-        cloneRemoverExclusions = iniLineParser("Settings", "CloneRemoverExcludeModels", iniPed);
-        spawnDelay = iniPed->ReadInteger("Settings", "SpawnDelay", 3);
+        enableCloneRemover = iniPed.ReadInteger("Settings", "EnableCloneRemover", 0);
+        cloneRemoverIncludeVariations = iniPed.ReadInteger("Settings", "CloneRemoverIncludeVariations", 0);
+        cloneRemoverVehicleOccupants = iniPed.ReadInteger("Settings", "CloneRemoverIncludeVehicleOccupants", 0);
+        cloneRemoverExclusions = iniLineParser("Settings", "CloneRemoverExcludeModels", &iniPed);
+        spawnDelay = iniPed.ReadInteger("Settings", "SpawnDelay", 3);
         enableVehicles = iniVeh.ReadInteger("Settings", "Enable", 0);
     }
 
@@ -545,6 +548,16 @@ void clearEverything()
     }
     vehCarGenExclude.clear();
     vehInheritExclude.clear();
+
+    iniPed.data.clear();
+    iniWeap.data.clear();
+    iniSettings.data.clear();
+    iniVeh.data.clear();
+
+    iniPed.SetIniPath(pedIniPath);
+    iniWeap.SetIniPath(pedWepIniPath);
+    iniSettings.SetIniPath(settingsIniPath);
+    iniVeh.SetIniPath(vehIniPath);
 }
 
 class ModelVariations {
@@ -563,8 +576,8 @@ public:
         if (!fileExists(settingsIniPath))
             settingsIniPath = "ModelVariations\\" + settingsIniPath;
 
-        static CIniReader iniPed(pedIniPath);
-        static CIniReader iniWeap(pedWepIniPath);
+        iniPed.SetIniPath(pedIniPath);
+        iniWeap.SetIniPath(pedWepIniPath);
         iniSettings.SetIniPath(settingsIniPath);
         iniVeh.SetIniPath(vehIniPath);
 
@@ -651,7 +664,7 @@ public:
 
         Events::initRwEvent += []
         {
-            loadIniData(&iniPed, true);
+            loadIniData(true);
             installHooks();
 
             if (logfile.is_open())
@@ -727,18 +740,34 @@ public:
 
         Events::gameProcessEvent += []
         {
+
             if (disableKey > 0 && KeyPressed(disableKey))
             {
-                CMessages::AddMessageJumpQ((char*)"Model variations disabled.", 2000, 0, false);
-                clearEverything();
+                if (!keyDown)
+                {
+                    keyDown = true;
+                    CMessages::AddMessageJumpQ((char*)"~y~Model Variations~s~: Mod disabled.", 2000, 0, false);
+                    if (logfile.is_open())
+                        logfile << "Disabling mod... ";
+                    clearEverything();
+                    if (logfile.is_open())
+                        logfile << "OK" << std::endl;
+                }
             }
-
-            if (reloadKey > 0 && KeyPressed(reloadKey))
+            else if (reloadKey > 0 && KeyPressed(reloadKey))
             {
-                clearEverything();
-                loadIniData(&iniPed, false);
-                CMessages::AddMessageJumpQ((char*)"Model variations settings reloaded.", 2000, 0, false);
+                if (!keyDown)
+                {
+                    keyDown = true;
+                    if (logfile.is_open())
+                        logfile << "Reloading settings..." << std::endl;
+                    clearEverything();
+                    loadIniData(false);
+                    CMessages::AddMessageJumpQ((char*)"~y~Model Variations~s~: Settings reloaded.", 2000, 0, false);
+                }
             }
+            else
+                keyDown = false;
 
             if (framesSinceCallsChecked < 1000)
                 framesSinceCallsChecked++;
@@ -776,7 +805,7 @@ public:
                 }
 
                 strncpy(lastInterior, currentInterior, 15);
-                updateVariations(zInfo, &iniPed);
+                updateVariations(zInfo);
 
                 if (enableLog == 1)
                     printCurrentVariations();
@@ -796,7 +825,7 @@ public:
                 }
 
                 currentWanted = (int)wanted->m_nWantedLevel;
-                updateVariations(zInfo, &iniPed);
+                updateVariations(zInfo);
 
                 if (enableLog == 1)
                     printCurrentVariations();
@@ -821,7 +850,7 @@ public:
                 }
 
                 strncpy(currentZone, zInfo->m_szLabel, 7);
-                updateVariations(zInfo, &iniPed);
+                updateVariations(zInfo);
 
                 if (enableLog == 1)
                     printCurrentVariations();

@@ -11,6 +11,7 @@
 #include <CDarkel.h>
 #include <CGeneral.h>
 #include <CHeli.h>
+#include <CModelInfo.h>
 #include <CPopulation.h>
 #include <CStreaming.h>
 #include <CTheScripts.h>
@@ -171,26 +172,39 @@ void readVehicleIni(bool firstTime)
     }
 
     for (auto& i : result) //for every zone name
-        for (auto &j : iniVeh.data)
+        for (auto& j : iniVeh.data)
+        {
+            int modelid = 0;
             if (j.first[0] >= '0' && j.first[0] <= '9')
-            {
-                int modelid = std::stoi(j.first);
+                modelid = std::stoi(j.first);
+            else
+                CModelInfo::GetModelInfo((char*)j.first.c_str(), &modelid);
 
+            if (modelid > 0)
+            {
                 std::vector<unsigned short> vec = iniLineParser(j.first, i, &iniVeh); //get zone name 'i' of veh id 'j'
 
                 if (!vec.empty()) //if veh id 'j' has variations in zone 'i'
                     for (auto& k : vec) //for every variation 'k' of veh id 'j' in zone 'i'
                         if (modelid != k && !(IdExists(vehInheritExclude, k)))
                             vehOriginalModels.insert({ k, modelid });
-            }
+            }            
+        }
 
     if (zoneFile.is_open())
         zoneFile.close();
 
-    for (unsigned short i = 400; i < 612; i++)
+    for (auto& inidata : iniVeh.data)
     {
-        std::string section = std::to_string(i);
-        if (iniVeh.data.find(section) != iniVeh.data.end())
+        std::string section = inidata.first;
+        int modelid = 0;
+        if (section[0] >= '0' && section[0] <= '9')
+            modelid = std::stoi(section);
+        else
+            CModelInfo::GetModelInfo((char*)section.c_str(), &modelid);
+
+        unsigned short i = (unsigned short)modelid;
+        if (i >= 400 && i < 612)
         {
             if (iniVeh.ReadInteger(section, "ChangeOnlyParked", 0) == 1)
                 parkedCars.insert(i);
@@ -252,10 +266,17 @@ void readVehicleIni(bool firstTime)
         enableLights = iniVeh.ReadInteger("Settings", "EnableLights", 0);
     
     for (auto& i : iniVeh.data)
+    {
+        int k = 0;
         if (i.first[0] >= '0' && i.first[0] <= '9')
-        {
-            unsigned short modelid = (unsigned short)std::stoi(i.first);
+            k = std::stoi(i.first);
+        else
+            CModelInfo::GetModelInfo((char*)i.first.c_str(), &k);
 
+        unsigned short modelid = (unsigned short)k;
+
+        if (modelid >= 400)
+        {
             std::vector<unsigned short> vec = iniLineParser(i.first, "Countryside", &iniVeh, true);
             if (!vec.empty()) vehGroups[modelid][0] = vec;
 
@@ -406,6 +427,7 @@ void readVehicleIni(bool firstTime)
             if (!vec.empty())
                 vehPassengers.insert({ modelid, vec });
         }
+    }
 
     if (firstTime)
     {

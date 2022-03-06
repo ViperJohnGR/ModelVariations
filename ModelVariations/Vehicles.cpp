@@ -277,55 +277,42 @@ void readVehicleIni(bool firstTime)
 
         if (modelid >= 400)
         {
-            std::vector<unsigned short> vec = iniLineParser(i.first, "Countryside", &iniVeh, true);
-            if (!vec.empty()) vehGroups[modelid][0] = vec;
+            vehGroups[modelid][0] = iniLineParser(i.first, "Countryside", &iniVeh, true);
+            vehGroups[modelid][1] = iniLineParser(i.first, "LosSantos", &iniVeh, true);
+            vehGroups[modelid][2] = iniLineParser(i.first, "SanFierro", &iniVeh, true);
+            vehGroups[modelid][3] = iniLineParser(i.first, "LasVenturas", &iniVeh, true);
+            vehGroups[modelid][4] = iniLineParser(i.first, "Global", &iniVeh, true);
+            vehGroups[modelid][5] = iniLineParser(i.first, "Desert", &iniVeh, true);
 
-            vec = iniLineParser(i.first, "LosSantos", &iniVeh, true);
-            if (!vec.empty()) vehGroups[modelid][1] = vec;
-
-            vec = iniLineParser(i.first, "SanFierro", &iniVeh, true);
-            if (!vec.empty()) vehGroups[modelid][2] = vec;
-
-            vec = iniLineParser(i.first, "LasVenturas", &iniVeh, true);
-            if (!vec.empty()) vehGroups[modelid][3] = vec;
-
-            vec = iniLineParser(i.first, "Global", &iniVeh, true);
-            if (!vec.empty()) vehGroups[modelid][4] = vec;
-
-            vec = iniLineParser(i.first, "Desert", &iniVeh, true);
-            if (!vec.empty()) vehGroups[modelid][5] = vec;
-
-
-            vec = iniLineParser(i.first, "TierraRobada", &iniVeh, true);
-            if (!vec.empty()) vehGroups[modelid][6] = vectorUnion(vec, vehGroups[modelid][5]);
+            std::vector<unsigned short> vec = iniLineParser(i.first, "TierraRobada", &iniVeh, true);
+            vehGroups[modelid][6] = vectorUnion(vec, vehGroups[modelid][5]);
 
             vec = iniLineParser(i.first, "BoneCounty", &iniVeh, true);
-            if (!vec.empty()) vehGroups[modelid][7] = vectorUnion(vec, vehGroups[modelid][5]);
+            vehGroups[modelid][7] = vectorUnion(vec, vehGroups[modelid][5]);
 
             vec = iniLineParser(i.first, "RedCounty", &iniVeh, true);
-            if (!vec.empty()) vehGroups[modelid][8] = vectorUnion(vec, vehGroups[modelid][0]);
+            vehGroups[modelid][8] = vectorUnion(vec, vehGroups[modelid][0]);
 
             vec = iniLineParser(i.first, "Blueberry", &iniVeh, true);
-            if (!vec.empty()) vehGroups[modelid][9] = vectorUnion(vec, vehGroups[modelid][8]);
+            vehGroups[modelid][9] = vectorUnion(vec, vehGroups[modelid][8]);
 
             vec = iniLineParser(i.first, "Montgomery", &iniVeh, true);
-            if (!vec.empty()) vehGroups[modelid][10] = vectorUnion(vec, vehGroups[modelid][8]);
+            vehGroups[modelid][10] = vectorUnion(vec, vehGroups[modelid][8]);
 
             vec = iniLineParser(i.first, "Dillimore", &iniVeh, true);
-            if (!vec.empty()) vehGroups[modelid][11] = vectorUnion(vec, vehGroups[modelid][8]);
+            vehGroups[modelid][11] = vectorUnion(vec, vehGroups[modelid][8]);
 
             vec = iniLineParser(i.first, "PalominoCreek", &iniVeh, true);
-            if (!vec.empty()) vehGroups[modelid][12] = vectorUnion(vec, vehGroups[modelid][8]);
+            vehGroups[modelid][12] = vectorUnion(vec, vehGroups[modelid][8]);
 
             vec = iniLineParser(i.first, "FlintCounty", &iniVeh, true);
-            if (!vec.empty()) vehGroups[modelid][13] = vectorUnion(vec, vehGroups[modelid][0]);
+            vehGroups[modelid][13] = vectorUnion(vec, vehGroups[modelid][0]);
 
             vec = iniLineParser(i.first, "Whetstone", &iniVeh, true);
-            if (!vec.empty()) vehGroups[modelid][14] = vectorUnion(vec, vehGroups[modelid][0]);
+            vehGroups[modelid][14] = vectorUnion(vec, vehGroups[modelid][0]);
 
             vec = iniLineParser(i.first, "AngelPine", &iniVeh, true);
-            if (!vec.empty()) vehGroups[modelid][15] = vectorUnion(vec, vehGroups[modelid][14]);
-
+            vehGroups[modelid][15] = vectorUnion(vec, vehGroups[modelid][14]);
 
 
             if (iniVeh.ReadInteger(i.first, "UseOnlyGroups", 0) == 1)

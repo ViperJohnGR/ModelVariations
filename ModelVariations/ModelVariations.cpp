@@ -154,25 +154,6 @@ static unsigned short getVariationOriginalModel(unsigned short model)
     return model;
 }
 
-bool isPlayerInDesert()
-{
-    if (Command<COMMAND_IS_CHAR_IN_ZONE>(FindPlayerPed(), "ROBAD") ||
-        Command<COMMAND_IS_CHAR_IN_ZONE>(FindPlayerPed(), "BONE"))
-        return true;
-
-    return false;
-}
-
-bool isPlayerInCountry()
-{
-    if (Command<COMMAND_IS_CHAR_IN_ZONE>(FindPlayerPed(), "RED") ||
-        Command<COMMAND_IS_CHAR_IN_ZONE>(FindPlayerPed(), "FLINTC") ||
-        Command<COMMAND_IS_CHAR_IN_ZONE>(FindPlayerPed(), "WHET"))
-        return true;
-
-    return false;
-}
-
 bool IdExists(std::vector<unsigned short>& vec, int id)
 {
     if (vec.size() < 1)
@@ -233,25 +214,25 @@ void updateVariations(CZone* zInfo)
         return;
 
     currentTown = (BYTE)CTheZones::m_CurrLevel;
-    if (strncmp(zInfo->m_szTextKey, "ROBAD", 7) == 0)
+    if (Command<COMMAND_IS_CHAR_IN_ZONE>(FindPlayerPed(), "ROBAD"))
         currentTown = 6;
-    else if (strncmp(zInfo->m_szTextKey, "BONE", 7) == 0)
+    else if (Command<COMMAND_IS_CHAR_IN_ZONE>(FindPlayerPed(), "BONE"))
         currentTown = 7;
-    else if (strncmp(zInfo->m_szTextKey, "RED", 7) == 0)
+    else if (Command<COMMAND_IS_CHAR_IN_ZONE>(FindPlayerPed(), "RED"))
         currentTown = 8;
-    else if (strncmp(zInfo->m_szTextKey, "BLUEB", 7) == 0)
+    else if (Command<COMMAND_IS_CHAR_IN_ZONE>(FindPlayerPed(), "BLUEB"))
         currentTown = 9;
-    else if (strncmp(zInfo->m_szTextKey, "MONT", 7) == 0)
+    else if (Command<COMMAND_IS_CHAR_IN_ZONE>(FindPlayerPed(), "MONT"))
         currentTown = 10;
-    else if (strncmp(zInfo->m_szTextKey, "DILLI", 7) == 0)
+    else if (Command<COMMAND_IS_CHAR_IN_ZONE>(FindPlayerPed(), "DILLI"))
         currentTown = 11;
-    else if (strncmp(zInfo->m_szTextKey, "PALO", 7) == 0)
+    else if (Command<COMMAND_IS_CHAR_IN_ZONE>(FindPlayerPed(), "PALO"))
         currentTown = 12;
-    else if (strncmp(zInfo->m_szTextKey, "FLINTC", 7) == 0)
+    else if (Command<COMMAND_IS_CHAR_IN_ZONE>(FindPlayerPed(), "FLINTC"))
         currentTown = 13;
-    else if (strncmp(zInfo->m_szTextKey, "WHET", 7) == 0)
+    else if (Command<COMMAND_IS_CHAR_IN_ZONE>(FindPlayerPed(), "WHET"))
         currentTown = 14;
-    else if (strncmp(zInfo->m_szTextKey, "ANGPI", 7) == 0)
+    else if (Command<COMMAND_IS_CHAR_IN_ZONE>(FindPlayerPed(), "ANGPI"))
         currentTown = 15;
 
 
@@ -693,6 +674,7 @@ public:
 
         Events::initScriptsEvent += []
         {
+            clearEverything();
             loadIniData(false);
             printVariations();
 

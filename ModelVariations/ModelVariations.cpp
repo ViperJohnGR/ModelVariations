@@ -358,8 +358,7 @@ void printCurrentVariations()
 
 void printVariations()
 {
-    logfile << std::endl;
-    logfile << "\nPed Variations:\n";
+    logfile << std::dec << "\nPed Variations:\n";
     for (unsigned int i = 0; i < 300; i++)
     {
         for (unsigned int j = 0; j < 16; j++)
@@ -682,7 +681,6 @@ public:
 
             if (logfile.is_open())
             {
-                printVariations();
                 logfile << "\nLoaded modules:" << std::endl;
 
                 getLoadedModules();
@@ -696,6 +694,7 @@ public:
         Events::initScriptsEvent += []
         {
             loadIniData(false);
+            printVariations();
 
             if (loadAllVehicles)
                 for (int i = 400; i < 612; i++)

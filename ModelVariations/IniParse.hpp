@@ -3,6 +3,8 @@
 #include <vector>
 #include <IniReader.h>
 
+#include <CModelInfo.h>
+
 inline std::vector<unsigned short> vectorUnion(std::vector<unsigned short>& vec1, std::vector<unsigned short>& vec2)
 {
     std::vector<unsigned short> vec;
@@ -30,6 +32,7 @@ inline std::vector<unsigned short> iniLineParser(std::string section, std::strin
         strcpy(tkString, iniString.c_str());
 
         char* token = strtok(tkString, ",");
+        int modelid = 0;
 
         while (token != NULL)
         {
@@ -40,6 +43,8 @@ inline std::vector<unsigned short> iniLineParser(std::string section, std::strin
             }
             else if(token[0] >= '0' && token[0] <= '9')
                 retVector.push_back((unsigned short)atoi(token));
+            else if (CModelInfo::GetModelInfo(token, &modelid) != NULL)
+                retVector.push_back((unsigned short)modelid);
 
             token = strtok(NULL, ",");
         }

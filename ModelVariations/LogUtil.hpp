@@ -6,7 +6,7 @@
 #include <string>
 #include <iostream>
 
-#define MOD_VERSION "7.2"
+#define MOD_VERSION "7.3"
 #ifdef _DEBUG
 #define MOD_NAME "ModelVariations_d.asi"
 #else

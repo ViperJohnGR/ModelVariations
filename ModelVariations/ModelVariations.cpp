@@ -63,6 +63,7 @@ std::map<unsigned short, std::pair<CVector, float>> LightPositions;
 std::map<unsigned short, int> pedTimeSinceLastSpawned;
 std::map<unsigned short, unsigned short> pedOriginalModels;
 std::map<unsigned short, std::array<std::vector<unsigned short>, 6>> vehGroupWantedVariations;
+std::map<unsigned short, std::string> wepVariationModels;
 
 std::set<unsigned short> parkedCars;
 std::set<unsigned short> vehUseOnlyGroups;
@@ -470,6 +471,16 @@ void loadIniData(bool firstTime)
         }
     }
 
+    for (auto& iniData : iniWeap.data)
+    {
+        int modelid = 0;
+        std::string section = iniData.first;
+
+        if (!(section[0] >= '0' && section[0] <= '9'))
+            CModelInfo::GetModelInfo((char*)section.c_str(), &modelid);
+        if (modelid > 0)
+            wepVariationModels.insert({ modelid, section });
+    }
 
     if (firstTime)
     {
@@ -520,6 +531,7 @@ void clearEverything()
     pedTimeSinceLastSpawned.clear();
     pedOriginalModels.clear();
     vehGroupWantedVariations.clear();
+    wepVariationModels.clear();
 
     //sets
     parkedCars.clear();
@@ -955,6 +967,9 @@ public:
                     };
 
                     std::string section = std::to_string(ped->m_nModelIndex);
+                    auto wepModel = wepVariationModels.find(ped->m_nModelIndex);
+                    if (wepModel != wepVariationModels.end())
+                        section = wepModel->second;
                     std::string currentZoneString(currentZone);
                     int mergeWeapons = iniWeap.ReadInteger(section, "MergeZonesWithGlobal", 0);
 

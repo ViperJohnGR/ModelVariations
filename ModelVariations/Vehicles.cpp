@@ -256,9 +256,14 @@ void readVehicleIni(bool firstTime)
 
 
             for (unsigned int j = 0; j < 16; j++)
+            {
                 for (unsigned int k = 0; k < vehVariations[i - 400][j].size(); k++)
                     if (vehVariations[i - 400][j][k] > 0 && vehVariations[i - 400][j][k] < 32000 && vehVariations[i - 400][j][k] != i && !(IdExists(vehInheritExclude, vehVariations[i - 400][j][k])))
                         vehOriginalModels.insert({ vehVariations[i - 400][j][k], i });
+
+                if (!vehVariations[i - 400][j].empty())
+                    vehHasVariations.insert((unsigned short)i-400);
+            }
         }
     }
 
@@ -1004,9 +1009,17 @@ void __cdecl PossiblyRemoveVehicleHooked(CVehicle* car)
         callOriginal<address>(car);
         return;
     }
-    *((unsigned short*)0x4250AC) = car->m_nModelIndex;
-    callOriginal<address>(car);
-    *((unsigned short*)0x4250AC) = 0x1A0;
+    if (*((unsigned short*)0x4250AC) == 416)
+    {
+        *((unsigned short*)0x4250AC) = car->m_nModelIndex;
+        callOriginal<address>(car);
+        *((unsigned short*)0x4250AC) = 416;
+    }
+    else
+    {
+        callOriginal<address>(car);
+        logModified(0x4250AC, "Modified method detected: CCarCtrl::PossiblyRemoveVehicle - 0x4250AC is " + std::to_string(*((unsigned short*)0x4250AC)));
+    }
 }
 
 template <unsigned int address>
@@ -1081,12 +1094,17 @@ void __fastcall ProcessControlHooked(CAutomobile* veh)
 {
     if (veh && (getVariationOriginalModel(veh->m_nModelIndex) == 407 || getVariationOriginalModel(veh->m_nModelIndex) == 601))
     {
-        //EB 0A
-        *((BYTE*)0x6B1F4F) = 0xEB;
-        *((BYTE*)0x6B1F50) = 0x0A;
-        callMethodOriginal<address>(veh);
-        *((BYTE*)0x6B1F4F) = 0x66;
-        *((BYTE*)0x6B1F50) = 0x3D;
+        if (*((unsigned short*)0x6B1F51) == 407)
+        {
+            *((unsigned short*)0x6B1F51) = veh->m_nModelIndex;
+            callMethodOriginal<address>(veh);
+            *((unsigned short*)0x6B1F51) = 407;
+        }
+        else
+        {
+            callMethodOriginal<address>(veh);
+            logModified(0x6B1F51, "Modified method detected: CAutomobile::ProcessControl - 0x6B1F51 is " + std::to_string(*((unsigned short*)0x6B1F51)));
+        }
     }/*
     else if (getVariationOriginalModel(veh->m_nModelIndex) == 432)
     {
@@ -1122,13 +1140,15 @@ void __declspec(naked) enableSirenLights()
 template <unsigned int address>
 void __fastcall PreRenderHooked(CAutomobile* veh)
 {
-    auto sirenRestore = []()
+    BYTE sirenOriginal[5] = { *(BYTE*)0x6AB350, *(BYTE*)0x6AB351, *(BYTE*)0x6AB352, *(BYTE*)0x6AB353, *(BYTE*)0x6AB354 };
+
+    auto sirenRestore = [sirenOriginal]()
     {
-        ((BYTE*)0x6AB350)[0] = 0x0F;
-        ((BYTE*)0x6AB350)[1] = 0xBF;
-        ((BYTE*)0x6AB350)[2] = 0x46;
-        ((BYTE*)0x6AB350)[3] = 0x22;
-        ((BYTE*)0x6AB350)[4] = 0x8D;
+        ((BYTE*)0x6AB350)[0] = sirenOriginal[0];
+        ((BYTE*)0x6AB350)[1] = sirenOriginal[1];
+        ((BYTE*)0x6AB350)[2] = sirenOriginal[2];
+        ((BYTE*)0x6AB350)[3] = sirenOriginal[3];
+        ((BYTE*)0x6AB350)[4] = sirenOriginal[4];
     };
 
     if (veh == NULL)
@@ -1148,11 +1168,17 @@ void __fastcall PreRenderHooked(CAutomobile* veh)
 
     if (getVariationOriginalModel(veh->m_nModelIndex) == 407) //Firetruck
     {
-        *((BYTE*)0x6ACA57) = 0xEB;
-        *((BYTE*)0x6ACA58) = 0x04;
-        callMethodOriginal<address>(veh);
-        *((BYTE*)0x6ACA57) = 0x66;
-        *((BYTE*)0x6ACA58) = 0x3D;
+        if (*((unsigned short*)0x6ACA59) == 407)
+        {
+            *((unsigned short*)0x6ACA59) = veh->m_nModelIndex;
+            callMethodOriginal<address>(veh);
+            *((unsigned short*)0x6ACA59) = 407;
+        }
+        else
+        {
+            callMethodOriginal<address>(veh);
+            logModified(0x6ACA59, "Modified method detected: CAutomobile::PreRender - 0x6ACA59 is " + std::to_string(*((unsigned short*)0x6ACA59)));
+        }
         if (hasSiren)
             sirenRestore();
     }/*
@@ -1172,9 +1198,17 @@ void __fastcall PreRenderHooked(CAutomobile* veh)
     }*/
     else if (getVariationOriginalModel(veh->m_nModelIndex) == 601) //SWAT Tank
     {
-        *((unsigned short*)0x6ACA53) = veh->m_nModelIndex;
-        callMethodOriginal<address>(veh);
-        *((unsigned short*)0x6ACA53) = 0x259;
+        if (*((unsigned short*)0x6ACA53) == 601)
+        {
+            *((unsigned short*)0x6ACA53) = veh->m_nModelIndex;
+            callMethodOriginal<address>(veh);
+            *((unsigned short*)0x6ACA53) = 601;
+        }
+        else
+        {
+            callMethodOriginal<address>(veh);
+            logModified(0x6ACA53, "Modified method detected: CAutomobile::PreRender - 0x6ACA53 is " + std::to_string(*((unsigned short*)0x6ACA53)));
+        }
         if (hasSiren)
             sirenRestore();
     }

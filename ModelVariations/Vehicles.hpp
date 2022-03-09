@@ -30,6 +30,7 @@ extern std::vector<unsigned short> vehCarGenExclude;
 extern std::vector<unsigned short> vehInheritExclude;
 
 extern std::set<unsigned short> parkedCars;
+extern std::set<unsigned short> vehHasVariations;
 
 extern int loadAllVehicles;
 

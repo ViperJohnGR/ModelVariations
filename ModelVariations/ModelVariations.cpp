@@ -65,10 +65,14 @@ std::map<unsigned short, unsigned short> pedOriginalModels;
 std::map<unsigned short, std::array<std::vector<unsigned short>, 6>> vehGroupWantedVariations;
 std::map<unsigned short, std::string> wepVariationModels;
 
+std::set<unsigned short> dontInheritBehaviourModels;
 std::set<unsigned short> parkedCars;
 std::set<unsigned short> vehUseOnlyGroups;
 std::set<unsigned short> pedMergeZones;
 std::set<unsigned short> vehMergeZones;
+std::set<unsigned short> pedHasVariations;
+std::set<unsigned short> vehHasVariations;
+std::set<unsigned int> modifiedAddresses;
 
 std::stack<CPed*> pedStack;
 std::stack<CVehicle*> vehStack;
@@ -239,70 +243,51 @@ void updateVariations(CZone* zInfo)
 
     CWanted* wanted = FindPlayerWanted(-1);
 
-    for (auto& i : iniPed.data)
+    for (auto& modelid : pedHasVariations)
     {
-        int modelid = 0;
-        if (i.first[0] >= '0' && i.first[0] <= '9')
-            modelid = std::stoi(i.first);
-        else
-            CModelInfo::GetModelInfo((char*)i.first.c_str(), &modelid);
+        vectorUnion(pedVariations[modelid][4], pedVariations[modelid][currentTown], pedCurrentVariations[modelid]);
 
-        if (modelid > 0 && modelid < 300)
+        std::vector<unsigned short> vec = iniLineParser(std::to_string(modelid), ((lastZone[0] == 0) ? zInfo->m_szLabel : lastZone), &iniPed);
+        if (!vec.empty())
         {
-            vectorUnion(pedVariations[modelid][4], pedVariations[modelid][currentTown], pedCurrentVariations[modelid]);
-
-            std::vector<unsigned short> vec = iniLineParser(i.first, ((lastZone[0] == 0) ? zInfo->m_szLabel : lastZone), &iniPed);
-            if (!vec.empty())
-            {
-                if (pedMergeZones.find((unsigned short)modelid) != pedMergeZones.end())
-                    pedCurrentVariations[modelid] = vectorUnion(pedCurrentVariations[modelid], vec);
-                else
-                    pedCurrentVariations[modelid] = vec;
-            }
-
-            vec = iniLineParser(i.first, currentInterior, &iniPed);
-            if (!vec.empty())
+            if (pedMergeZones.find((unsigned short)modelid) != pedMergeZones.end())
                 pedCurrentVariations[modelid] = vectorUnion(pedCurrentVariations[modelid], vec);
+            else
+                pedCurrentVariations[modelid] = vec;
+        }
 
-            if (wanted)
-            {
-                unsigned int wantedLevel = (wanted->m_nWantedLevel > 0) ? (wanted->m_nWantedLevel - 1) : (wanted->m_nWantedLevel);
-                if (!pedWantedVariations[modelid][wantedLevel].empty() && !pedCurrentVariations[modelid].empty())
-                    filterWantedVariations(pedCurrentVariations[modelid], pedWantedVariations[modelid][wantedLevel]);
-            }
+        vec = iniLineParser(std::to_string(modelid), currentInterior, &iniPed);
+        if (!vec.empty())
+            pedCurrentVariations[modelid] = vectorUnion(pedCurrentVariations[modelid], vec);
+
+        if (wanted)
+        {
+            unsigned int wantedLevel = (wanted->m_nWantedLevel > 0) ? (wanted->m_nWantedLevel - 1) : (wanted->m_nWantedLevel);
+            if (!pedWantedVariations[modelid][wantedLevel].empty() && !pedCurrentVariations[modelid].empty())
+                filterWantedVariations(pedCurrentVariations[modelid], pedWantedVariations[modelid][wantedLevel]);
         }
     }
 
 
-    for (auto& i : iniVeh.data)
+    for (auto& modelid : vehHasVariations)
     {
-        int modelid = 0;
-        if (i.first[0] >= '0' && i.first[0] <= '9')
-            modelid = std::stoi(i.first);
-        else
-            CModelInfo::GetModelInfo((char*)i.first.c_str(), &modelid);
+        vectorUnion(vehVariations[modelid][4], vehVariations[modelid][currentTown], vehCurrentVariations[modelid]);
 
-        modelid -= 400;
-        if (modelid > 0 && modelid < 212)
+        std::vector<unsigned short> vec = iniLineParser(std::to_string(modelid), ((lastZone[0] == 0) ? zInfo->m_szLabel : lastZone), &iniVeh);
+        if (!vec.empty())
         {
-            vectorUnion(vehVariations[modelid][4], vehVariations[modelid][currentTown], vehCurrentVariations[modelid]);
+            if (vehMergeZones.find((unsigned short)modelid) != vehMergeZones.end())
+                vehCurrentVariations[modelid] = vectorUnion(vehCurrentVariations[modelid], vec);
+            else
+                vehCurrentVariations[modelid] = vec;
+        }
 
-            std::vector<unsigned short> vec = iniLineParser(i.first, ((lastZone[0] == 0) ? zInfo->m_szLabel : lastZone), &iniVeh);
-            if (!vec.empty())
-            {
-                if (vehMergeZones.find((unsigned short)modelid) != vehMergeZones.end())
-                    vehCurrentVariations[modelid] = vectorUnion(vehCurrentVariations[modelid], vec);
-                else
-                    vehCurrentVariations[modelid] = vec;
-            }
-
-            if (wanted)
-            {
-                unsigned int wantedLevel = (wanted->m_nWantedLevel > 0) ? (wanted->m_nWantedLevel - 1) : (wanted->m_nWantedLevel);
-                if (!vehWantedVariations[modelid][wantedLevel].empty() && !vehCurrentVariations[modelid].empty())
-                    filterWantedVariations(vehCurrentVariations[modelid], vehWantedVariations[modelid][wantedLevel]);
-            }
-        }        
+        if (wanted)
+        {
+            unsigned int wantedLevel = (wanted->m_nWantedLevel > 0) ? (wanted->m_nWantedLevel - 1) : (wanted->m_nWantedLevel);
+            if (!vehWantedVariations[modelid][wantedLevel].empty() && !vehCurrentVariations[modelid].empty())
+                filterWantedVariations(vehCurrentVariations[modelid], vehWantedVariations[modelid][wantedLevel]);
+        }   
     }
 }
 
@@ -462,12 +447,20 @@ void loadIniData(bool firstTime)
 
 
             for (unsigned int j = 0; j < 16; j++)
+            {
                 for (unsigned int k = 0; k < pedVariations[i][j].size(); k++)
                     if (pedVariations[i][j][k] > 0 && pedVariations[i][j][k] < 32000 && pedVariations[i][j][k] != i)
                         pedOriginalModels.insert({ pedVariations[i][j][k], i });
+                
+                if (!pedVariations[i][j].empty())
+                    pedHasVariations.insert((unsigned short)i);
+            }
 
             if (iniPed.ReadInteger(section, "MergeZonesWithCities", 0) == 1)
                 pedMergeZones.insert((unsigned short)i);
+
+            if (iniPed.ReadInteger(section, "DontInheritBehaviour", 0) == 1)
+                dontInheritBehaviourModels.insert((unsigned short)i);
         }
     }
 
@@ -651,17 +644,26 @@ public:
 
             logfile << std::endl;
 
-            logfile << "\nPed sections detected:\n";
-            for (auto& i : iniPed.data)
-                logfile << std::dec << i.first << "\n";
+            if (!iniPed.data.empty())
+            {
+                logfile << "\nPed sections detected:\n";
+                for (auto& i : iniPed.data)
+                    logfile << std::dec << i.first << "\n";
+            }
 
-            logfile << "\nPed weapon sections detected:\n";
-            for (auto& i : iniWeap.data)
-                logfile << i.first << "\n";
+            if (!iniWeap.data.empty())
+            {
+                logfile << "\nPed weapon sections detected:\n";
+                for (auto& i : iniWeap.data)
+                    logfile << i.first << "\n";
+            }
 
-            logfile << "\nVehicle sections detected:\n";
-            for (auto& i : iniVeh.data)
-                logfile << i.first << "\n";
+            if (!iniVeh.data.empty())
+            {
+                logfile << "\nVehicle sections detected:\n";
+                for (auto& i : iniVeh.data)
+                    logfile << i.first << "\n";
+            }
 
             logfile << "\n" << std::endl;
 
@@ -740,7 +742,8 @@ public:
                     unsigned short index = ped->m_nModelIndex;
                     ped->DeleteRwObject();
                     (static_cast<CEntity*>(ped))->SetModelIndex(variationModel);
-                    ped->m_nModelIndex = index;
+                    if (dontInheritBehaviourModels.find(index) == dontInheritBehaviourModels.end())
+                        ped->m_nModelIndex = index;
                     modelIndex = variationModel;
                 }
             }

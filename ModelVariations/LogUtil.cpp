@@ -204,3 +204,12 @@ void checkAllCalls()
     for (auto it : hookedCalls)
         checkCallModified(it.second.name, it.first, (it.second.isVTableAddress == true) ? true : false);
 }
+
+void logModified(unsigned int address, std::string message)
+{
+    if (logfile.is_open() && modifiedAddresses.find(address) == modifiedAddresses.end())
+    {
+        logfile << message << std::endl;
+        modifiedAddresses.insert(address);
+    }
+}

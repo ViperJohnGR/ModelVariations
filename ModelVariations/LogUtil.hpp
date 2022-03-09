@@ -16,9 +16,11 @@
 extern std::ofstream logfile;
 extern std::set<std::pair<unsigned int, std::string>> modulesSet;
 extern std::set<std::pair<unsigned int, std::string>> callChecks;
+extern std::set<unsigned int> modifiedAddresses;
 
 extern int enableLog;
 
 std::string hashFile(const char* filename);
 std::string getWindowsVersion();
 void checkAllCalls();
+void logModified(unsigned int address, std::string message);

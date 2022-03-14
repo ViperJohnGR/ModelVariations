@@ -273,10 +273,10 @@ void updateVariations(CZone* zInfo)
     {
         vectorUnion(vehVariations[modelid][4], vehVariations[modelid][currentTown], vehCurrentVariations[modelid]);
 
-        std::vector<unsigned short> vec = iniLineParser(std::to_string(modelid), ((lastZone[0] == 0) ? zInfo->m_szLabel : lastZone), &iniVeh);
+        std::vector<unsigned short> vec = iniLineParser(std::to_string(modelid+400), ((lastZone[0] == 0) ? zInfo->m_szLabel : lastZone), &iniVeh);
         if (!vec.empty())
         {
-            if (vehMergeZones.find((unsigned short)modelid) != vehMergeZones.end())
+            if (vehMergeZones.find((unsigned short)(modelid+400)) != vehMergeZones.end())
                 vehCurrentVariations[modelid] = vectorUnion(vehCurrentVariations[modelid], vec);
             else
                 vehCurrentVariations[modelid] = vec;
@@ -400,6 +400,8 @@ void loadIniData(bool firstTime)
 
         if (i > 0 && i < 300)
         {
+            pedHasVariations.insert((unsigned short)i);
+
             pedVariations[i][0] = iniLineParser(section, "Countryside", &iniPed);
             pedVariations[i][1] = iniLineParser(section, "LosSantos", &iniPed);
             pedVariations[i][2] = iniLineParser(section, "SanFierro", &iniPed);
@@ -447,14 +449,9 @@ void loadIniData(bool firstTime)
 
 
             for (unsigned int j = 0; j < 16; j++)
-            {
                 for (unsigned int k = 0; k < pedVariations[i][j].size(); k++)
                     if (pedVariations[i][j][k] > 0 && pedVariations[i][j][k] < 32000 && pedVariations[i][j][k] != i)
                         pedOriginalModels.insert({ pedVariations[i][j][k], i });
-                
-                if (!pedVariations[i][j].empty())
-                    pedHasVariations.insert((unsigned short)i);
-            }
 
             if (iniPed.ReadInteger(section, "MergeZonesWithCities", 0) == 1)
                 pedMergeZones.insert((unsigned short)i);
@@ -688,6 +685,9 @@ public:
 
         Events::initScriptsEvent += []
         {
+            if (logfile.is_open())
+                logfile << "initScriptsEvent" << std::endl;
+
             clearEverything();
             loadIniData(false);
             printVariations();

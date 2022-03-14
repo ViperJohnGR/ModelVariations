@@ -23,4 +23,5 @@ extern int enableLog;
 std::string hashFile(const char* filename);
 std::string getWindowsVersion();
 void checkAllCalls();
-void logModified(unsigned int address, std::string message);
+void logModified(unsigned int address, const std::string &message);
+std::string printToString(const char* format, ...);

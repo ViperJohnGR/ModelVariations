@@ -205,11 +205,24 @@ void checkAllCalls()
         checkCallModified(it.second.name, it.first, (it.second.isVTableAddress == true) ? true : false);
 }
 
-void logModified(unsigned int address, std::string message)
+void logModified(unsigned int address, const std::string &message)
 {
     if (logfile.is_open() && modifiedAddresses.find(address) == modifiedAddresses.end())
     {
         logfile << message << std::endl;
         modifiedAddresses.insert(address);
     }
+}
+
+std::string printToString(const char* format, ...)
+{
+    char buf[256] = {};
+
+    va_list argptr;
+    va_start(argptr, format);
+    vsnprintf(buf, 255, format, argptr);
+    va_end(argptr);
+
+    std::string retString(buf);
+    return retString;
 }

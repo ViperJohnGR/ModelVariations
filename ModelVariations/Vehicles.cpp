@@ -33,10 +33,12 @@ int fireCmpModel = -1;
 
 int passengerModelIndex = -1;
 const unsigned int jmp431BF2 = 0x431BF2;
+const unsigned int jmp51E5BE = 0x51E5BE;
 const unsigned int jmp52546A = 0x52546A;
 const unsigned int jmp613B7E = 0x613B7E;
 const unsigned int jmp644683 = 0x644683;
 const unsigned int jmp6AB35A = 0x6AB35A;
+const unsigned int jmp6B4CF1 = 0x6B4CF1;
 int carGenModel = -1;
 
 void checkNumGroups(std::vector<unsigned short>& vec, BYTE numGroups)
@@ -555,15 +557,32 @@ CAutomobile* __fastcall CAutomobileHooked(CAutomobile* automobile, void*, int mo
     int model = 0;
     unsigned short *modelAddress = NULL;
 
-    if (getVariationOriginalModel(modelIndex) == 525)
+    if (getVariationOriginalModel(modelIndex) == 525) //Towtruck
     {
         model = 525;
         modelAddress = (unsigned short*)0x6B0EE8;
     }
-    else if (getVariationOriginalModel(modelIndex) == 531)
+    else if (getVariationOriginalModel(modelIndex) == 531) //Tractor
     {
         model = 531;
         modelAddress = (unsigned short*)0x6B0F11;
+    }
+    else if (getVariationOriginalModel(modelIndex) == 432) //Rhino
+    {
+        if (*((unsigned short*)0x6B0CF4) == 432 && *((unsigned short*)0x6B12D8) == 432)
+        {
+            *((unsigned short*)0x6B0CF4) = (unsigned short)randomVariation;
+            *((unsigned short*)0x6B12D8) = (unsigned short)randomVariation;
+            CAutomobile* retVal = callMethodOriginalAndReturn<CAutomobile*, address>(automobile, randomVariation, usageType, bSetupSuspensionLines);
+            *((unsigned short*)0x6B0CF4) = 432;
+            *((unsigned short*)0x6B12D8) = 432;
+            return retVal;
+        }
+        else
+        {
+            logModified((unsigned int)0x6B0CF4, "Modified method detected : CAutomobile::CAutomobile - 0x6B0CF4 is %d" + std::to_string(*((unsigned short*)0x6B0CF4)));
+            logModified((unsigned int)0x6B12D8, "Modified method detected : CAutomobile::CAutomobile - 0x6B12D8 is %d" + std::to_string(*((unsigned short*)0x6B12D8)));
+        }
     }
 
     if (model > 0)
@@ -580,20 +599,6 @@ CAutomobile* __fastcall CAutomobileHooked(CAutomobile* automobile, void*, int mo
         return retVal;
     }
 
-    /*
-    if (modelIndex != 432)
-        return callMethodOriginalAndReturn<CAutomobile*, address>(automobile, randomVariation, usageType, bSetupSuspensionLines);
-    else
-    {
-        *((unsigned short*)0x6B0CF4) = randomVariation;
-        *((unsigned short*)0x6B12D8) = randomVariation;
-        CAutomobile* retVal = callMethodOriginalAndReturn<CAutomobile*, address>(automobile, randomVariation, usageType, bSetupSuspensionLines);
-        *((unsigned short*)0x6B0CF4) = 0x1B0;
-        *((unsigned short*)0x6B12D8) = 0x1B0;
-        return retVal;
-    }
-    */
-
     return callMethodOriginalAndReturn<CAutomobile*, address>(automobile, randomVariation, usageType, bSetupSuspensionLines);    
 }
 
@@ -606,7 +611,7 @@ signed int __fastcall PickRandomCarHooked(CLoadedCarGroup* cargrp, void*, char a
     int originalModel = callMethodOriginalAndReturn<signed int, address>(cargrp, a2, a3);
     int variation = getRandomVariation(originalModel, true);
 
-    if (originalModel == 531)
+    if (originalModel == 531) //Tractor
     {
         if (*(unsigned short*)0x6F3B9A == 531)
         {
@@ -645,7 +650,7 @@ void __fastcall DoInternalProcessingHooked(CCarGenerator* park) //for non-random
                     return;
                 }
             
-            if (model == 531)
+            if (model == 531) //Tractor
             {
                 if (*(unsigned short*)0x6F3B9A == 531)
                 {
@@ -1084,6 +1089,7 @@ void __cdecl PossiblyRemoveVehicleHooked(CVehicle* car)
         callOriginal<address>(car);
         return;
     }
+
     if (*((unsigned short*)0x4250AC) == 416)
     {
         *((unsigned short*)0x4250AC) = car->m_nModelIndex;
@@ -1093,22 +1099,9 @@ void __cdecl PossiblyRemoveVehicleHooked(CVehicle* car)
     }
     else
     {
-        callOriginal<address>(car);
         logModified(0x4250AC, "Modified method detected: CCarCtrl::PossiblyRemoveVehicle - 0x4250AC is " + std::to_string(*((unsigned short*)0x4250AC)));
-    }
-    if (*((unsigned short*)0x4250B2) == 407)
-    {
-        *((unsigned short*)0x4250B2) = car->m_nModelIndex;
         callOriginal<address>(car);
-        *((unsigned short*)0x4250B2) = 407;
-        return;
     }
-    else
-    {
-        callOriginal<address>(car);
-        logModified(0x4250B2, "Modified method detected: CCarCtrl::PossiblyRemoveVehicle - 0x4250B2 is " + std::to_string(*((unsigned short*)0x4250B2)));
-    }
-
 }
 
 template <unsigned int address>
@@ -1137,25 +1130,34 @@ void __fastcall ProcessControlHooked(CAutomobile* veh)
         model = 601;
         modelAddress = (unsigned short*)0x6B1F57;
     }
-    else if (getVariationOriginalModel(veh->m_nModelIndex) == 525)
+    else if (getVariationOriginalModel(veh->m_nModelIndex) == 525) //Towtruck
     {
         model = 525;
         modelAddress = (unsigned short*)0x6B1FB5;
     }
-    else if (getVariationOriginalModel(veh->m_nModelIndex) == 531)
+    else if (getVariationOriginalModel(veh->m_nModelIndex) == 531) //Tractor
     {
         model = 531;
         modelAddress = (unsigned short*)0x6B1FBB;
     }
-    /*
     else if (getVariationOriginalModel(veh->m_nModelIndex) == 432)
     {
-        *((unsigned short*)0x6B1F7D) = veh->m_nModelIndex;
-        *((unsigned short*)0x6B36D8) = veh->m_nModelIndex;
-        callMethodOriginal<address>(veh);
-        *((unsigned short*)0x6B1F7D) = 432;
-        *((unsigned short*)0x6B36D8) = 432;
-    }*/
+        if (*((unsigned short*)0x6B1F7D) == 432 && *((unsigned short*)0x6B36D8) == 432)
+        {
+            *((unsigned short*)0x6B1F7D) = veh->m_nModelIndex;
+            *((unsigned short*)0x6B36D8) = veh->m_nModelIndex;
+            callMethodOriginal<address>(veh);
+            *((unsigned short*)0x6B1F7D) = 432;
+            *((unsigned short*)0x6B36D8) = 432;
+            return;
+        }
+        else
+        {
+            logModified((unsigned int)0x6B1F7D, printToString("Modified method detected : CAutomobile::ProcessControl - 0x6B1F7D is %d", *(unsigned short*)0x6B1F7D));
+            logModified((unsigned int)0x6B36D8, printToString("Modified method detected : CAutomobile::ProcessControl - 0x6B36D8 is %d", *(unsigned short*)0x6B36D8));
+            callMethodOriginal<address>(veh);
+        }
+    }
 
     if (model > 0)
     {
@@ -1167,8 +1169,8 @@ void __fastcall ProcessControlHooked(CAutomobile* veh)
         }
         else
         {
-            callMethodOriginal<address>(veh);
             logModified((unsigned int)modelAddress, printToString("Modified method detected : CAutomobile::ProcessControl - 0x%X is %d", modelAddress, *modelAddress));
+            callMethodOriginal<address>(veh);
         }
     }
     else
@@ -1219,25 +1221,37 @@ void __fastcall PreRenderHooked(CAutomobile* veh)
     else if (getVariationOriginalModel(veh->m_nModelIndex) == 601) { model = 601; modelAddress = (unsigned short*)0x6ACA53;} //SWAT Tank 
     else if (getVariationOriginalModel(veh->m_nModelIndex) == 525) { model = 525; modelAddress = (unsigned short*)0x6AC509;} //Towtruck
     else if (getVariationOriginalModel(veh->m_nModelIndex) == 531) { model = 531; modelAddress = (unsigned short*)0x6AC6DB;} //Tractor
-    /*
-    else if (getVariationOriginalModel(veh->m_nModelIndex) == 432)
+    else if (getVariationOriginalModel(veh->m_nModelIndex) == 432) //Rhino
     {
-        *((unsigned short*)0x6ABC83) = veh->m_nModelIndex;
-        *((unsigned short*)0x6ABD11) = veh->m_nModelIndex;
-        *((unsigned short*)0x6ABFCC) = veh->m_nModelIndex;
-        *((unsigned short*)0x6AC029) = veh->m_nModelIndex;
-        *((unsigned short*)0x6ACA4D) = veh->m_nModelIndex;
-        callMethodOriginal<address>(veh);
-        *((unsigned short*)0x6ABC83) = 0x1B0;
-        *((unsigned short*)0x6ABD11) = 0x1B0;
-        *((unsigned short*)0x6ABFCC) = 0x1B0;
-        *((unsigned short*)0x6AC029) = 0x1B0;
-        *((unsigned short*)0x6ACA4D) = 0x1B0;
+        if (*((unsigned short*)0x6ABC83) == 432 && *((unsigned short*)0x6ABD11) == 432 && *((unsigned short*)0x6ABFCC) == 432 &&
+            *((unsigned short*)0x6AC029) == 432 && *((unsigned short*)0x6ACA4D))
+        {
+            *((unsigned short*)0x6ABC83) = veh->m_nModelIndex;
+            *((unsigned short*)0x6ABD11) = veh->m_nModelIndex;
+            *((unsigned short*)0x6ABFCC) = veh->m_nModelIndex;
+            *((unsigned short*)0x6AC029) = veh->m_nModelIndex;
+            *((unsigned short*)0x6ACA4D) = veh->m_nModelIndex;
+            callMethodOriginal<address>(veh);
+            *((unsigned short*)0x6ABC83) = 432;
+            *((unsigned short*)0x6ABD11) = 432;
+            *((unsigned short*)0x6ABFCC) = 432;
+            *((unsigned short*)0x6AC029) = 432;
+            *((unsigned short*)0x6ACA4D) = 432;
+        }
+        else
+        {
+            logModified((unsigned int)0x6ABC83, "Modified method detected : CAutomobile::PreRender - 0x6ABC83 is %d" + std::to_string(*((unsigned short*)0x6ABC83)));
+            logModified((unsigned int)0x6ABD11, "Modified method detected : CAutomobile::PreRender - 0x6ABD11 is %d" + std::to_string(*((unsigned short*)0x6ABD11)));
+            logModified((unsigned int)0x6ABFCC, "Modified method detected : CAutomobile::PreRender - 0x6ABFCC is %d" + std::to_string(*((unsigned short*)0x6ABFCC)));
+            logModified((unsigned int)0x6AC029, "Modified method detected : CAutomobile::PreRender - 0x6AC029 is %d" + std::to_string(*((unsigned short*)0x6AC029)));
+            logModified((unsigned int)0x6ACA4D, "Modified method detected : CAutomobile::PreRender - 0x6ACA4D is %d" + std::to_string(*((unsigned short*)0x6ACA4D)));
+            callMethodOriginal<address>(veh);
+        }
         if (hasSiren)
             sirenRestore();
         return;
     }
-    */
+    
 
     if (model > 0)
     {
@@ -1249,8 +1263,8 @@ void __fastcall PreRenderHooked(CAutomobile* veh)
         }
         else
         {
-            callMethodOriginal<address>(veh);
             logModified((unsigned int)modelAddress, printToString("Modified method detected : CAutomobile::PreRender - 0x%X is %d", modelAddress, *modelAddress));
+            callMethodOriginal<address>(veh);
         }
     }
     else
@@ -1368,12 +1382,12 @@ void __fastcall UpdateTrailerLinkHooked(CVehicle* veh, void*, char a2, char a3)
 
     if (veh != NULL && veh->m_pTractor != NULL)
     {
-        if (getVariationOriginalModel(veh->m_pTractor->m_nModelIndex) == 525)
+        if (getVariationOriginalModel(veh->m_pTractor->m_nModelIndex) == 525) //Towtruck
         {
             model = 525;
             modelAddress = (unsigned short *)0x6DFDB8;
         }
-        else if (getVariationOriginalModel(veh->m_pTractor->m_nModelIndex) == 531)
+        else if (getVariationOriginalModel(veh->m_pTractor->m_nModelIndex) == 531) //Tractor
         {
             model = 531;
             modelAddress = (unsigned short*)0x6DFDBE;
@@ -1390,8 +1404,8 @@ void __fastcall UpdateTrailerLinkHooked(CVehicle* veh, void*, char a2, char a3)
         }
         else
         {
-            callMethodOriginal<address>(veh, a2, a3);
             logModified((unsigned int)modelAddress, printToString("Modified method detected : CVehicle::UpdateTrailerLink - 0x%X is %d", modelAddress, *modelAddress));
+            callMethodOriginal<address>(veh, a2, a3);
         }
     }
     else
@@ -1406,12 +1420,12 @@ void __fastcall UpdateTractorLinkHooked(CVehicle* veh, void*, bool a3, bool a4)
     
     if (veh != NULL)
     {
-        if (getVariationOriginalModel(veh->m_nModelIndex) == 525)
+        if (getVariationOriginalModel(veh->m_nModelIndex) == 525) //Towtruck
         {
             model = 525;
             modelAddress = (unsigned short*)0x6E00D6;
         }
-        else if (getVariationOriginalModel(veh->m_nModelIndex) == 531)
+        else if (getVariationOriginalModel(veh->m_nModelIndex) == 531) //Tractor
         {
             model = 531;
             modelAddress = (unsigned short*)0x6E00FC;
@@ -1428,8 +1442,8 @@ void __fastcall UpdateTractorLinkHooked(CVehicle* veh, void*, bool a3, bool a4)
         }
         else
         {
-            callMethodOriginal<address>(veh, a3, a4);
             logModified((unsigned int)modelAddress, printToString("Modified method detected : CVehicle::UpdateTractorLink - 0x%X is %d", modelAddress, *modelAddress));
+            callMethodOriginal<address>(veh, a3, a4);
         }
     }
     else
@@ -1437,136 +1451,172 @@ void __fastcall UpdateTractorLinkHooked(CVehicle* veh, void*, bool a3, bool a4)
 }
 
 template <unsigned int address>
-char __fastcall SetUpWheelColModelHooked(CAutomobile* automobile, void*, CColModel* colModel) //TODO: Not called?
+char __fastcall SetUpWheelColModelHooked(CAutomobile* automobile, void*, CColModel* colModel)
 {
-    if (automobile && getVariationOriginalModel(automobile->m_nModelIndex) == 531)
+    if (automobile && getVariationOriginalModel(automobile->m_nModelIndex) == 531) //Tractor
         return 0;
 
     return callMethodOriginalAndReturn<char, address>(automobile, colModel);
 }
 
-/*
+
 template <unsigned int address>
 void __fastcall ProcessSuspensionHooked(CAutomobile* veh)
 {
-    if (getVariationOriginalModel(veh->m_nModelIndex) == 432)
+    if (getVariationOriginalModel(veh->m_nModelIndex) == 432) //Rhino
     {
-        *((unsigned short*)0x6B029C) = veh->m_nModelIndex;
-        *((unsigned short*)0x6AFB48) = veh->m_nModelIndex;
-        callMethodOriginal<address>(veh);
-        *((unsigned short*)0x6B029C) = 432;
-        *((unsigned short*)0x6AFB48) = 432;
+        if (*((unsigned short*)0x6B029C) == 432 && *((unsigned short*)0x6AFB48) == 432)
+        {
+            *((unsigned short*)0x6B029C) = veh->m_nModelIndex;
+            *((unsigned short*)0x6AFB48) = veh->m_nModelIndex;
+            callMethodOriginal<address>(veh);
+            *((unsigned short*)0x6B029C) = 432;
+            *((unsigned short*)0x6AFB48) = 432;
+            return;
+        }
+        else
+        {
+            logModified((unsigned int)0x6B029C, printToString("Modified method detected : CAutomobile::ProcessSuspension - 0x6B029C is %d", *((unsigned short*)0x6B029C)));
+            logModified((unsigned int)0x6AFB48, printToString("Modified method detected : CAutomobile::ProcessSuspension - 0x6AFB48 is %d", *((unsigned short*)0x6AFB48)));
+        }
     }
-    else
-        callMethodOriginal<address>(veh);
+
+    callMethodOriginal<address>(veh);
 }
 
 template <unsigned int address>
 void __fastcall VehicleDamageHooked(CAutomobile* veh, void*, float fDamageIntensity, __int16 tCollisionComponent, int Damager, RwV3d* vecCollisionCoors,  RwV3d* vecCollisionDirection, signed int a7)
 {
-    if (veh->m_pDamageEntity && getVariationOriginalModel(veh->m_pDamageEntity->m_nModelIndex) == 432)
+    if (veh->m_pDamageEntity && getVariationOriginalModel(veh->m_pDamageEntity->m_nModelIndex) == 432) //Rhino
     {
-        *((unsigned short*)0x6A80C0) = veh->m_pDamageEntity->m_nModelIndex;
-        *((unsigned short*)0x6A8384) = veh->m_pDamageEntity->m_nModelIndex;
-        callMethodOriginal<address>(veh, fDamageIntensity, tCollisionComponent, Damager, vecCollisionCoors, vecCollisionDirection, a7);
-        *((unsigned short*)0x6A80C0) = 0x1B0;
-        *((unsigned short*)0x6A8384) = 0x1B0;
+        if (*((unsigned short*)0x6A80C0) == 432 && *((unsigned short*)0x6A8384) == 432)
+        {
+            *((unsigned short*)0x6A80C0) = veh->m_pDamageEntity->m_nModelIndex;
+            *((unsigned short*)0x6A8384) = veh->m_pDamageEntity->m_nModelIndex;
+            callMethodOriginal<address>(veh, fDamageIntensity, tCollisionComponent, Damager, vecCollisionCoors, vecCollisionDirection, a7);
+            *((unsigned short*)0x6A80C0) = 432;
+            *((unsigned short*)0x6A8384) = 432;
+            return;
+        }
+        else
+        {
+            logModified((unsigned int)0x6A80C0, printToString("Modified method detected : CAutomobile::VehicleDamage - 0x6A80C0 is %d", *((unsigned short*)0x6A80C0)));
+            logModified((unsigned int)0x6A8384, printToString("Modified method detected : CAutomobile::VehicleDamage - 0x6A8384 is %d", *((unsigned short*)0x6A8384)));
+        }
     }
-    else
-        callMethodOriginal<address>(veh, fDamageIntensity, tCollisionComponent, Damager, vecCollisionCoors, vecCollisionDirection, a7);
+
+    callMethodOriginal<address>(veh, fDamageIntensity, tCollisionComponent, Damager, vecCollisionCoors, vecCollisionDirection, a7);
 }
 
 template <unsigned int address>
 void __fastcall SetupSuspensionLinesHooked(CAutomobile* veh)
 {
-    if (getVariationOriginalModel(veh->m_nModelIndex) == 432)
+    if (getVariationOriginalModel(veh->m_nModelIndex) == 432) //Rhino
     {
-        *((unsigned short*)0x6A6606) = veh->m_nModelIndex;
-        *((unsigned short*)0x6A6999) = veh->m_nModelIndex;
-        callMethodOriginal<address>(veh);
-        *((unsigned short*)0x6A6606) = 0x1B0;
-        *((unsigned short*)0x6A6999) = 0x1B0;
+        if (*((unsigned short*)0x6A6606) == 432 && *((unsigned short*)0x6A6999) == 432)
+        {
+            *((unsigned short*)0x6A6606) = veh->m_nModelIndex;
+            *((unsigned short*)0x6A6999) = veh->m_nModelIndex;
+            callMethodOriginal<address>(veh);
+            *((unsigned short*)0x6A6606) = 432;
+            *((unsigned short*)0x6A6999) = 432;
+            return;
+        }
+        else
+        {
+            logModified((unsigned int)0x6A6606, printToString("Modified method detected : CAutomobile::SetupSuspensionLines - 0x6A6606 is %d", *((unsigned short*)0x6A6606)));
+            logModified((unsigned int)0x6A6999, printToString("Modified method detected : CAutomobile::SetupSuspensionLines - 0x6A6999 is %d", *((unsigned short*)0x6A6999)));
+        }
     }
-    else
-        callMethodOriginal<address>(veh);
+
+    callMethodOriginal<address>(veh);
 }
 
 template <unsigned int address>
 void __fastcall DoBurstAndSoftGroundRatiosHooked(CAutomobile* a1)
 {
-    if (getVariationOriginalModel(a1->m_nModelIndex) == 432)
+    if (getVariationOriginalModel(a1->m_nModelIndex) == 432) //Rhino
     {
-        *((unsigned short*)0x6A4917) = a1->m_nModelIndex;
-        callMethodOriginal<address>(a1);
-        *((unsigned short*)0x6A4917) = 0x1B0;
+        if (*((unsigned short*)0x6A4917) == 432)
+        {
+            *((unsigned short*)0x6A4917) = a1->m_nModelIndex;
+            callMethodOriginal<address>(a1);
+            *((unsigned short*)0x6A4917) = 432;
+            return;
+        }
+        else
+            logModified((unsigned int)0x6A4917, printToString("Modified method detected : CAutomobile::DoBurstAndSoftGroundRatios - 0x6A4917 is %d", *((unsigned short*)0x6A4917)));
     }
-    else
-        callMethodOriginal<address>(a1);
+
+    callMethodOriginal<address>(a1);
 }
 
 template <unsigned int address>
 char __fastcall BurstTyreHooked(CAutomobile* veh, void*, char componentId, char a3)
 {
-    char retVal = 0;
-    if (getVariationOriginalModel(veh->m_nModelIndex) == 432)
+    if (getVariationOriginalModel(veh->m_nModelIndex) == 432) //Rhino
     {
-        *((unsigned short*)0x6A32BB) = veh->m_nModelIndex;
-        retVal = callMethodOriginalAndReturn<char, address>(veh, componentId, a3);
-        *((unsigned short*)0x6A32BB) = 0x1B0;
+        if (*((unsigned short*)0x6A32BB) == 432)
+        {
+            *((unsigned short*)0x6A32BB) = veh->m_nModelIndex;
+            char retVal = callMethodOriginalAndReturn<char, address>(veh, componentId, a3);
+            *((unsigned short*)0x6A32BB) = 432;
+            return retVal;
+        }
+        else
+            logModified((unsigned int)0x6A32BB, printToString("Modified method detected : CAutomobile::BurstTyre - 0x6A32BB is %d", *((unsigned short*)0x6A32BB)));
     }
-    else
-        retVal = callMethodOriginalAndReturn<char, address>(veh, componentId, a3);
 
-    return retVal;
+    return callMethodOriginalAndReturn<char, address>(veh, componentId, a3);
 }
 
 template <unsigned int address>
 void __fastcall CAutomobileRenderHooked(CAutomobile* veh)
 {
-    if (getVariationOriginalModel(veh->m_nModelIndex) == 432)
+    if (getVariationOriginalModel(veh->m_nModelIndex) == 432) //Rhino
     {
-        *((unsigned short*)0x6A2C2D) = veh->m_nModelIndex;
-        *((unsigned short*)0x6A2EAD) = veh->m_nModelIndex;
-        callMethodOriginal<address>(veh);
-        *((unsigned short*)0x6A2C2D) = 0x1B0;
-        *((unsigned short*)0x6A2EAD) = 0x1B0;
+        if (*((unsigned short*)0x6A2C2D) == 432 && *((unsigned short*)0x6A2EAD) == 432)
+        {
+            *((unsigned short*)0x6A2C2D) = veh->m_nModelIndex;
+            *((unsigned short*)0x6A2EAD) = veh->m_nModelIndex;
+            callMethodOriginal<address>(veh);
+            *((unsigned short*)0x6A2C2D) = 432;
+            *((unsigned short*)0x6A2EAD) = 432;
+            return;
+        }
+        else
+        {
+            logModified((unsigned int)0x6A2C2D, printToString("Modified method detected : CAutomobile::Render - 0x6A2C2D is %d", *((unsigned short*)0x6A2C2D)));
+            logModified((unsigned int)0x6A2EAD, printToString("Modified method detected : CAutomobile::Render - 0x6A2EAD is %d", *((unsigned short*)0x6A2EAD)));
+        }
     }
-    else
-        callMethodOriginal<address>(veh);
+
+    callMethodOriginal<address>(veh);
 }
 
 template <unsigned int address>
 int __fastcall ProcessEntityCollisionHooked(CAutomobile* _this, void*, CVehicle* collEntity, CColPoint* colPoint)
 {
-    int retVal = 0;
-    if (_this && getVariationOriginalModel(_this->m_nModelIndex) == 432)
+    if (_this && getVariationOriginalModel(_this->m_nModelIndex) == 432) //Rhino
     {
-        *((unsigned short*)0x6ACEE9) = _this->m_nModelIndex;
-        *((unsigned short*)0x6AD242) = _this->m_nModelIndex;
-        retVal = callMethodOriginalAndReturn<int, address>(_this, collEntity, colPoint);
-        *((unsigned short*)0x6ACEE9) = 0x1B0;
-        *((unsigned short*)0x6AD242) = 0x1B0;
+        if (*((unsigned short*)0x6ACEE9) == 432 && *((unsigned short*)0x6AD242) == 432)
+        {
+            *((unsigned short*)0x6ACEE9) = _this->m_nModelIndex;
+            *((unsigned short*)0x6AD242) = _this->m_nModelIndex;
+            int retVal = callMethodOriginalAndReturn<int, address>(_this, collEntity, colPoint);
+            *((unsigned short*)0x6ACEE9) = 432;
+            *((unsigned short*)0x6AD242) = 432;
+            return retVal;
+        }
+        else
+        {
+            logModified((unsigned int)0x6ACEE9, printToString("Modified method detected : CAutomobile::ProcessEntityCollision - 0x6ACEE9 is %d", *((unsigned short*)0x6ACEE9)));
+            logModified((unsigned int)0x6AD242, printToString("Modified method detected : CAutomobile::ProcessEntityCollision - 0x6AD242 is %d", *((unsigned short*)0x6AD242)));
+        }
     }
-    else
-        retVal = callMethodOriginalAndReturn<int, address>(_this, collEntity, colPoint);
     
-    return retVal;
+    return callMethodOriginalAndReturn<int, address>(_this, collEntity, colPoint);
 }
-
-
-//0x053A926
-//void __declspec(naked) ()
-//{
-//    __asm {
-//        pushad
-//        movsx eax, word ptr[edi + 22h]
-//        push eax
-//        call getVariationOriginalModel
-//        cmp eax, 0x197
-//        pop eax
-//        popad
-//    }
-//}
 
 template <unsigned int address>
 void __cdecl RegisterCarBlownUpByPlayerHooked(CVehicle* vehicle, int a2)
@@ -1583,42 +1633,56 @@ void __cdecl RegisterCarBlownUpByPlayerHooked(CVehicle* vehicle, int a2)
 template <unsigned int address>
 void __fastcall TankControlHooked(CAutomobile* veh)
 {
-    if (getVariationOriginalModel(veh->m_nModelIndex) == 432)
+    if (getVariationOriginalModel(veh->m_nModelIndex) == 432) //Rhino
     {
-        *((unsigned short*)0x6AE9CB) = veh->m_nModelIndex;
-        callMethodOriginal<address>(veh);
-        *((unsigned short*)0x6AE9CB) = 0x1B0;
+        if (*((unsigned short*)0x6AE9CB) == 432)
+        {
+            *((unsigned short*)0x6AE9CB) = veh->m_nModelIndex;
+            callMethodOriginal<address>(veh);
+            *((unsigned short*)0x6AE9CB) = 432;
+            return;
+        }
+        else
+            logModified((unsigned int)0x6AE9CB, printToString("Modified method detected : CAutomobile::TankControl - 0x6AE9CB is %d", *((unsigned short*)0x6AE9CB)));
     }
-    else
-        callMethodOriginal<address>(veh);
+
+    callMethodOriginal<address>(veh);
 }
 
 template <unsigned int address>
 void __fastcall DoSoftGroundResistanceHooked(CAutomobile* veh, void*, unsigned int& a3)
 {
-    if (getVariationOriginalModel(veh->m_nModelIndex) == 432)
+    if (getVariationOriginalModel(veh->m_nModelIndex) == 432) //Rhino
     {
-        *((unsigned short*)0x6A4BBA) = veh->m_nModelIndex;
-        *((unsigned short*)0x6A4E0E) = veh->m_nModelIndex;
-        callMethodOriginal<address>(veh, a3);
-        *((unsigned short*)0x6A4BBA) = 0x1B0;
-        *((unsigned short*)0x6A4E0E) = 0x1B0;
+        if (*((unsigned short*)0x6A4BBA) == 432 && *((unsigned short*)0x6A4E0E) == 432)
+        {
+            *((unsigned short*)0x6A4BBA) = veh->m_nModelIndex;
+            *((unsigned short*)0x6A4E0E) = veh->m_nModelIndex;
+            callMethodOriginal<address>(veh, a3);
+            *((unsigned short*)0x6A4BBA) = 432;
+            *((unsigned short*)0x6A4E0E) = 432;
+            return;
+        }
+        else
+        {
+            logModified((unsigned int)0x6A4BBA, printToString("Modified method detected : CAutomobile::DoSoftGroundResistance - 0x6A4BBA is %d", *((unsigned short*)0x6A4BBA)));
+            logModified((unsigned int)0x6A4E0E, printToString("Modified method detected : CAutomobile::DoSoftGroundResistance - 0x6A4E0E is %d", *((unsigned short*)0x6A4E0E)));
+        }
     }
-    else
-        callMethodOriginal<address>(veh, a3);
+
+    callMethodOriginal<address>(veh, a3);
 }
-*/
+
 
 void __declspec(naked) patch525462()
 {
     __asm {
-        pushad
-        mov ax, [edi+0x22]
-        movsx eax, ax
+        push eax
+        movsx eax, word ptr[edi + 0x22]
         push eax
         call getVariationOriginalModel
         cmp eax, 0x1BB
-        popad
+        pop eax
         jmp jmp52546A
     }
 }
@@ -1627,14 +1691,12 @@ void __declspec(naked) patch431BEB()
 {
     __asm {
         push ebx
-        push eax
-        mov ax, [esi+0x22]
-        movsx eax, ax
+        mov ebx, eax
+        movsx eax, word ptr [esi+0x22]
         push eax
         call getVariationOriginalModel
-        mov ebx, eax
-        pop eax
-        mov ax, bx
+        mov bx, ax
+        mov eax, ebx
         pop ebx
         add esp, 4        
         jmp jmp431BF2
@@ -1644,14 +1706,40 @@ void __declspec(naked) patch431BEB()
 void __declspec(naked) patch64467D()
 {
     __asm {
-        pushad
-        mov bx, word ptr[eax + 22h]
-        movsx ebx, bx
-        push ebx
+        push eax
+        movsx eax, word ptr[eax + 0x22]
+        push eax
         call getVariationOriginalModel
         cmp eax, 0x213
-        popad
+        pop eax
         jmp jmp644683
+    }
+}
+
+void __declspec(naked) patch51E5B8()
+{
+    __asm {
+        push eax
+        movsx eax, word ptr[esi + 0x22]
+        push eax
+        call getVariationOriginalModel
+        cmp eax, 0x1B0
+        pop eax
+        jmp jmp51E5BE
+    }
+}
+
+void __declspec(naked) patch6B4CE8()
+{
+    __asm {
+        push eax
+        movsx eax, word ptr[esi+0x22]
+        push eax
+        call getVariationOriginalModel
+        mov cx, ax
+        pop eax
+        cmp cx, 0x21B
+        jmp jmp6B4CF1
     }
 }
 
@@ -1782,10 +1870,20 @@ void installVehicleHooks()
         else
             logModified((unsigned int)0x64467D, printToString("Modified method detected : CTaskSimpleCarDrive::ProcessPed - 0x64467D is %d", *(unsigned int*)0x64467D));
 
-        /*
+        if (*(unsigned int*)0x51E5B8 == 0x227E8166)
+            injector::MakeJMP(0x51E5B8, patch51E5B8);
+        else
+            logModified((unsigned int)0x51E5B8, printToString("Modified method detected : CCamera::TryToStartNewCamMode - 0x51E5B8 is %d", *(unsigned int*)0x51E5B8));
+
+        if (*(unsigned int*)0x6B4CE8 == 0x224E8B66)
+            injector::MakeJMP(0x6B4CE8, patch6B4CE8);
+        else
+            logModified((unsigned int)0x6B4CE8, printToString("Modified method detected : CAutomobile::ProcessAI - 0x6B4CE8 is %d", *(unsigned int*)0x6B4CE8));
+        
         hookCall(0x871238, ProcessSuspensionHooked<0x871238>, "ProcessSuspension", true);
         hookCall(0x871200, VehicleDamageHooked<0x871200>, "VehicleDamage", true);
         hookCall(0x8711E0, SetupSuspensionLinesHooked<0x8711E0>, "SetupSuspensionLines", true);
+        hookCall(0x6B119E, SetupSuspensionLinesHooked<0x6B119E>, "SetupSuspensionLines");
         hookCall(0x8711F0, DoBurstAndSoftGroundRatiosHooked<0x8711F0>, "DoBurstAndSoftGroundRatios", true);
         hookCall(0x8711D0, BurstTyreHooked<0x8711D0>, "BurstTyre", true);
         hookCall(0x871168, CAutomobileRenderHooked<0x871168>, "CAutomobileRender", true);
@@ -1798,7 +1896,6 @@ void installVehicleHooks()
 
         hookCall(0x6B2028, TankControlHooked<0x6B2028>, "TankControl"); //CAutomobile::ProcessControl
         hookCall(0x6B51B8, DoSoftGroundResistanceHooked<0x6B51B8>, "DoSoftGroundResistance"); //CAutomobile::ProcessAI
-        */
 
     }
 

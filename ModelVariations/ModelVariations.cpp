@@ -603,6 +603,7 @@ public:
                 GetModuleFileName(NULL, exePath, 255);
                 char* exeName = PathFindFileName(exePath);
                 unsigned int filesize = getFilesize(exePath);
+                logfile << exePath << std::endl;
                 std::string hash = hashFile(exePath);
                 if (hash == exeHashes[0])
                     logfile << "Supported exe detected: 1.0 US HOODLUM" << std::endl;

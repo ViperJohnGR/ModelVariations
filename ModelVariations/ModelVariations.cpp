@@ -60,6 +60,8 @@ std::map<unsigned short, std::vector<unsigned short>> vehDriverGroups[9];
 std::map<unsigned short, std::vector<unsigned short>> vehPassengerGroups[9];
 std::map<unsigned short, BYTE> modelNumGroups;
 std::map<unsigned short, std::pair<CVector, float>> LightPositions;
+std::map<unsigned short, rgba> LightColors;
+std::map<unsigned short, rgba> LightColors2;
 std::map<unsigned short, int> pedTimeSinceLastSpawned;
 std::map<unsigned short, unsigned short> pedOriginalModels;
 std::map<unsigned short, std::array<std::vector<unsigned short>, 6>> vehGroupWantedVariations;
@@ -382,7 +384,15 @@ void installHooks()
     hookCall(0x5E49EF, UpdateRpHAnimHooked<0x5E49EF>, "UpdateRpHAnim");
 
     if (enableVehicles == 1)
+    {
+        if (logfile.is_open())
+            logfile << "Installing vehicle hooks." << std::endl;
+
         installVehicleHooks();
+
+        if (logfile.is_open())
+            logfile << "Vehicle hooks installed." << std::endl;
+    }
 }
 
 void loadIniData(bool firstTime)
@@ -518,6 +528,8 @@ void clearEverything()
 
     modelNumGroups.clear();
     LightPositions.clear();
+    LightColors.clear();
+    LightColors2.clear();
     pedTimeSinceLastSpawned.clear();
     pedOriginalModels.clear();
     vehGroupWantedVariations.clear();

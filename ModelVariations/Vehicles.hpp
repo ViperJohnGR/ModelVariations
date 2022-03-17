@@ -9,6 +9,15 @@
 #include <vector>
 #include <unordered_set>
 
+
+struct rgba
+{
+    BYTE r;
+    BYTE g;
+    BYTE b;
+    BYTE a;
+};
+
 extern CIniReader iniVeh;
 
 extern std::ofstream logfile;
@@ -24,6 +33,8 @@ extern std::map<unsigned short, std::vector<unsigned short>> vehDriverGroups[9];
 extern std::map<unsigned short, std::vector<unsigned short>> vehPassengerGroups[9];
 extern std::map<unsigned short, BYTE> modelNumGroups;
 extern std::map<unsigned short, std::pair<CVector, float>> LightPositions;
+extern std::map<unsigned short, rgba> LightColors;
+extern std::map<unsigned short, rgba> LightColors2;
 
 extern std::vector<unsigned short> vehCurrentVariations[212];
 extern std::vector<unsigned short> vehCarGenExclude;

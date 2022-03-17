@@ -38,6 +38,7 @@ const unsigned int jmp52546A = 0x52546A;
 const unsigned int jmp613B7E = 0x613B7E;
 const unsigned int jmp644683 = 0x644683;
 const unsigned int jmp6AB35A = 0x6AB35A;
+const unsigned int jmp6ABA65 = 0x6ABA65;
 const unsigned int jmp6B4CF1 = 0x6B4CF1;
 int carGenModel = -1;
 
@@ -334,8 +335,30 @@ void readVehicleIni(bool firstTime)
                 float lightY = iniVeh.ReadFloat(i.first, "LightY", -999.0);
                 float lightZ = iniVeh.ReadFloat(i.first, "LightZ", -999.0);
 
+                int r = iniVeh.ReadInteger(i.first, "LightR", -1);
+                int g = iniVeh.ReadInteger(i.first, "LightG", -1);
+                int b = iniVeh.ReadInteger(i.first, "LightB", -1);
+                int a = iniVeh.ReadInteger(i.first, "LightA", -1);
+
+                if (r >= 0 && r <= 255 && g >= 0 && g <= 255 && b >= 0 && b <= 255 && a >= 0 && a <= 255)
+                {
+                    rgba colors = { (BYTE)r, (BYTE)g, (BYTE)b, (BYTE)a };
+                    LightColors.insert({ modelid, colors });
+                }
+
                 if (lightX > -900.0 || lightY > -900.0 || lightZ > -900.0)
                     LightPositions.insert({ modelid, {{ lightX, lightY, lightZ }, lightWidth} });
+
+                r = iniVeh.ReadInteger(i.first, "LightR2", -1);
+                g = iniVeh.ReadInteger(i.first, "LightG2", -1);
+                b = iniVeh.ReadInteger(i.first, "LightB2", -1);
+                a = iniVeh.ReadInteger(i.first, "LightA2", -1);
+
+                if (r >= 0 && r <= 255 && g >= 0 && g <= 255 && b >= 0 && b <= 255 && a >= 0 && a <= 255)
+                {
+                    rgba colors = { (BYTE)r, (BYTE)g, (BYTE)b, (BYTE)a };
+                    LightColors2.insert({ modelid, colors });
+                }
             }
 
             if (iniVeh.ReadInteger(i.first, "MergeZonesWithCities", 0) == 1)
@@ -1032,7 +1055,7 @@ ModelChosen:
 }
 
 template <unsigned int address>
-void __cdecl RegisterCoronaHooked(CCoronas* _this, unsigned int a2, CEntity* a3, unsigned __int8 a4, unsigned __int8 a5, unsigned __int8 a6, CVector* a7, const CVector* a8,
+void __cdecl RegisterCoronaHooked(CCoronas* _this, unsigned int a2, unsigned __int8 a3, unsigned __int8 a4, unsigned __int8 a5, unsigned __int8 a6, CVector* a7, const CVector* a8,
                                   float a9, void* texture, unsigned __int8 a11, unsigned __int8 a12, unsigned __int8 a13, int a14, float a15, float a16, float a17, float a18,
                                   float a19, float a20, bool a21)
 {
@@ -1051,7 +1074,55 @@ void __cdecl RegisterCoronaHooked(CCoronas* _this, unsigned int a2, CEntity* a3,
                 a7->z += it->second.first.z;
         }
     }
+
+    if (lightsModel > 0)
+    {
+        auto it = LightColors.find(lightsModel);
+        if (it != LightColors.end())
+        {
+            a3 = it->second.r;
+            a4 = it->second.g;
+            a5 = it->second.b;
+            a6 = it->second.a;
+        }
+    }
+
     callOriginal<address>(_this, a2, a3, a4, a5, a6, a7, a8, a9, texture, a11, a12, a13, a14, a15, a16, a17, a18, a19, a20, a21);
+}
+
+void __cdecl RegisterCoronaHooked2(CCoronas* _this, unsigned int a2, unsigned __int8 a3, unsigned __int8 a4, unsigned __int8 a5, unsigned __int8 a6, CVector* a7, const CVector* a8,
+    float a9, void* texture, unsigned __int8 a11, unsigned __int8 a12, unsigned __int8 a13, int a14, float a15, float a16, float a17, float a18,
+    float a19, float a20, bool a21)
+{
+    if (a7 && lightsModel > 0)
+    {
+        auto it = LightPositions.find(lightsModel);
+        if (it != LightPositions.end())
+        {
+            if (it->second.second > -900.0)
+                a7->x *= it->second.second;
+            if (it->second.first.x > -900.0)
+                a7->x += it->second.first.x;
+            if (it->second.first.y > -900.0)
+                a7->y += it->second.first.y;
+            if (it->second.first.z > -900.0)
+                a7->z += it->second.first.z;
+        }
+    }
+
+    if (lightsModel > 0)
+    {
+        auto it = LightColors2.find(lightsModel);
+        if (it != LightColors2.end())
+        {
+            a3 = it->second.r;
+            a4 = it->second.g;
+            a5 = it->second.b;
+            a6 = it->second.a;
+        }
+    }
+
+    callOriginal<0x6ABA60>(_this, a2, a3, a4, a5, a6, a7, a8, a9, texture, a11, a12, a13, a14, a15, a16, a17, a18, a19, a20, a21);
 }
 
 template <unsigned int address>
@@ -1743,11 +1814,22 @@ void __declspec(naked) patch6B4CE8()
     }
 }
 
+void __declspec(naked) patchCoronas()
+{
+    __asm {
+        push 0x0FF
+        push ecx
+        push edx
+        push eax
+        push esi
+        push edi
+        call RegisterCoronaHooked2
+        jmp jmp6ABA65
+    }
+}
+
 void installVehicleHooks()
 {
-    if (enableLog == 1)
-        logfile << "Installing vehicle hooks... ";
-
     hookCall(0x43022A, ChooseModelHooked<0x43022A>, "ChooseModel"); //CCarCtrl::GenerateOneRandomCar
    //patch::RedirectJump(0x424E20, ChoosePoliceCarModelHooked);
 
@@ -1855,27 +1937,27 @@ void installVehicleHooks()
         hookCall(0x871CD4, SetUpWheelColModelHooked<0x871CD4>, "SetUpWheelColModel", true);
 
 
-        if (*(unsigned int*)0x525462 == 0x22478B66)
+        if (*(unsigned int*)0x525462 == 0x22478B66 && *(BYTE*)0x525466 == 0x66)
             injector::MakeJMP(0x525462, patch525462);
         else
             logModified((unsigned int)0x525462, printToString("Modified function detected : sub_525252 - 0x525462 is %d", *(unsigned int*)0x525462));
 
-        if (*(unsigned int*)0x431BEB == 0x22468B66)
+        if (*(unsigned int*)0x431BEB == 0x22468B66 && *(BYTE*)0x431BEF == 0x83)
             injector::MakeJMP(0x431BEB, patch431BEB);
         else
             logModified((unsigned int)0x431BEB, printToString("Modified method detected : CCarCtrl::GenerateOneRandomCar - 0x431BEB is %d", *(unsigned int*)0x431BEB));
 
-        if (*(unsigned int*)0x64467D == 0x22788166)
+        if (*(unsigned int*)0x64467D == 0x22788166 && *(BYTE*)0x644681 == 0x13)
             injector::MakeJMP(0x64467D, patch64467D);
         else
             logModified((unsigned int)0x64467D, printToString("Modified method detected : CTaskSimpleCarDrive::ProcessPed - 0x64467D is %d", *(unsigned int*)0x64467D));
 
-        if (*(unsigned int*)0x51E5B8 == 0x227E8166)
+        if (*(unsigned int*)0x51E5B8 == 0x227E8166 && *(BYTE*)0x51E5BC == 0xB0)
             injector::MakeJMP(0x51E5B8, patch51E5B8);
         else
             logModified((unsigned int)0x51E5B8, printToString("Modified method detected : CCamera::TryToStartNewCamMode - 0x51E5B8 is %d", *(unsigned int*)0x51E5B8));
 
-        if (*(unsigned int*)0x6B4CE8 == 0x224E8B66)
+        if (*(unsigned int*)0x6B4CE8 == 0x224E8B66 && *(BYTE*)0x6B4CEC == 0x66)
             injector::MakeJMP(0x6B4CE8, patch6B4CE8);
         else
             logModified((unsigned int)0x6B4CE8, printToString("Modified method detected : CAutomobile::ProcessAI - 0x6B4CE8 is %d", *(unsigned int*)0x6B4CE8));
@@ -1907,6 +1989,10 @@ void installVehicleHooks()
         hookCall(0x6ABA60, RegisterCoronaHooked<0x6ABA60>, "RegisterCorona"); //CAutomobile::PreRender
         hookCall(0x6ABB35, RegisterCoronaHooked<0x6ABB35>, "RegisterCorona"); //CAutomobile::PreRender
         hookCall(0x6ABC69, RegisterCoronaHooked<0x6ABC69>, "RegisterCorona"); //CAutomobile::PreRender
+        if (*(unsigned int *)0x6ABA56 == 0x0000FF68 && *(BYTE*)0x6ABA5A == 0)
+            injector::MakeJMP(0x6ABA56, patchCoronas);
+        else
+            logModified((unsigned int)0x6ABA56, printToString("Modified method detected : CAutomobile::PreRender - 0x6ABA56 is %d", *(unsigned int*)0x6ABA56));
 
         hookCall(0x6AB80F, AddLightHooked<0x6AB80F>, "AddLight"); //CAutomobile::PreRender
         hookCall(0x6ABBA6, AddLightHooked<0x6ABBA6>, "AddLight"); //CAutomobile::PreRender
@@ -1921,7 +2007,4 @@ void installVehicleHooks()
         hookCall(0x48DA81, IsLawEnforcementVehicleHooked<0x48DA81>, "IsLawEnforcementVehicle");
         hookCall(0x469612, CollectParametersHooked<0x469612>, "CollectParameters");
     }
-
-    if (enableLog == 1)
-        logfile << "OK" << std::endl;
 }

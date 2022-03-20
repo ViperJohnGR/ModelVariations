@@ -911,11 +911,24 @@ public:
                 if (ped->m_nModelIndex > 0 && ped->m_nModelIndex < 300)
                     if (!pedCurrentVariations[ped->m_nModelIndex].empty() && pedCurrentVariations[ped->m_nModelIndex][0] == 0 && ped->m_nCreatedBy != 2)
                     {
-                        ped->m_nPedFlags.bDontRender = 1;
-                        ped->m_nPedFlags.bFadeOut = 1;
+                        if (IsPedPointerValid(ped))
+                        {
+                            ped->DropEntityThatThisPedIsHolding(true);
+                            Command<COMMAND_DELETE_CHAR>(CPools::GetPedRef(ped));
+                        }
                         pedRemoved = true;
                         if (ped->m_pVehicle != NULL)
+                        {
+                            CPed** passengers = ped->m_pVehicle->m_apPassengers;
+                            if (IsPedPointerValid(ped->m_pVehicle->m_pDriver))
+                            {
+                                ped->m_pVehicle->m_pDriver->DropEntityThatThisPedIsHolding(true);
+                                for (int i = 0; i < 8; i++)
+                                    if (IsPedPointerValid(passengers[i]))
+                                        passengers[i]->DropEntityThatThisPedIsHolding(true);
+                            }
                             DestroyVehicleAndDriverAndPassengers(ped->m_pVehicle);
+                        }
                     }
 
                 if (enableCloneRemover == 1 && ped->m_nCreatedBy != 2 && CPools::ms_pPedPool && pedRemoved == false)
@@ -924,12 +937,23 @@ public:
                     {
                         if (ped->m_pVehicle == NULL)
                         {
-                            ped->m_nPedFlags.bDontRender = 1;
-                            ped->m_nPedFlags.bFadeOut = 1;
+                            if (IsPedPointerValid(ped))
+                            {
+                                ped->DropEntityThatThisPedIsHolding(true);
+                                Command<COMMAND_DELETE_CHAR>(CPools::GetPedRef(ped));
+                            }
                             pedRemoved = true;
                         }
                         else if (cloneRemoverVehicleOccupants == 1)
                         {
+                            CPed** passengers = ped->m_pVehicle->m_apPassengers;
+                            if (IsPedPointerValid(ped->m_pVehicle->m_pDriver))
+                            {
+                                ped->m_pVehicle->m_pDriver->DropEntityThatThisPedIsHolding(true);
+                                for (int i = 0; i < 8; i++)
+                                    if (IsPedPointerValid(passengers[i]))
+                                        passengers[i]->DropEntityThatThisPedIsHolding(true);
+                            }
                             DestroyVehicleAndDriverAndPassengers(ped->m_pVehicle);
                             pedRemoved = true;
                         }
@@ -945,13 +969,24 @@ public:
                             {
                                 if (ped->m_pVehicle == NULL)
                                 {
-                                    ped->m_nPedFlags.bDontRender = 1;
-                                    ped->m_nPedFlags.bFadeOut = 1;
+                                    if (IsPedPointerValid(ped))
+                                    {
+                                        ped->DropEntityThatThisPedIsHolding(true);
+                                        Command<COMMAND_DELETE_CHAR>(CPools::GetPedRef(ped));
+                                    }
                                     pedRemoved = true;
                                     break;
                                 }
                                 else if (cloneRemoverVehicleOccupants == 1)
                                 {
+                                    CPed** passengers = ped->m_pVehicle->m_apPassengers;
+                                    if (IsPedPointerValid(ped->m_pVehicle->m_pDriver))
+                                    {
+                                        ped->m_pVehicle->m_pDriver->DropEntityThatThisPedIsHolding(true);
+                                        for (int i = 0; i < 8; i++)
+                                            if (IsPedPointerValid(passengers[i]))
+                                                passengers[i]->DropEntityThatThisPedIsHolding(true);
+                                    }
                                     DestroyVehicleAndDriverAndPassengers(ped->m_pVehicle);
                                     pedRemoved = true;
                                     break;

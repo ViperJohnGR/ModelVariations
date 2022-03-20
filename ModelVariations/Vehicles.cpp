@@ -1721,7 +1721,7 @@ void __fastcall TankControlHooked(CAutomobile* veh)
 }
 
 template <unsigned int address>
-void __fastcall DoSoftGroundResistanceHooked(CAutomobile* veh, void*, unsigned int& a3)
+void __fastcall DoSoftGroundResistanceHooked(CAutomobile* veh, void*, unsigned int *a3)
 {
     if (getVariationOriginalModel(veh->m_nModelIndex) == 432) //Rhino
     {

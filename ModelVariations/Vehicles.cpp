@@ -1,4 +1,5 @@
 #include "Vehicles.hpp"
+#include "FuncUtil.hpp"
 #include "Hooks.hpp"
 #include "LogUtil.hpp"
 #include <plugin.h>
@@ -141,7 +142,7 @@ void readVehicleIni(bool firstTime)
     std::ifstream zoneFile("data\\info.zon");
 
     if (firstTime)
-        vehInheritExclude = iniLineParser("Settings", "ExcludeModelsFromInheritance", &iniVeh);
+        vehInheritExclude = iniVeh.ReadLine("Settings", "ExcludeModelsFromInheritance");
 
     if (!zoneFile.is_open())
     {
@@ -190,7 +191,7 @@ void readVehicleIni(bool firstTime)
 
             if (modelid > 0)
             {
-                std::vector<unsigned short> vec = iniLineParser(j.first, i, &iniVeh); //get zone name 'i' of veh id 'j'
+                std::vector<unsigned short> vec = iniVeh.ReadLine(j.first, i); //get zone name 'i' of veh id 'j'
 
                 if (!vec.empty()) //if veh id 'j' has variations in zone 'i'
                     for (auto& k : vec) //for every variation 'k' of veh id 'j' in zone 'i'
@@ -219,50 +220,50 @@ void readVehicleIni(bool firstTime)
             if (iniVeh.ReadInteger(section, "ChangeOnlyParked", 0) == 1)
                 parkedCars.insert(i);
 
-            vehVariations[i - 400][0] = iniLineParser(section, "Countryside", &iniVeh);
-            vehVariations[i - 400][1] = iniLineParser(section, "LosSantos", &iniVeh);
-            vehVariations[i - 400][2] = iniLineParser(section, "SanFierro", &iniVeh);
-            vehVariations[i - 400][3] = iniLineParser(section, "LasVenturas", &iniVeh);
-            vehVariations[i - 400][4] = iniLineParser(section, "Global", &iniVeh);
-            vehVariations[i - 400][5] = iniLineParser(section, "Desert", &iniVeh);
+            vehVariations[i - 400][0] = iniVeh.ReadLine(section, "Countryside");
+            vehVariations[i - 400][1] = iniVeh.ReadLine(section, "LosSantos");
+            vehVariations[i - 400][2] = iniVeh.ReadLine(section, "SanFierro");
+            vehVariations[i - 400][3] = iniVeh.ReadLine(section, "LasVenturas");
+            vehVariations[i - 400][4] = iniVeh.ReadLine(section, "Global");
+            vehVariations[i - 400][5] = iniVeh.ReadLine(section, "Desert");
 
-            std::vector<unsigned short> vec = iniLineParser(section, "TierraRobada", &iniVeh);
+            std::vector<unsigned short> vec = iniVeh.ReadLine(section, "TierraRobada");
             vehVariations[i - 400][6] = vectorUnion(vec, vehVariations[i - 400][5]);
 
-            vec = iniLineParser(section, "BoneCounty", &iniVeh);
+            vec = iniVeh.ReadLine(section, "BoneCounty");
             vehVariations[i - 400][7] = vectorUnion(vec, vehVariations[i - 400][5]);
 
-            vec = iniLineParser(section, "RedCounty", &iniVeh);
+            vec = iniVeh.ReadLine(section, "RedCounty");
             vehVariations[i - 400][8] = vectorUnion(vec, vehVariations[i - 400][0]);
 
-            vec = iniLineParser(section, "Blueberry", &iniVeh);
+            vec = iniVeh.ReadLine(section, "Blueberry");
             vehVariations[i - 400][9] = vectorUnion(vec, vehVariations[i - 400][8]);
 
-            vec = iniLineParser(section, "Montgomery", &iniVeh);
+            vec = iniVeh.ReadLine(section, "Montgomery");
             vehVariations[i - 400][10] = vectorUnion(vec, vehVariations[i - 400][8]);
 
-            vec = iniLineParser(section, "Dillimore", &iniVeh);
+            vec = iniVeh.ReadLine(section, "Dillimore");
             vehVariations[i - 400][11] = vectorUnion(vec, vehVariations[i - 400][8]);
 
-            vec = iniLineParser(section, "PalominoCreek", &iniVeh);
+            vec = iniVeh.ReadLine(section, "PalominoCreek");
             vehVariations[i - 400][12] = vectorUnion(vec, vehVariations[i - 400][8]);
 
-            vec = iniLineParser(section, "FlintCounty", &iniVeh);
+            vec = iniVeh.ReadLine(section, "FlintCounty");
             vehVariations[i - 400][13] = vectorUnion(vec, vehVariations[i - 400][0]);
 
-            vec = iniLineParser(section, "Whetstone", &iniVeh);
+            vec = iniVeh.ReadLine(section, "Whetstone");
             vehVariations[i - 400][14] = vectorUnion(vec, vehVariations[i - 400][0]);
 
-            vec = iniLineParser(section, "AngelPine", &iniVeh);
+            vec = iniVeh.ReadLine(section, "AngelPine");
             vehVariations[i - 400][15] = vectorUnion(vec, vehVariations[i - 400][14]);
 
 
-            vehWantedVariations[i - 400][0] = iniLineParser(section, "Wanted1", &iniVeh);
-            vehWantedVariations[i - 400][1] = iniLineParser(section, "Wanted2", &iniVeh);
-            vehWantedVariations[i - 400][2] = iniLineParser(section, "Wanted3", &iniVeh);
-            vehWantedVariations[i - 400][3] = iniLineParser(section, "Wanted4", &iniVeh);
-            vehWantedVariations[i - 400][4] = iniLineParser(section, "Wanted5", &iniVeh);
-            vehWantedVariations[i - 400][5] = iniLineParser(section, "Wanted6", &iniVeh);
+            vehWantedVariations[i - 400][0] = iniVeh.ReadLine(section, "Wanted1");
+            vehWantedVariations[i - 400][1] = iniVeh.ReadLine(section, "Wanted2");
+            vehWantedVariations[i - 400][2] = iniVeh.ReadLine(section, "Wanted3");
+            vehWantedVariations[i - 400][3] = iniVeh.ReadLine(section, "Wanted4");
+            vehWantedVariations[i - 400][4] = iniVeh.ReadLine(section, "Wanted5");
+            vehWantedVariations[i - 400][5] = iniVeh.ReadLine(section, "Wanted6");
 
 
             for (unsigned int j = 0; j < 16; j++)
@@ -287,41 +288,41 @@ void readVehicleIni(bool firstTime)
 
         if (modelid >= 400)
         {
-            vehGroups[modelid][0] = iniLineParser(i.first, "Countryside", &iniVeh, true);
-            vehGroups[modelid][1] = iniLineParser(i.first, "LosSantos", &iniVeh, true);
-            vehGroups[modelid][2] = iniLineParser(i.first, "SanFierro", &iniVeh, true);
-            vehGroups[modelid][3] = iniLineParser(i.first, "LasVenturas", &iniVeh, true);
-            vehGroups[modelid][4] = iniLineParser(i.first, "Global", &iniVeh, true);
-            vehGroups[modelid][5] = iniLineParser(i.first, "Desert", &iniVeh, true);
+            vehGroups[modelid][0] = iniVeh.ReadLine(i.first, "Countryside", true);
+            vehGroups[modelid][1] = iniVeh.ReadLine(i.first, "LosSantos", true);
+            vehGroups[modelid][2] = iniVeh.ReadLine(i.first, "SanFierro", true);
+            vehGroups[modelid][3] = iniVeh.ReadLine(i.first, "LasVenturas", true);
+            vehGroups[modelid][4] = iniVeh.ReadLine(i.first, "Global", true);
+            vehGroups[modelid][5] = iniVeh.ReadLine(i.first, "Desert", true);
 
-            std::vector<unsigned short> vec = iniLineParser(i.first, "TierraRobada", &iniVeh, true);
+            std::vector<unsigned short> vec = iniVeh.ReadLine(i.first, "TierraRobada", true);
             vehGroups[modelid][6] = vectorUnion(vec, vehGroups[modelid][5]);
 
-            vec = iniLineParser(i.first, "BoneCounty", &iniVeh, true);
+            vec = iniVeh.ReadLine(i.first, "BoneCounty", true);
             vehGroups[modelid][7] = vectorUnion(vec, vehGroups[modelid][5]);
 
-            vec = iniLineParser(i.first, "RedCounty", &iniVeh, true);
+            vec = iniVeh.ReadLine(i.first, "RedCounty", true);
             vehGroups[modelid][8] = vectorUnion(vec, vehGroups[modelid][0]);
 
-            vec = iniLineParser(i.first, "Blueberry", &iniVeh, true);
+            vec = iniVeh.ReadLine(i.first, "Blueberry", true);
             vehGroups[modelid][9] = vectorUnion(vec, vehGroups[modelid][8]);
 
-            vec = iniLineParser(i.first, "Montgomery", &iniVeh, true);
+            vec = iniVeh.ReadLine(i.first, "Montgomery", true);
             vehGroups[modelid][10] = vectorUnion(vec, vehGroups[modelid][8]);
 
-            vec = iniLineParser(i.first, "Dillimore", &iniVeh, true);
+            vec = iniVeh.ReadLine(i.first, "Dillimore", true);
             vehGroups[modelid][11] = vectorUnion(vec, vehGroups[modelid][8]);
 
-            vec = iniLineParser(i.first, "PalominoCreek", &iniVeh, true);
+            vec = iniVeh.ReadLine(i.first, "PalominoCreek", true);
             vehGroups[modelid][12] = vectorUnion(vec, vehGroups[modelid][8]);
 
-            vec = iniLineParser(i.first, "FlintCounty", &iniVeh, true);
+            vec = iniVeh.ReadLine(i.first, "FlintCounty", true);
             vehGroups[modelid][13] = vectorUnion(vec, vehGroups[modelid][0]);
 
-            vec = iniLineParser(i.first, "Whetstone", &iniVeh, true);
+            vec = iniVeh.ReadLine(i.first, "Whetstone", true);
             vehGroups[modelid][14] = vectorUnion(vec, vehGroups[modelid][0]);
 
-            vec = iniLineParser(i.first, "AngelPine", &iniVeh, true);
+            vec = iniVeh.ReadLine(i.first, "AngelPine", true);
             vehGroups[modelid][15] = vectorUnion(vec, vehGroups[modelid][14]);
 
 
@@ -368,7 +369,7 @@ void readVehicleIni(bool firstTime)
             for (int j = 0; j < 9; j++)
             {
                 str = "DriverGroup" + std::to_string(j + 1);
-                vec = iniLineParser(i.first, str, &iniVeh);
+                vec = iniVeh.ReadLine(i.first, str);
                 if (!vec.empty())
                 {
                     vehDriverGroups[j].insert({ modelid, vec });
@@ -380,12 +381,12 @@ void readVehicleIni(bool firstTime)
                     continue;
 
                 str = "PassengerGroup" + std::to_string(j + 1);
-                vec = iniLineParser(i.first, str, &iniVeh);
+                vec = iniVeh.ReadLine(i.first, str);
                 if (!vec.empty())
                     vehPassengerGroups[j].insert({ modelid, vec });
             }
 
-            vec = iniLineParser(i.first, "Wanted1", &iniVeh, true);
+            vec = iniVeh.ReadLine(i.first, "Wanted1", true);
             if (!vec.empty())
             {
                 vec.erase(unique(vec.begin(), vec.end()), vec.end());
@@ -393,7 +394,7 @@ void readVehicleIni(bool firstTime)
                 vehGroupWantedVariations[modelid][0] = vec;
             }
 
-            vec = iniLineParser(i.first, "Wanted2", &iniVeh, true);
+            vec = iniVeh.ReadLine(i.first, "Wanted2", true);
             if (!vec.empty())
             {
                 vec.erase(unique(vec.begin(), vec.end()), vec.end());
@@ -401,7 +402,7 @@ void readVehicleIni(bool firstTime)
                 vehGroupWantedVariations[modelid][1] = vec;
             }
 
-            vec = iniLineParser(i.first, "Wanted3", &iniVeh, true);
+            vec = iniVeh.ReadLine(i.first, "Wanted3", true);
             if (!vec.empty())
             {
                 vec.erase(unique(vec.begin(), vec.end()), vec.end());
@@ -409,7 +410,7 @@ void readVehicleIni(bool firstTime)
                 vehGroupWantedVariations[modelid][2] = vec;
             }
 
-            vec = iniLineParser(i.first, "Wanted4", &iniVeh, true);
+            vec = iniVeh.ReadLine(i.first, "Wanted4", true);
             if (!vec.empty())
             {
                 vec.erase(unique(vec.begin(), vec.end()), vec.end());
@@ -417,7 +418,7 @@ void readVehicleIni(bool firstTime)
                 vehGroupWantedVariations[modelid][3] = vec;
             }
 
-            vec = iniLineParser(i.first, "Wanted5", &iniVeh, true);
+            vec = iniVeh.ReadLine(i.first, "Wanted5", true);
             if (!vec.empty())
             {
                 vec.erase(unique(vec.begin(), vec.end()), vec.end());
@@ -425,7 +426,7 @@ void readVehicleIni(bool firstTime)
                 vehGroupWantedVariations[modelid][4] = vec;
             }
 
-            vec = iniLineParser(i.first, "Wanted6", &iniVeh, true);
+            vec = iniVeh.ReadLine(i.first, "Wanted6", true);
             if (!vec.empty())
             {
                 vec.erase(unique(vec.begin(), vec.end()), vec.end());
@@ -438,11 +439,11 @@ void readVehicleIni(bool firstTime)
                     checkNumGroups(vehGroups[modelid][j], modelNumGroups[modelid]);
 
 
-            vec = iniLineParser(i.first, "Drivers", &iniVeh);
+            vec = iniVeh.ReadLine(i.first, "Drivers");
             if (!vec.empty())
                 vehDrivers.insert({ modelid, vec });
 
-            vec = iniLineParser(i.first, "Passengers", &iniVeh);
+            vec = iniVeh.ReadLine(i.first, "Passengers");
             if (!vec.empty())
                 vehPassengers.insert({ modelid, vec });
         }
@@ -451,7 +452,7 @@ void readVehicleIni(bool firstTime)
     if (firstTime)
     {
         changeCarGenerators = iniVeh.ReadInteger("Settings", "ChangeCarGenerators", 0);
-        vehCarGenExclude = iniLineParser("Settings", "ExcludeCarGeneratorModels", &iniVeh);
+        vehCarGenExclude = iniVeh.ReadLine("Settings", "ExcludeCarGeneratorModels");
         loadAllVehicles = iniVeh.ReadInteger("Settings", "LoadAllVehicles", 0);
         enableAllSideMissions = iniVeh.ReadInteger("Settings", "EnableSideMissionsForAllScripts", 0);
     }
@@ -534,7 +535,7 @@ void __cdecl AddPoliceCarOccupantsHooked(CVehicle* a2, char a3)
             unsigned int i = CGeneral::GetRandomNumberInRange(0, (int)vehGroupWantedVariations[a2->m_nModelIndex][wantedLevel].size());
             currentOccupantsModel = a2->m_nModelIndex;
 
-            std::vector<unsigned short> zoneGroups = iniLineParser(std::to_string(a2->m_nModelIndex), currentZone, &iniVeh, true);
+            std::vector<unsigned short> zoneGroups = iniVeh.ReadLine(std::to_string(a2->m_nModelIndex), currentZone, true);
             checkNumGroups(zoneGroups, it->second);
             if (vehGroups.find(a2->m_nModelIndex) != vehGroups.end())
             {
@@ -921,7 +922,7 @@ void __cdecl SetUpDriverAndPassengersForVehicleHooked(CVehicle* car, int a3, int
             unsigned int i = CGeneral::GetRandomNumberInRange(0, (int)vehGroupWantedVariations[car->m_nModelIndex][wantedLevel].size());
             currentOccupantsModel = car->m_nModelIndex;
 
-            std::vector<unsigned short> zoneGroups = iniLineParser(std::to_string(car->m_nModelIndex), currentZone, &iniVeh, true);
+            std::vector<unsigned short> zoneGroups = iniVeh.ReadLine(std::to_string(car->m_nModelIndex), currentZone, true);
             checkNumGroups(zoneGroups, it->second);
             if (vehGroups.find(car->m_nModelIndex) != vehGroups.end())
             {

@@ -1,5 +1,5 @@
 #pragma once
-#include "IniParse.hpp"
+#include "DataReader.hpp"
 
 #include <CAutomobile.h>
 #include <CPed.h>
@@ -18,7 +18,7 @@ struct rgba
     BYTE a;
 };
 
-extern CIniReader iniVeh;
+extern DataReader iniVeh;
 
 extern std::ofstream logfile;
 

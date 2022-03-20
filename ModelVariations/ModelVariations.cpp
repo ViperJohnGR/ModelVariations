@@ -1,5 +1,6 @@
 #include <plugin.h>
-#include "IniParse.hpp"
+#include "DataReader.hpp"
+#include "FuncUtil.hpp"
 #include "LogUtil.hpp"
 #include "Vehicles.hpp"
 #include "Hooks.hpp"
@@ -41,10 +42,10 @@ std::ofstream logfile;
 std::set<std::pair<unsigned int, std::string>> modulesSet;
 std::set<std::pair<unsigned int, std::string>> callChecks;
 
-CIniReader iniPed;
-CIniReader iniWeap;
-CIniReader iniVeh;
-CIniReader iniSettings;
+DataReader iniPed;
+DataReader iniWeap;
+DataReader iniVeh;
+DataReader iniSettings;
 
 std::array<std::vector<unsigned short>, 16> pedVariations[300];
 std::array<std::vector<unsigned short>, 16> vehVariations[212];
@@ -249,7 +250,7 @@ void updateVariations(CZone* zInfo)
     {
         vectorUnion(pedVariations[modelid][4], pedVariations[modelid][currentTown], pedCurrentVariations[modelid]);
 
-        std::vector<unsigned short> vec = iniLineParser(std::to_string(modelid), ((lastZone[0] == 0) ? zInfo->m_szLabel : lastZone), &iniPed);
+        std::vector<unsigned short> vec = iniPed.ReadLine(std::to_string(modelid), ((lastZone[0] == 0) ? zInfo->m_szLabel : lastZone));
         if (!vec.empty())
         {
             if (pedMergeZones.find((unsigned short)modelid) != pedMergeZones.end())
@@ -258,7 +259,7 @@ void updateVariations(CZone* zInfo)
                 pedCurrentVariations[modelid] = vec;
         }
 
-        vec = iniLineParser(std::to_string(modelid), currentInterior, &iniPed);
+        vec = iniPed.ReadLine(std::to_string(modelid), currentInterior);
         if (!vec.empty())
             pedCurrentVariations[modelid] = vectorUnion(pedCurrentVariations[modelid], vec);
 
@@ -275,7 +276,7 @@ void updateVariations(CZone* zInfo)
     {
         vectorUnion(vehVariations[modelid][4], vehVariations[modelid][currentTown], vehCurrentVariations[modelid]);
 
-        std::vector<unsigned short> vec = iniLineParser(std::to_string(modelid+400), ((lastZone[0] == 0) ? zInfo->m_szLabel : lastZone), &iniVeh);
+        std::vector<unsigned short> vec = iniVeh.ReadLine(std::to_string(modelid+400), ((lastZone[0] == 0) ? zInfo->m_szLabel : lastZone));
         if (!vec.empty())
         {
             if (vehMergeZones.find((unsigned short)(modelid+400)) != vehMergeZones.end())
@@ -412,50 +413,50 @@ void loadIniData(bool firstTime)
         {
             pedHasVariations.insert((unsigned short)i);
 
-            pedVariations[i][0] = iniLineParser(section, "Countryside", &iniPed);
-            pedVariations[i][1] = iniLineParser(section, "LosSantos", &iniPed);
-            pedVariations[i][2] = iniLineParser(section, "SanFierro", &iniPed);
-            pedVariations[i][3] = iniLineParser(section, "LasVenturas", &iniPed);
-            pedVariations[i][4] = iniLineParser(section, "Global", &iniPed);
-            pedVariations[i][5] = iniLineParser(section, "Desert", &iniPed);
+            pedVariations[i][0] = iniPed.ReadLine(section, "Countryside");
+            pedVariations[i][1] = iniPed.ReadLine(section, "LosSantos");
+            pedVariations[i][2] = iniPed.ReadLine(section, "SanFierro");
+            pedVariations[i][3] = iniPed.ReadLine(section, "LasVenturas");
+            pedVariations[i][4] = iniPed.ReadLine(section, "Global");
+            pedVariations[i][5] = iniPed.ReadLine(section, "Desert");
 
-            std::vector<unsigned short> vec = iniLineParser(section, "TierraRobada", &iniPed);
+            std::vector<unsigned short> vec = iniPed.ReadLine(section, "TierraRobada");
             pedVariations[i][6] = vectorUnion(vec, pedVariations[i][5]);
 
-            vec = iniLineParser(section, "BoneCounty", &iniPed);
+            vec = iniPed.ReadLine(section, "BoneCounty");
             pedVariations[i][7] = vectorUnion(vec, pedVariations[i][5]);
 
-            vec = iniLineParser(section, "RedCounty", &iniPed);
+            vec = iniPed.ReadLine(section, "RedCounty");
             pedVariations[i][8] = vectorUnion(vec, pedVariations[i][0]);
 
-            vec = iniLineParser(section, "Blueberry", &iniPed);
+            vec = iniPed.ReadLine(section, "Blueberry");
             pedVariations[i][9] = vectorUnion(vec, pedVariations[i][8]);
 
-            vec = iniLineParser(section, "Montgomery", &iniPed);
+            vec = iniPed.ReadLine(section, "Montgomery");
             pedVariations[i][10] = vectorUnion(vec, pedVariations[i][8]);
 
-            vec = iniLineParser(section, "Dillimore", &iniPed);
+            vec = iniPed.ReadLine(section, "Dillimore");
             pedVariations[i][11] = vectorUnion(vec, pedVariations[i][8]);
 
-            vec = iniLineParser(section, "PalominoCreek", &iniPed);
+            vec = iniPed.ReadLine(section, "PalominoCreek");
             pedVariations[i][12] = vectorUnion(vec, pedVariations[i][8]);
 
-            vec = iniLineParser(section, "FlintCounty", &iniPed);
+            vec = iniPed.ReadLine(section, "FlintCounty");
             pedVariations[i][13] = vectorUnion(vec, pedVariations[i][0]);
 
-            vec = iniLineParser(section, "Whetstone", &iniPed);
+            vec = iniPed.ReadLine(section, "Whetstone");
             pedVariations[i][14] = vectorUnion(vec, pedVariations[i][0]);
 
-            vec = iniLineParser(section, "AngelPine", &iniPed);
+            vec = iniPed.ReadLine(section, "AngelPine");
             pedVariations[i][15] = vectorUnion(vec, pedVariations[i][14]);
 
 
-            pedWantedVariations[i][0] = iniLineParser(section, "Wanted1", &iniPed);
-            pedWantedVariations[i][1] = iniLineParser(section, "Wanted2", &iniPed);
-            pedWantedVariations[i][2] = iniLineParser(section, "Wanted3", &iniPed);
-            pedWantedVariations[i][3] = iniLineParser(section, "Wanted4", &iniPed);
-            pedWantedVariations[i][4] = iniLineParser(section, "Wanted5", &iniPed);
-            pedWantedVariations[i][5] = iniLineParser(section, "Wanted6", &iniPed);
+            pedWantedVariations[i][0] = iniPed.ReadLine(section, "Wanted1");
+            pedWantedVariations[i][1] = iniPed.ReadLine(section, "Wanted2");
+            pedWantedVariations[i][2] = iniPed.ReadLine(section, "Wanted3");
+            pedWantedVariations[i][3] = iniPed.ReadLine(section, "Wanted4");
+            pedWantedVariations[i][4] = iniPed.ReadLine(section, "Wanted5");
+            pedWantedVariations[i][5] = iniPed.ReadLine(section, "Wanted6");
 
 
             for (unsigned int j = 0; j < 16; j++)
@@ -487,7 +488,7 @@ void loadIniData(bool firstTime)
         enableCloneRemover = iniPed.ReadInteger("Settings", "EnableCloneRemover", 0);
         cloneRemoverIncludeVariations = iniPed.ReadInteger("Settings", "CloneRemoverIncludeVariations", 0);
         cloneRemoverVehicleOccupants = iniPed.ReadInteger("Settings", "CloneRemoverIncludeVehicleOccupants", 0);
-        cloneRemoverExclusions = iniLineParser("Settings", "CloneRemoverExcludeModels", &iniPed);
+        cloneRemoverExclusions = iniPed.ReadLine("Settings", "CloneRemoverExcludeModels");
         spawnDelay = iniPed.ReadInteger("Settings", "SpawnDelay", 3);
         enableVehicles = iniVeh.ReadInteger("Settings", "Enable", 0);
     }
@@ -1030,7 +1031,7 @@ public:
                     bool changeWeapon = true;
                     bool wepChanged = false;
 
-                    std::vector<unsigned short> vec = iniLineParser(section, "WEAPONFORCE", &iniWeap);
+                    std::vector<unsigned short> vec = iniWeap.ReadLine(section, "WEAPONFORCE");
                     if (!vec.empty())
                     {
                         eWeaponType forceWeapon = (eWeaponType)vec[CGeneral::GetRandomNumberInRange(0, vec.size())];
@@ -1038,7 +1039,7 @@ public:
                             changeWeapon = (bool)CGeneral::GetRandomNumberInRange(0, 2);
                     }
 
-                    if ((changeWeapon || mergeWeapons == 0) && !(vec = iniLineParser(section, currentZoneString + "_WEAPONFORCE", &iniWeap)).empty())
+                    if ((changeWeapon || mergeWeapons == 0) && !(vec = iniWeap.ReadLine(section, currentZoneString + "_WEAPONFORCE")).empty())
                     {
                         eWeaponType forceWeapon = (eWeaponType)vec[CGeneral::GetRandomNumberInRange(0, vec.size())];
                         wepChanged |= wepFound(forceWeapon, (eWeaponType)0);
@@ -1054,7 +1055,7 @@ public:
                                 int currentSlot = ped->m_nActiveWeaponSlot;
 
                                 std::string slot = "SLOT" + std::to_string(i);
-                                vec = iniLineParser(section, slot, &iniWeap);
+                                vec = iniWeap.ReadLine(section, slot);
                                 if (!vec.empty() && (wepChanged = wepFound((eWeaponType)vec[CGeneral::GetRandomNumberInRange(0, (int)vec.size())], ped->m_aWeapons[i].m_nType)) == true)
                                     changeZoneSlot = (bool)CGeneral::GetRandomNumberInRange(0, 2);
 
@@ -1062,13 +1063,13 @@ public:
                                 {
                                     slot = currentZone;
                                     slot += "_SLOT" + std::to_string(i);
-                                    vec = iniLineParser(section, slot, &iniWeap);
+                                    vec = iniWeap.ReadLine(section, slot);
                                     if (!vec.empty())
                                         wepChanged |= wepFound((eWeaponType)vec[CGeneral::GetRandomNumberInRange(0, (int)vec.size())], ped->m_aWeapons[i].m_nType);
                                 }
 
                                 std::string wep = "WEAPON" + std::to_string(weaponId);
-                                vec = iniLineParser(section, wep, &iniWeap);
+                                vec = iniWeap.ReadLine(section, wep);
                                 if (!vec.empty() && (wepChanged = wepFound((eWeaponType)vec[CGeneral::GetRandomNumberInRange(0, (int)vec.size())], ped->m_aWeapons[i].m_nType)) == true)
                                     changeZoneWeapon = (bool)CGeneral::GetRandomNumberInRange(0, 2);
 
@@ -1076,7 +1077,7 @@ public:
                                 {
                                     wep = currentZone;
                                     wep += "_WEAPON" + std::to_string(weaponId);
-                                    vec = iniLineParser(section, wep, &iniWeap);
+                                    vec = iniWeap.ReadLine(section, wep);
                                     if (!vec.empty())
                                         wepChanged |= wepFound((eWeaponType)vec[CGeneral::GetRandomNumberInRange(0, (int)vec.size())], ped->m_aWeapons[i].m_nType);
                                 }

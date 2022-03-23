@@ -35,8 +35,12 @@ std::string pedWepIniPath("ModelVariations_PedWeapons.ini");
 std::string vehIniPath("ModelVariations_Vehicles.ini");
 std::string settingsIniPath("ModelVariations.ini");
 
-std::string exeHashes[2] = { "a559aa772fd136379155efa71f00c47aad34bbfeae6196b0fe1047d0645cbd26",     //HOODLUM
-                             "25580ae242c6ecb6f6175ca9b4c912aa042f33986ded87f20721b48302adc9c9" };   //Compact
+
+std::string exeHash;
+unsigned int exeFilesize = 0;
+eExeVersion exeVersion = SA_EXE_NONE;
+std::string exePath;
+std::string exeName;
 
 std::ofstream logfile;
 std::set<std::pair<unsigned int, std::string>> modulesSet;
@@ -171,6 +175,29 @@ bool IdExists(std::vector<unsigned short>& vec, int id)
         return true;
 
     return false;
+}
+
+void detectExe()
+{
+    char path[256] = {};
+    GetModuleFileName(NULL, path, 255);
+    exePath = path;
+    char* name = PathFindFileName(path);
+    exeName = name;
+    exeFilesize = getFilesize(path);
+
+    if (!fileExists(path))
+        return;
+
+    if (exeHash.empty())
+        exeHash = hashFile(path);
+
+    if (exeHash == exeHashes[0])
+        exeVersion = SA_EXE_HOODLUM;
+    else if (exeHash == exeHashes[1])
+        exeVersion = SA_EXE_COMPACT;
+    else
+        exeVersion = SA_EXE_UNKNOWN;
 }
 
 void drugDealerFix()
@@ -611,19 +638,15 @@ public:
                         << std::setfill('0') << std::setw(2) << systime.wMinute << ":"
                         << std::setfill('0') << std::setw(2) << systime.wSecond << "\n\n";
                 
+                detectExe();
+                logfile << exePath << std::endl;                
 
-                char exePath[256] = {};
-                GetModuleFileName(NULL, exePath, 255);
-                char* exeName = PathFindFileName(exePath);
-                unsigned int filesize = getFilesize(exePath);
-                logfile << exePath << std::endl;
-                std::string hash = hashFile(exePath);
-                if (hash == exeHashes[0])
+                if (exeVersion == SA_EXE_HOODLUM)
                     logfile << "Supported exe detected: 1.0 US HOODLUM" << std::endl;
-                else if (hash == exeHashes[1])
+                else if (exeVersion == SA_EXE_COMPACT)
                     logfile << "Supported exe detected: 1.0 US Compact" << std::endl;
                 else
-                    logfile << "Unsupported exe detected: " << exeName << " " << filesize << " bytes " << hash << std::endl;
+                    logfile << "Unsupported exe detected: " << exeName << " " << exeFilesize << " bytes " << exeHash << std::endl;
             }
             else
                 enableLog = 0;

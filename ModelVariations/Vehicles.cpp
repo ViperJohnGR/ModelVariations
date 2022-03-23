@@ -36,11 +36,13 @@ int passengerModelIndex = -1;
 const unsigned int jmp431BF2 = 0x431BF2;
 const unsigned int jmp51E5BE = 0x51E5BE;
 const unsigned int jmp52546A = 0x52546A;
+const unsigned int jmp5A0EB5 = 0x5A0EB5;
 const unsigned int jmp613B7E = 0x613B7E;
 const unsigned int jmp644683 = 0x644683;
 const unsigned int jmp6AB35A = 0x6AB35A;
 const unsigned int jmp6ABA65 = 0x6ABA65;
 const unsigned int jmp6B4CF1 = 0x6B4CF1;
+const unsigned int jmp729B7B = 0x729B7B;
 int carGenModel = -1;
 
 void checkNumGroups(std::vector<unsigned short>& vec, BYTE numGroups)
@@ -1173,7 +1175,18 @@ void __cdecl PossiblyRemoveVehicleHooked(CVehicle* car)
         return;
     }
 
-    changeModel<address>("CCarCtrl::PossiblyRemoveVehicle", 416, car->m_nModelIndex, { (unsigned short*)0x4250AC }, car);
+    if (*((unsigned short*)0x4250AC) == 416)
+    {
+        *((unsigned short*)0x4250AC) = car->m_nModelIndex;
+        callOriginal<address>(car);
+        *((unsigned short*)0x4250AC) = 416;
+        return;
+    }
+    else
+    {
+        logModified(0x4250AC, "Modified method detected: CCarCtrl::PossiblyRemoveVehicle - 0x4250AC is " + std::to_string(*((unsigned short*)0x4250AC)));
+        callOriginal<address>(car);
+    }
 }
 
 template <unsigned int address>
@@ -1496,6 +1509,38 @@ void __declspec(naked) patch6B4CE8()
     }
 }
 
+void __declspec(naked) patch407293()
+{
+    __asm {
+        push eax
+        movsx eax, word ptr[esi + 0x22]
+        push eax
+        call getVariationOriginalModel
+        cmp eax, 259h
+        pop eax
+        je isSWAT
+        mov ebx, 259h
+        jmp jmp729B7B
+
+isSWAT:
+        movsx ebx, word ptr[esi + 0x22]
+        jmp jmp729B7B
+    }
+}
+
+void __declspec(naked) patch5A0EAF()
+{
+    __asm {
+        push eax
+        movsx eax, word ptr[eax + 0x22]
+        push eax
+        call getVariationOriginalModel
+        cmp eax, 0x259
+        pop eax
+        jmp jmp5A0EB5
+    }
+}
+
 void __declspec(naked) patchCoronas()
 {
     __asm {
@@ -1622,27 +1667,48 @@ void installVehicleHooks()
         if (*(unsigned int*)0x525462 == 0x22478B66 && *(BYTE*)0x525466 == 0x66)
             injector::MakeJMP(0x525462, patch525462);
         else
-            logModified((unsigned int)0x525462, printToString("Modified function detected : sub_525252 - 0x525462 is %d", *(unsigned int*)0x525462));
+            logModified((unsigned int)0x525462, printToString("Modified function detected : sub_525252 - 0x525462 is 0x%X", *(unsigned int*)0x525462));
 
         if (*(unsigned int*)0x431BEB == 0x22468B66 && *(BYTE*)0x431BEF == 0x83)
             injector::MakeJMP(0x431BEB, patch431BEB);
         else
-            logModified((unsigned int)0x431BEB, printToString("Modified method detected : CCarCtrl::GenerateOneRandomCar - 0x431BEB is %d", *(unsigned int*)0x431BEB));
+            logModified((unsigned int)0x431BEB, printToString("Modified method detected : CCarCtrl::GenerateOneRandomCar - 0x431BEB is 0x%X", *(unsigned int*)0x431BEB));
 
         if (*(unsigned int*)0x64467D == 0x22788166 && *(BYTE*)0x644681 == 0x13)
             injector::MakeJMP(0x64467D, patch64467D);
         else
-            logModified((unsigned int)0x64467D, printToString("Modified method detected : CTaskSimpleCarDrive::ProcessPed - 0x64467D is %d", *(unsigned int*)0x64467D));
+            logModified((unsigned int)0x64467D, printToString("Modified method detected : CTaskSimpleCarDrive::ProcessPed - 0x64467D is 0x%X", *(unsigned int*)0x64467D));
 
         if (*(unsigned int*)0x51E5B8 == 0x227E8166 && *(BYTE*)0x51E5BC == 0xB0)
             injector::MakeJMP(0x51E5B8, patch51E5B8);
         else
-            logModified((unsigned int)0x51E5B8, printToString("Modified method detected : CCamera::TryToStartNewCamMode - 0x51E5B8 is %d", *(unsigned int*)0x51E5B8));
+            logModified((unsigned int)0x51E5B8, printToString("Modified method detected : CCamera::TryToStartNewCamMode - 0x51E5B8 is 0x%X", *(unsigned int*)0x51E5B8));
 
         if (*(unsigned int*)0x6B4CE8 == 0x224E8B66 && *(BYTE*)0x6B4CEC == 0x66)
             injector::MakeJMP(0x6B4CE8, patch6B4CE8);
         else
-            logModified((unsigned int)0x6B4CE8, printToString("Modified method detected : CAutomobile::ProcessAI - 0x6B4CE8 is %d", *(unsigned int*)0x6B4CE8));
+            logModified((unsigned int)0x6B4CE8, printToString("Modified method detected : CAutomobile::ProcessAI - 0x6B4CE8 is 0x%X", *(unsigned int*)0x6B4CE8));
+
+        if (exeVersion != SA_EXE_COMPACT)
+        {
+            if (*(unsigned int*)0x407293 == 0x000259BB && *(BYTE*)0x407297 == 0)
+                injector::MakeJMP(0x407293, patch407293);
+            else
+                logModified((unsigned int)0x407293, printToString("Modified method detected : CAutomobile::FireTruckControl - 0x407293 is 0x%X", *(unsigned int*)0x407293));
+        }
+        else
+        {
+            if (*(unsigned int*)0x729B76 == 0x000259BB && *(BYTE*)0x729B7A == 0)
+                injector::MakeJMP(0x729B76, patch407293);
+            else
+                logModified((unsigned int)0x729B76, printToString("Modified method detected : CAutomobile::FireTruckControl - 0x729B76 is 0x%X", *(unsigned int*)0x729B76));
+        }
+
+        if (*(unsigned int*)0x5A0EAF == 0x22788166 && *(unsigned short*)0x5A0EB3 == 0x259)
+            injector::MakeJMP(0x5A0EAF, patch5A0EAF);
+        else
+            logModified((unsigned int)0x5A0EAF, printToString("Modified method detected : CObject::ObjectDamage - 0x5A0EAF is 0x%X", *(unsigned int*)0x5A0EAF));
+
         
         hookCall(0x871238, ProcessSuspensionHooked<0x871238>, "ProcessSuspension", true);
         hookCall(0x871200, VehicleDamageHooked<0x871200>, "VehicleDamage", true);
@@ -1674,7 +1740,7 @@ void installVehicleHooks()
         if (*(unsigned int *)0x6ABA56 == 0x0000FF68 && *(BYTE*)0x6ABA5A == 0)
             injector::MakeJMP(0x6ABA56, patchCoronas);
         else
-            logModified((unsigned int)0x6ABA56, printToString("Modified method detected : CAutomobile::PreRender - 0x6ABA56 is %d", *(unsigned int*)0x6ABA56));
+            logModified((unsigned int)0x6ABA56, printToString("Modified method detected : CAutomobile::PreRender - 0x6ABA56 is 0x%X", *(unsigned int*)0x6ABA56));
 
         hookCall(0x6AB80F, AddLightHooked<0x6AB80F>, "AddLight"); //CAutomobile::PreRender
         hookCall(0x6ABBA6, AddLightHooked<0x6ABBA6>, "AddLight"); //CAutomobile::PreRender

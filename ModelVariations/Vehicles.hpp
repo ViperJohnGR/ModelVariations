@@ -1,5 +1,6 @@
 #pragma once
 #include "DataReader.hpp"
+#include "FileUtil.hpp"
 
 #include <CAutomobile.h>
 #include <CPed.h>
@@ -17,6 +18,8 @@ struct rgba
     BYTE b;
     BYTE a;
 };
+
+extern eExeVersion exeVersion;
 
 extern DataReader iniVeh;
 

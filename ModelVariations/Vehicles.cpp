@@ -33,9 +33,14 @@ unsigned short currentOccupantsModel = 0;
 int fireCmpModel = -1;
 
 int passengerModelIndex = -1;
+const unsigned int jmp4308A7 = 0x4308A7;
 const unsigned int jmp431BF2 = 0x431BF2;
+const unsigned int jmp44AB30 = 0x44AB30;
+const unsigned int jmp4F62EA = 0x4F62EA;
+const unsigned int jmp4F9CC2 = 0x4F9CC2;
 const unsigned int jmp51E5BE = 0x51E5BE;
 const unsigned int jmp52546A = 0x52546A;
+const unsigned int jmp52AE3A = 0x52AE3A;
 const unsigned int jmp5A0EB5 = 0x5A0EB5;
 const unsigned int jmp613B7E = 0x613B7E;
 const unsigned int jmp644683 = 0x644683;
@@ -800,7 +805,8 @@ char __fastcall HasCarSiren(CVehicle* vehicle)
     if (it != vehOriginalModels.end() && (it->second == 432 || it->second == 564))
         return 0;
 
-    if (isModelAmbulance(vehicle->m_nModelIndex) || isModelFiretruck(vehicle->m_nModelIndex) || IsLawEnforcementVehicleHooked<0>(vehicle) || callMethodOriginalAndReturn<char, address>(vehicle))
+    if (getVariationOriginalModel(vehicle->m_nModelIndex) == 423 || isModelAmbulance(vehicle->m_nModelIndex) || isModelFiretruck(vehicle->m_nModelIndex) || 
+        IsLawEnforcementVehicleHooked<0>(vehicle) || callMethodOriginalAndReturn<char, address>(vehicle))
         return 1;
 
     return 0;
@@ -1206,6 +1212,8 @@ void __fastcall ProcessControlHooked(CAutomobile* veh)
     {
     case 407: //Firetruck
         return changeModel<address>("CAutomobile::ProcessControl", 407, veh->m_nModelIndex, { (unsigned short*)0x6B1F51 }, veh);
+    case 423: //Mr. Whoopie
+        return changeModel<address>("CAutomobile::ProcessControl", 423, veh->m_nModelIndex, { (unsigned short*)0x6B2BD8 }, veh);
     case 432: //Rhino
         return changeModel<address>("CAutomobile::ProcessControl", 432, veh->m_nModelIndex, { (unsigned short*)0x6B1F7D, (unsigned short*)0x6B36D8 }, veh);
     case 525: //Towtruck
@@ -1541,6 +1549,71 @@ void __declspec(naked) patch5A0EAF()
     }
 }
 
+void __declspec(naked) patch4308A1()
+{
+    __asm {
+        push eax
+        movsx eax, word ptr[esi + 0x22]
+        push eax
+        call getVariationOriginalModel
+        cmp eax, 0x1A7
+        pop eax
+        jmp jmp4308A7
+    }
+}
+
+void __declspec(naked) patch4F62E4()
+{
+    __asm {
+        push eax
+        movsx eax, word ptr[eax + 0x22]
+        push eax
+        call getVariationOriginalModel
+        cmp eax, 0x1A7
+        pop eax
+        jmp jmp4F62EA
+    }
+}
+
+void __declspec(naked) patch4F9CBC()
+{
+    __asm {
+        push eax
+        movsx eax, word ptr[ecx + 0x22]
+        push eax
+        call getVariationOriginalModel
+        cmp eax, 0x1A7
+        pop eax
+        jmp jmp4F9CC2
+    }
+}
+
+void __declspec(naked) patch52AE34()
+{
+    __asm {
+        push eax
+        movsx eax, word ptr[eax + 0x22]
+        push eax
+        call getVariationOriginalModel
+        cmp eax, 0x1A7
+        pop eax
+        jmp jmp52AE3A
+    }
+}
+
+void __declspec(naked) patch44AB2A()
+{
+    __asm {
+        push eax
+        movsx eax, word ptr[edi + 0x22]
+        push eax
+        call getVariationOriginalModel
+        cmp eax, 0x1A7
+        pop eax
+        jmp jmp44AB30
+    }
+}
+
 void __declspec(naked) patchCoronas()
 {
     __asm {
@@ -1709,7 +1782,31 @@ void installVehicleHooks()
         else
             logModified((unsigned int)0x5A0EAF, printToString("Modified method detected : CObject::ObjectDamage - 0x5A0EAF is 0x%X", *(unsigned int*)0x5A0EAF));
 
+        if (*(unsigned int*)0x4308A1 == 0x227E8166 && *(unsigned short*)0x4308A5 == 0x1A7)
+            injector::MakeJMP(0x4308A1, patch4308A1);
+        else
+            logModified((unsigned int)0x4308A1, printToString("Modified method detected : CCarCtrl::GenerateOneRandomCar - 0x4308A1 is 0x%X", *(unsigned int*)0x4308A1));
         
+        if (*(unsigned int*)0x4F62E4 == 0x22788166 && *(unsigned short*)0x4F62E8 == 0x1A7)
+            injector::MakeJMP(0x4F62E4, patch4F62E4);
+        else
+            logModified((unsigned int)0x4F62E4, printToString("Modified method detected : CAEVehicleAudioEntity::GetSirenState - 0x4F62E4 is 0x%X", *(unsigned int*)0x4F62E4));
+
+        if (*(unsigned int*)0x4F9CBC == 0x22798166 && *(unsigned short*)0x4F9CC0 == 0x1A7)
+            injector::MakeJMP(0x4F9CBC, patch4F9CBC);
+        else
+            logModified((unsigned int)0x4F9CBC, printToString("Modified method detected : CAEVehicleAudioEntity::PlayHornOrSiren - 0x4F9CBC is 0x%X", *(unsigned int*)0x4F9CBC));
+
+        if (*(unsigned int*)0x44AB2A == 0x227F8166 && *(unsigned short*)0x44AB2E == 0x1A7)
+            injector::MakeJMP(0x44AB2A, patch44AB2A);
+        else
+            logModified((unsigned int)0x44AB2A, printToString("Modified method detected : CGarage::Update - 0x44AB2A is 0x%X", *(unsigned int*)0x44AB2A));
+
+        if (*(unsigned int*)0x52AE34 == 0x22788166 && *(unsigned short*)0x52AE38 == 0x1A7)
+            injector::MakeJMP(0x52AE34, patch52AE34);
+        else
+            logModified((unsigned int)0x52AE34, printToString("Modified address : 0x52AE34 is 0x%X", *(unsigned int*)0x52AE34));
+
         hookCall(0x871238, ProcessSuspensionHooked<0x871238>, "ProcessSuspension", true);
         hookCall(0x871200, VehicleDamageHooked<0x871200>, "VehicleDamage", true);
         hookCall(0x8711E0, SetupSuspensionLinesHooked<0x8711E0>, "SetupSuspensionLines", true);

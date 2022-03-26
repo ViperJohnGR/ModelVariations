@@ -42,21 +42,28 @@ const unsigned int jmp4FB26F = 0x4FB26F;
 const unsigned int jmp51E5BE = 0x51E5BE;
 const unsigned int jmp52546A = 0x52546A;
 const unsigned int jmp52AE3A = 0x52AE3A;
+const unsigned int jmp5470C5 = 0x5470C5;
 const unsigned int jmp547438 = 0x547438;
+const unsigned int jmp54D713 = 0x54D713;
 const unsigned int jmp5A005A = 0x5A005A;
 const unsigned int jmp5A0EB5 = 0x5A0EB5;
+const unsigned int jmp5A0EC5 = 0x5A0EC5;
 const unsigned int jmp5A21D2 = 0x5A21D2;
 const unsigned int jmp613B7E = 0x613B7E;
 const unsigned int jmp644683 = 0x644683;
 const unsigned int jmp6A1486 = 0x6A1486;
+const unsigned int jmp6A164E = 0x6A164E;
 const unsigned int jmp6A1743 = 0x6A1743;
 const unsigned int jmp6A1F72 = 0x6A1F72;
 const unsigned int jmp6A216A = 0x6A216A;
 const unsigned int jmp6AB35A = 0x6AB35A;
 const unsigned int jmp6ABA65 = 0x6ABA65;
+const unsigned int jmp6AC735 = 0x6AC735;
+const unsigned int jmp6AD37E = 0x6AD37E;
 const unsigned int jmp6B4CF1 = 0x6B4CF1;
 const unsigned int jmp6C7F36 = 0x6C7F36;
 const unsigned int jmp6D67BF = 0x6D67BF;
+const unsigned int jmp6E0FFE = 0x6E0FFE;
 const unsigned int jmp729B7B = 0x729B7B;
 int carGenModel = -1;
 
@@ -1232,6 +1239,8 @@ void __fastcall ProcessControlHooked(CAutomobile* veh)
         return changeModel<address>("CAutomobile::ProcessControl", 486, veh->m_nModelIndex, { (unsigned short*)0x6B1F97 }, veh);
     case 525: //Towtruck
         return changeModel<address>("CAutomobile::ProcessControl", 525, veh->m_nModelIndex, { (unsigned short*)0x6B1FB5 }, veh);
+    case 530: //Forklift
+        return changeModel<address>("CAutomobile::ProcessControl", 530, veh->m_nModelIndex, { (unsigned short*)0x6B1FAF }, veh);
     case 531: //Tractor
         return changeModel<address>("CAutomobile::ProcessControl", 531, veh->m_nModelIndex, { (unsigned short*)0x6B1FBB }, veh);
     case 601: //Swat Tank
@@ -1293,6 +1302,8 @@ void __fastcall PreRenderHooked(CAutomobile* veh)
         changeModel<address>("CAutomobile::PreRender", 486, veh->m_nModelIndex, { (unsigned short*)0x6AC40E }, veh);
     else if (getVariationOriginalModel(veh->m_nModelIndex) == 525) //Towtruck
         changeModel<address>("CAutomobile::PreRender", 525, veh->m_nModelIndex, { (unsigned short*)0x6AC509 }, veh);
+    else if (getVariationOriginalModel(veh->m_nModelIndex) == 530) //Forklift
+        changeModel<address>("CAutomobile::PreRender", 530, veh->m_nModelIndex, { (unsigned short*)0x6AC71E }, veh);
     else if (getVariationOriginalModel(veh->m_nModelIndex) == 531) //Tractor
         changeModel<address>("CAutomobile::PreRender", 531, veh->m_nModelIndex, { (unsigned short*)0x6AC6DB }, veh);
     else if (getVariationOriginalModel(veh->m_nModelIndex) == 601) //SWAT Tank
@@ -1789,6 +1800,99 @@ void __declspec(naked) patch6D67B7()
     }
 }
 
+void __declspec(naked) patch5470BF()
+{
+    __asm {
+        push eax
+        movsx eax, word ptr [ecx + 0x22]
+        push eax
+        call getVariationOriginalModel
+        cmp eax, 0x212
+        pop eax
+        jmp jmp5470C5
+    }
+}
+
+void __declspec(naked) patch54D70D()
+{
+    __asm {
+        push eax
+        movsx eax, word ptr[edi + 0x22]
+        push eax
+        call getVariationOriginalModel
+        cmp eax, 0x212
+        pop eax
+        jmp jmp54D713
+    }
+}
+
+void __declspec(naked) patch5A0EBF()
+{
+    __asm {
+        push eax
+        movsx eax, word ptr[edi+0x22]
+        push eax
+        call getVariationOriginalModel
+        cmp eax, 0x212
+        pop eax
+        jmp jmp5A0EC5
+    }
+}
+
+void __declspec(naked) patch6A1648()
+{
+    __asm {
+        push eax
+        movsx eax, word ptr[edi + 0x22]
+        push eax
+        call getVariationOriginalModel
+        cmp eax, 0x212
+        pop eax
+        jmp jmp6A164E
+    }
+}
+
+void __declspec(naked) patch6AD378()
+{
+    __asm {
+        push eax
+        movsx eax, word ptr[esi + 0x22]
+        push eax
+        call getVariationOriginalModel
+        cmp eax, 0x212
+        pop eax
+        jmp jmp6AD37E
+    }
+}
+
+void __declspec(naked) patch6E0FF8()
+{
+    __asm {
+        push eax
+        movsx eax, word ptr[edi + 0x22]
+        push eax
+        call getVariationOriginalModel
+        cmp eax, 0x212
+        pop eax
+        jmp jmp6E0FFE
+    }
+}
+
+void __declspec(naked) patch6AC730()
+{
+    __asm {
+        push ecx
+        movsx eax, ax
+        mov ecx, 4
+        mul ecx       
+        mov ecx, CModelInfo::ms_modelInfoPtrs
+        add ecx, eax
+        mov eax, [ecx]
+        pop ecx
+        jmp jmp6AC735
+    }
+}
+
 void __declspec(naked) patchCoronas()
 {
     __asm {
@@ -2035,6 +2139,41 @@ void installVehicleHooks()
             injector::MakeJMP(0x6D67B7, patch6D67B7);
         else
             logModified((unsigned int)0x6D67B7, printToString("Modified method detected : CVehicle::SpecialEntityPreCollisionStuff - 0x6D67B7 is 0x%X", *(unsigned int*)0x6D67B7));
+
+        if (*(unsigned int*)0x5470BF == 0x22798166 && *(unsigned short*)0x5470C3 == 0x212)
+            injector::MakeJMP(0x5470BF, patch5470BF);
+        else
+            logModified((unsigned int)0x5470BF, printToString("Modified method detected : CPhysical::PositionAttachedEntity - 0x5470BF is 0x%X", *(unsigned int*)0x5470BF));
+
+        if (*(unsigned int*)0x54D70D == 0x227F8166 && *(unsigned short*)0x54D711 == 0x212)
+            injector::MakeJMP(0x54D70D, patch54D70D);
+        else
+            logModified((unsigned int)0x54D70D, printToString("Modified method detected : CPhysical::AttachEntityToEntity - 0x54D70D is 0x%X", *(unsigned int*)0x54D70D));
+
+        if (*(unsigned int*)0x5A0EBF == 0x227F8166 && *(unsigned short*)0x5A0EC3 == 0x212)
+            injector::MakeJMP(0x5A0EBF, patch5A0EBF);
+        else
+            logModified((unsigned int)0x5A0EBF, printToString("Modified method detected : CObject::ObjectDamage - 0x5A0EBF is 0x%X", *(unsigned int*)0x5A0EBF));
+
+        if (*(unsigned int*)0x6A1648 == 0x227F8166 && *(unsigned short*)0x6A164C == 0x212)
+            injector::MakeJMP(0x6A1648, patch6A1648);
+        else
+            logModified((unsigned int)0x6A1648, printToString("Modified method detected : CAutomobile::UpdateMovingCollision - 0x6A1648 is 0x%X", *(unsigned int*)0x6A1648));
+
+        if (*(unsigned int*)0x6AD378 == 0x227E8166 && *(unsigned short*)0x6AD37C == 0x212)
+            injector::MakeJMP(0x6AD378, patch6AD378);
+        else
+            logModified((unsigned int)0x6AD378, printToString("Modified method detected : CAutomobile::ProcessEntityCollision - 0x6AD378 is 0x%X", *(unsigned int*)0x6AD378));
+
+        if (*(unsigned int*)0x6E0FF8 == 0x227F8166 && *(unsigned short*)0x6E0FFC == 0x212)
+            injector::MakeJMP(0x6E0FF8, patch6E0FF8);
+        else
+            logModified((unsigned int)0x6E0FF8, printToString("Modified method detected : CVehicle::DoHeadLightBeam - 0x6E0FF8 is 0x%X", *(unsigned int*)0x6E0FF8));        
+
+        if (*(unsigned int*)0x6AC730 == 0xA9B910A1 && *(BYTE*)0x6AC734 == 0)
+            injector::MakeJMP(0x6AC730, patch6AC730);
+        else
+            logModified((unsigned int)0x6AC730, printToString("Modified method detected : CAutomobile::PreRender - 0x6AC730 is 0x%X", *(unsigned int*)0x6AC730));
 
         hookCall(0x871238, ProcessSuspensionHooked<0x871238>, "ProcessSuspension", true);
         hookCall(0x871200, VehicleDamageHooked<0x871200>, "VehicleDamage", true);

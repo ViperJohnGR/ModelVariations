@@ -1228,6 +1228,8 @@ void __fastcall ProcessControlHooked(CAutomobile* veh)
         return changeModel<address>("CAutomobile::ProcessControl", 423, veh->m_nModelIndex, { (unsigned short*)0x6B2BD8 }, veh);
     case 432: //Rhino
         return changeModel<address>("CAutomobile::ProcessControl", 432, veh->m_nModelIndex, { (unsigned short*)0x6B1F7D, (unsigned short*)0x6B36D8 }, veh);
+    case 486: //Dozer
+        return changeModel<address>("CAutomobile::ProcessControl", 486, veh->m_nModelIndex, { (unsigned short*)0x6B1F97 }, veh);
     case 525: //Towtruck
         return changeModel<address>("CAutomobile::ProcessControl", 525, veh->m_nModelIndex, { (unsigned short*)0x6B1FB5 }, veh);
     case 531: //Tractor
@@ -1287,6 +1289,8 @@ void __fastcall PreRenderHooked(CAutomobile* veh)
                                                                                   (unsigned short*)0x6ACA4D }, veh);
     else if (getVariationOriginalModel(veh->m_nModelIndex) == 434) //Hotknife
         changeModel<address>("CAutomobile::PreRender", 434, veh->m_nModelIndex, { (unsigned short*)0x6ACA43 }, veh);
+    else if (getVariationOriginalModel(veh->m_nModelIndex) == 486) //Dozer
+        changeModel<address>("CAutomobile::PreRender", 486, veh->m_nModelIndex, { (unsigned short*)0x6AC40E }, veh);
     else if (getVariationOriginalModel(veh->m_nModelIndex) == 525) //Towtruck
         changeModel<address>("CAutomobile::PreRender", 525, veh->m_nModelIndex, { (unsigned short*)0x6AC509 }, veh);
     else if (getVariationOriginalModel(veh->m_nModelIndex) == 531) //Tractor

@@ -57,6 +57,7 @@ const unsigned int jmp613B7E = 0x613B7E;
 const unsigned int jmp644683 = 0x644683;
 const unsigned int jmp64BCB9 = 0x64BCB9;
 const unsigned int jmp6A1486 = 0x6A1486;
+const unsigned int jmp6A1564 = 0x6A1564;
 const unsigned int jmp6A164E = 0x6A164E;
 const unsigned int jmp6A1743 = 0x6A1743;
 const unsigned int jmp6A1F72 = 0x6A1F72;
@@ -1245,6 +1246,8 @@ void __fastcall ProcessControlHooked(CAutomobile* veh)
         return changeModel<address>("CAutomobile::ProcessControl", 443, veh->m_nModelIndex, { (unsigned short*)0x6B1F91 }, veh);
     case 486: //Dozer
         return changeModel<address>("CAutomobile::ProcessControl", 486, veh->m_nModelIndex, { (unsigned short*)0x6B1F97 }, veh);
+    case 524: //Cement Truck
+        return changeModel<address>("CAutomobile::ProcessControl", 524, veh->m_nModelIndex, { (unsigned short*)0x6B1FA3 }, veh);
     case 525: //Towtruck
         return changeModel<address>("CAutomobile::ProcessControl", 525, veh->m_nModelIndex, { (unsigned short*)0x6B1FB5 }, veh);
     case 530: //Forklift
@@ -1310,6 +1313,8 @@ void __fastcall PreRenderHooked(CAutomobile* veh)
         changeModel<address>("CAutomobile::PreRender", 443, veh->m_nModelIndex, { (unsigned short*)0x6AC4DB }, veh);
     else if (getVariationOriginalModel(veh->m_nModelIndex) == 486) //Dozer
         changeModel<address>("CAutomobile::PreRender", 486, veh->m_nModelIndex, { (unsigned short*)0x6AC40E }, veh);
+    else if (getVariationOriginalModel(veh->m_nModelIndex) == 524) //Cement Truck
+        changeModel<address>("CAutomobile::PreRender", 524, veh->m_nModelIndex, { (unsigned short*)0x6AC43D }, veh);
     else if (getVariationOriginalModel(veh->m_nModelIndex) == 525) //Towtruck
         changeModel<address>("CAutomobile::PreRender", 525, veh->m_nModelIndex, { (unsigned short*)0x6AC509 }, veh);
     else if (getVariationOriginalModel(veh->m_nModelIndex) == 530) //Forklift
@@ -1494,9 +1499,59 @@ template <unsigned int address>
 signed int __cdecl SetupEntityVisibilityHooked(CEntity* a1, float* a2)
 {
     if (a1 != NULL && getVariationOriginalModel(a1->m_nModelIndex) == 437)
-        return changeModelAndReturn<signed int, address>("CRenderer::SetupEntityVisibility", 437, a1->m_nModelIndex, { (unsigned short*)0x554336 }, a1, a2);
+    {
+        if (*(unsigned short*)0x554336 == 437)
+        {
+            *(unsigned short*)0x554336 = a1->m_nModelIndex;
+            signed int retValue = callOriginalAndReturn<signed int, address>(a1, a2);
+            *(unsigned short*)0x554336 = 437;
+            return retValue;
+        }
+        else
+        {
+            logModified((unsigned int)0x554336, printToString("Modified method detected : CRenderer::SetupEntityVisibility - 0x554336 is %u", *(unsigned short*)0x554336));
+            return callOriginalAndReturn<signed int, address>(a1, a2);
+        }
+    }
 
-    callMethodOriginalAndReturn<signed int, address>(a1, a2);
+    return callOriginalAndReturn<signed int, address>(a1, a2);
+}
+
+template <unsigned int address>
+int __cdecl GetMaximumNumberOfPassengersFromNumberOfDoorsHooked(__int16 modelIndex)
+{
+    if (getVariationOriginalModel(modelIndex) == 437)
+    {
+        if (*(short*)0x4C8AD3 == 437)
+        {
+            *(short*)0x4C8AD3 = modelIndex;
+            signed int retValue = callOriginalAndReturn<int, address>(modelIndex);
+            *(short*)0x4C8AD3 = 437;
+            return retValue;
+        }
+        else
+        {
+            logModified((unsigned int)0x4C8AD3, printToString("Modified method detected : CVehicleModelInfo::GetMaximumNumberOfPassengersFromNumberOfDoors - 0x4C8AD3 is %u", *(unsigned short*)0x4C8AD3));
+            return callOriginalAndReturn<int, address>(modelIndex);
+        }
+    }
+    else if (getVariationOriginalModel(modelIndex) == 431)
+    {
+        if (*(short*)0x4C8ADB == 431)
+        {
+            *(short*)0x4C8ADB = modelIndex;
+            signed int retValue = callOriginalAndReturn<int, address>(modelIndex);
+            *(short*)0x4C8ADB = 431;
+            return retValue;
+        }
+        else
+        {
+            logModified((unsigned int)0x4C8ADB, printToString("Modified method detected : CVehicleModelInfo::GetMaximumNumberOfPassengersFromNumberOfDoors - 0x4C8ADB is %u", *(unsigned short*)0x4C8ADB));
+            return callOriginalAndReturn<int, address>(modelIndex);
+        }
+    }
+
+    return callOriginalAndReturn<int, address>(modelIndex);
 }
 
 void __declspec(naked) patch525462()
@@ -1923,18 +1978,6 @@ void __declspec(naked) patch43064C()
     }
 }
 
-void __declspec(naked) patch4C8AD9()
-{
-    __asm {
-        push eax
-        push esi
-        call getVariationOriginalModel
-        cmp eax, 0x1AF
-        pop eax
-        jmp jmp4C8ADF
-    }
-}
-
 void __declspec(naked) patch64BCB3()
 {
     __asm {
@@ -1960,15 +2003,20 @@ void __declspec(naked) patch430640()
     }
 }
 
-void __declspec(naked) patch4C8AD1()
+void __declspec(naked) patch6A155C()
 {
     __asm {
+        push ecx
         push eax
-        push esi
+        movsx eax, word ptr [edi+0x22]
+        push eax
         call getVariationOriginalModel
-        cmp eax, 0x1B5
+        mov cx, ax
         pop eax
-        jmp jmp4C8AD7
+        mov ax, cx
+        pop ecx
+        cmp ax, 0x20C
+        jmp jmp6A1564
     }
 }
 
@@ -2259,11 +2307,6 @@ void installVehicleHooks()
         else
             logModified((unsigned int)0x43064C, printToString("Modified method detected : CCarCtrl::GenerateOneRandomCar - 0x43064C is 0x%X", *(unsigned int*)0x43064C));
 
-        if (*(unsigned int*)0x4C8AD9 == 0x01AFFE81 && *(unsigned short*)0x4C8ADD == 0)
-            injector::MakeJMP(0x4C8AD9, patch4C8AD9);
-        else
-            logModified((unsigned int)0x4C8AD9, printToString("Modified method detected : CVehicleModelInfo::GetMaximumNumberOfPassengersFromNumberOfDoors - 0x4C8AD9 is 0x%X", *(unsigned int*)0x4C8AD9));
-
         if (*(unsigned int*)0x64BCB3 == 0x22788166 && *(unsigned short*)0x64BCB7 == 0x1AF)
             injector::MakeJMP(0x64BCB3, patch64BCB3);
         else
@@ -2274,10 +2317,10 @@ void installVehicleHooks()
         else
             logModified((unsigned int)0x430640, printToString("Modified method detected : CCarCtrl::GenerateOneRandomCar - 0x430640 is 0x%X", *(unsigned int*)0x430640));
 
-        if (*(unsigned int*)0x4C8AD1 == 0x01B5FE81 && *(unsigned short*)0x4C8AD5 == 0)
-            injector::MakeJMP(0x4C8AD1, patch4C8AD1);
+        if (*(unsigned int*)0x6A155C == 0x22478B66 && *(BYTE*)0x6A1560 == 0x66)
+            injector::MakeJMP(0x6A155C, patch6A155C);
         else
-            logModified((unsigned int)0x4C8AD1, printToString("Modified method detected : CVehicleModelInfo::GetMaximumNumberOfPassengersFromNumberOfDoors - 0x4C8AD1 is 0x%X", *(unsigned int*)0x4C8AD1));
+            logModified((unsigned int)0x6A155C, printToString("Modified method detected : CAutomobile::UpdateMovingCollision - 0x6A155C is 0x%X", *(unsigned int*)0x6A155C));
 
 
         hookCall(0x871238, ProcessSuspensionHooked<0x871238>, "ProcessSuspension", true);
@@ -2298,6 +2341,8 @@ void installVehicleHooks()
         hookCall(0x6B51B8, DoSoftGroundResistanceHooked<0x6B51B8>, "DoSoftGroundResistance"); //CAutomobile::ProcessAI
 
         hookCall(0x554937, SetupEntityVisibilityHooked<0x554937>, "SetupEntityVisibility"); //CRenderer::ScanSectorList
+
+        hookCall(0x6D6A76, GetMaximumNumberOfPassengersFromNumberOfDoorsHooked<0x6D6A76>, "GetMaximumNumberOfPassengersFromNumberOfDoors"); //CVehicle::SetModelIndex
     }
 
     if ((enableSiren = iniVeh.ReadInteger("Settings", "EnableSiren", 0)) == 1)

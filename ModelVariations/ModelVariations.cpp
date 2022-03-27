@@ -414,7 +414,7 @@ void installHooks()
     if (enableVehicles == 1)
     {
         if (logfile.is_open())
-            logfile << "Installing vehicle hooks." << std::endl;
+            logfile << "Installing vehicle hooks..." << std::endl;
 
         installVehicleHooks();
 
@@ -723,7 +723,7 @@ public:
         Events::initScriptsEvent += []
         {
             if (logfile.is_open())
-                logfile << "initScriptsEvent" << std::endl;
+                logfile << "-- initScriptsEvent --" << std::endl;
 
             clearEverything();
             loadIniData(false);

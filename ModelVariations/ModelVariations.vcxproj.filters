@@ -3,16 +3,31 @@
   <ItemGroup>
     <ClCompile Include="ModelVariations.cpp" />
     <ClCompile Include="Vehicles.cpp" />
-    <ClCompile Include="LogUtil.cpp" />
-    <ClCompile Include="FileUtil.cpp" />
     <ClCompile Include="DataReader.cpp" />
+    <ClCompile Include="FileUtil.cpp">
+      <Filter>Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="LogUtil.cpp">
+      <Filter>Utils</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Vehicles.hpp" />
-    <ClInclude Include="LogUtil.hpp" />
-    <ClInclude Include="FuncUtil.hpp" />
     <ClInclude Include="Hooks.hpp" />
-    <ClInclude Include="FileUtil.hpp" />
     <ClInclude Include="DataReader.hpp" />
+    <ClInclude Include="FileUtil.hpp">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="FuncUtil.hpp">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="LogUtil.hpp">
+      <Filter>Utils</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Utils">
+      <UniqueIdentifier>{4bbeee3d-3aaf-456b-b5c5-1abcc68c6588}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
 </Project>

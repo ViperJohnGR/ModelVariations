@@ -70,6 +70,7 @@ const unsigned int jmp6AC735 = 0x6AC735;
 const unsigned int jmp6AD37E = 0x6AD37E;
 const unsigned int jmp6B4CF1 = 0x6B4CF1;
 const unsigned int jmp6C7F36 = 0x6C7F36;
+const unsigned int jmp6D1AC0 = 0x6D1AC0;
 const unsigned int jmp6D67BF = 0x6D67BF;
 const unsigned int jmp6E0FFE = 0x6E0FFE;
 const unsigned int jmp729B7B = 0x729B7B;
@@ -658,6 +659,8 @@ CAutomobile* __fastcall CAutomobileHooked(CAutomobile* automobile, void*, int mo
 
     switch (getVariationOriginalModel(modelIndex))
     {
+    case 409: //Stretch
+        return changeModelAndReturn<CAutomobile*, address>("CAutomobile::CAutomobile", 409, randomVariation, { (uint16_t*)0x6B0F66 }, automobile, randomVariation, usageType, bSetupSuspensionLines);
     case 432: //Rhino
         return changeModelAndReturn<CAutomobile*, address>("CAutomobile::CAutomobile", 432, randomVariation, { (uint16_t*)0x6B0CF4 , (uint16_t*)0x6B12D8 }, automobile, randomVariation, usageType, bSetupSuspensionLines);
     case 525: //Towtruck
@@ -2092,6 +2095,23 @@ void __declspec(naked) patch6AA515()
     }
 }
 
+void __declspec(naked) patch6D1ABA()
+{
+    __asm {
+        push ecx
+        push eax
+        movsx eax, word ptr [edi+0x22]
+        push eax
+        call getVariationOriginalModel
+        mov cx, ax
+        pop eax
+        mov ax, cx
+        pop ecx
+        xor dl, dl
+        jmp jmp6D1AC0
+    }
+}
+
 void __declspec(naked) patchCoronas()
 {
     __asm {
@@ -2219,190 +2239,195 @@ void installVehicleHooks()
         hookCall(0x871CD4, SetUpWheelColModelHooked<0x871CD4>, "SetUpWheelColModel", true);
 
 
-        if (*(unsigned int*)0x525462 == 0x22478B66 && *(BYTE*)0x525466 == 0x66)
+        if (*(uint32_t*)0x525462 == 0x22478B66 && *(BYTE*)0x525466 == 0x66)
             injector::MakeJMP(0x525462, patch525462);
         else
-            logModified((unsigned int)0x525462, printToString("Modified function detected : sub_525252 - 0x525462 is 0x%X", *(unsigned int*)0x525462));
+            logModified((uint32_t)0x525462, printToString("Modified function detected : sub_525252 - 0x525462 is 0x%X", *(uint32_t*)0x525462));
 
-        if (*(unsigned int*)0x431BEB == 0x22468B66 && *(BYTE*)0x431BEF == 0x83)
+        if (*(uint32_t*)0x431BEB == 0x22468B66 && *(BYTE*)0x431BEF == 0x83)
             injector::MakeJMP(0x431BEB, patch431BEB);
         else
-            logModified((unsigned int)0x431BEB, printToString("Modified method detected : CCarCtrl::GenerateOneRandomCar - 0x431BEB is 0x%X", *(unsigned int*)0x431BEB));
+            logModified((uint32_t)0x431BEB, printToString("Modified method detected : CCarCtrl::GenerateOneRandomCar - 0x431BEB is 0x%X", *(uint32_t*)0x431BEB));
 
-        if (*(unsigned int*)0x64467D == 0x22788166 && *(BYTE*)0x644681 == 0x13)
+        if (*(uint32_t*)0x64467D == 0x22788166 && *(BYTE*)0x644681 == 0x13)
             injector::MakeJMP(0x64467D, patch64467D);
         else
-            logModified((unsigned int)0x64467D, printToString("Modified method detected : CTaskSimpleCarDrive::ProcessPed - 0x64467D is 0x%X", *(unsigned int*)0x64467D));
+            logModified((uint32_t)0x64467D, printToString("Modified method detected : CTaskSimpleCarDrive::ProcessPed - 0x64467D is 0x%X", *(uint32_t*)0x64467D));
 
-        if (*(unsigned int*)0x51E5B8 == 0x227E8166 && *(BYTE*)0x51E5BC == 0xB0)
+        if (*(uint32_t*)0x51E5B8 == 0x227E8166 && *(BYTE*)0x51E5BC == 0xB0)
             injector::MakeJMP(0x51E5B8, patch51E5B8);
         else
-            logModified((unsigned int)0x51E5B8, printToString("Modified method detected : CCamera::TryToStartNewCamMode - 0x51E5B8 is 0x%X", *(unsigned int*)0x51E5B8));
+            logModified((uint32_t)0x51E5B8, printToString("Modified method detected : CCamera::TryToStartNewCamMode - 0x51E5B8 is 0x%X", *(uint32_t*)0x51E5B8));
 
-        if (*(unsigned int*)0x6B4CE8 == 0x224E8B66 && *(BYTE*)0x6B4CEC == 0x66)
+        if (*(uint32_t*)0x6B4CE8 == 0x224E8B66 && *(BYTE*)0x6B4CEC == 0x66)
             injector::MakeJMP(0x6B4CE8, patch6B4CE8);
         else
-            logModified((unsigned int)0x6B4CE8, printToString("Modified method detected : CAutomobile::ProcessAI - 0x6B4CE8 is 0x%X", *(unsigned int*)0x6B4CE8));
+            logModified((uint32_t)0x6B4CE8, printToString("Modified method detected : CAutomobile::ProcessAI - 0x6B4CE8 is 0x%X", *(uint32_t*)0x6B4CE8));
 
         if (exeVersion != SA_EXE_COMPACT)
         {
-            if (*(unsigned int*)0x407293 == 0x000259BB && *(BYTE*)0x407297 == 0)
+            if (*(uint32_t*)0x407293 == 0x000259BB && *(BYTE*)0x407297 == 0)
                 injector::MakeJMP(0x407293, patch407293);
             else
-                logModified((unsigned int)0x407293, printToString("Modified method detected : CAutomobile::FireTruckControl - 0x407293 is 0x%X", *(unsigned int*)0x407293));
+                logModified((uint32_t)0x407293, printToString("Modified method detected : CAutomobile::FireTruckControl - 0x407293 is 0x%X", *(uint32_t*)0x407293));
         }
         else
         {
-            if (*(unsigned int*)0x729B76 == 0x000259BB && *(BYTE*)0x729B7A == 0)
+            if (*(uint32_t*)0x729B76 == 0x000259BB && *(BYTE*)0x729B7A == 0)
                 injector::MakeJMP(0x729B76, patch407293);
             else
-                logModified((unsigned int)0x729B76, printToString("Modified method detected : CAutomobile::FireTruckControl - 0x729B76 is 0x%X", *(unsigned int*)0x729B76));
+                logModified((uint32_t)0x729B76, printToString("Modified method detected : CAutomobile::FireTruckControl - 0x729B76 is 0x%X", *(uint32_t*)0x729B76));
         }
 
-        if (*(unsigned int*)0x5A0EAF == 0x22788166 && *(uint16_t*)0x5A0EB3 == 0x259)
+        if (*(uint32_t*)0x5A0EAF == 0x22788166 && *(uint16_t*)0x5A0EB3 == 0x259)
             injector::MakeJMP(0x5A0EAF, patch5A0EAF);
         else
-            logModified((unsigned int)0x5A0EAF, printToString("Modified method detected : CObject::ObjectDamage - 0x5A0EAF is 0x%X", *(unsigned int*)0x5A0EAF));
+            logModified((uint32_t)0x5A0EAF, printToString("Modified method detected : CObject::ObjectDamage - 0x5A0EAF is 0x%X", *(uint32_t*)0x5A0EAF));
 
-        if (*(unsigned int*)0x4308A1 == 0x227E8166 && *(uint16_t*)0x4308A5 == 0x1A7)
+        if (*(uint32_t*)0x4308A1 == 0x227E8166 && *(uint16_t*)0x4308A5 == 0x1A7)
             injector::MakeJMP(0x4308A1, patch4308A1);
         else
-            logModified((unsigned int)0x4308A1, printToString("Modified method detected : CCarCtrl::GenerateOneRandomCar - 0x4308A1 is 0x%X", *(unsigned int*)0x4308A1));
+            logModified((uint32_t)0x4308A1, printToString("Modified method detected : CCarCtrl::GenerateOneRandomCar - 0x4308A1 is 0x%X", *(uint32_t*)0x4308A1));
         
-        if (*(unsigned int*)0x4F62E4 == 0x22788166 && *(uint16_t*)0x4F62E8 == 0x1A7)
+        if (*(uint32_t*)0x4F62E4 == 0x22788166 && *(uint16_t*)0x4F62E8 == 0x1A7)
             injector::MakeJMP(0x4F62E4, patch4F62E4);
         else
-            logModified((unsigned int)0x4F62E4, printToString("Modified method detected : CAEVehicleAudioEntity::GetSirenState - 0x4F62E4 is 0x%X", *(unsigned int*)0x4F62E4));
+            logModified((uint32_t)0x4F62E4, printToString("Modified method detected : CAEVehicleAudioEntity::GetSirenState - 0x4F62E4 is 0x%X", *(uint32_t*)0x4F62E4));
 
-        if (*(unsigned int*)0x4F9CBC == 0x22798166 && *(uint16_t*)0x4F9CC0 == 0x1A7)
+        if (*(uint32_t*)0x4F9CBC == 0x22798166 && *(uint16_t*)0x4F9CC0 == 0x1A7)
             injector::MakeJMP(0x4F9CBC, patch4F9CBC);
         else
-            logModified((unsigned int)0x4F9CBC, printToString("Modified method detected : CAEVehicleAudioEntity::PlayHornOrSiren - 0x4F9CBC is 0x%X", *(unsigned int*)0x4F9CBC));
+            logModified((uint32_t)0x4F9CBC, printToString("Modified method detected : CAEVehicleAudioEntity::PlayHornOrSiren - 0x4F9CBC is 0x%X", *(uint32_t*)0x4F9CBC));
 
-        if (*(unsigned int*)0x44AB2A == 0x227F8166 && *(uint16_t*)0x44AB2E == 0x1A7)
+        if (*(uint32_t*)0x44AB2A == 0x227F8166 && *(uint16_t*)0x44AB2E == 0x1A7)
             injector::MakeJMP(0x44AB2A, patch44AB2A);
         else
-            logModified((unsigned int)0x44AB2A, printToString("Modified method detected : CGarage::Update - 0x44AB2A is 0x%X", *(unsigned int*)0x44AB2A));
+            logModified((uint32_t)0x44AB2A, printToString("Modified method detected : CGarage::Update - 0x44AB2A is 0x%X", *(uint32_t*)0x44AB2A));
 
-        if (*(unsigned int*)0x52AE34 == 0x22788166 && *(uint16_t*)0x52AE38 == 0x1A7)
+        if (*(uint32_t*)0x52AE34 == 0x22788166 && *(uint16_t*)0x52AE38 == 0x1A7)
             injector::MakeJMP(0x52AE34, patch52AE34);
         else
-            logModified((unsigned int)0x52AE34, printToString("Modified address : 0x52AE34 is 0x%X", *(unsigned int*)0x52AE34));
+            logModified((uint32_t)0x52AE34, printToString("Modified address : 0x52AE34 is 0x%X", *(uint32_t*)0x52AE34));
 
-        if (*(unsigned int*)0x4FB268 == 0x66104A8B && *(BYTE*)0x4FB26C == 0x8B)
+        if (*(uint32_t*)0x4FB268 == 0x66104A8B && *(BYTE*)0x4FB26C == 0x8B)
             injector::MakeJMP(0x4FB268, patch4FB268);
         else
-            logModified((unsigned int)0x4FB268, printToString("Modified method detected : CAEVehicleAudioEntity::ProcessMovingParts - 0x4FB268 is 0x%X", *(unsigned int*)0x4FB268));
+            logModified((uint32_t)0x4FB268, printToString("Modified method detected : CAEVehicleAudioEntity::ProcessMovingParts - 0x4FB268 is 0x%X", *(uint32_t*)0x4FB268));
 
-        if (*(unsigned int*)0x54742F == 0x224F8B66 && *(BYTE*)0x547433 == 0x66)
+        if (*(uint32_t*)0x54742F == 0x224F8B66 && *(BYTE*)0x547433 == 0x66)
             injector::MakeJMP(0x54742F, patch54742F);
         else
-            logModified((unsigned int)0x54742F, printToString("Modified method detected : CPhysical::PositionAttachedEntity - 0x54742F is 0x%X", *(unsigned int*)0x54742F));
+            logModified((uint32_t)0x54742F, printToString("Modified method detected : CPhysical::PositionAttachedEntity - 0x54742F is 0x%X", *(uint32_t*)0x54742F));
 
-        if (*(unsigned int*)0x5A0052 == 0x22468B66 && *(BYTE*)0x5A0056 == 0x66)
+        if (*(uint32_t*)0x5A0052 == 0x22468B66 && *(BYTE*)0x5A0056 == 0x66)
             injector::MakeJMP(0x5A0052, patch5A0052);
         else
-            logModified((unsigned int)0x5A0052, printToString("Modified method detected : CObject::SpecialEntityPreCollisionStuff - 0x5A0052 is 0x%X", *(unsigned int*)0x5A0052));
+            logModified((uint32_t)0x5A0052, printToString("Modified method detected : CObject::SpecialEntityPreCollisionStuff - 0x5A0052 is 0x%X", *(uint32_t*)0x5A0052));
         
-        if (*(unsigned int*)0x5A21C9 == 0x22488B66 && *(BYTE*)0x5A21CD == 0x66)
+        if (*(uint32_t*)0x5A21C9 == 0x22488B66 && *(BYTE*)0x5A21CD == 0x66)
             injector::MakeJMP(0x5A21C9, patch5A21C9);
         else
-            logModified((unsigned int)0x5A21C9, printToString("Modified method detected : CObject::ProcessControl - 0x5A21C9 is 0x%X", *(unsigned int*)0x5A21C9));
+            logModified((uint32_t)0x5A21C9, printToString("Modified method detected : CObject::ProcessControl - 0x5A21C9 is 0x%X", *(uint32_t*)0x5A21C9));
 
-        if (*(unsigned int*)0x6A1480 == 0x224F8B66 && *(BYTE*)0x6A1484 == 0x33)
+        if (*(uint32_t*)0x6A1480 == 0x224F8B66 && *(BYTE*)0x6A1484 == 0x33)
             injector::MakeJMP(0x6A1480, patch6A1480);
         else
-            logModified((unsigned int)0x6A1480, printToString("Modified method detected : CAutomobile::UpdateMovingCollision - 0x6A1480 is 0x%X", *(unsigned int*)0x6A1480));
+            logModified((uint32_t)0x6A1480, printToString("Modified method detected : CAutomobile::UpdateMovingCollision - 0x6A1480 is 0x%X", *(uint32_t*)0x6A1480));
 
-        if (*(unsigned int*)0x6A173B == 0x22478B66 && *(BYTE*)0x6A173F == 0x66)
+        if (*(uint32_t*)0x6A173B == 0x22478B66 && *(BYTE*)0x6A173F == 0x66)
             injector::MakeJMP(0x6A173B, patch6A173B);
         else
-            logModified((unsigned int)0x6A173B, printToString("Modified method detected : CAutomobile::UpdateMovingCollision - 0x6A173B is 0x%X", *(unsigned int*)0x6A173B));
+            logModified((uint32_t)0x6A173B, printToString("Modified method detected : CAutomobile::UpdateMovingCollision - 0x6A173B is 0x%X", *(uint32_t*)0x6A173B));
 
-        if (*(unsigned int*)0x6A1F69 == 0x224E8B66 && *(BYTE*)0x6A1F6D == 0x66)
+        if (*(uint32_t*)0x6A1F69 == 0x224E8B66 && *(BYTE*)0x6A1F6D == 0x66)
             injector::MakeJMP(0x6A1F69, patch6A1F69);
         else
-            logModified((unsigned int)0x6A1F69, printToString("Modified method detected : CAutomobile::AddMovingCollisionSpeed - 0x6A1F69 is 0x%X", *(unsigned int*)0x6A1F69));
+            logModified((uint32_t)0x6A1F69, printToString("Modified method detected : CAutomobile::AddMovingCollisionSpeed - 0x6A1F69 is 0x%X", *(uint32_t*)0x6A1F69));
 
-        if (*(unsigned int*)0x6A2162 == 0x22418B66 && *(BYTE*)0x6A2166 == 0x66)
+        if (*(uint32_t*)0x6A2162 == 0x22418B66 && *(BYTE*)0x6A2166 == 0x66)
             injector::MakeJMP(0x6A2162, patch6A2162);
         else
-            logModified((unsigned int)0x6A2162, printToString("Modified method detected : CAutomobile::GetMovingCollisionOffset - 0x6A2162 is 0x%X", *(unsigned int*)0x6A2162));
+            logModified((uint32_t)0x6A2162, printToString("Modified method detected : CAutomobile::GetMovingCollisionOffset - 0x6A2162 is 0x%X", *(uint32_t*)0x6A2162));
 
-        if (*(unsigned int*)0x6C7F30 == 0x227E8166 && *(uint16_t*)0x6C7F34 == 0x196)
+        if (*(uint32_t*)0x6C7F30 == 0x227E8166 && *(uint16_t*)0x6C7F34 == 0x196)
             injector::MakeJMP(0x6C7F30, patch6C7F30);
         else
-            logModified((unsigned int)0x6C7F30, printToString("Modified method detected : CMonsterTruck::PreRender - 0x6C7F30 is 0x%X", *(unsigned int*)0x6C7F30));
+            logModified((uint32_t)0x6C7F30, printToString("Modified method detected : CMonsterTruck::PreRender - 0x6C7F30 is 0x%X", *(uint32_t*)0x6C7F30));
 
-        if (*(unsigned int*)0x6D67B7 == 0x22468B66 && *(BYTE*)0x6D67BB == 0x66)
+        if (*(uint32_t*)0x6D67B7 == 0x22468B66 && *(BYTE*)0x6D67BB == 0x66)
             injector::MakeJMP(0x6D67B7, patch6D67B7);
         else
-            logModified((unsigned int)0x6D67B7, printToString("Modified method detected : CVehicle::SpecialEntityPreCollisionStuff - 0x6D67B7 is 0x%X", *(unsigned int*)0x6D67B7));
+            logModified((uint32_t)0x6D67B7, printToString("Modified method detected : CVehicle::SpecialEntityPreCollisionStuff - 0x6D67B7 is 0x%X", *(uint32_t*)0x6D67B7));
 
-        if (*(unsigned int*)0x5470BF == 0x22798166 && *(uint16_t*)0x5470C3 == 0x212)
+        if (*(uint32_t*)0x5470BF == 0x22798166 && *(uint16_t*)0x5470C3 == 0x212)
             injector::MakeJMP(0x5470BF, patch5470BF);
         else
-            logModified((unsigned int)0x5470BF, printToString("Modified method detected : CPhysical::PositionAttachedEntity - 0x5470BF is 0x%X", *(unsigned int*)0x5470BF));
+            logModified((uint32_t)0x5470BF, printToString("Modified method detected : CPhysical::PositionAttachedEntity - 0x5470BF is 0x%X", *(uint32_t*)0x5470BF));
 
-        if (*(unsigned int*)0x54D70D == 0x227F8166 && *(uint16_t*)0x54D711 == 0x212)
+        if (*(uint32_t*)0x54D70D == 0x227F8166 && *(uint16_t*)0x54D711 == 0x212)
             injector::MakeJMP(0x54D70D, patch54D70D);
         else
-            logModified((unsigned int)0x54D70D, printToString("Modified method detected : CPhysical::AttachEntityToEntity - 0x54D70D is 0x%X", *(unsigned int*)0x54D70D));
+            logModified((uint32_t)0x54D70D, printToString("Modified method detected : CPhysical::AttachEntityToEntity - 0x54D70D is 0x%X", *(uint32_t*)0x54D70D));
 
-        if (*(unsigned int*)0x5A0EBF == 0x227F8166 && *(uint16_t*)0x5A0EC3 == 0x212)
+        if (*(uint32_t*)0x5A0EBF == 0x227F8166 && *(uint16_t*)0x5A0EC3 == 0x212)
             injector::MakeJMP(0x5A0EBF, patch5A0EBF);
         else
-            logModified((unsigned int)0x5A0EBF, printToString("Modified method detected : CObject::ObjectDamage - 0x5A0EBF is 0x%X", *(unsigned int*)0x5A0EBF));
+            logModified((uint32_t)0x5A0EBF, printToString("Modified method detected : CObject::ObjectDamage - 0x5A0EBF is 0x%X", *(uint32_t*)0x5A0EBF));
 
-        if (*(unsigned int*)0x6A1648 == 0x227F8166 && *(uint16_t*)0x6A164C == 0x212)
+        if (*(uint32_t*)0x6A1648 == 0x227F8166 && *(uint16_t*)0x6A164C == 0x212)
             injector::MakeJMP(0x6A1648, patch6A1648);
         else
-            logModified((unsigned int)0x6A1648, printToString("Modified method detected : CAutomobile::UpdateMovingCollision - 0x6A1648 is 0x%X", *(unsigned int*)0x6A1648));
+            logModified((uint32_t)0x6A1648, printToString("Modified method detected : CAutomobile::UpdateMovingCollision - 0x6A1648 is 0x%X", *(uint32_t*)0x6A1648));
 
-        if (*(unsigned int*)0x6AD378 == 0x227E8166 && *(uint16_t*)0x6AD37C == 0x212)
+        if (*(uint32_t*)0x6AD378 == 0x227E8166 && *(uint16_t*)0x6AD37C == 0x212)
             injector::MakeJMP(0x6AD378, patch6AD378);
         else
-            logModified((unsigned int)0x6AD378, printToString("Modified method detected : CAutomobile::ProcessEntityCollision - 0x6AD378 is 0x%X", *(unsigned int*)0x6AD378));
+            logModified((uint32_t)0x6AD378, printToString("Modified method detected : CAutomobile::ProcessEntityCollision - 0x6AD378 is 0x%X", *(uint32_t*)0x6AD378));
 
-        if (*(unsigned int*)0x6E0FF8 == 0x227F8166 && *(uint16_t*)0x6E0FFC == 0x212)
+        if (*(uint32_t*)0x6E0FF8 == 0x227F8166 && *(uint16_t*)0x6E0FFC == 0x212)
             injector::MakeJMP(0x6E0FF8, patch6E0FF8);
         else
-            logModified((unsigned int)0x6E0FF8, printToString("Modified method detected : CVehicle::DoHeadLightBeam - 0x6E0FF8 is 0x%X", *(unsigned int*)0x6E0FF8));        
+            logModified((uint32_t)0x6E0FF8, printToString("Modified method detected : CVehicle::DoHeadLightBeam - 0x6E0FF8 is 0x%X", *(uint32_t*)0x6E0FF8));        
 
-        if (*(unsigned int*)0x6AC730 == 0xA9B910A1 && *(BYTE*)0x6AC734 == 0)
+        if (*(uint32_t*)0x6AC730 == 0xA9B910A1 && *(BYTE*)0x6AC734 == 0)
             injector::MakeJMP(0x6AC730, patch6AC730);
         else
-            logModified((unsigned int)0x6AC730, printToString("Modified method detected : CAutomobile::PreRender - 0x6AC730 is 0x%X", *(unsigned int*)0x6AC730));
+            logModified((uint32_t)0x6AC730, printToString("Modified method detected : CAutomobile::PreRender - 0x6AC730 is 0x%X", *(uint32_t*)0x6AC730));
 
-        if (*(unsigned int*)0x43064C == 0x01AFFF81 && *(uint16_t*)0x430650 == 0)
+        if (*(uint32_t*)0x43064C == 0x01AFFF81 && *(uint16_t*)0x430650 == 0)
             injector::MakeJMP(0x43064C, patch43064C);
         else
-            logModified((unsigned int)0x43064C, printToString("Modified method detected : CCarCtrl::GenerateOneRandomCar - 0x43064C is 0x%X", *(unsigned int*)0x43064C));
+            logModified((uint32_t)0x43064C, printToString("Modified method detected : CCarCtrl::GenerateOneRandomCar - 0x43064C is 0x%X", *(uint32_t*)0x43064C));
 
-        if (*(unsigned int*)0x64BCB3 == 0x22788166 && *(uint16_t*)0x64BCB7 == 0x1AF)
+        if (*(uint32_t*)0x64BCB3 == 0x22788166 && *(uint16_t*)0x64BCB7 == 0x1AF)
             injector::MakeJMP(0x64BCB3, patch64BCB3);
         else
-            logModified((unsigned int)0x64BCB3, printToString("Modified method detected : CTaskSimpleCarSetPedInAsDriver::ProcessPed - 0x64BCB3 is 0x%X", *(unsigned int*)0x64BCB3));
+            logModified((uint32_t)0x64BCB3, printToString("Modified method detected : CTaskSimpleCarSetPedInAsDriver::ProcessPed - 0x64BCB3 is 0x%X", *(uint32_t*)0x64BCB3));
 
-        if (*(unsigned int*)0x430640 == 0x01B5FF81 && *(uint16_t*)0x430644 == 0)
+        if (*(uint32_t*)0x430640 == 0x01B5FF81 && *(uint16_t*)0x430644 == 0)
             injector::MakeJMP(0x430640, patch430640);
         else
-            logModified((unsigned int)0x430640, printToString("Modified method detected : CCarCtrl::GenerateOneRandomCar - 0x430640 is 0x%X", *(unsigned int*)0x430640));
+            logModified((uint32_t)0x430640, printToString("Modified method detected : CCarCtrl::GenerateOneRandomCar - 0x430640 is 0x%X", *(uint32_t*)0x430640));
 
-        if (*(unsigned int*)0x6A155C == 0x22478B66 && *(BYTE*)0x6A1560 == 0x66)
+        if (*(uint32_t*)0x6A155C == 0x22478B66 && *(BYTE*)0x6A1560 == 0x66)
             injector::MakeJMP(0x6A155C, patch6A155C);
         else
-            logModified((unsigned int)0x6A155C, printToString("Modified method detected : CAutomobile::UpdateMovingCollision - 0x6A155C is 0x%X", *(unsigned int*)0x6A155C));
+            logModified((uint32_t)0x6A155C, printToString("Modified method detected : CAutomobile::UpdateMovingCollision - 0x6A155C is 0x%X", *(uint32_t*)0x6A155C));
 
-        if (*(unsigned int*)0x502222 == 0x22788166 && *(uint16_t*)0x502226 == 0x214)
+        if (*(uint32_t*)0x502222 == 0x22788166 && *(uint16_t*)0x502226 == 0x214)
             injector::MakeJMP(0x502222, patch502222);
         else
-            logModified((unsigned int)0x502222, printToString("Modified method detected : CAEVehicleAudioEntity::ProcessVehicle - 0x502222 is 0x%X", *(unsigned int*)0x502222));
+            logModified((uint32_t)0x502222, printToString("Modified method detected : CAEVehicleAudioEntity::ProcessVehicle - 0x502222 is 0x%X", *(uint32_t*)0x502222));
 
-        if (*(unsigned int*)0x6AA515 == 0x224E8B66 && *(BYTE*)0x6AA519 == 0x66)
+        if (*(uint32_t*)0x6AA515 == 0x224E8B66 && *(BYTE*)0x6AA519 == 0x66)
             injector::MakeJMP(0x6AA515, patch6AA515);
         else
-            logModified((unsigned int)0x6AA515, printToString("Modified method detected : CAutomobile::UpdateWheelMatrix - 0x6AA515 is 0x%X", *(unsigned int*)0x6AA515));
+            logModified((uint32_t)0x6AA515, printToString("Modified method detected : CAutomobile::UpdateWheelMatrix - 0x6AA515 is 0x%X", *(uint32_t*)0x6AA515));
+
+        if (*(uint32_t*)0x6D1ABA == 0x22478B66 && *(BYTE*)0x6D1ABE == 0x32)
+            injector::MakeJMP(0x6D1ABA, patch6D1ABA);
+        else
+            logModified((uint32_t)0x6D1ABA, printToString("Modified method detected : CVehicle::SetupPassenger - 0x6D1ABA is 0x%X", *(uint32_t*)0x6D1ABA));
 
 
         hookCall(0x871238, ProcessSuspensionHooked<0x871238>, "ProcessSuspension", true);
@@ -2437,10 +2462,10 @@ void installVehicleHooks()
         hookCall(0x6ABA60, RegisterCoronaHooked<0x6ABA60>, "RegisterCorona"); //CAutomobile::PreRender
         hookCall(0x6ABB35, RegisterCoronaHooked<0x6ABB35>, "RegisterCorona"); //CAutomobile::PreRender
         hookCall(0x6ABC69, RegisterCoronaHooked<0x6ABC69>, "RegisterCorona"); //CAutomobile::PreRender
-        if (*(unsigned int *)0x6ABA56 == 0x0000FF68 && *(BYTE*)0x6ABA5A == 0)
+        if (*(uint32_t *)0x6ABA56 == 0x0000FF68 && *(BYTE*)0x6ABA5A == 0)
             injector::MakeJMP(0x6ABA56, patchCoronas);
         else
-            logModified((unsigned int)0x6ABA56, printToString("Modified method detected : CAutomobile::PreRender - 0x6ABA56 is 0x%X", *(unsigned int*)0x6ABA56));
+            logModified((uint32_t)0x6ABA56, printToString("Modified method detected : CAutomobile::PreRender - 0x6ABA56 is 0x%X", *(uint32_t*)0x6ABA56));
 
         hookCall(0x6AB80F, AddLightHooked<0x6AB80F>, "AddLight"); //CAutomobile::PreRender
         hookCall(0x6ABBA6, AddLightHooked<0x6ABBA6>, "AddLight"); //CAutomobile::PreRender

@@ -70,6 +70,11 @@ const unsigned int jmp6AC735 = 0x6AC735;
 const unsigned int jmp6AD37E = 0x6AD37E;
 const unsigned int jmp6B4CF1 = 0x6B4CF1;
 const unsigned int jmp6C7F36 = 0x6C7F36;
+const unsigned int jmp6C8F43 = 0x6C8F43;
+const unsigned int jmp6C9000 = 0x6C9000;
+const unsigned int jmp6C9275 = 0x6C9275;
+const unsigned int jmp6CA94D = 0x6CA94D;
+const unsigned int jmp6CACF6 = 0x6CACF6;
 const unsigned int jmp6D1AC0 = 0x6D1AC0;
 const unsigned int jmp6D67BF = 0x6D67BF;
 const unsigned int jmp6E0FFE = 0x6E0FFE;
@@ -2112,6 +2117,77 @@ void __declspec(naked) patch6D1ABA()
     }
 }
 
+void __declspec(naked) patch6C8FFA()
+{
+    __asm {
+        push eax
+        push edi
+        call getVariationOriginalModel
+        cmp eax, 0x201
+        pop eax
+        jmp jmp6C9000
+    }
+}
+
+void __declspec(naked) patch6C926D()
+{
+    __asm {
+        push ecx
+        push eax
+        movsx eax, word ptr [esi+0x22]
+        push eax
+        call getVariationOriginalModel
+        mov cx, ax
+        pop eax
+        mov ax, cx
+        pop ecx
+        cmp ax, 0x200
+        jmp jmp6C9275
+    }
+}
+
+void __declspec(naked) patch6CA945()
+{
+    __asm {
+        push ecx
+        push eax
+        movsx eax, word ptr [esi + 0x22]
+        push eax
+        call getVariationOriginalModel
+        mov cx, ax
+        pop eax
+        mov ax, cx
+        pop ecx
+        cmp ax, 0x200
+        jmp jmp6CA94D
+    }
+}
+
+void __declspec(naked) patch6CACF0()
+{
+    __asm {
+        push eax
+        movsx eax, word ptr [esi + 0x22]
+        push eax
+        call getVariationOriginalModel
+        cmp eax, 0x201
+        pop eax
+        jmp jmp6CACF6
+    }
+}
+
+void __declspec(naked) patch6C8F3D()
+{
+    __asm {
+        push eax
+        push edi
+        call getVariationOriginalModel
+        cmp eax, 0x200
+        pop eax
+        jmp jmp6C8F43
+    }
+}
+
 void __declspec(naked) patchCoronas()
 {
     __asm {
@@ -2428,6 +2504,31 @@ void installVehicleHooks()
             injector::MakeJMP(0x6D1ABA, patch6D1ABA);
         else
             logModified((uint32_t)0x6D1ABA, printToString("Modified method detected : CVehicle::SetupPassenger - 0x6D1ABA is 0x%X", *(uint32_t*)0x6D1ABA));
+
+        if (*(uint32_t*)0x6C8FFA == 0x0201FF81 && *(uint16_t*)0x6C8FFE == 0)
+            injector::MakeJMP(0x6C8FFA, patch6C8FFA);
+        else
+            logModified((uint32_t)0x6C8FFA, printToString("Modified method detected : CPlane::CPlane - 0x6C8FFA is 0x%X", *(uint32_t*)0x6C8FFA));
+
+        if (*(uint32_t*)0x6C926D == 0x22468B66 && *(BYTE*)0x6C9271 == 0x66)
+            injector::MakeJMP(0x6C926D, patch6C926D);
+        else
+            logModified((uint32_t)0x6C926D, printToString("Modified method detected : CPlane::ProcessControl - 0x6C926D is 0x%X", *(uint32_t*)0x6C926D));
+
+        if (*(uint32_t*)0x6CA945 == 0x22468B66 && *(BYTE*)0x6CA949 == 0x66)
+            injector::MakeJMP(0x6CA945, patch6CA945);
+        else
+            logModified((uint32_t)0x6CA945, printToString("Modified method detected : CPlane::PreRender - 0x6CA945 is 0x%X", *(uint32_t*)0x6CA945));
+
+        if (*(uint32_t*)0x6CACF0 == 0x227E8166 && *(uint16_t*)0x6CACF4 == 0x201)
+            injector::MakeJMP(0x6CACF0, patch6CACF0);
+        else
+            logModified((uint32_t)0x6CACF0, printToString("Modified method detected : CPlane::OpenDoor - 0x6CACF0 is 0x%X", *(uint32_t*)0x6CACF0));
+
+        if (*(uint32_t*)0x6C8F3D == 0x0200FF81 && *(uint16_t*)0x6C8F41 == 0)
+            injector::MakeJMP(0x6C8F3D, patch6C8F3D);
+        else
+            logModified((uint32_t)0x6C8F3D, printToString("Modified method detected : CPlane::CPlane - 0x6C8F3D is 0x%X", *(uint32_t*)0x6C8F3D));
 
 
         hookCall(0x871238, ProcessSuspensionHooked<0x871238>, "ProcessSuspension", true);

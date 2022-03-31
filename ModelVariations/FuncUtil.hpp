@@ -17,3 +17,15 @@ inline void vectorUnion(std::vector<unsigned short>& vec1, std::vector<unsigned 
     dest.clear();
     std::set_union(vec1.begin(), vec1.end(), vec2.begin(), vec2.end(), std::back_inserter(dest));
 }
+
+inline std::string bytesToString(unsigned int address, int nBytes)
+{
+    std::stringstream ss;
+
+    for (int i = 0; i < nBytes; i++, ss << " ")
+        ss << std::hex << (unsigned int)(((unsigned char*)address)[i]);
+
+    std::string retString(ss.str());
+
+    return retString;
+}

@@ -564,6 +564,7 @@ void clearEverything()
     wepVariationModels.clear();
 
     //sets
+    dontInheritBehaviourModels.clear();
     parkedCars.clear();
     vehUseOnlyGroups.clear();
     pedMergeZones.clear();

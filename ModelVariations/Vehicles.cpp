@@ -1640,8 +1640,12 @@ void __declspec(naked) patch525462()
     __asm {
         push eax
         movsx eax, word ptr[edi + 0x22]
+        push ecx
+        push edx
         push eax
         call getVariationOriginalModel
+        pop edx
+        pop ecx
         cmp eax, 0x1BB
         pop eax
         jmp jmp52546A
@@ -1654,8 +1658,12 @@ void __declspec(naked) patch431BEB()
         push ebx
         mov ebx, eax
         movsx eax, word ptr [esi+0x22]
+        push ecx
+        push edx
         push eax
         call getVariationOriginalModel
+        pop edx
+        pop ecx
         mov bx, ax
         mov eax, ebx
         pop ebx
@@ -1669,8 +1677,12 @@ void __declspec(naked) patch64467D()
     __asm {
         push eax
         movsx eax, word ptr[eax + 0x22]
+        push ecx
+        push edx
         push eax
         call getVariationOriginalModel
+        pop edx
+        pop ecx
         cmp eax, 0x213
         pop eax
         jmp jmp644683
@@ -1682,8 +1694,12 @@ void __declspec(naked) patch51E5B8()
     __asm {
         push eax
         movsx eax, word ptr[esi + 0x22]
+        push ecx
+        push edx
         push eax
         call getVariationOriginalModel
+        pop edx
+        pop ecx
         cmp eax, 0x1B0
         pop eax
         jmp jmp51E5BE
@@ -1695,8 +1711,12 @@ void __declspec(naked) patch6B4CE8()
     __asm {
         push eax
         movsx eax, word ptr[esi+0x22]
+        push ecx
+        push edx
         push eax
         call getVariationOriginalModel
+        pop edx
+        pop ecx
         mov cx, ax
         pop eax
         cmp cx, 0x21B
@@ -1707,20 +1727,28 @@ void __declspec(naked) patch6B4CE8()
 void __declspec(naked) patch407293()
 {
     __asm {
+        pushfd
         push eax
         movsx eax, word ptr[esi + 0x22]
+        push ecx
+        push edx
         push eax
         call getVariationOriginalModel
+        pop edx
+        pop ecx
         cmp eax, 259h
         pop eax
         je isSWAT
         mov ebx, 259h
+        popfd
         jmp jmp729B7B
 
 isSWAT:
         movsx ebx, word ptr[esi + 0x22]
+        popfd
         jmp jmp729B7B
     }
+    
 }
 
 void __declspec(naked) patch5A0EAF()
@@ -1728,8 +1756,12 @@ void __declspec(naked) patch5A0EAF()
     __asm {
         push eax
         movsx eax, word ptr[eax + 0x22]
+        push ecx
+        push edx
         push eax
         call getVariationOriginalModel
+        pop edx
+        pop ecx
         cmp eax, 0x259
         pop eax
         jmp jmp5A0EB5
@@ -1741,8 +1773,12 @@ void __declspec(naked) patch4308A1()
     __asm {
         push eax
         movsx eax, word ptr[esi + 0x22]
+        push ecx
+        push edx
         push eax
         call getVariationOriginalModel
+        pop edx
+        pop ecx
         cmp eax, 0x1A7
         pop eax
         jmp jmp4308A7
@@ -1754,8 +1790,12 @@ void __declspec(naked) patch4F62E4()
     __asm {
         push eax
         movsx eax, word ptr[eax + 0x22]
+        push ecx
+        push edx
         push eax
         call getVariationOriginalModel
+        pop edx
+        pop ecx
         cmp eax, 0x1A7
         pop eax
         jmp jmp4F62EA
@@ -1767,8 +1807,12 @@ void __declspec(naked) patch4F9CBC()
     __asm {
         push eax
         movsx eax, word ptr[ecx + 0x22]
+        push ecx
+        push edx
         push eax
         call getVariationOriginalModel
+        pop edx
+        pop ecx
         cmp eax, 0x1A7
         pop eax
         jmp jmp4F9CC2
@@ -1780,8 +1824,12 @@ void __declspec(naked) patch52AE34()
     __asm {
         push eax
         movsx eax, word ptr[eax + 0x22]
+        push ecx
+        push edx
         push eax
         call getVariationOriginalModel
+        pop edx
+        pop ecx
         cmp eax, 0x1A7
         pop eax
         jmp jmp52AE3A
@@ -1793,8 +1841,12 @@ void __declspec(naked) patch44AB2A()
     __asm {
         push eax
         movsx eax, word ptr[edi + 0x22]
+        push ecx
+        push edx
         push eax
         call getVariationOriginalModel
+        pop edx
+        pop ecx
         cmp eax, 0x1A7
         pop eax
         jmp jmp44AB30
@@ -1804,11 +1856,12 @@ void __declspec(naked) patch44AB2A()
 void __declspec(naked) patch4FB268()
 {
     __asm {
-        mov ecx, [edx+0x10]
         push eax
         movsx eax, word ptr [ecx+0x22]
+        push edx
         push eax
         call getVariationOriginalModel
+        pop edx
         mov cx, ax
         pop eax
         mov ax, cx
@@ -1822,8 +1875,12 @@ void __declspec(naked) patch54742F()
     __asm {
         push eax
         movsx eax, word ptr [edi + 0x22]
+        push ecx
+        push edx
         push eax
         call getVariationOriginalModel
+        pop edx
+        pop ecx
         mov cx, ax
         pop eax
         cmp cx, 0x196
@@ -1837,11 +1894,13 @@ void __declspec(naked) patch5A0052()
         push ecx
         push eax
         movsx eax, word ptr [esi + 0x22]
+        push edx
         push eax
         call getVariationOriginalModel
-        pop ecx
+        pop edx
         mov cx, ax
-        mov eax, ecx
+        pop eax
+        mov ax, cx
         pop ecx
         cmp ax, 0x196
         jmp jmp5A005A
@@ -1853,8 +1912,12 @@ void __declspec(naked) patch5A21C9()
     __asm {
         push eax
         movsx eax, word ptr [eax + 0x22]
+        push ecx
+        push edx
         push eax
         call getVariationOriginalModel
+        pop edx
+        pop ecx
         mov cx, ax
         pop eax
         cmp cx, 0x196
@@ -1867,8 +1930,12 @@ void __declspec(naked) patch6A1480()
     __asm {
         push eax
         movsx eax, word ptr [edi+0x22]
+        push ecx
+        push edx
         push eax
         call getVariationOriginalModel
+        pop edx
+        pop ecx
         mov cx, ax
         pop eax
         xor esi, esi
@@ -1882,8 +1949,10 @@ void __declspec(naked) patch6A173B()
         push ecx
         push eax
         movsx eax, word ptr [edi+0x22]
+        push edx
         push eax
         call getVariationOriginalModel
+        pop edx
         mov cx, ax
         pop eax
         mov ax, cx
@@ -1898,8 +1967,12 @@ void __declspec(naked) patch6A1F69()
     __asm {
         push eax
         movsx eax, word ptr [esi + 0x22]
+        push ecx
+        push edx
         push eax
         call getVariationOriginalModel
+        pop edx
+        pop ecx
         mov cx, ax
         pop eax
         cmp cx, 0x196
@@ -1913,8 +1986,10 @@ void __declspec(naked) patch6A2162()
         push ecx
         push eax
         movsx eax, word ptr [ecx+0x22]
+        push edx
         push eax
         call getVariationOriginalModel
+        pop edx
         mov cx, ax
         pop eax
         mov ax, cx
@@ -1929,8 +2004,12 @@ void __declspec(naked) patch6C7F30()
     __asm {
         push eax
         movsx eax, word ptr [esi+0x22]
+        push ecx
+        push edx
         push eax
         call getVariationOriginalModel
+        pop edx
+        pop ecx
         cmp ax, 0x196
         pop eax
         jmp jmp6C7F36
@@ -1943,8 +2022,10 @@ void __declspec(naked) patch6D67B7()
         push ecx
         push eax
         movsx eax, word ptr [esi+0x22]
+        push edx
         push eax
         call getVariationOriginalModel
+        pop edx
         mov cx, ax
         pop eax
         mov ax, cx
@@ -1959,8 +2040,12 @@ void __declspec(naked) patch5470BF()
     __asm {
         push eax
         movsx eax, word ptr [ecx + 0x22]
+        push ecx
+        push edx
         push eax
         call getVariationOriginalModel
+        pop edx
+        pop ecx
         cmp eax, 0x212
         pop eax
         jmp jmp5470C5
@@ -1972,8 +2057,12 @@ void __declspec(naked) patch54D70D()
     __asm {
         push eax
         movsx eax, word ptr[edi + 0x22]
+        push ecx
+        push edx
         push eax
         call getVariationOriginalModel
+        pop edx
+        pop ecx
         cmp eax, 0x212
         pop eax
         jmp jmp54D713
@@ -1985,8 +2074,12 @@ void __declspec(naked) patch5A0EBF()
     __asm {
         push eax
         movsx eax, word ptr[edi+0x22]
+        push ecx
+        push edx
         push eax
         call getVariationOriginalModel
+        pop edx
+        pop ecx
         cmp eax, 0x212
         pop eax
         jmp jmp5A0EC5
@@ -1998,8 +2091,12 @@ void __declspec(naked) patch6A1648()
     __asm {
         push eax
         movsx eax, word ptr[edi + 0x22]
+        push ecx
+        push edx
         push eax
         call getVariationOriginalModel
+        pop edx
+        pop ecx
         cmp eax, 0x212
         pop eax
         jmp jmp6A164E
@@ -2011,8 +2108,12 @@ void __declspec(naked) patch6AD378()
     __asm {
         push eax
         movsx eax, word ptr[esi + 0x22]
+        push ecx
+        push edx
         push eax
         call getVariationOriginalModel
+        pop edx
+        pop ecx
         cmp eax, 0x212
         pop eax
         jmp jmp6AD37E
@@ -2024,8 +2125,12 @@ void __declspec(naked) patch6E0FF8()
     __asm {
         push eax
         movsx eax, word ptr[edi + 0x22]
+        push ecx
+        push edx
         push eax
         call getVariationOriginalModel
+        pop edx
+        pop ecx
         cmp eax, 0x212
         pop eax
         jmp jmp6E0FFE
@@ -2051,8 +2156,12 @@ void __declspec(naked) patch43064C()
 {
     __asm {
         push eax
+        push ecx
+        push edx
         push edi
         call getVariationOriginalModel
+        pop edx
+        pop ecx
         cmp eax, 0x1AF
         pop eax
         jmp jmp430652
@@ -2064,8 +2173,12 @@ void __declspec(naked) patch64BCB3()
     __asm {
         push eax
         movsx eax, word ptr [eax+0x22]
+        push ecx
+        push edx
         push eax
         call getVariationOriginalModel
+        pop edx
+        pop ecx
         cmp eax, 0x1AF
         pop eax
         jmp jmp64BCB9
@@ -2076,8 +2189,12 @@ void __declspec(naked) patch430640()
 {
     __asm {
         push eax
+        push ecx
+        push edx
         push edi
         call getVariationOriginalModel
+        pop edx
+        pop ecx
         cmp eax, 0x1B5
         pop eax
         jmp jmp430646
@@ -2090,13 +2207,22 @@ void __declspec(naked) patch6A155C()
         push ecx
         push eax
         movsx eax, word ptr [edi+0x22]
+        push edx
         push eax
         call getVariationOriginalModel
+        pop edx
         mov cx, ax
         pop eax
         mov ax, cx
         pop ecx
         cmp ax, 0x20C
+        je isCement
+        cmp ax, 0x220
+        mov ax, [edi+0x22]
+        jmp jmp6A1564
+
+isCement:
+        mov ax, [edi+0x22]
         jmp jmp6A1564
     }
 }
@@ -2106,8 +2232,12 @@ void __declspec(naked) patch502222()
     __asm {
         push eax
         movsx eax, word ptr [eax+0x22]
+        push ecx
+        push edx
         push eax
         call getVariationOriginalModel
+        pop edx
+        pop ecx
         cmp eax, 0x214
         pop eax
         jmp jmp502228
@@ -2119,8 +2249,12 @@ void __declspec(naked) patch6AA515()
     __asm {
         push eax
         movsx eax, word ptr [esi+0x22]
+        push ecx
+        push edx
         push eax
         call getVariationOriginalModel
+        pop edx
+        pop ecx
         mov cx, ax
         cmp eax, 0x214
         pop eax
@@ -2134,8 +2268,10 @@ void __declspec(naked) patch6D1ABA()
         push ecx
         push eax
         movsx eax, word ptr [edi+0x22]
+        push edx
         push eax
         call getVariationOriginalModel
+        pop edx
         mov cx, ax
         pop eax
         mov ax, cx
@@ -2149,8 +2285,12 @@ void __declspec(naked) patch6C8FFA()
 {
     __asm {
         push eax
+        push ecx
+        push edx
         push edi
         call getVariationOriginalModel
+        pop edx
+        pop ecx
         cmp eax, 0x201
         pop eax
         jmp jmp6C9000
@@ -2163,8 +2303,10 @@ void __declspec(naked) patch6C926D()
         push ecx
         push eax
         movsx eax, word ptr [esi+0x22]
+        push edx
         push eax
         call getVariationOriginalModel
+        pop edx
         mov cx, ax
         pop eax
         mov ax, cx
@@ -2180,8 +2322,10 @@ void __declspec(naked) patch6CA945()
         push ecx
         push eax
         movsx eax, word ptr [esi + 0x22]
+        push edx
         push eax
         call getVariationOriginalModel
+        pop edx
         mov cx, ax
         pop eax
         mov ax, cx
@@ -2196,8 +2340,12 @@ void __declspec(naked) patch6CACF0()
     __asm {
         push eax
         movsx eax, word ptr [esi + 0x22]
+        push ecx
+        push edx
         push eax
         call getVariationOriginalModel
+        pop edx
+        pop ecx
         cmp eax, 0x201
         pop eax
         jmp jmp6CACF6
@@ -2208,8 +2356,12 @@ void __declspec(naked) patch6C8F3D()
 {
     __asm {
         push eax
+        push ecx
+        push edx
         push edi
         call getVariationOriginalModel
+        pop edx
+        pop ecx
         cmp eax, 0x200
         pop eax
         jmp jmp6C8F43

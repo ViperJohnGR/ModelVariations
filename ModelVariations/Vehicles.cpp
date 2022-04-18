@@ -3,7 +3,6 @@
 #include "Hooks.hpp"
 #include "LogUtil.hpp"
 #include <plugin.h>
-#include <../../injector/assembly.hpp>
 
 #include <CBoat.h>
 #include <CCarCtrl.h>
@@ -24,6 +23,30 @@
 
 using namespace plugin;
 
+enum eRegs16
+{
+    REG_AX,
+    REG_CX,
+    REG_DX,
+    REG_BX,
+    REG_SP,
+    REG_BP,
+    REG_SI,
+    REG_DI,
+};
+
+enum eRegs32
+{
+    REG_EAX,
+    REG_ECX,
+    REG_EDX,
+    REG_EBX,
+    REG_ESP,
+    REG_EBP,
+    REG_ESI,
+    REG_EDI,
+};
+
 unsigned short roadblockModel = 0;
 int sirenModel = -1;
 unsigned short lightsModel = 0;
@@ -33,52 +56,15 @@ unsigned short currentOccupantsModel = 0;
 int fireCmpModel = -1;
 
 int passengerModelIndex = -1;
-const unsigned int jmp430646 = 0x430646;
-const unsigned int jmp430652 = 0x430652;
-const unsigned int jmp4308A7 = 0x4308A7;
-const unsigned int jmp431BF2 = 0x431BF2;
-const unsigned int jmp44AB30 = 0x44AB30;
-const unsigned int jmp4C8AD7 = 0x4C8AD7;
-const unsigned int jmp4C8ADF = 0x4C8ADF;
-const unsigned int jmp4F62EA = 0x4F62EA;
-const unsigned int jmp4F9CC2 = 0x4F9CC2;
-const unsigned int jmp4FB26F = 0x4FB26F;
-const unsigned int jmp502228 = 0x502228;
-const unsigned int jmp51E5BE = 0x51E5BE;
-const unsigned int jmp52546A = 0x52546A;
-const unsigned int jmp52AE3A = 0x52AE3A;
-const unsigned int jmp5470C5 = 0x5470C5;
-const unsigned int jmp547438 = 0x547438;
-const unsigned int jmp54D713 = 0x54D713;
-const unsigned int jmp5A005A = 0x5A005A;
-const unsigned int jmp5A0EB5 = 0x5A0EB5;
-const unsigned int jmp5A0EC5 = 0x5A0EC5;
-const unsigned int jmp5A21D2 = 0x5A21D2;
-const unsigned int jmp613B7E = 0x613B7E;
-const unsigned int jmp644683 = 0x644683;
-const unsigned int jmp64BCB9 = 0x64BCB9;
-const unsigned int jmp6A1486 = 0x6A1486;
-const unsigned int jmp6A1564 = 0x6A1564;
-const unsigned int jmp6A164E = 0x6A164E;
-const unsigned int jmp6A1743 = 0x6A1743;
-const unsigned int jmp6A1F72 = 0x6A1F72;
-const unsigned int jmp6A216A = 0x6A216A;
-const unsigned int jmp6AA51E = 0x6AA51E;
-const unsigned int jmp6AB35A = 0x6AB35A;
-const unsigned int jmp6ABA65 = 0x6ABA65;
-const unsigned int jmp6AC735 = 0x6AC735;
-const unsigned int jmp6AD37E = 0x6AD37E;
-const unsigned int jmp6B4CF1 = 0x6B4CF1;
-const unsigned int jmp6C7F36 = 0x6C7F36;
-const unsigned int jmp6C8F43 = 0x6C8F43;
-const unsigned int jmp6C9000 = 0x6C9000;
-const unsigned int jmp6C9275 = 0x6C9275;
-const unsigned int jmp6CA94D = 0x6CA94D;
-const unsigned int jmp6CACF6 = 0x6CACF6;
-const unsigned int jmp6D1AC0 = 0x6D1AC0;
-const unsigned int jmp6D67BF = 0x6D67BF;
-const unsigned int jmp6E0FFE = 0x6E0FFE;
-const unsigned int jmp729B7B = 0x729B7B;
+constexpr unsigned int jmp4C8AD7 = 0x4C8AD7;
+constexpr unsigned int jmp4C8ADF = 0x4C8ADF;
+constexpr unsigned int jmp613B7E = 0x613B7E;
+constexpr unsigned int jmp6A1564 = 0x6A1564;
+constexpr unsigned int jmp6AB35A = 0x6AB35A;
+constexpr unsigned int jmp6ABA65 = 0x6ABA65;
+constexpr unsigned int jmp6AC735 = 0x6AC735;
+constexpr unsigned int jmp6B0CF6 = 0x6B0CF6;
+constexpr unsigned int jmp729B7B = 0x729B7B;
 int carGenModel = -1;
 
 void checkNumGroups(std::vector<unsigned short>& vec, BYTE numGroups)
@@ -554,7 +540,7 @@ void hookTaxi()
     CPlayerPed* player = FindPlayerPed();
     if (player == NULL)
         return;
-    CVehicle* vehicle = player->m_pVehicle;
+    const CVehicle* vehicle = player->m_pVehicle;
     if (vehicle == NULL)
         return;
 
@@ -576,7 +562,7 @@ void hookTaxi()
 template <unsigned int address>
 int __cdecl ChooseModelHooked(int* a1)
 {
-    int model = callOriginalAndReturn<int, address>(a1);
+    const int model = callOriginalAndReturn<int, address>(a1);
     //int model = CCarCtrl::ChooseModel(a1);
 
     if (model < 400 || model > 611)
@@ -591,7 +577,7 @@ int __cdecl ChooseModelHooked(int* a1)
 template <unsigned int address>
 int __cdecl ChoosePoliceCarModelHooked(int a1)
 {
-    int model = callOriginalAndReturn<int, address>(a1);
+    const int model = callOriginalAndReturn<int, address>(a1);
     //int model = CCarCtrl::ChoosePoliceCarModel(a1);
 
     if (model < 427 || model > 601)
@@ -614,9 +600,9 @@ void __cdecl AddPoliceCarOccupantsHooked(CVehicle* a2, char a3)
         auto it = modelNumGroups.find(a2->m_nModelIndex);
         if (it != modelNumGroups.end())
         {
-            CWanted* wanted = FindPlayerWanted(-1);
-            unsigned int wantedLevel = (wanted->m_nWantedLevel > 0) ? (wanted->m_nWantedLevel - 1) : (wanted->m_nWantedLevel);
-            unsigned int i = CGeneral::GetRandomNumberInRange(0, (int)vehGroupWantedVariations[a2->m_nModelIndex][wantedLevel].size());
+            const CWanted* wanted = FindPlayerWanted(-1);
+            const unsigned int wantedLevel = (wanted->m_nWantedLevel > 0) ? (wanted->m_nWantedLevel - 1) : (wanted->m_nWantedLevel);
+            const unsigned int i = CGeneral::GetRandomNumberInRange(0, (int)vehGroupWantedVariations[a2->m_nModelIndex][wantedLevel].size());
             currentOccupantsModel = a2->m_nModelIndex;
 
             std::vector<unsigned short> zoneGroups = iniVeh.ReadLine(std::to_string(a2->m_nModelIndex), currentZone, true);
@@ -643,7 +629,7 @@ void __cdecl AddPoliceCarOccupantsHooked(CVehicle* a2, char a3)
         }
     }
 
-    unsigned short model = a2->m_nModelIndex;
+    const unsigned short model = a2->m_nModelIndex;
     a2->m_nModelIndex = (unsigned short)getVariationOriginalModel(a2->m_nModelIndex);
 
     callOriginal<address>(a2, a3);
@@ -654,27 +640,10 @@ void __cdecl AddPoliceCarOccupantsHooked(CVehicle* a2, char a3)
     currentOccupantsModel = 0;
 }
 
-template <unsigned int address, bool keepOriginal = false>
+template <unsigned int address>
 CAutomobile* __fastcall CAutomobileHooked(CAutomobile* automobile, void*, int modelIndex, char usageType, char bSetupSuspensionLines)
 {
-    int randomVariation = modelIndex;
-
-    if (!keepOriginal)
-        randomVariation = getRandomVariation(modelIndex);
-
-    switch (getVariationOriginalModel(modelIndex))
-    {
-    case 409: //Stretch
-        return changeModelAndReturn<CAutomobile*, address>("CAutomobile::CAutomobile", 409, randomVariation, { (uint16_t*)0x6B0F66 }, automobile, randomVariation, usageType, bSetupSuspensionLines);
-    case 432: //Rhino
-        return changeModelAndReturn<CAutomobile*, address>("CAutomobile::CAutomobile", 432, randomVariation, { (uint16_t*)0x6B0CF4 , (uint16_t*)0x6B12D8 }, automobile, randomVariation, usageType, bSetupSuspensionLines);
-    case 525: //Towtruck
-        return changeModelAndReturn<CAutomobile*, address>("CAutomobile::CAutomobile", 525, randomVariation, { (uint16_t*)0x6B0EE8 }, automobile, randomVariation, usageType, bSetupSuspensionLines);
-    case 531: //Tractor
-        return changeModelAndReturn<CAutomobile*, address>("CAutomobile::CAutomobile", 531, randomVariation, { (uint16_t*)0x6B0F11 }, automobile, randomVariation, usageType, bSetupSuspensionLines);
-    }
-
-    return callMethodOriginalAndReturn<CAutomobile*, address>(automobile, randomVariation, usageType, bSetupSuspensionLines);
+    return callMethodOriginalAndReturn<CAutomobile*, address>(automobile, getRandomVariation(modelIndex), usageType, bSetupSuspensionLines);
 }
 
 template <unsigned int address>
@@ -694,7 +663,7 @@ signed int __fastcall PickRandomCarHooked(CLoadedCarGroup* cargrp, void*, char a
             carGenModel = 531;
         }
         else
-            logModified((unsigned int)0x6F3B9A, "Modified method detected : CCarGenerator::DoInternalProcessing - 0x6F3B9A is %d" + std::to_string(*(uint16_t*)0x6F3B9A));
+            logModified((unsigned int)0x6F3B9A, "Modified method detected : CCarGenerator::DoInternalProcessing - 0x6F3B9A is " + std::to_string(*(uint16_t*)0x6F3B9A));
     }
     else if (originalModel == 532) //Combine Harvester
     {
@@ -704,7 +673,7 @@ signed int __fastcall PickRandomCarHooked(CLoadedCarGroup* cargrp, void*, char a
             carGenModel = 532;
         }
         else
-            logModified((unsigned int)0x6F3BA0, "Modified method detected : CCarGenerator::DoInternalProcessing - 0x6F3BA0 is %d" + std::to_string(*(uint16_t*)0x6F3BA0));
+            logModified((unsigned int)0x6F3BA0, "Modified method detected : CCarGenerator::DoInternalProcessing - 0x6F3BA0 is " + std::to_string(*(uint16_t*)0x6F3BA0));
     }
 
     return variation;
@@ -751,7 +720,7 @@ void __fastcall DoInternalProcessingHooked(CCarGenerator* park) //for non-random
                 else
                 {
                     callMethodOriginal<address>(park);
-                    logModified((unsigned int)0x6F3B9A, "Modified method detected : CCarGenerator::DoInternalProcessing - 0x6F3B9A is %d" + std::to_string(*(uint16_t*)0x6F3B9A));
+                    logModified((unsigned int)0x6F3B9A, "Modified method detected : CCarGenerator::DoInternalProcessing - 0x6F3B9A is " + std::to_string(*(uint16_t*)0x6F3B9A));
                     return;
                 }
             }
@@ -768,7 +737,7 @@ void __fastcall DoInternalProcessingHooked(CCarGenerator* park) //for non-random
                 else
                 {
                     callMethodOriginal<address>(park);
-                    logModified((unsigned int)0x6F3BA0, "Modified method detected : CCarGenerator::DoInternalProcessing - 0x6F3BA0 is %d" + std::to_string(*(uint16_t*)0x6F3BA0));
+                    logModified((unsigned int)0x6F3BA0, "Modified method detected : CCarGenerator::DoInternalProcessing - 0x6F3BA0 is " + std::to_string(*(uint16_t*)0x6F3BA0));
                     return;
                 }
             }
@@ -952,14 +921,14 @@ void __fastcall CollectParametersHooked(CRunningScript* script, void*, unsigned 
     if (player == NULL)
         return;
 
-    int hplayer = CPools::GetPedRef(player);
+    const int hplayer = CPools::GetPedRef(player);
 
     if ((int)(CTheScripts::ScriptParams[0].uParam) != hplayer)
         return;
 
     if (player->m_pVehicle)
     {
-        int originalModel = getVariationOriginalModel(player->m_pVehicle->m_nModelIndex);
+        const int originalModel = getVariationOriginalModel(player->m_pVehicle->m_nModelIndex);
         if ((int)(CTheScripts::ScriptParams[1].uParam) == originalModel)
             CTheScripts::ScriptParams[1].uParam = player->m_pVehicle->m_nModelIndex;
     }
@@ -1000,9 +969,9 @@ void __cdecl SetUpDriverAndPassengersForVehicleHooked(CVehicle* car, int a3, int
         auto it = modelNumGroups.find(car->m_nModelIndex);
         if (it != modelNumGroups.end())
         {
-            CWanted* wanted = FindPlayerWanted(-1);
-            unsigned int wantedLevel = (wanted->m_nWantedLevel > 0) ? (wanted->m_nWantedLevel - 1) : (wanted->m_nWantedLevel);
-            unsigned int i = CGeneral::GetRandomNumberInRange(0, (int)vehGroupWantedVariations[car->m_nModelIndex][wantedLevel].size());
+            const CWanted* wanted = FindPlayerWanted(-1);
+            const unsigned int wantedLevel = (wanted->m_nWantedLevel > 0) ? (wanted->m_nWantedLevel - 1) : (wanted->m_nWantedLevel);
+            const unsigned int i = CGeneral::GetRandomNumberInRange(0, (int)vehGroupWantedVariations[car->m_nModelIndex][wantedLevel].size());
             currentOccupantsModel = car->m_nModelIndex;
 
             std::vector<unsigned short> zoneGroups = iniVeh.ReadLine(std::to_string(car->m_nModelIndex), currentZone, true);
@@ -1238,7 +1207,7 @@ void __cdecl PossiblyRemoveVehicleHooked(CVehicle* car)
     if (car == NULL)
         return;
 
-    int originalModel = getVariationOriginalModel(car->m_nModelIndex);
+    const int originalModel = getVariationOriginalModel(car->m_nModelIndex);
     if (originalModel != 407 && originalModel != 416)
     {
         callOriginal<address>(car);
@@ -1315,9 +1284,9 @@ void __declspec(naked) enableSirenLights()
 template <unsigned int address>
 void __fastcall PreRenderHooked(CAutomobile* veh)
 {
-    BYTE sirenOriginal[5] = { *(BYTE*)0x6AB350, *(BYTE*)0x6AB351, *(BYTE*)0x6AB352, *(BYTE*)0x6AB353, *(BYTE*)0x6AB354 };
+    const BYTE sirenOriginal[5] = { *(BYTE*)0x6AB350, *(BYTE*)0x6AB351, *(BYTE*)0x6AB352, *(BYTE*)0x6AB353, *(BYTE*)0x6AB354 };
 
-    auto sirenRestore = [sirenOriginal]()
+    const auto sirenRestore = [sirenOriginal]()
     {
         ((BYTE*)0x6AB350)[0] = sirenOriginal[0];
         ((BYTE*)0x6AB350)[1] = sirenOriginal[1];
@@ -1538,7 +1507,7 @@ void __cdecl RegisterCarBlownUpByPlayerHooked(CVehicle* vehicle, int a2)
 {
     if (vehicle != NULL)
     {
-        auto model = vehicle->m_nModelIndex;
+        const auto model = vehicle->m_nModelIndex;
         vehicle->m_nModelIndex = (unsigned short)getVariationOriginalModel(vehicle->m_nModelIndex);
         callOriginal<address>(vehicle, a2);
         vehicle->m_nModelIndex = model;
@@ -1571,7 +1540,7 @@ signed int __cdecl SetupEntityVisibilityHooked(CEntity* a1, float* a2)
         if (*(uint16_t*)0x554336 == 437)
         {
             *(uint16_t*)0x554336 = a1->m_nModelIndex;
-            signed int retValue = callOriginalAndReturn<signed int, address>(a1, a2);
+            const signed int retValue = callOriginalAndReturn<signed int, address>(a1, a2);
             *(uint16_t*)0x554336 = 437;
             return retValue;
         }
@@ -1593,7 +1562,7 @@ int __cdecl GetMaximumNumberOfPassengersFromNumberOfDoorsHooked(__int16 modelInd
         if (*(short*)0x4C8AD3 == 437)
         {
             *(short*)0x4C8AD3 = modelIndex;
-            signed int retValue = callOriginalAndReturn<int, address>(modelIndex);
+            const signed int retValue = callOriginalAndReturn<int, address>(modelIndex);
             *(short*)0x4C8AD3 = 437;
             return retValue;
         }
@@ -1608,7 +1577,7 @@ int __cdecl GetMaximumNumberOfPassengersFromNumberOfDoorsHooked(__int16 modelInd
         if (*(short*)0x4C8ADB == 431)
         {
             *(short*)0x4C8ADB = modelIndex;
-            signed int retValue = callOriginalAndReturn<int, address>(modelIndex);
+            const signed int retValue = callOriginalAndReturn<int, address>(modelIndex);
             *(short*)0x4C8ADB = 431;
             return retValue;
         }
@@ -1634,95 +1603,6 @@ void __fastcall DoHeadLightReflectionHooked(CVehicle* veh, void*, RwMatrixTag* m
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////  ASM HOOKS  /////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
-
-void __declspec(naked) patch525462()
-{
-    __asm {
-        push eax
-        movsx eax, word ptr[edi + 0x22]
-        push ecx
-        push edx
-        push eax
-        call getVariationOriginalModel
-        pop edx
-        pop ecx
-        cmp eax, 0x1BB
-        pop eax
-        jmp jmp52546A
-    }
-}
-
-void __declspec(naked) patch431BEB()
-{
-    __asm {
-        push ebx
-        mov ebx, eax
-        movsx eax, word ptr [esi+0x22]
-        push ecx
-        push edx
-        push eax
-        call getVariationOriginalModel
-        pop edx
-        pop ecx
-        mov bx, ax
-        mov eax, ebx
-        pop ebx
-        add esp, 4        
-        jmp jmp431BF2
-    }
-}
-
-void __declspec(naked) patch64467D()
-{
-    __asm {
-        push eax
-        movsx eax, word ptr[eax + 0x22]
-        push ecx
-        push edx
-        push eax
-        call getVariationOriginalModel
-        pop edx
-        pop ecx
-        cmp eax, 0x213
-        pop eax
-        jmp jmp644683
-    }
-}
-
-void __declspec(naked) patch51E5B8()
-{
-    __asm {
-        push eax
-        movsx eax, word ptr[esi + 0x22]
-        push ecx
-        push edx
-        push eax
-        call getVariationOriginalModel
-        pop edx
-        pop ecx
-        cmp eax, 0x1B0
-        pop eax
-        jmp jmp51E5BE
-    }
-}
-
-void __declspec(naked) patch6B4CE8()
-{
-    __asm {
-        push eax
-        movsx eax, word ptr[esi+0x22]
-        push ecx
-        push edx
-        push eax
-        call getVariationOriginalModel
-        pop edx
-        pop ecx
-        mov cx, ax
-        pop eax
-        cmp cx, 0x21B
-        jmp jmp6B4CF1
-    }
-}
 
 void __declspec(naked) patch407293()
 {
@@ -1751,392 +1631,6 @@ isSWAT:
     
 }
 
-void __declspec(naked) patch5A0EAF()
-{
-    __asm {
-        push eax
-        movsx eax, word ptr[eax + 0x22]
-        push ecx
-        push edx
-        push eax
-        call getVariationOriginalModel
-        pop edx
-        pop ecx
-        cmp eax, 0x259
-        pop eax
-        jmp jmp5A0EB5
-    }
-}
-
-void __declspec(naked) patch4308A1()
-{
-    __asm {
-        push eax
-        movsx eax, word ptr[esi + 0x22]
-        push ecx
-        push edx
-        push eax
-        call getVariationOriginalModel
-        pop edx
-        pop ecx
-        cmp eax, 0x1A7
-        pop eax
-        jmp jmp4308A7
-    }
-}
-
-void __declspec(naked) patch4F62E4()
-{
-    __asm {
-        push eax
-        movsx eax, word ptr[eax + 0x22]
-        push ecx
-        push edx
-        push eax
-        call getVariationOriginalModel
-        pop edx
-        pop ecx
-        cmp eax, 0x1A7
-        pop eax
-        jmp jmp4F62EA
-    }
-}
-
-void __declspec(naked) patch4F9CBC()
-{
-    __asm {
-        push eax
-        movsx eax, word ptr[ecx + 0x22]
-        push ecx
-        push edx
-        push eax
-        call getVariationOriginalModel
-        pop edx
-        pop ecx
-        cmp eax, 0x1A7
-        pop eax
-        jmp jmp4F9CC2
-    }
-}
-
-void __declspec(naked) patch52AE34()
-{
-    __asm {
-        push eax
-        movsx eax, word ptr[eax + 0x22]
-        push ecx
-        push edx
-        push eax
-        call getVariationOriginalModel
-        pop edx
-        pop ecx
-        cmp eax, 0x1A7
-        pop eax
-        jmp jmp52AE3A
-    }
-}
-
-void __declspec(naked) patch44AB2A()
-{
-    __asm {
-        push eax
-        movsx eax, word ptr[edi + 0x22]
-        push ecx
-        push edx
-        push eax
-        call getVariationOriginalModel
-        pop edx
-        pop ecx
-        cmp eax, 0x1A7
-        pop eax
-        jmp jmp44AB30
-    }
-}
-
-void __declspec(naked) patch4FB268()
-{
-    __asm {
-        push eax
-        movsx eax, word ptr [ecx+0x22]
-        push edx
-        push eax
-        call getVariationOriginalModel
-        pop edx
-        mov cx, ax
-        pop eax
-        mov ax, cx
-        mov ecx, [edx+0x10]
-        jmp jmp4FB26F
-    }
-}
-
-void __declspec(naked) patch54742F()
-{
-    __asm {
-        push eax
-        movsx eax, word ptr [edi + 0x22]
-        push ecx
-        push edx
-        push eax
-        call getVariationOriginalModel
-        pop edx
-        pop ecx
-        mov cx, ax
-        pop eax
-        cmp cx, 0x196
-        jmp jmp547438
-    }
-}
-
-void __declspec(naked) patch5A0052()
-{
-    __asm {
-        push ecx
-        push eax
-        movsx eax, word ptr [esi + 0x22]
-        push edx
-        push eax
-        call getVariationOriginalModel
-        pop edx
-        mov cx, ax
-        pop eax
-        mov ax, cx
-        pop ecx
-        cmp ax, 0x196
-        jmp jmp5A005A
-    }
-}
-
-void __declspec(naked) patch5A21C9()
-{
-    __asm {
-        push eax
-        movsx eax, word ptr [eax + 0x22]
-        push ecx
-        push edx
-        push eax
-        call getVariationOriginalModel
-        pop edx
-        pop ecx
-        mov cx, ax
-        pop eax
-        cmp cx, 0x196
-        jmp jmp5A21D2
-    }
-}
-
-void __declspec(naked) patch6A1480()
-{
-    __asm {
-        push eax
-        movsx eax, word ptr [edi+0x22]
-        push ecx
-        push edx
-        push eax
-        call getVariationOriginalModel
-        pop edx
-        pop ecx
-        mov cx, ax
-        pop eax
-        xor esi, esi
-        jmp jmp6A1486
-    }
-}
-
-void __declspec(naked) patch6A173B()
-{
-    __asm {
-        push ecx
-        push eax
-        movsx eax, word ptr [edi+0x22]
-        push edx
-        push eax
-        call getVariationOriginalModel
-        pop edx
-        mov cx, ax
-        pop eax
-        mov ax, cx
-        pop ecx
-        cmp ax, 0x1E6
-        jmp jmp6A1743
-    }
-}
-
-void __declspec(naked) patch6A1F69()
-{
-    __asm {
-        push eax
-        movsx eax, word ptr [esi + 0x22]
-        push ecx
-        push edx
-        push eax
-        call getVariationOriginalModel
-        pop edx
-        pop ecx
-        mov cx, ax
-        pop eax
-        cmp cx, 0x196
-        jmp jmp6A1F72
-    }
-}
-
-void __declspec(naked) patch6A2162()
-{
-    __asm {
-        push ecx
-        push eax
-        movsx eax, word ptr [ecx+0x22]
-        push edx
-        push eax
-        call getVariationOriginalModel
-        pop edx
-        mov cx, ax
-        pop eax
-        mov ax, cx
-        pop ecx
-        cmp ax, 0x196
-        jmp jmp6A216A
-    }
-}
-
-void __declspec(naked) patch6C7F30()
-{
-    __asm {
-        push eax
-        movsx eax, word ptr [esi+0x22]
-        push ecx
-        push edx
-        push eax
-        call getVariationOriginalModel
-        pop edx
-        pop ecx
-        cmp ax, 0x196
-        pop eax
-        jmp jmp6C7F36
-    }
-}
-
-void __declspec(naked) patch6D67B7()
-{
-    __asm {
-        push ecx
-        push eax
-        movsx eax, word ptr [esi+0x22]
-        push edx
-        push eax
-        call getVariationOriginalModel
-        pop edx
-        mov cx, ax
-        pop eax
-        mov ax, cx
-        pop ecx
-        cmp ax, 0x196
-        jmp jmp6D67BF
-    }
-}
-
-void __declspec(naked) patch5470BF()
-{
-    __asm {
-        push eax
-        movsx eax, word ptr [ecx + 0x22]
-        push ecx
-        push edx
-        push eax
-        call getVariationOriginalModel
-        pop edx
-        pop ecx
-        cmp eax, 0x212
-        pop eax
-        jmp jmp5470C5
-    }
-}
-
-void __declspec(naked) patch54D70D()
-{
-    __asm {
-        push eax
-        movsx eax, word ptr[edi + 0x22]
-        push ecx
-        push edx
-        push eax
-        call getVariationOriginalModel
-        pop edx
-        pop ecx
-        cmp eax, 0x212
-        pop eax
-        jmp jmp54D713
-    }
-}
-
-void __declspec(naked) patch5A0EBF()
-{
-    __asm {
-        push eax
-        movsx eax, word ptr[edi+0x22]
-        push ecx
-        push edx
-        push eax
-        call getVariationOriginalModel
-        pop edx
-        pop ecx
-        cmp eax, 0x212
-        pop eax
-        jmp jmp5A0EC5
-    }
-}
-
-void __declspec(naked) patch6A1648()
-{
-    __asm {
-        push eax
-        movsx eax, word ptr[edi + 0x22]
-        push ecx
-        push edx
-        push eax
-        call getVariationOriginalModel
-        pop edx
-        pop ecx
-        cmp eax, 0x212
-        pop eax
-        jmp jmp6A164E
-    }
-}
-
-void __declspec(naked) patch6AD378()
-{
-    __asm {
-        push eax
-        movsx eax, word ptr[esi + 0x22]
-        push ecx
-        push edx
-        push eax
-        call getVariationOriginalModel
-        pop edx
-        pop ecx
-        cmp eax, 0x212
-        pop eax
-        jmp jmp6AD37E
-    }
-}
-
-void __declspec(naked) patch6E0FF8()
-{
-    __asm {
-        push eax
-        movsx eax, word ptr[edi + 0x22]
-        push ecx
-        push edx
-        push eax
-        call getVariationOriginalModel
-        pop edx
-        pop ecx
-        cmp eax, 0x212
-        pop eax
-        jmp jmp6E0FFE
-    }
-}
-
 void __declspec(naked) patch6AC730()
 {
     __asm {
@@ -2149,55 +1643,6 @@ void __declspec(naked) patch6AC730()
         mov eax, [ecx]
         pop ecx
         jmp jmp6AC735
-    }
-}
-
-void __declspec(naked) patch43064C()
-{
-    __asm {
-        push eax
-        push ecx
-        push edx
-        push edi
-        call getVariationOriginalModel
-        pop edx
-        pop ecx
-        cmp eax, 0x1AF
-        pop eax
-        jmp jmp430652
-    }
-}
-
-void __declspec(naked) patch64BCB3()
-{
-    __asm {
-        push eax
-        movsx eax, word ptr [eax+0x22]
-        push ecx
-        push edx
-        push eax
-        call getVariationOriginalModel
-        pop edx
-        pop ecx
-        cmp eax, 0x1AF
-        pop eax
-        jmp jmp64BCB9
-    }
-}
-
-void __declspec(naked) patch430640()
-{
-    __asm {
-        push eax
-        push ecx
-        push edx
-        push edi
-        call getVariationOriginalModel
-        pop edx
-        pop ecx
-        cmp eax, 0x1B5
-        pop eax
-        jmp jmp430646
     }
 }
 
@@ -2227,24 +1672,7 @@ isCement:
     }
 }
 
-void __declspec(naked) patch502222()
-{
-    __asm {
-        push eax
-        movsx eax, word ptr [eax+0x22]
-        push ecx
-        push edx
-        push eax
-        call getVariationOriginalModel
-        pop edx
-        pop ecx
-        cmp eax, 0x214
-        pop eax
-        jmp jmp502228
-    }
-}
-
-void __declspec(naked) patch6AA515()
+void __declspec(naked) patch6B0CF0()
 {
     __asm {
         push eax
@@ -2255,116 +1683,9 @@ void __declspec(naked) patch6AA515()
         call getVariationOriginalModel
         pop edx
         pop ecx
-        mov cx, ax
-        cmp eax, 0x214
+        cmp eax, 0x1B0
         pop eax
-        jmp jmp6AA51E
-    }
-}
-
-void __declspec(naked) patch6D1ABA()
-{
-    __asm {
-        push ecx
-        push eax
-        movsx eax, word ptr [edi+0x22]
-        push edx
-        push eax
-        call getVariationOriginalModel
-        pop edx
-        mov cx, ax
-        pop eax
-        mov ax, cx
-        pop ecx
-        xor dl, dl
-        jmp jmp6D1AC0
-    }
-}
-
-void __declspec(naked) patch6C8FFA()
-{
-    __asm {
-        push eax
-        push ecx
-        push edx
-        push edi
-        call getVariationOriginalModel
-        pop edx
-        pop ecx
-        cmp eax, 0x201
-        pop eax
-        jmp jmp6C9000
-    }
-}
-
-void __declspec(naked) patch6C926D()
-{
-    __asm {
-        push ecx
-        push eax
-        movsx eax, word ptr [esi+0x22]
-        push edx
-        push eax
-        call getVariationOriginalModel
-        pop edx
-        mov cx, ax
-        pop eax
-        mov ax, cx
-        pop ecx
-        cmp ax, 0x200
-        jmp jmp6C9275
-    }
-}
-
-void __declspec(naked) patch6CA945()
-{
-    __asm {
-        push ecx
-        push eax
-        movsx eax, word ptr [esi + 0x22]
-        push edx
-        push eax
-        call getVariationOriginalModel
-        pop edx
-        mov cx, ax
-        pop eax
-        mov ax, cx
-        pop ecx
-        cmp ax, 0x200
-        jmp jmp6CA94D
-    }
-}
-
-void __declspec(naked) patch6CACF0()
-{
-    __asm {
-        push eax
-        movsx eax, word ptr [esi + 0x22]
-        push ecx
-        push edx
-        push eax
-        call getVariationOriginalModel
-        pop edx
-        pop ecx
-        cmp eax, 0x201
-        pop eax
-        jmp jmp6CACF6
-    }
-}
-
-void __declspec(naked) patch6C8F3D()
-{
-    __asm {
-        push eax
-        push ecx
-        push edx
-        push edi
-        call getVariationOriginalModel
-        pop edx
-        pop ecx
-        cmp eax, 0x200
-        pop eax
-        jmp jmp6C8F43
+        jmp jmp6B0CF6
     }
 }
 
@@ -2382,6 +1703,120 @@ void __declspec(naked) patchCoronas()
     }
 }
 
+uint32_t asmNextinstr[4] = {};
+uint16_t asmModel16 = 0;
+uint32_t asmModel = 0;
+uint32_t asmJmpAddress = 0;
+uint32_t *jmpDest = NULL;
+
+template <eRegs32 reg, unsigned int jmpAddress, unsigned int model>
+void __declspec(naked) cmpWordPtrRegModel()
+{
+    __asm {
+        pushad
+    }
+
+    asmModel = model;
+    asmJmpAddress = jmpAddress;
+
+    if constexpr (reg == REG_EAX) { __asm { movsx eax, word ptr[eax + 0x22] } }
+    else if constexpr (reg == REG_ECX) { __asm { movsx eax, word ptr[ecx + 0x22] } }
+    else if constexpr (reg == REG_EDX) { __asm { movsx eax, word ptr[edx + 0x22] } }
+    else if constexpr (reg == REG_EBX) { __asm { movsx eax, word ptr[ebx + 0x22] } }
+    else if constexpr (reg == REG_ESP) { __asm { movsx eax, word ptr[esp + 0x22] } }
+    else if constexpr (reg == REG_EBP) { __asm { movsx eax, word ptr[ebp + 0x22] } }
+    else if constexpr (reg == REG_ESI) { __asm { movsx eax, word ptr[esi + 0x22] } }
+    else if constexpr (reg == REG_EDI) { __asm { movsx eax, word ptr[edi + 0x22] } }
+
+    __asm {
+        push eax
+        call getVariationOriginalModel
+        cmp eax, asmModel
+        popad
+        jmp asmJmpAddress
+    }
+}
+
+template <eRegs32 reg, unsigned int jmpAddress, unsigned int model>
+void __declspec(naked) cmpReg32Model()
+{
+    __asm {
+        pushad
+    }
+
+    asmModel = model;
+    asmJmpAddress = jmpAddress;
+
+    if constexpr (reg == REG_EAX) { __asm { push eax } }
+    else if constexpr (reg == REG_ECX) { __asm { push ecx } }
+    else if constexpr (reg == REG_EDX) { __asm { push edx } }
+    else if constexpr (reg == REG_EBX) { __asm { push ebx } }
+    else if constexpr (reg == REG_ESP) { __asm { push esp } }
+    else if constexpr (reg == REG_EBP) { __asm { push ebp } }
+    else if constexpr (reg == REG_ESI) { __asm { push esi } }
+    else if constexpr (reg == REG_EDI) { __asm { push edi } }
+
+    __asm {
+        call getVariationOriginalModel
+        cmp eax, asmModel
+        popad
+        jmp asmJmpAddress
+    }
+}
+
+template <eRegs16 target, eRegs32 source, unsigned int jmpAddress, uint8_t nextInstrSize, uint32_t nextInstr, uint32_t nextInstr2>
+void __declspec(naked) movReg16WordPtrReg()
+{
+    __asm {
+        pushfd
+        pushad
+    }
+
+    asmNextinstr[0] = nextInstr;
+    asmNextinstr[1] = nextInstr2;
+    jmpDest = asmNextinstr;
+    asmJmpAddress = jmpAddress;
+    ((uint8_t*)asmNextinstr)[nextInstrSize] = 0xFF;
+    ((uint8_t*)asmNextinstr)[nextInstrSize+1] = 0x25;
+    *((uint32_t**)((uint8_t*)asmNextinstr+nextInstrSize+2)) = &asmJmpAddress;
+
+    __asm {
+        popad
+    }
+
+    if constexpr (source == REG_EAX) { __asm { movsx eax, word ptr[eax + 0x22]} }
+    else if constexpr (source == REG_ECX) { __asm { movsx eax, word ptr[ecx + 0x22]} }
+    else if constexpr (source == REG_EDX) { __asm { movsx eax, word ptr[edx + 0x22]} }
+    else if constexpr (source == REG_EBX) { __asm { movsx eax, word ptr[ebx + 0x22]} }
+    else if constexpr (source == REG_ESP) { __asm { movsx eax, word ptr[esp + 0x22]} }
+    else if constexpr (source == REG_EBP) { __asm { movsx eax, word ptr[ebp + 0x22]} }
+    else if constexpr (source == REG_ESI) { __asm { movsx eax, word ptr[esi + 0x22]} }
+    else if constexpr (source == REG_EDI) { __asm { movsx eax, word ptr[edi + 0x22]} }
+
+    __asm {
+        pushad
+        push eax
+        call getVariationOriginalModel
+        mov asmModel16, ax
+        popad
+        popfd
+    }
+
+    if constexpr (target == REG_AX) { __asm { mov ax, asmModel16 } }
+    else if constexpr (target == REG_CX) { __asm { mov cx, asmModel16 } }
+    else if constexpr (target == REG_DX) { __asm { mov dx, asmModel16 } }
+    else if constexpr (target == REG_BX) { __asm { mov bx, asmModel16 } }
+    else if constexpr (target == REG_SP) { __asm { mov sp, asmModel16 } }
+    else if constexpr (target == REG_BP) { __asm { mov bp, asmModel16 } }
+    else if constexpr (target == REG_SI) { __asm { mov si, asmModel16 } }
+    else if constexpr (target == REG_DI) { __asm { mov di, asmModel16 } }
+
+    __asm {
+        jmp jmpDest
+    }
+}
+
+
 void hookASM(bool notModified, unsigned int address, int nBytes, injector::memory_pointer_raw hookDest, std::string funcName)
 {
     if (notModified)
@@ -2396,6 +1831,7 @@ void hookASM(bool notModified, unsigned int address, int nBytes, injector::memor
             logModified(address, printToString("Modified address detected: %s - 0x%X is %s", funcName.c_str(), address, bytesToString(address, nBytes).c_str()));
     }
 }
+
 
 void installVehicleHooks()
 {
@@ -2419,23 +1855,10 @@ void installVehicleHooks()
 
 /*****************************************************************************************************/
     
-    hookCall(0x4216E5, CAutomobileHooked<0x4216E5, true>, "CAutomobile"); //CCarCtrl::GetNewVehicleDependingOnCarModel
-    hookCall(0x42B909, CAutomobileHooked<0x42B909, true>, "CAutomobile"); //CCarCtrl::GenerateOneEmergencyServicesCar
-    hookCall(0x43A326, CAutomobileHooked<0x43A326, true>, "CAutomobile"); //CCheat::VehicleCheat
-    hookCall(0x4480D0, CAutomobileHooked<0x4480D0, true>, "CAutomobile"); //CStoredCar::RestoreCar
-    hookCall(0x45ABBF, CAutomobileHooked<0x45ABBF, true>, "CAutomobile"); //CRemote::GivePlayerRemoteControlledCar
-    hookCall(0x462217, CAutomobileHooked<0x462217>, "CAutomobile");       //CRoadBlocks::CreateRoadBlockBetween2Points
-    hookCall(0x484EE7, CAutomobileHooked<0x484EE7, true>, "CAutomobile"); //03C5  CREATE_RANDOM_CAR_FOR_CAR_PARK
-    hookCall(0x4998F0, CAutomobileHooked<0x4998F0>, "CAutomobile");       //CSetPiece::TryToGenerateCopCar
-    hookCall(0x5D2CE1, CAutomobileHooked<0x5D2CE1, true>, "CAutomobile"); //CPools::LoadVehiclePool
-    hookCall(0x61354A, CAutomobileHooked<0x61354A>, "CAutomobile");       //CPopulation::CreateWaitingCoppers
-    hookCall(0x6C41BB, CAutomobileHooked<0x6C41BB, true>, "CAutomobile"); //CHeli::CHeli
-    hookCall(0x6C8D8B, CAutomobileHooked<0x6C8D8B, true>, "CAutomobile"); //Monster Truck?
-    hookCall(0x6C8E4D, CAutomobileHooked<0x6C8E4D, true>, "CAutomobile"); //CPlane::CPlane
-    hookCall(0x6CE39D, CAutomobileHooked<0x6CE39D, true>, "CAutomobile"); //CQuadBike::CQuadBike
-    hookCall(0x6D03CB, CAutomobileHooked<0x6D03CB, true>, "CAutomobile"); //CTrailer::CTrailer
-    hookCall(0x6F3942, CAutomobileHooked<0x6F3942, true>, "CAutomobile"); //CCarGenerator::DoInternalProcessing
-
+    hookCall(0x42B909, CAutomobileHooked<0x42B909>, "CAutomobile"); //CCarCtrl::GenerateOneEmergencyServicesCar
+    hookCall(0x462217, CAutomobileHooked<0x462217>, "CAutomobile"); //CRoadBlocks::CreateRoadBlockBetween2Points
+    hookCall(0x4998F0, CAutomobileHooked<0x4998F0>, "CAutomobile"); //CSetPiece::TryToGenerateCopCar
+    hookCall(0x61354A, CAutomobileHooked<0x61354A>, "CAutomobile"); //CPopulation::CreateWaitingCoppers
 
     hookCall(0x6F3583, PickRandomCarHooked<0x6F3583>, "PickRandomCar"); //CCarGenerator::DoInternalProcessing
     hookCall(0x6F3EC1, DoInternalProcessingHooked<0x6F3EC1>, "DoInternalProcessing"); //CCarGenerator::Process 
@@ -2508,53 +1931,56 @@ void installVehicleHooks()
         hookCall(0x8711CC, SetUpWheelColModelHooked<0x8711CC>, "SetUpWheelColModel", true);
         hookCall(0x871B94, SetUpWheelColModelHooked<0x871B94>, "SetUpWheelColModel", true);
         hookCall(0x871CD4, SetUpWheelColModelHooked<0x871CD4>, "SetUpWheelColModel", true);
-
-
-        hookASM(*(uint32_t*)0x525462 == 0x22478B66 && *(BYTE*)0x525466 == 0x66, 0x525462, 5, patch525462, "sub_525252");
-        hookASM(*(uint32_t*)0x431BEB == 0x22468B66 && *(BYTE*)0x431BEF == 0x83, 0x431BEB, 5, patch431BEB, "CCarCtrl::GenerateOneRandomCar");
-        hookASM(*(uint32_t*)0x64467D == 0x22788166 && *(BYTE*)0x644681 == 0x13, 0x64467D, 6, patch64467D, "CTaskSimpleCarDrive::ProcessPed");
-        hookASM(*(uint32_t*)0x51E5B8 == 0x227E8166 && *(BYTE*)0x51E5BC == 0xB0, 0x51E5B8, 6, patch51E5B8, "CCamera::TryToStartNewCamMode");
-        hookASM(*(uint32_t*)0x6B4CE8 == 0x224E8B66 && *(BYTE*)0x6B4CEC == 0x66, 0x6B4CE8, 5, patch6B4CE8, "CAutomobile::ProcessAI");
+     
+        hookASM(*(uint32_t*)0x525462 == 0x22478B66 && *(uint32_t*)0x525466 == 0x01BB3D66, 0x525462, 5, movReg16WordPtrReg<REG_AX, REG_EDI, 0x52546A, 4, 0x01BB3D66, 0x90909090>, "sub_525252");
+        hookASM(*(uint32_t*)0x431BEB == 0x22468B66 && *(uint32_t*)0x431BEF == 0x6604C483, 0x431BEB, 5, movReg16WordPtrReg<REG_AX, REG_ESI, 0x431BF2, 3, 0x9004C483, 0x90909090>, "CCarCtrl::GenerateOneRandomCar");
+        hookASM(*(uint32_t*)0x64467D == 0x22788166 && *(uint16_t*)0x644681 == 0x0213, 0x64467D, 6, cmpWordPtrRegModel<REG_EAX, 0x644683, 0x213>, "CTaskSimpleCarDrive::ProcessPed");
+        hookASM(*(uint32_t*)0x51E5B8 == 0x227E8166 && *(uint16_t*)0x51E5BC == 0x01B0, 0x51E5B8, 6, cmpWordPtrRegModel<REG_ESI, 0x51E5BE, 0x1B0>, "CCamera::TryToStartNewCamMode");
+        hookASM(*(uint32_t*)0x6B4CE8 == 0x224E8B66 && *(uint32_t*)0x6B4CEC == 0x1BF98166, 0x6B4CE8, 5, movReg16WordPtrReg<REG_CX, REG_ESI, 0x6B4CF1, 5, 0x1BF98166, 0x90909002>, "CAutomobile::ProcessAI");
 
         if (exeVersion != SA_EXE_COMPACT)
-            hookASM(*(uint32_t*)0x407293 == 0x000259BB && *(BYTE*)0x407297 == 0, 0x407293, 5, patch407293, "CAutomobile::FireTruckControl");
+            hookASM(*(uint32_t*)0x407293 == 0x000259BB && *(BYTE*)0x407297 == 0x00, 0x407293, 5, patch407293, "CAutomobile::FireTruckControl");
         else
-            hookASM(*(uint32_t*)0x729B76 == 0x000259BB && *(BYTE*)0x729B7A == 0, 0x729B76, 5, patch407293, "CAutomobile::FireTruckControl");
+            hookASM(*(uint32_t*)0x729B76 == 0x000259BB && *(BYTE*)0x729B7A == 0x00, 0x729B76, 5, patch407293, "CAutomobile::FireTruckControl");
 
-        hookASM(*(uint32_t*)0x5A0EAF == 0x22788166 && *(uint16_t*)0x5A0EB3 == 0x259, 0x5A0EAF, 6, patch5A0EAF, "CObject::ObjectDamage");
-        hookASM(*(uint32_t*)0x4308A1 == 0x227E8166 && *(uint16_t*)0x4308A5 == 0x1A7, 0x4308A1, 6, patch4308A1, "CCarCtrl::GenerateOneRandomCar");
-        hookASM(*(uint32_t*)0x4F62E4 == 0x22788166 && *(uint16_t*)0x4F62E8 == 0x1A7, 0x4F62E4, 6, patch4F62E4, "CAEVehicleAudioEntity::GetSirenState");
-        hookASM(*(uint32_t*)0x4F9CBC == 0x22798166 && *(uint16_t*)0x4F9CC0 == 0x1A7, 0x4F9CBC, 6, patch4F9CBC, "CAEVehicleAudioEntity::PlayHornOrSiren");
-        hookASM(*(uint32_t*)0x44AB2A == 0x227F8166 && *(uint16_t*)0x44AB2E == 0x1A7, 0x44AB2A, 6, patch44AB2A, "CGarage::Update");
-        hookASM(*(uint32_t*)0x52AE34 == 0x22788166 && *(uint16_t*)0x52AE38 == 0x1A7, 0x52AE34, 6, patch52AE34, "0x52AE34");
-        hookASM(*(uint32_t*)0x4FB268 == 0x66104A8B && *(BYTE*)0x4FB26C == 0x8B, 0x4FB268, 5, patch4FB268, "CAEVehicleAudioEntity::ProcessMovingParts");
-        hookASM(*(uint32_t*)0x54742F == 0x224F8B66 && *(BYTE*)0x547433 == 0x66, 0x54742F, 5, patch54742F, "CPhysical::PositionAttachedEntity");
-        hookASM(*(uint32_t*)0x5A0052 == 0x22468B66 && *(BYTE*)0x5A0056 == 0x66, 0x5A0052, 5, patch5A0052, "CObject::SpecialEntityPreCollisionStuff");
-        hookASM(*(uint32_t*)0x5A21C9 == 0x22488B66 && *(BYTE*)0x5A21CD == 0x66, 0x5A21C9, 5, patch5A21C9, "CObject::ProcessControl");
-        hookASM(*(uint32_t*)0x6A1480 == 0x224F8B66 && *(BYTE*)0x6A1484 == 0x33, 0x6A1480, 5, patch6A1480, "CAutomobile::UpdateMovingCollision");
-        hookASM(*(uint32_t*)0x6A173B == 0x22478B66 && *(BYTE*)0x6A173F == 0x66, 0x6A173B, 5, patch6A173B, "CAutomobile::UpdateMovingCollision");
-        hookASM(*(uint32_t*)0x6A1F69 == 0x224E8B66 && *(BYTE*)0x6A1F6D == 0x66, 0x6A1F69, 5, patch6A1F69, "CAutomobile::AddMovingCollisionSpeed");
-        hookASM(*(uint32_t*)0x6C7F30 == 0x227E8166 && *(uint16_t*)0x6C7F34 == 0x196, 0x6C7F30, 6, patch6C7F30, "CMonsterTruck::PreRender");
-        hookASM(*(uint32_t*)0x5470BF == 0x22798166 && *(uint16_t*)0x5470C3 == 0x212, 0x5470BF, 6, patch5470BF, "CPhysical::PositionAttachedEntity");
-        hookASM(*(uint32_t*)0x54D70D == 0x227F8166 && *(uint16_t*)0x54D711 == 0x212, 0x54D70D, 6, patch54D70D, "CPhysical::AttachEntityToEntity");
-        hookASM(*(uint32_t*)0x5A0EBF == 0x227F8166 && *(uint16_t*)0x5A0EC3 == 0x212, 0x5A0EBF, 6, patch5A0EBF, "CObject::ObjectDamage");
-        hookASM(*(uint32_t*)0x6A1648 == 0x227F8166 && *(uint16_t*)0x6A164C == 0x212, 0x6A1648, 6, patch6A1648, "CAutomobile::UpdateMovingCollision");
-        hookASM(*(uint32_t*)0x6AD378 == 0x227E8166 && *(uint16_t*)0x6AD37C == 0x212, 0x6AD378, 6, patch6AD378, "CAutomobile::ProcessEntityCollision");
-        hookASM(*(uint32_t*)0x6E0FF8 == 0x227F8166 && *(uint16_t*)0x6E0FFC == 0x212, 0x6E0FF8, 6, patch6E0FF8, "CVehicle::DoHeadLightBeam");
-        hookASM(*(uint32_t*)0x6AC730 == 0xA9B910A1 && *(BYTE*)0x6AC734 == 0, 0x6AC730, 5, patch6AC730, "CAutomobile::PreRender");
-        hookASM(*(uint32_t*)0x43064C == 0x01AFFF81 && *(uint16_t*)0x430650 == 0, 0x43064C, 6, patch43064C, "CCarCtrl::GenerateOneRandomCar");
-        hookASM(*(uint32_t*)0x64BCB3 == 0x22788166 && *(uint16_t*)0x64BCB7 == 0x1AF, 0x64BCB3, 6, patch64BCB3, "CTaskSimpleCarSetPedInAsDriver::ProcessPed");
-        hookASM(*(uint32_t*)0x430640 == 0x01B5FF81 && *(uint16_t*)0x430644 == 0, 0x430640, 6, patch430640, "CCarCtrl::GenerateOneRandomCar");
+        hookASM(*(uint32_t*)0x5A0EAF == 0x22788166 && *(uint16_t*)0x5A0EB3 == 0x0259, 0x5A0EAF, 6, cmpWordPtrRegModel<REG_EAX, 0x5A0EB5, 0x259>, "CObject::ObjectDamage");
+        hookASM(*(uint32_t*)0x4308A1 == 0x227E8166 && *(uint16_t*)0x4308A5 == 0x01A7, 0x4308A1, 6, cmpWordPtrRegModel<REG_ESI, 0x4308A7, 0x1A7>, "CCarCtrl::GenerateOneRandomCar");
+        hookASM(*(uint32_t*)0x4F62E4 == 0x22788166 && *(uint16_t*)0x4F62E8 == 0x01A7, 0x4F62E4, 6, cmpWordPtrRegModel<REG_EAX, 0x4F62EA, 0x1A7>, "CAEVehicleAudioEntity::GetSirenState");
+        hookASM(*(uint32_t*)0x4F9CBC == 0x22798166 && *(uint16_t*)0x4F9CC0 == 0x01A7, 0x4F9CBC, 6, cmpWordPtrRegModel<REG_ECX, 0x4F9CC2, 0x1A7>, "CAEVehicleAudioEntity::PlayHornOrSiren");
+        hookASM(*(uint32_t*)0x44AB2A == 0x227F8166 && *(uint16_t*)0x44AB2E == 0x01A7, 0x44AB2A, 6, cmpWordPtrRegModel<REG_EDI, 0x44AB30, 0x1A7>, "CGarage::Update");
+        hookASM(*(uint32_t*)0x52AE34 == 0x22788166 && *(uint16_t*)0x52AE38 == 0x01A7, 0x52AE34, 6, cmpWordPtrRegModel<REG_EAX, 0x52AE3A, 0x1A7>, "0x52AE34");
+        hookASM(*(uint32_t*)0x4FB26B == 0x22418B66 && *(uint32_t*)0x4FB26F == 0x01BB3D66, 0x4FB26B, 8, movReg16WordPtrReg<REG_AX, REG_ECX, 0x4FB273, 4, 0x01BB3D66, 0x90909090>, "CAEVehicleAudioEntity::ProcessMovingParts");
+        hookASM(*(uint32_t*)0x54742F == 0x224F8B66 && *(uint32_t*)0x547433 == 0x96F98166, 0x54742F, 8, movReg16WordPtrReg<REG_CX, REG_EDI, 0x547438, 5, 0x96F98166, 0x90909001>, "CPhysical::PositionAttachedEntity");
+        hookASM(*(uint32_t*)0x5A0052 == 0x22468B66 && *(uint32_t*)0x5A0056 == 0x01963D66, 0x5A0052, 8, movReg16WordPtrReg<REG_AX, REG_ESI, 0x5A005A, 4, 0x01963D66, 0x90909090>, "CObject::SpecialEntityPreCollisionStuff");
+        hookASM(*(uint32_t*)0x5A21C9 == 0x22488B66 && *(uint32_t*)0x5A21CD == 0x96F98166, 0x5A21C9, 8, movReg16WordPtrReg<REG_CX, REG_EAX, 0x5A21D2, 5, 0x96F98166, 0x90909001>, "CObject::ProcessControl");
+        hookASM(*(uint32_t*)0x6A1480 == 0x224F8B66 && *(uint32_t*)0x6A1484 == 0x8166F633, 0x6A1480, 8, movReg16WordPtrReg<REG_CX, REG_EDI, 0x6A1486, 2, 0x9090F633, 0x90909090>, "CAutomobile::UpdateMovingCollision");
+        hookASM(*(uint32_t*)0x6A173B == 0x22478B66 && *(uint32_t*)0x6A173F == 0x01E63D66, 0x6A173B, 8, movReg16WordPtrReg<REG_AX, REG_EDI, 0x6A1743, 4, 0x01E63D66, 0x90909090>, "CAutomobile::UpdateMovingCollision");
+        hookASM(*(uint32_t*)0x6A1F69 == 0x224E8B66 && *(uint32_t*)0x6A1F6D == 0x96F98166, 0x6A1F69, 8, movReg16WordPtrReg<REG_CX, REG_ESI, 0x6A1F72, 5, 0x96F98166, 0x90909001>, "CAutomobile::AddMovingCollisionSpeed");
+        hookASM(*(uint32_t*)0x6A2162 == 0x22418B66 && *(uint32_t*)0x6A2166 == 0x01963D66, 0x6A2162, 8, movReg16WordPtrReg<REG_AX, REG_ECX, 0x6A216A, 4, 0x01963D66, 0x90909090>, "CAutomobile::GetMovingCollisionOffset");
+        hookASM(*(uint32_t*)0x6C7F30 == 0x227E8166 && *(uint16_t*)0x6C7F34 == 0x0196, 0x6C7F30, 6, cmpWordPtrRegModel<REG_ESI, 0x6C7F36, 0x196>, "CMonsterTruck::PreRender");
+        hookASM(*(uint32_t*)0x5470BF == 0x22798166 && *(uint16_t*)0x5470C3 == 0x0212, 0x5470BF, 6, cmpWordPtrRegModel<REG_ECX, 0x5470C5, 0x212>, "CPhysical::PositionAttachedEntity");
+        hookASM(*(uint32_t*)0x54D70D == 0x227F8166 && *(uint16_t*)0x54D711 == 0x0212, 0x54D70D, 6, cmpWordPtrRegModel<REG_EDI, 0x54D713, 0x212>, "CPhysical::AttachEntityToEntity");
+        hookASM(*(uint32_t*)0x5A0EBF == 0x227F8166 && *(uint16_t*)0x5A0EC3 == 0x0212, 0x5A0EBF, 6, cmpWordPtrRegModel<REG_EDI, 0x5A0EC5, 0x212>, "CObject::ObjectDamage");
+        hookASM(*(uint32_t*)0x6A1648 == 0x227F8166 && *(uint16_t*)0x6A164C == 0x0212, 0x6A1648, 6, cmpWordPtrRegModel<REG_EDI, 0x6A164E, 0x212>, "CAutomobile::UpdateMovingCollision");
+        hookASM(*(uint32_t*)0x6AD378 == 0x227E8166 && *(uint16_t*)0x6AD37C == 0x0212, 0x6AD378, 6, cmpWordPtrRegModel<REG_ESI, 0x6AD37E, 0x212>, "CAutomobile::ProcessEntityCollision");
+        hookASM(*(uint32_t*)0x6E0FF8 == 0x227F8166 && *(uint16_t*)0x6E0FFC == 0x0212, 0x6E0FF8, 6, cmpWordPtrRegModel<REG_EDI, 0x6E0FFE, 0x212>, "CVehicle::DoHeadLightBeam");
+        hookASM(*(uint32_t*)0x6AC730 == 0xA9B910A1 && *(BYTE*)0x6AC734 == 0x00, 0x6AC730, 5, patch6AC730, "CAutomobile::PreRender");
+        hookASM(*(uint32_t*)0x43064C == 0x01AFFF81 && *(uint16_t*)0x430650 == 0x0000, 0x43064C, 6, cmpReg32Model<REG_EDI, 0x430652, 0x1AF>, "CCarCtrl::GenerateOneRandomCar");
+        hookASM(*(uint32_t*)0x64BCB3 == 0x22788166 && *(uint16_t*)0x64BCB7 == 0x01AF, 0x64BCB3, 6, cmpWordPtrRegModel<REG_EAX, 0x64BCB9, 0x1AF>, "CTaskSimpleCarSetPedInAsDriver::ProcessPed");
+        hookASM(*(uint32_t*)0x430640 == 0x01B5FF81 && *(uint16_t*)0x430644 == 0x0000, 0x430640, 6, cmpReg32Model<REG_EDI, 0x430646, 0x1B5>, "CCarCtrl::GenerateOneRandomCar");
         hookASM(*(uint32_t*)0x6A155C == 0x22478B66 && *(BYTE*)0x6A1560 == 0x66, 0x6A155C, 5, patch6A155C, "CAutomobile::UpdateMovingCollision");
-        hookASM(*(uint32_t*)0x502222 == 0x22788166 && *(uint16_t*)0x502226 == 0x214, 0x502222, 6, patch502222, "CAEVehicleAudioEntity::ProcessVehicle");
-        hookASM(*(uint32_t*)0x6AA515 == 0x224E8B66 && *(BYTE*)0x6AA519 == 0x66, 0x6AA515, 5, patch6AA515, "CAutomobile::UpdateWheelMatrix");
-        hookASM(*(uint32_t*)0x6D1ABA == 0x22478B66 && *(BYTE*)0x6D1ABE == 0x32, 0x6D1ABA, 5, patch6D1ABA, "CVehicle::SetupPassenger");
-        hookASM(*(uint32_t*)0x6C8FFA == 0x0201FF81 && *(uint16_t*)0x6C8FFE == 0, 0x6C8FFA, 6, patch6C8FFA, "CPlane::CPlane");
-        hookASM(*(uint32_t*)0x6C926D == 0x22468B66 && *(BYTE*)0x6C9271 == 0x66, 0x6C926D, 5, patch6C926D, "CPlane::ProcessControl");
-        hookASM(*(uint32_t*)0x6CA945 == 0x22468B66 && *(BYTE*)0x6CA949 == 0x66, 0x6CA945, 5, patch6CA945, "CPlane::PreRender");
-        hookASM(*(uint32_t*)0x6CACF0 == 0x227E8166 && *(uint16_t*)0x6CACF4 == 0x201, 0x6CACF0, 6, patch6CACF0, "CPlane::OpenDoor");
-        hookASM(*(uint32_t*)0x6C8F3D == 0x0200FF81 && *(uint16_t*)0x6C8F41 == 0, 0x6C8F3D, 6, patch6C8F3D, "CPlane::CPlane");
-
+        hookASM(*(uint32_t*)0x502222 == 0x22788166 && *(uint16_t*)0x502226 == 0x0214, 0x502222, 6, cmpWordPtrRegModel<REG_EAX, 0x502228, 0x214>, "CAEVehicleAudioEntity::ProcessVehicle");
+        hookASM(*(uint32_t*)0x6AA515 == 0x224E8B66 && *(uint32_t*)0x6AA519 == 0x14F98166, 0x6AA515, 8, movReg16WordPtrReg<REG_CX, REG_ESI, 0x6AA51E, 5, 0x14F98166, 0x90909002>, "CAutomobile::UpdateWheelMatrix");
+        hookASM(*(uint32_t*)0x6D1ABA == 0x22478B66 && *(uint16_t*)0x6D1ABE == 0xD232, 0x6D1ABA, 5, movReg16WordPtrReg<REG_AX, REG_EDI, 0x6D1AC0, 2, 0x9090D232, 0x90909090 >, "CVehicle::SetupPassenger");
+        hookASM(*(uint32_t*)0x6C8FFA == 0x0201FF81 && *(uint16_t*)0x6C8FFE == 0x0000, 0x6C8FFA, 6, cmpReg32Model<REG_EDI, 0x6C9000, 0x201>, "CPlane::CPlane");
+        hookASM(*(uint32_t*)0x6C926D == 0x22468B66 && *(uint32_t*)0x6C9271 == 0x02003D66, 0x6C926D, 8, movReg16WordPtrReg<REG_AX, REG_ESI, 0x6C9275, 4, 0x02003D66, 0x90909090>, "CPlane::ProcessControl");
+        hookASM(*(uint32_t*)0x6CA945 == 0x22468B66 && *(uint32_t*)0x6CA949 == 0x02003D66, 0x6CA945, 8, movReg16WordPtrReg<REG_AX, REG_ESI, 0x6CA94D, 4, 0x02003D66, 0x90909090>, "CPlane::PreRender");
+        hookASM(*(uint32_t*)0x6CACF0 == 0x227E8166 && *(uint16_t*)0x6CACF4 == 0x0201, 0x6CACF0, 6, cmpWordPtrRegModel<REG_ESI, 0x6CACF6, 0x201>, "CPlane::OpenDoor");
+        hookASM(*(uint32_t*)0x6C8F3D == 0x0200FF81 && *(uint16_t*)0x6C8F41 == 0x0000, 0x6C8F3D, 6, cmpReg32Model<REG_EDI, 0x6C8F43, 0x200>, "CPlane::CPlane");
+        hookASM(*(uint32_t*)0x6D67B7 == 0x22468B66 && *(uint32_t*)0x6D67BB == 0x01963D66, 0x6D67B7, 8, movReg16WordPtrReg<REG_AX, REG_ESI, 0x6D67BF, 4, 0x01963D66, 0x90909090>, "CVehicle::SpecialEntityPreCollisionStuff");
+        hookASM(*(uint32_t*)0x6B0F47 == 0x22468B66 && *(uint32_t*)0x6B0F4B == 0x8B3805D9, 0x6B0F47, 8, movReg16WordPtrReg<REG_AX, REG_ESI, 0x6B0F51, 6, 0x8B3805D9, 0x90900085>, "CAutomobile::CAutomobile");
+        hookASM(*(uint32_t*)0x6B0CF0 == 0x227E8166 && *(uint16_t*)0x6B0CF4 == 0x01B0, 0x6B0CF0, 6, patch6B0CF0, "CAutomobile::CAutomobile");
+        hookASM(*(uint32_t*)0x6B0EE2 == 0x22468B66 && *(uint32_t*)0x6B0EE6 == 0x020D3D66, 0x6B0EE2, 8, movReg16WordPtrReg<REG_AX, REG_ESI, 0x6B0EEA, 4, 0x020D3D66, 0x90909090>, "CAutomobile::CAutomobile");
 
         hookCall(0x871238, ProcessSuspensionHooked<0x871238>, "ProcessSuspension", true);
         hookCall(0x871200, VehicleDamageHooked<0x871200>, "VehicleDamage", true);
@@ -2591,7 +2017,7 @@ void installVehicleHooks()
         if (*(uint32_t *)0x6ABA56 == 0x0000FF68 && *(BYTE*)0x6ABA5A == 0)
             injector::MakeJMP(0x6ABA56, patchCoronas);
         else
-            logModified((uint32_t)0x6ABA56, printToString("Modified method detected : CAutomobile::PreRender - 0x6ABA56 is 0x%X", *(uint32_t*)0x6ABA56));
+            logModified((uint32_t)0x6ABA56, printToString("Modified method detected : CAutomobile::PreRender - 0x6ABA56 is %s", bytesToString(0x6ABA56, 5).c_str()));
 
         hookCall(0x6AB80F, AddLightHooked<0x6AB80F>, "AddLight"); //CAutomobile::PreRender
         hookCall(0x6ABBA6, AddLightHooked<0x6ABBA6>, "AddLight"); //CAutomobile::PreRender

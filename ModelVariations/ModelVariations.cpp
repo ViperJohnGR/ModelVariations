@@ -134,7 +134,7 @@ void getLoadedModules()
         {
             char szModName[MAX_PATH];
             if (GetModuleFileNameEx(hProcess, modules[i], szModName, sizeof(szModName) / sizeof(TCHAR)))
-                modulesSet.insert(std::make_pair((unsigned int)modules[i], PathFindFileName(szModName)));
+                modulesSet.insert(std::make_pair((unsigned int)modules[i], szModName));
         }
 }
 
@@ -735,7 +735,7 @@ public:
                     CStreaming::RequestModel(i, KEEP_IN_MEMORY);
 
             dealersFixed = 0;
-            framesSinceCallsChecked = 700;
+            framesSinceCallsChecked = 900;
 
             if (logfile.is_open())
                 getLoadedModules();

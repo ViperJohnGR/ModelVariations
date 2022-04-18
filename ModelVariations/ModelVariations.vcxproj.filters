@@ -30,4 +30,7 @@
       <UniqueIdentifier>{4bbeee3d-3aaf-456b-b5c5-1abcc68c6588}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="ModelVariations.ruleset" />
+  </ItemGroup>
 </Project>

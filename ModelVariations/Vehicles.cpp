@@ -1971,7 +1971,7 @@ void installVehicleHooks()
         hookASM(*(uint32_t*)0x6A155C == 0x22478B66 && *(BYTE*)0x6A1560 == 0x66, 0x6A155C, 5, patch6A155C, "CAutomobile::UpdateMovingCollision");
         hookASM(*(uint32_t*)0x502222 == 0x22788166 && *(uint16_t*)0x502226 == 0x0214, 0x502222, 6, cmpWordPtrRegModel<REG_EAX, 0x502228, 0x214>, "CAEVehicleAudioEntity::ProcessVehicle");
         hookASM(*(uint32_t*)0x6AA515 == 0x224E8B66 && *(uint32_t*)0x6AA519 == 0x14F98166, 0x6AA515, 8, movReg16WordPtrReg<REG_CX, REG_ESI, 0x6AA51E, 5, 0x14F98166, 0x90909002>, "CAutomobile::UpdateWheelMatrix");
-        hookASM(*(uint32_t*)0x6D1ABA == 0x22478B66 && *(uint16_t*)0x6D1ABE == 0xD232, 0x6D1ABA, 5, movReg16WordPtrReg<REG_AX, REG_EDI, 0x6D1AC0, 2, 0x9090D232, 0x90909090 >, "CVehicle::SetupPassenger");
+        hookASM(*(uint32_t*)0x6D1ABA == 0x22478B66 && *(uint16_t*)0x6D1ABE == 0xD232, 0x6D1ABA, 6, movReg16WordPtrReg<REG_AX, REG_EDI, 0x6D1AC0, 2, 0x9090D232, 0x90909090 >, "CVehicle::SetupPassenger");
         hookASM(*(uint32_t*)0x6C8FFA == 0x0201FF81 && *(uint16_t*)0x6C8FFE == 0x0000, 0x6C8FFA, 6, cmpReg32Model<REG_EDI, 0x6C9000, 0x201>, "CPlane::CPlane");
         hookASM(*(uint32_t*)0x6C926D == 0x22468B66 && *(uint32_t*)0x6C9271 == 0x02003D66, 0x6C926D, 8, movReg16WordPtrReg<REG_AX, REG_ESI, 0x6C9275, 4, 0x02003D66, 0x90909090>, "CPlane::ProcessControl");
         hookASM(*(uint32_t*)0x6CA945 == 0x22468B66 && *(uint32_t*)0x6CA949 == 0x02003D66, 0x6CA945, 8, movReg16WordPtrReg<REG_AX, REG_ESI, 0x6CA94D, 4, 0x02003D66, 0x90909090>, "CPlane::PreRender");

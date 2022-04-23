@@ -537,7 +537,7 @@ void clearEverything()
             {
                 pedWantedVariations[i][j].clear();
                 if (i < 212)
-                    vehVariations[i][j].clear();
+                    vehWantedVariations[i][j].clear();
             }
         }
     }
@@ -569,6 +569,8 @@ void clearEverything()
     vehUseOnlyGroups.clear();
     pedMergeZones.clear();
     vehMergeZones.clear();
+    pedHasVariations.clear();
+    vehHasVariations.clear();
 
     //stacks
     while (!pedStack.empty()) pedStack.pop();

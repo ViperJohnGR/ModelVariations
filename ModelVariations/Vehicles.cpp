@@ -1782,6 +1782,7 @@ void __declspec(naked) movReg16WordPtrReg()
 
     __asm {
         popad
+        pushad
     }
 
     if constexpr (source == REG_EAX) { __asm { movsx eax, word ptr[eax + 0x22]} }
@@ -1794,7 +1795,6 @@ void __declspec(naked) movReg16WordPtrReg()
     else if constexpr (source == REG_EDI) { __asm { movsx eax, word ptr[edi + 0x22]} }
 
     __asm {
-        pushad
         push eax
         call getVariationOriginalModel
         mov asmModel16, ax

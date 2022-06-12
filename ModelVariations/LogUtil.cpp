@@ -134,8 +134,10 @@ std::string getParentModuleName(unsigned int address)
 void checkCallModified(const std::string &callName, unsigned int callAddress, bool isDirectAddress)
 {
     unsigned int functionAddress = (isDirectAddress == false) ? getAddressFromCall((BYTE*)callAddress) : *(unsigned int*)callAddress;
-    std::string moduleName = getParentModuleName(functionAddress);
+    std::string modulePath = getParentModuleName(functionAddress);
     unsigned int baseAddress = 0;
+
+    std::string moduleName = modulePath.substr(modulePath.find_last_of("/\\") + 1);
 
     if (tolower(moduleName) == tolower(MOD_NAME))
         return;

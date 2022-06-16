@@ -30,6 +30,8 @@
 
 using namespace plugin;
 
+const int MAX_PED_ID = 300;
+
 std::string pedIniPath("ModelVariations_Peds.ini");
 std::string pedWepIniPath("ModelVariations_PedWeapons.ini");
 std::string vehIniPath("ModelVariations_Vehicles.ini");
@@ -51,9 +53,9 @@ DataReader iniWeap;
 DataReader iniVeh;
 DataReader iniSettings;
 
-std::array<std::vector<unsigned short>, 16> pedVariations[300];
+std::array<std::vector<unsigned short>, 16> pedVariations[MAX_PED_ID];
 std::array<std::vector<unsigned short>, 16> vehVariations[212];
-std::array<std::vector<unsigned short>, 6> pedWantedVariations[300];
+std::array<std::vector<unsigned short>, 6> pedWantedVariations[MAX_PED_ID];
 std::array<std::vector<unsigned short>, 6> vehWantedVariations[212];
 
 std::map<unsigned short, std::array<std::vector<unsigned short>, 16>> vehGroups;
@@ -85,7 +87,7 @@ std::stack<CPed*> pedStack;
 std::stack<CVehicle*> vehStack;
 
 std::vector<unsigned short> cloneRemoverExclusions;
-std::vector<unsigned short> pedCurrentVariations[300];
+std::vector<unsigned short> pedCurrentVariations[MAX_PED_ID];
 std::vector<unsigned short> vehCurrentVariations[212];
 std::vector<unsigned short> vehCarGenExclude;
 std::vector<unsigned short> vehInheritExclude;
@@ -177,6 +179,16 @@ bool IdExists(std::vector<unsigned short>& vec, int id)
     return false;
 }
 
+bool isValidPedId(int id)
+{
+    if (id <= 0 && id >= MAX_PED_ID)
+        return false;
+    if (id >= 190 && id <= 195)
+        return false;
+
+    return true;
+}
+
 void detectExe()
 {
     char path[256] = {};
@@ -229,7 +241,7 @@ void drugDealerFix()
     
 
     for (auto &i : totalVariations)
-        if (i > 300)
+        if (i > MAX_PED_ID)
             drugDealers.insert(i);
 
     for (auto &i : drugDealers)
@@ -324,7 +336,7 @@ void updateVariations(CZone* zInfo)
 void printCurrentVariations()
 {
     logfile << std::dec << "pedCurrentVariations\n";
-    for (int i = 0; i < 300; i++)
+    for (int i = 0; i < MAX_PED_ID; i++)
         if (!pedCurrentVariations[i].empty())
         {
             logfile << i << ": ";
@@ -356,7 +368,7 @@ void printCurrentVariations()
 void printVariations()
 {
     logfile << std::dec << "\nPed Variations:\n";
-    for (unsigned int i = 0; i < 300; i++)
+    for (unsigned int i = 0; i < MAX_PED_ID; i++)
     {
         for (unsigned int j = 0; j < 16; j++)
             if (!pedVariations[i][j].empty())
@@ -425,7 +437,7 @@ void installHooks()
 
 void loadIniData(bool firstTime)
 {
-    //for (unsigned short i = 0; i < 300; i++)
+    //for (unsigned short i = 0; i < MAX_PED_ID; i++)
     for (auto &iniData : iniPed.data)
     {
         int i = 0;
@@ -436,7 +448,7 @@ void loadIniData(bool firstTime)
         else
             CModelInfo::GetModelInfo((char*)section.c_str(), &i);
 
-        if (i > 0 && i < 300)
+        if (isValidPedId(i))
         {
             pedHasVariations.insert((unsigned short)i);
 
@@ -526,7 +538,7 @@ void loadIniData(bool firstTime)
 
 void clearEverything()
 {
-    for (int i = 0; i < 300; i++)
+    for (int i = 0; i < MAX_PED_ID; i++)
     {
         for (unsigned short j = 0; j < 16; j++)
         {
@@ -578,7 +590,7 @@ void clearEverything()
 
     //vectors
     cloneRemoverExclusions.clear();
-    for (int i = 0; i < 300; i++)
+    for (int i = 0; i < MAX_PED_ID; i++)
     {
         pedCurrentVariations[i].clear();
         if (i < 212)
@@ -771,7 +783,7 @@ public:
 
         Events::pedSetModelEvent.after += [](CPed* ped, int)
         {
-            if (ped->m_nModelIndex > 0 && ped->m_nModelIndex < 300 && !pedCurrentVariations[ped->m_nModelIndex].empty())
+            if (isValidPedId(ped->m_nModelIndex) && !pedCurrentVariations[ped->m_nModelIndex].empty())
             {
                 unsigned int random = CGeneral::GetRandomNumberInRange(0, (int)pedCurrentVariations[ped->m_nModelIndex].size());
                 unsigned short variationModel = pedCurrentVariations[ped->m_nModelIndex][random];
@@ -935,8 +947,8 @@ public:
                 pedStack.pop();
                 bool pedRemoved = false;
 
-                if (ped->m_nModelIndex > 0 && ped->m_nModelIndex < 300)
-                    if (!pedCurrentVariations[ped->m_nModelIndex].empty() && pedCurrentVariations[ped->m_nModelIndex][0] == 0 && ped->m_nCreatedBy != 2) //Delete variations with 0 model id
+                if (isValidPedId(ped->m_nModelIndex))
+                    if (!pedCurrentVariations[ped->m_nModelIndex].empty() && pedCurrentVariations[ped->m_nModelIndex][0] == 0 && ped->m_nCreatedBy != 2) //Delete models with a 0 id variation
                     {
                         if (IsPedPointerValid(ped))
                         {

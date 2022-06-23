@@ -7,6 +7,7 @@
 #include <CVector.h>
 
 #include <set>
+#include <stack>
 #include <vector>
 #include <unordered_set>
 
@@ -28,6 +29,7 @@ extern std::ofstream logfile;
 extern std::array<std::vector<unsigned short>, 16> vehVariations[212];
 extern std::array<std::vector<unsigned short>, 6> vehWantedVariations[212];
 extern std::map<unsigned short, std::array<std::vector<unsigned short>, 16>> vehGroups;
+extern std::map<unsigned short, std::array<std::vector<unsigned short>, 16>> vehTuning;
 extern std::map<unsigned short, std::array<std::vector<unsigned short>, 6>> vehGroupWantedVariations;
 extern std::map<unsigned short, unsigned short> vehOriginalModels;
 extern std::map<unsigned short, std::vector<unsigned short>> vehDrivers;
@@ -38,6 +40,7 @@ extern std::map<unsigned short, BYTE> modelNumGroups;
 extern std::map<unsigned short, std::pair<CVector, float>> LightPositions;
 extern std::map<unsigned short, rgba> LightColors;
 extern std::map<unsigned short, rgba> LightColors2;
+extern std::map<unsigned short, std::vector<unsigned short>> vehCurrentTuning;
 
 extern std::vector<unsigned short> vehCurrentVariations[212];
 extern std::vector<unsigned short> vehCarGenExclude;
@@ -45,6 +48,8 @@ extern std::vector<unsigned short> vehInheritExclude;
 
 extern std::set<unsigned short> parkedCars;
 extern std::set<unsigned short> vehHasVariations;
+
+extern std::stack<std::pair<CVehicle*, std::array<std::vector<unsigned short>, 17>>> tuningStack;
 
 extern int loadAllVehicles;
 

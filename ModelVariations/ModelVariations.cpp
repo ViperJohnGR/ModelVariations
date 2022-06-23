@@ -59,6 +59,7 @@ std::array<std::vector<unsigned short>, 6> pedWantedVariations[MAX_PED_ID];
 std::array<std::vector<unsigned short>, 6> vehWantedVariations[212];
 
 std::map<unsigned short, std::array<std::vector<unsigned short>, 16>> vehGroups;
+std::map<unsigned short, std::array<std::vector<unsigned short>, 16>> vehTuning;
 std::map<unsigned int, hookinfo> hookedCalls;
 std::map<unsigned short, unsigned short> vehOriginalModels;
 std::map<unsigned short, std::vector<unsigned short>> vehDrivers;
@@ -73,6 +74,7 @@ std::map<unsigned short, int> pedTimeSinceLastSpawned;
 std::map<unsigned short, unsigned short> pedOriginalModels;
 std::map<unsigned short, std::array<std::vector<unsigned short>, 6>> vehGroupWantedVariations;
 std::map<unsigned short, std::string> wepVariationModels;
+std::map<unsigned short, std::vector<unsigned short>> vehCurrentTuning;
 
 std::set<unsigned short> dontInheritBehaviourModels;
 std::set<unsigned short> parkedCars;
@@ -85,6 +87,8 @@ std::set<unsigned int> modifiedAddresses;
 
 std::stack<CPed*> pedStack;
 std::stack<CVehicle*> vehStack;
+std::stack<std::pair<CVehicle*, std::array<std::vector<unsigned short>, 17>>> tuningStack;
+//std::stack<std::pair<CVehicle*, std::array<int, 16>>> tuningStack;
 
 std::vector<unsigned short> cloneRemoverExclusions;
 std::vector<unsigned short> pedCurrentVariations[MAX_PED_ID];
@@ -221,7 +225,7 @@ void drugDealerFix()
             enableFix = true;
 
     if (!enableFix)
-        return;       
+        return;
 
     std::vector<unsigned short> totalVariations;
     std::set<unsigned short> drugDealers;
@@ -238,13 +242,13 @@ void drugDealerFix()
     for (unsigned int i = 0; i < 16; i++)
         totalVariations.insert(totalVariations.end(), pedVariations[254][i].begin(), pedVariations[254][i].end());
 
-    
 
-    for (auto &i : totalVariations)
+
+    for (auto& i : totalVariations)
         if (i > MAX_PED_ID)
             drugDealers.insert(i);
 
-    for (auto &i : drugDealers)
+    for (auto& i : drugDealers)
     {
         if (enableLog == 1)
             logfile << i << "\n";
@@ -310,15 +314,28 @@ void updateVariations(CZone* zInfo)
         }
     }
 
+    for (auto& i : vehTuning)
+    {
+        vectorUnion(i.second[4], i.second[currentTown], vehCurrentTuning[i.first]);
+
+        std::vector<unsigned short> vec = iniPed.ReadLine(std::to_string(i.first), ((lastZone[0] == 0) ? zInfo->m_szLabel : lastZone), 2);
+        if (!vec.empty())
+        {
+            if (vehMergeZones.find(i.first) != vehMergeZones.end())
+                vehCurrentTuning[i.first] = vectorUnion(vehCurrentTuning[i.first], vec);
+            else
+                vehCurrentTuning[i.first] = vec;
+        }
+    }
 
     for (auto& modelid : vehHasVariations)
     {
         vectorUnion(vehVariations[modelid][4], vehVariations[modelid][currentTown], vehCurrentVariations[modelid]);
 
-        std::vector<unsigned short> vec = iniVeh.ReadLine(std::to_string(modelid+400), ((lastZone[0] == 0) ? zInfo->m_szLabel : lastZone));
+        std::vector<unsigned short> vec = iniVeh.ReadLine(std::to_string(modelid + 400), ((lastZone[0] == 0) ? zInfo->m_szLabel : lastZone));
         if (!vec.empty())
         {
-            if (vehMergeZones.find((unsigned short)(modelid+400)) != vehMergeZones.end())
+            if (vehMergeZones.find((unsigned short)(modelid + 400)) != vehMergeZones.end())
                 vehCurrentVariations[modelid] = vectorUnion(vehCurrentVariations[modelid], vec);
             else
                 vehCurrentVariations[modelid] = vec;
@@ -329,7 +346,7 @@ void updateVariations(CZone* zInfo)
             unsigned int wantedLevel = (wanted->m_nWantedLevel > 0) ? (wanted->m_nWantedLevel - 1) : (wanted->m_nWantedLevel);
             if (!vehWantedVariations[modelid][wantedLevel].empty() && !vehCurrentVariations[modelid].empty())
                 filterWantedVariations(vehCurrentVariations[modelid], vehWantedVariations[modelid][wantedLevel]);
-        }   
+        }
     }
 }
 
@@ -438,7 +455,7 @@ void installHooks()
 void loadIniData(bool firstTime)
 {
     //for (unsigned short i = 0; i < MAX_PED_ID; i++)
-    for (auto &iniData : iniPed.data)
+    for (auto& iniData : iniPed.data)
     {
         int i = 0;
         std::string section = iniData.first;
@@ -574,6 +591,8 @@ void clearEverything()
     pedOriginalModels.clear();
     vehGroupWantedVariations.clear();
     wepVariationModels.clear();
+    vehTuning.clear();
+    vehCurrentTuning.clear();
 
     //sets
     dontInheritBehaviourModels.clear();
@@ -587,6 +606,7 @@ void clearEverything()
     //stacks
     while (!pedStack.empty()) pedStack.pop();
     while (!vehStack.empty()) vehStack.pop();
+    while (!tuningStack.empty()) tuningStack.pop();
 
     //vectors
     cloneRemoverExclusions.clear();
@@ -648,13 +668,13 @@ public:
                 SYSTEMTIME systime;
                 GetSystemTime(&systime);
                 logfile << "Model Variations " MOD_VERSION << "\n" << getWindowsVersion() << "\n"
-                        << systime.wDay << "/" << systime.wMonth << "/" << systime.wYear << " " 
-                        << std::setfill('0') << std::setw(2) << systime.wHour <<  ":" 
+                        << systime.wDay << "/" << systime.wMonth << "/" << systime.wYear << " "
+                        << std::setfill('0') << std::setw(2) << systime.wHour << ":"
                         << std::setfill('0') << std::setw(2) << systime.wMinute << ":"
                         << std::setfill('0') << std::setw(2) << systime.wSecond << "\n\n";
-                
+
                 detectExe();
-                logfile << exePath << std::endl;                
+                logfile << exePath << std::endl;
 
                 if (exeVersion == SA_EXE_HOODLUM)
                     logfile << "Supported exe detected: 1.0 US HOODLUM" << std::endl;
@@ -665,29 +685,29 @@ public:
             }
             else
                 enableLog = 0;
-        }        
+        }
 
         if (enableLog == 1)
         {
             if (!fileExists(pedIniPath))
                 logfile << "\nModelVariations_Peds.ini not found!\n" << std::endl;
             else
-                logfile <<  "##############################\n"
-                            "## ModelVariations_Peds.ini ##\n" 
-                            "##############################\n" << fileToString(pedIniPath) << std::endl;
+                logfile << "##############################\n"
+                           "## ModelVariations_Peds.ini ##\n"
+                           "##############################\n" << fileToString(pedIniPath) << std::endl;
 
             if (!fileExists(pedWepIniPath))
                 logfile << "\nModelVariations_PedWeapons.ini not found!\n" << std::endl;
             else
                 logfile << "####################################\n"
-                           "## ModelVariations_PedWeapons.ini ##\n" 
+                           "## ModelVariations_PedWeapons.ini ##\n"
                            "####################################\n" << fileToString(pedWepIniPath) << std::endl;
 
             if (!fileExists(vehIniPath))
                 logfile << "\nModelVariations_Vehicles.ini not found!\n" << std::endl;
             else
                 logfile << "##################################\n"
-                           "## ModelVariations_Vehicles.ini ##\n" 
+                           "## ModelVariations_Vehicles.ini ##\n"
                            "##################################\n" << fileToString(vehIniPath) << std::endl;
 
 
@@ -923,6 +943,27 @@ public:
             if (enableVehicles == 1)
                 hookTaxi();
 
+            while (!tuningStack.empty())
+            {
+                auto it = tuningStack.top();
+                tuningStack.pop();
+
+                if (IsVehiclePointerValid(it.first))
+                    for (auto& slot : it.second)
+                    {
+                        if (!slot.empty())
+                        {
+                            unsigned i = CGeneral::GetRandomNumberInRange(0, slot.size());
+
+                            CStreaming::RequestVehicleUpgrade(slot[i], 2);
+                            CStreaming::LoadAllRequestedModels(false);
+
+                            it.first->AddVehicleUpgrade(slot[i]);
+                            Command<COMMAND_MARK_VEHICLE_MOD_AS_NO_LONGER_NEEDED>(slot[i]);
+                        }
+                    }
+            }
+
             while (!vehStack.empty())
             {
                 CVehicle* veh = vehStack.top();
@@ -943,7 +984,7 @@ public:
 
             while (!pedStack.empty())
             {
-                CPed *ped = pedStack.top();
+                CPed* ped = pedStack.top();
                 pedStack.pop();
                 bool pedRemoved = false;
 
@@ -1012,9 +1053,9 @@ public:
                     {
                         pedTimeSinceLastSpawned.insert({ ((cloneRemoverIncludeVariations == 1) ? getVariationOriginalModel(ped->m_nModelIndex) : ped->m_nModelIndex), clock() });
                         for (CPed* ped2 : CPools::ms_pPedPool)
-                            if (ped2 != NULL  &&  ped2 != ped  &&  ((cloneRemoverIncludeVariations == 1) ?
-                                                                    (getVariationOriginalModel(ped->m_nModelIndex) == getVariationOriginalModel(ped2->m_nModelIndex)) :
-                                                                    (ped->m_nModelIndex == ped2->m_nModelIndex)) &&  ped->m_nModelIndex == ped2->m_nModelIndex)
+                            if (ped2 != NULL && ped2 != ped && ((cloneRemoverIncludeVariations == 1) ?
+                                                                (getVariationOriginalModel(ped->m_nModelIndex) == getVariationOriginalModel(ped2->m_nModelIndex)) :
+                                                                (ped->m_nModelIndex == ped2->m_nModelIndex)) && ped->m_nModelIndex == ped2->m_nModelIndex)
                             {
                                 if (ped->m_pVehicle == NULL)
                                 {
@@ -1052,7 +1093,7 @@ public:
 
                 if (!pedRemoved)
                 {
-                    auto wepFound = [ped] (eWeaponType weaponId, eWeaponType originalWeaponId) -> bool {
+                    auto wepFound = [ped](eWeaponType weaponId, eWeaponType originalWeaponId) -> bool {
                         int weapModel = 0;
                         Command<COMMAND_GET_WEAPONTYPE_MODEL>(weaponId, &weapModel);
                         if (weapModel >= 321)

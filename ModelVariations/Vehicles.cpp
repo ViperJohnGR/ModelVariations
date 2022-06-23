@@ -4,6 +4,8 @@
 #include "LogUtil.hpp"
 #include <plugin.h>
 
+#include <extensions/ScriptCommands.h>
+
 #include <CBoat.h>
 #include <CCarCtrl.h>
 #include <CCarGenerator.h>
@@ -67,7 +69,7 @@ constexpr unsigned int jmp6B0CF6 = 0x6B0CF6;
 constexpr unsigned int jmp729B7B = 0x729B7B;
 int carGenModel = -1;
 
-void checkNumGroups(std::vector<unsigned short>& vec, BYTE numGroups)
+void checkNumGroups(std::vector<unsigned short>& vec, uint8_t numGroups)
 {
     auto it = vec.begin();
     while (it != vec.end())
@@ -312,42 +314,81 @@ void readVehicleIni(bool firstTime)
 
         if (modelid >= 400)
         {
-            vehGroups[modelid][0] = iniVeh.ReadLine(i.first, "Countryside", true);
-            vehGroups[modelid][1] = iniVeh.ReadLine(i.first, "LosSantos", true);
-            vehGroups[modelid][2] = iniVeh.ReadLine(i.first, "SanFierro", true);
-            vehGroups[modelid][3] = iniVeh.ReadLine(i.first, "LasVenturas", true);
-            vehGroups[modelid][4] = iniVeh.ReadLine(i.first, "Global", true);
-            vehGroups[modelid][5] = iniVeh.ReadLine(i.first, "Desert", true);
+            vehGroups[modelid][0] = iniVeh.ReadLine(i.first, "Countryside", 1);
+            vehGroups[modelid][1] = iniVeh.ReadLine(i.first, "LosSantos", 1);
+            vehGroups[modelid][2] = iniVeh.ReadLine(i.first, "SanFierro", 1);
+            vehGroups[modelid][3] = iniVeh.ReadLine(i.first, "LasVenturas", 1);
+            vehGroups[modelid][4] = iniVeh.ReadLine(i.first, "Global", 1);
+            vehGroups[modelid][5] = iniVeh.ReadLine(i.first, "Desert", 1);
 
-            std::vector<unsigned short> vec = iniVeh.ReadLine(i.first, "TierraRobada", true);
+            std::vector<unsigned short> vec = iniVeh.ReadLine(i.first, "TierraRobada", 1);
             vehGroups[modelid][6] = vectorUnion(vec, vehGroups[modelid][5]);
 
-            vec = iniVeh.ReadLine(i.first, "BoneCounty", true);
+            vec = iniVeh.ReadLine(i.first, "BoneCounty", 1);
             vehGroups[modelid][7] = vectorUnion(vec, vehGroups[modelid][5]);
 
-            vec = iniVeh.ReadLine(i.first, "RedCounty", true);
+            vec = iniVeh.ReadLine(i.first, "RedCounty", 1);
             vehGroups[modelid][8] = vectorUnion(vec, vehGroups[modelid][0]);
 
-            vec = iniVeh.ReadLine(i.first, "Blueberry", true);
+            vec = iniVeh.ReadLine(i.first, "Blueberry", 1);
             vehGroups[modelid][9] = vectorUnion(vec, vehGroups[modelid][8]);
 
-            vec = iniVeh.ReadLine(i.first, "Montgomery", true);
+            vec = iniVeh.ReadLine(i.first, "Montgomery", 1);
             vehGroups[modelid][10] = vectorUnion(vec, vehGroups[modelid][8]);
 
-            vec = iniVeh.ReadLine(i.first, "Dillimore", true);
+            vec = iniVeh.ReadLine(i.first, "Dillimore", 1);
             vehGroups[modelid][11] = vectorUnion(vec, vehGroups[modelid][8]);
 
-            vec = iniVeh.ReadLine(i.first, "PalominoCreek", true);
+            vec = iniVeh.ReadLine(i.first, "PalominoCreek", 1);
             vehGroups[modelid][12] = vectorUnion(vec, vehGroups[modelid][8]);
 
-            vec = iniVeh.ReadLine(i.first, "FlintCounty", true);
+            vec = iniVeh.ReadLine(i.first, "FlintCounty", 1);
             vehGroups[modelid][13] = vectorUnion(vec, vehGroups[modelid][0]);
 
-            vec = iniVeh.ReadLine(i.first, "Whetstone", true);
+            vec = iniVeh.ReadLine(i.first, "Whetstone", 1);
             vehGroups[modelid][14] = vectorUnion(vec, vehGroups[modelid][0]);
 
-            vec = iniVeh.ReadLine(i.first, "AngelPine", true);
+            vec = iniVeh.ReadLine(i.first, "AngelPine", 1);
             vehGroups[modelid][15] = vectorUnion(vec, vehGroups[modelid][14]);
+
+            //Veh Tuning
+
+            vehTuning[modelid][0] = iniVeh.ReadLine(i.first, "Countryside", 2);
+            vehTuning[modelid][1] = iniVeh.ReadLine(i.first, "LosSantos", 2);
+            vehTuning[modelid][2] = iniVeh.ReadLine(i.first, "SanFierro", 2);
+            vehTuning[modelid][3] = iniVeh.ReadLine(i.first, "LasVenturas", 2);
+            vehTuning[modelid][4] = iniVeh.ReadLine(i.first, "Global", 2);
+            vehTuning[modelid][5] = iniVeh.ReadLine(i.first, "Desert", 2);
+
+            vec = iniVeh.ReadLine(i.first, "TierraRobada", 1);
+            vehTuning[modelid][6] = vectorUnion(vec, vehTuning[modelid][5]);
+
+            vec = iniVeh.ReadLine(i.first, "BoneCounty", 1);
+            vehTuning[modelid][7] = vectorUnion(vec, vehTuning[modelid][5]);
+
+            vec = iniVeh.ReadLine(i.first, "RedCounty", 1);
+            vehTuning[modelid][8] = vectorUnion(vec, vehTuning[modelid][0]);
+
+            vec = iniVeh.ReadLine(i.first, "Blueberry", 1);
+            vehTuning[modelid][9] = vectorUnion(vec, vehTuning[modelid][8]);
+
+            vec = iniVeh.ReadLine(i.first, "Montgomery", 1);
+            vehTuning[modelid][10] = vectorUnion(vec, vehTuning[modelid][8]);
+
+            vec = iniVeh.ReadLine(i.first, "Dillimore", 1);
+            vehTuning[modelid][11] = vectorUnion(vec, vehTuning[modelid][8]);
+
+            vec = iniVeh.ReadLine(i.first, "PalominoCreek", 1);
+            vehTuning[modelid][12] = vectorUnion(vec, vehTuning[modelid][8]);
+
+            vec = iniVeh.ReadLine(i.first, "FlintCounty", 1);
+            vehTuning[modelid][13] = vectorUnion(vec, vehTuning[modelid][0]);
+
+            vec = iniVeh.ReadLine(i.first, "Whetstone", 1);
+            vehTuning[modelid][14] = vectorUnion(vec, vehTuning[modelid][0]);
+
+            vec = iniVeh.ReadLine(i.first, "AngelPine", 1);
+            vehTuning[modelid][15] = vectorUnion(vec, vehTuning[modelid][14]);
 
 
             if (iniVeh.ReadInteger(i.first, "UseOnlyGroups", 0) == 1)
@@ -367,7 +408,7 @@ void readVehicleIni(bool firstTime)
 
                 if (r >= 0 && r <= 255 && g >= 0 && g <= 255 && b >= 0 && b <= 255 && a >= 0 && a <= 255)
                 {
-                    rgba colors = { (BYTE)r, (BYTE)g, (BYTE)b, (BYTE)a };
+                    rgba colors = { (uint8_t)r, (uint8_t)g, (uint8_t)b, (uint8_t)a };
                     LightColors.insert({ modelid, colors });
                 }
 
@@ -381,7 +422,7 @@ void readVehicleIni(bool firstTime)
 
                 if (r >= 0 && r <= 255 && g >= 0 && g <= 255 && b >= 0 && b <= 255 && a >= 0 && a <= 255)
                 {
-                    rgba colors = { (BYTE)r, (BYTE)g, (BYTE)b, (BYTE)a };
+                    rgba colors = { (uint8_t)r, (uint8_t)g, (uint8_t)b, (uint8_t)a };
                     LightColors2.insert({ modelid, colors });
                 }
             }
@@ -389,7 +430,7 @@ void readVehicleIni(bool firstTime)
             if (iniVeh.ReadInteger(i.first, "MergeZonesWithCities", 0) == 1)
                 vehMergeZones.insert(modelid);
 
-            BYTE numGroups = 0;
+            uint8_t numGroups = 0;
             for (int j = 0; j < 9; j++)
             {
                 str = "DriverGroup" + std::to_string(j + 1);
@@ -410,7 +451,7 @@ void readVehicleIni(bool firstTime)
                     vehPassengerGroups[j].insert({ modelid, vec });
             }
 
-            vec = iniVeh.ReadLine(i.first, "Wanted1", true);
+            vec = iniVeh.ReadLine(i.first, "Wanted1", 1);
             if (!vec.empty())
             {
                 vec.erase(unique(vec.begin(), vec.end()), vec.end());
@@ -418,7 +459,7 @@ void readVehicleIni(bool firstTime)
                 vehGroupWantedVariations[modelid][0] = vec;
             }
 
-            vec = iniVeh.ReadLine(i.first, "Wanted2", true);
+            vec = iniVeh.ReadLine(i.first, "Wanted2", 1);
             if (!vec.empty())
             {
                 vec.erase(unique(vec.begin(), vec.end()), vec.end());
@@ -426,7 +467,7 @@ void readVehicleIni(bool firstTime)
                 vehGroupWantedVariations[modelid][1] = vec;
             }
 
-            vec = iniVeh.ReadLine(i.first, "Wanted3", true);
+            vec = iniVeh.ReadLine(i.first, "Wanted3", 1);
             if (!vec.empty())
             {
                 vec.erase(unique(vec.begin(), vec.end()), vec.end());
@@ -434,7 +475,7 @@ void readVehicleIni(bool firstTime)
                 vehGroupWantedVariations[modelid][2] = vec;
             }
 
-            vec = iniVeh.ReadLine(i.first, "Wanted4", true);
+            vec = iniVeh.ReadLine(i.first, "Wanted4", 1);
             if (!vec.empty())
             {
                 vec.erase(unique(vec.begin(), vec.end()), vec.end());
@@ -442,7 +483,7 @@ void readVehicleIni(bool firstTime)
                 vehGroupWantedVariations[modelid][3] = vec;
             }
 
-            vec = iniVeh.ReadLine(i.first, "Wanted5", true);
+            vec = iniVeh.ReadLine(i.first, "Wanted5", 1);
             if (!vec.empty())
             {
                 vec.erase(unique(vec.begin(), vec.end()), vec.end());
@@ -450,7 +491,7 @@ void readVehicleIni(bool firstTime)
                 vehGroupWantedVariations[modelid][4] = vec;
             }
 
-            vec = iniVeh.ReadLine(i.first, "Wanted6", true);
+            vec = iniVeh.ReadLine(i.first, "Wanted6", 1);
             if (!vec.empty())
             {
                 vec.erase(unique(vec.begin(), vec.end()), vec.end());
@@ -605,7 +646,7 @@ void __cdecl AddPoliceCarOccupantsHooked(CVehicle* a2, char a3)
             const unsigned int i = CGeneral::GetRandomNumberInRange(0, (int)vehGroupWantedVariations[a2->m_nModelIndex][wantedLevel].size());
             currentOccupantsModel = a2->m_nModelIndex;
 
-            std::vector<unsigned short> zoneGroups = iniVeh.ReadLine(std::to_string(a2->m_nModelIndex), currentZone, true);
+            std::vector<unsigned short> zoneGroups = iniVeh.ReadLine(std::to_string(a2->m_nModelIndex), currentZone, 1);
             checkNumGroups(zoneGroups, it->second);
             if (vehGroups.find(a2->m_nModelIndex) != vehGroups.end())
             {
@@ -974,7 +1015,7 @@ void __cdecl SetUpDriverAndPassengersForVehicleHooked(CVehicle* car, int a3, int
             const unsigned int i = CGeneral::GetRandomNumberInRange(0, (int)vehGroupWantedVariations[car->m_nModelIndex][wantedLevel].size());
             currentOccupantsModel = car->m_nModelIndex;
 
-            std::vector<unsigned short> zoneGroups = iniVeh.ReadLine(std::to_string(car->m_nModelIndex), currentZone, true);
+            std::vector<unsigned short> zoneGroups = iniVeh.ReadLine(std::to_string(car->m_nModelIndex), currentZone, 1);
             checkNumGroups(zoneGroups, it->second);
             if (vehGroups.find(car->m_nModelIndex) != vehGroups.end())
             {
@@ -1234,6 +1275,69 @@ CVehicle* __cdecl CreateCarForScriptHooked(int modelId, float posX, float posY, 
     return callOriginalAndReturn<CVehicle*, address>(getRandomVariation(modelId), posX, posY, posZ, doMissionCleanup);
 }
 
+template <unsigned int address>
+void* __cdecl GetNewVehicleDependingOnCarModelHooked(int modelIndex, int createdBy)
+{
+    CVehicle *veh = reinterpret_cast<CVehicle*>(callOriginalAndReturn<void*, address>(modelIndex, createdBy));
+
+   /*   TUNING PART SLOTS 
+    *   0 - hood vents
+    *   1 - hood scoops
+    *   2 - spoilers
+    *   3 - side skirts
+    *   4 - front bullbars
+    *   5 - rear bullbars
+    *   6 - lights
+    *   7 - roof
+    *   8 - nitrous
+    *   9 - hydralics
+    *   10 - stereo
+    *   11
+    *   12 - wheels
+    *   13 - exhaust
+    *   14 - front bumper
+    *   15 - rear bumper
+    *   16 - misc
+    */
+
+    if (createdBy != 2)
+    {
+        auto it = vehCurrentTuning.find(veh->m_nModelIndex);
+        if (it != vehCurrentTuning.end() && !it->second.empty())
+        {
+            std::array<std::vector<unsigned short>, 17> partsToInstall;
+            for (auto& part : it->second)
+            {
+                unsigned modSlot;
+                Command<COMMAND_GET_VEHICLE_MOD_TYPE>(part, &modSlot);
+                if (modSlot < 17)
+                    partsToInstall[modSlot].push_back(part);
+            }
+
+
+            std::array<bool, 17> slotsToInstall;
+            for (unsigned int i = 0; i < 17; i++)
+                slotsToInstall[i] = (CGeneral::GetRandomNumberInRange(0, 3) == 1 ? true : false);
+
+
+            if (iniVeh.ReadInteger(std::to_string(veh->m_nModelIndex), "TuningFullBodykit", 0) == 1)
+                if (slotsToInstall[14] == true || slotsToInstall[15] == true || slotsToInstall[3] == true)
+                    slotsToInstall[14] = slotsToInstall[15] = slotsToInstall[3] = true;
+
+            for (unsigned int i = 0; i < 17; i++)
+                if (slotsToInstall[i] == false)
+                    partsToInstall[i].clear();
+
+
+            //if (logfile.is_open())
+                //logfile << "Installing part " << it->second[0] << " modSlot " << modSlot << std::endl;
+            tuningStack.push({ veh, partsToInstall });
+        }
+    }
+
+    return veh;
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////  Vehicle Special Features //////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1284,15 +1388,15 @@ void __declspec(naked) enableSirenLights()
 template <unsigned int address>
 void __fastcall PreRenderHooked(CAutomobile* veh)
 {
-    const BYTE sirenOriginal[5] = { *(BYTE*)0x6AB350, *(BYTE*)0x6AB351, *(BYTE*)0x6AB352, *(BYTE*)0x6AB353, *(BYTE*)0x6AB354 };
+    const uint8_t sirenOriginal[5] = { *(uint8_t*)0x6AB350, *(uint8_t*)0x6AB351, *(uint8_t*)0x6AB352, *(uint8_t*)0x6AB353, *(uint8_t*)0x6AB354 };
 
     const auto sirenRestore = [sirenOriginal]()
     {
-        ((BYTE*)0x6AB350)[0] = sirenOriginal[0];
-        ((BYTE*)0x6AB350)[1] = sirenOriginal[1];
-        ((BYTE*)0x6AB350)[2] = sirenOriginal[2];
-        ((BYTE*)0x6AB350)[3] = sirenOriginal[3];
-        ((BYTE*)0x6AB350)[4] = sirenOriginal[4];
+        ((uint8_t*)0x6AB350)[0] = sirenOriginal[0];
+        ((uint8_t*)0x6AB350)[1] = sirenOriginal[1];
+        ((uint8_t*)0x6AB350)[2] = sirenOriginal[2];
+        ((uint8_t*)0x6AB350)[3] = sirenOriginal[3];
+        ((uint8_t*)0x6AB350)[4] = sirenOriginal[4];
     };
 
     if (veh == NULL)
@@ -1939,9 +2043,9 @@ void installVehicleHooks()
         hookASM(*(uint32_t*)0x6B4CE8 == 0x224E8B66 && *(uint32_t*)0x6B4CEC == 0x1BF98166, 0x6B4CE8, 5, movReg16WordPtrReg<REG_CX, REG_ESI, 0x6B4CF1, 5, 0x1BF98166, 0x90909002>, "CAutomobile::ProcessAI");
 
         if (exeVersion != SA_EXE_COMPACT)
-            hookASM(*(uint32_t*)0x407293 == 0x000259BB && *(BYTE*)0x407297 == 0x00, 0x407293, 5, patch407293, "CAutomobile::FireTruckControl");
+            hookASM(*(uint32_t*)0x407293 == 0x000259BB && *(uint8_t*)0x407297 == 0x00, 0x407293, 5, patch407293, "CAutomobile::FireTruckControl");
         else
-            hookASM(*(uint32_t*)0x729B76 == 0x000259BB && *(BYTE*)0x729B7A == 0x00, 0x729B76, 5, patch407293, "CAutomobile::FireTruckControl");
+            hookASM(*(uint32_t*)0x729B76 == 0x000259BB && *(uint8_t*)0x729B7A == 0x00, 0x729B76, 5, patch407293, "CAutomobile::FireTruckControl");
 
         hookASM(*(uint32_t*)0x5A0EAF == 0x22788166 && *(uint16_t*)0x5A0EB3 == 0x0259, 0x5A0EAF, 6, cmpWordPtrRegModel<REG_EAX, 0x5A0EB5, 0x259>, "CObject::ObjectDamage");
         hookASM(*(uint32_t*)0x4308A1 == 0x227E8166 && *(uint16_t*)0x4308A5 == 0x01A7, 0x4308A1, 6, cmpWordPtrRegModel<REG_ESI, 0x4308A7, 0x1A7>, "CCarCtrl::GenerateOneRandomCar");
@@ -1964,22 +2068,22 @@ void installVehicleHooks()
         hookASM(*(uint32_t*)0x6A1648 == 0x227F8166 && *(uint16_t*)0x6A164C == 0x0212, 0x6A1648, 6, cmpWordPtrRegModel<REG_EDI, 0x6A164E, 0x212>, "CAutomobile::UpdateMovingCollision");
         hookASM(*(uint32_t*)0x6AD378 == 0x227E8166 && *(uint16_t*)0x6AD37C == 0x0212, 0x6AD378, 6, cmpWordPtrRegModel<REG_ESI, 0x6AD37E, 0x212>, "CAutomobile::ProcessEntityCollision");
         hookASM(*(uint32_t*)0x6E0FF8 == 0x227F8166 && *(uint16_t*)0x6E0FFC == 0x0212, 0x6E0FF8, 6, cmpWordPtrRegModel<REG_EDI, 0x6E0FFE, 0x212>, "CVehicle::DoHeadLightBeam");
-        hookASM(*(uint32_t*)0x6AC730 == 0xA9B910A1 && *(BYTE*)0x6AC734 == 0x00, 0x6AC730, 5, patch6AC730, "CAutomobile::PreRender");
+        hookASM(*(uint32_t*)0x6AC730 == 0xA9B910A1 && *(uint8_t*)0x6AC734 == 0x00,    0x6AC730, 5, patch6AC730, "CAutomobile::PreRender");
         hookASM(*(uint32_t*)0x43064C == 0x01AFFF81 && *(uint16_t*)0x430650 == 0x0000, 0x43064C, 6, cmpReg32Model<REG_EDI, 0x430652, 0x1AF>, "CCarCtrl::GenerateOneRandomCar");
         hookASM(*(uint32_t*)0x64BCB3 == 0x22788166 && *(uint16_t*)0x64BCB7 == 0x01AF, 0x64BCB3, 6, cmpWordPtrRegModel<REG_EAX, 0x64BCB9, 0x1AF>, "CTaskSimpleCarSetPedInAsDriver::ProcessPed");
         hookASM(*(uint32_t*)0x430640 == 0x01B5FF81 && *(uint16_t*)0x430644 == 0x0000, 0x430640, 6, cmpReg32Model<REG_EDI, 0x430646, 0x1B5>, "CCarCtrl::GenerateOneRandomCar");
-        hookASM(*(uint32_t*)0x6A155C == 0x22478B66 && *(BYTE*)0x6A1560 == 0x66, 0x6A155C, 5, patch6A155C, "CAutomobile::UpdateMovingCollision");
+        hookASM(*(uint32_t*)0x6A155C == 0x22478B66 && *(uint8_t*)0x6A1560 == 0x66,    0x6A155C, 5, patch6A155C, "CAutomobile::UpdateMovingCollision");
         hookASM(*(uint32_t*)0x502222 == 0x22788166 && *(uint16_t*)0x502226 == 0x0214, 0x502222, 6, cmpWordPtrRegModel<REG_EAX, 0x502228, 0x214>, "CAEVehicleAudioEntity::ProcessVehicle");
         hookASM(*(uint32_t*)0x6AA515 == 0x224E8B66 && *(uint32_t*)0x6AA519 == 0x14F98166, 0x6AA515, 8, movReg16WordPtrReg<REG_CX, REG_ESI, 0x6AA51E, 5, 0x14F98166, 0x90909002>, "CAutomobile::UpdateWheelMatrix");
-        hookASM(*(uint32_t*)0x6D1ABA == 0x22478B66 && *(uint16_t*)0x6D1ABE == 0xD232, 0x6D1ABA, 6, movReg16WordPtrReg<REG_AX, REG_EDI, 0x6D1AC0, 2, 0x9090D232, 0x90909090 >, "CVehicle::SetupPassenger");
-        hookASM(*(uint32_t*)0x6C8FFA == 0x0201FF81 && *(uint16_t*)0x6C8FFE == 0x0000, 0x6C8FFA, 6, cmpReg32Model<REG_EDI, 0x6C9000, 0x201>, "CPlane::CPlane");
+        hookASM(*(uint32_t*)0x6D1ABA == 0x22478B66 && *(uint16_t*)0x6D1ABE == 0xD232,     0x6D1ABA, 6, movReg16WordPtrReg<REG_AX, REG_EDI, 0x6D1AC0, 2, 0x9090D232, 0x90909090 >, "CVehicle::SetupPassenger");
+        hookASM(*(uint32_t*)0x6C8FFA == 0x0201FF81 && *(uint16_t*)0x6C8FFE == 0x0000,     0x6C8FFA, 6, cmpReg32Model<REG_EDI, 0x6C9000, 0x201>, "CPlane::CPlane");
         hookASM(*(uint32_t*)0x6C926D == 0x22468B66 && *(uint32_t*)0x6C9271 == 0x02003D66, 0x6C926D, 8, movReg16WordPtrReg<REG_AX, REG_ESI, 0x6C9275, 4, 0x02003D66, 0x90909090>, "CPlane::ProcessControl");
         hookASM(*(uint32_t*)0x6CA945 == 0x22468B66 && *(uint32_t*)0x6CA949 == 0x02003D66, 0x6CA945, 8, movReg16WordPtrReg<REG_AX, REG_ESI, 0x6CA94D, 4, 0x02003D66, 0x90909090>, "CPlane::PreRender");
-        hookASM(*(uint32_t*)0x6CACF0 == 0x227E8166 && *(uint16_t*)0x6CACF4 == 0x0201, 0x6CACF0, 6, cmpWordPtrRegModel<REG_ESI, 0x6CACF6, 0x201>, "CPlane::OpenDoor");
-        hookASM(*(uint32_t*)0x6C8F3D == 0x0200FF81 && *(uint16_t*)0x6C8F41 == 0x0000, 0x6C8F3D, 6, cmpReg32Model<REG_EDI, 0x6C8F43, 0x200>, "CPlane::CPlane");
+        hookASM(*(uint32_t*)0x6CACF0 == 0x227E8166 && *(uint16_t*)0x6CACF4 == 0x0201,     0x6CACF0, 6, cmpWordPtrRegModel<REG_ESI, 0x6CACF6, 0x201>, "CPlane::OpenDoor");
+        hookASM(*(uint32_t*)0x6C8F3D == 0x0200FF81 && *(uint16_t*)0x6C8F41 == 0x0000,     0x6C8F3D, 6, cmpReg32Model<REG_EDI, 0x6C8F43, 0x200>, "CPlane::CPlane");
         hookASM(*(uint32_t*)0x6D67B7 == 0x22468B66 && *(uint32_t*)0x6D67BB == 0x01963D66, 0x6D67B7, 8, movReg16WordPtrReg<REG_AX, REG_ESI, 0x6D67BF, 4, 0x01963D66, 0x90909090>, "CVehicle::SpecialEntityPreCollisionStuff");
         hookASM(*(uint32_t*)0x6B0F47 == 0x22468B66 && *(uint32_t*)0x6B0F4B == 0x8B3805D9, 0x6B0F47, 8, movReg16WordPtrReg<REG_AX, REG_ESI, 0x6B0F51, 6, 0x8B3805D9, 0x90900085>, "CAutomobile::CAutomobile");
-        hookASM(*(uint32_t*)0x6B0CF0 == 0x227E8166 && *(uint16_t*)0x6B0CF4 == 0x01B0, 0x6B0CF0, 6, patch6B0CF0, "CAutomobile::CAutomobile");
+        hookASM(*(uint32_t*)0x6B0CF0 == 0x227E8166 && *(uint16_t*)0x6B0CF4 == 0x01B0,     0x6B0CF0, 6, patch6B0CF0, "CAutomobile::CAutomobile");
         hookASM(*(uint32_t*)0x6B0EE2 == 0x22468B66 && *(uint32_t*)0x6B0EE6 == 0x020D3D66, 0x6B0EE2, 8, movReg16WordPtrReg<REG_AX, REG_ESI, 0x6B0EEA, 4, 0x020D3D66, 0x90909090>, "CAutomobile::CAutomobile");
 
         hookCall(0x871238, ProcessSuspensionHooked<0x871238>, "ProcessSuspension", true);
@@ -2014,7 +2118,7 @@ void installVehicleHooks()
         hookCall(0x6ABA60, RegisterCoronaHooked<0x6ABA60>, "RegisterCorona"); //CAutomobile::PreRender
         hookCall(0x6ABB35, RegisterCoronaHooked<0x6ABB35>, "RegisterCorona"); //CAutomobile::PreRender
         hookCall(0x6ABC69, RegisterCoronaHooked<0x6ABC69>, "RegisterCorona"); //CAutomobile::PreRender
-        if (*(uint32_t *)0x6ABA56 == 0x0000FF68 && *(BYTE*)0x6ABA5A == 0)
+        if (*(uint32_t *)0x6ABA56 == 0x0000FF68 && *(uint8_t*)0x6ABA5A == 0)
             injector::MakeJMP(0x6ABA56, patchCoronas);
         else
             logModified((uint32_t)0x6ABA56, printToString("Modified method detected : CAutomobile::PreRender - 0x6ABA56 is %s", bytesToString(0x6ABA56, 5).c_str()));
@@ -2032,4 +2136,6 @@ void installVehicleHooks()
         hookCall(0x48DA81, IsLawEnforcementVehicleHooked<0x48DA81>, "IsLawEnforcementVehicle");
         hookCall(0x469612, CollectParametersHooked<0x469612>, "CollectParameters");
     }
+
+    hookCall(0x4306A1, GetNewVehicleDependingOnCarModelHooked<0x4306A1>, "GetNewVehicleDependingOnCarModel"); ///CCarCtrl::GenerateOneRandomCar
 }

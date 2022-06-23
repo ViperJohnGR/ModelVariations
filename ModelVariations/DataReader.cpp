@@ -51,8 +51,13 @@ std::string DataReader::ReadString(std::string_view szSection, std::string_view 
 	}
 }
 
-std::vector<unsigned short> DataReader::ReadLine(std::string section, std::string key, bool parseGroups)
+std::vector<unsigned short> DataReader::ReadLine(std::string section, std::string key, int parseType)
 {
+	//parseType
+	//0 - Normal
+	//1 - Groups
+	//2 - Tuning parts
+
 	std::vector<unsigned short> retVector;
 
 	std::string iniString = this->ReadString(section, key, "");
@@ -67,15 +72,17 @@ std::vector<unsigned short> DataReader::ReadLine(std::string section, std::strin
 
 		while (token != NULL)
 		{
-			if (parseGroups)
-			{
-				if (strncmp(token, "Group", 5) == 0)
-					retVector.push_back((unsigned short)(token[5] - '0'));
-			}
+			if (parseType == 1 && strncmp(token, "Group", 5) == 0)
+				retVector.push_back((unsigned short)(token[5] - '0'));
 			else if (token[0] >= '0' && token[0] <= '9')
 				retVector.push_back((unsigned short)atoi(token));
-			else if (CModelInfo::GetModelInfo(token, &modelid) != NULL)
-				retVector.push_back((unsigned short)modelid);
+			else
+			{
+				auto *mInfo = CModelInfo::GetModelInfo(token, &modelid);
+				if (mInfo != NULL)
+					if ((mInfo->GetModelType() != 6 && mInfo->GetModelType() != 7 && parseType == 2) || (((mInfo->GetModelType() == 6 || mInfo->GetModelType() == 7) && parseType == 0)) )
+						retVector.push_back((unsigned short)modelid);
+			}
 
 			token = strtok(NULL, ",");
 		}

@@ -236,7 +236,11 @@ void readVehicleIni(bool firstTime)
         if (section[0] >= '0' && section[0] <= '9')
             modelid = std::stoi(section);
         else
+        {
             CModelInfo::GetModelInfo((char*)section.c_str(), &modelid);
+            if (modelid > 400)
+                vehModels.insert({ modelid, section });
+        }
 
         unsigned short i = (unsigned short)modelid;
         if (i >= 400 && i < 612)
@@ -293,9 +297,9 @@ void readVehicleIni(bool firstTime)
 
 
             for (unsigned int j = 0; j < 16; j++)
-                for (unsigned int k = 0; k < vehVariations[i - 400][j].size(); k++)
-                    if (vehVariations[i - 400][j][k] > 0 && vehVariations[i - 400][j][k] < 32000 && vehVariations[i - 400][j][k] != i && !(IdExists(vehInheritExclude, vehVariations[i - 400][j][k])))
-                        vehOriginalModels.insert({ vehVariations[i - 400][j][k], i });
+                for (auto &k : vehVariations[i-400][j])
+                    if (k != i && !(IdExists(vehInheritExclude, k)))
+                        vehOriginalModels.insert({ k, i });
         }
     }
 
@@ -646,7 +650,14 @@ void __cdecl AddPoliceCarOccupantsHooked(CVehicle* a2, char a3)
             const unsigned int i = CGeneral::GetRandomNumberInRange(0, (int)vehGroupWantedVariations[a2->m_nModelIndex][wantedLevel].size());
             currentOccupantsModel = a2->m_nModelIndex;
 
-            std::vector<unsigned short> zoneGroups = iniVeh.ReadLine(std::to_string(a2->m_nModelIndex), currentZone, 1);
+            std::string section;
+            auto it2 = vehModels.find(a2->m_nModelIndex);
+            if (it2 != vehModels.end())
+                section = it2->second;
+            else
+                section = std::to_string(a2->m_nModelIndex);
+
+            std::vector<unsigned short> zoneGroups = iniVeh.ReadLine(section, currentZone, 1);
             checkNumGroups(zoneGroups, it->second);
             if (vehGroups.find(a2->m_nModelIndex) != vehGroups.end())
             {
@@ -921,7 +932,15 @@ DWORD __cdecl FindSpecificDriverModelForCar_ToUseHooked(int carModel)
         return (DWORD)callOriginalAndReturn<int, address>(getVariationOriginalModel(carModel));
 
     auto it = vehDrivers.find((unsigned short)carModel);
-    int replaceDriver = iniVeh.ReadInteger(std::to_string(carModel), "ReplaceDriver", 0);
+    
+    std::string section;
+    auto it2 = vehModels.find((unsigned short)carModel);
+    if (it2 != vehModels.end())
+        section = it2->second;
+    else
+        section = std::to_string(carModel);
+
+    int replaceDriver = iniVeh.ReadInteger(section, "ReplaceDriver", 0);
     if (currentOccupantsGroup > -1 && currentOccupantsGroup < 9 && currentOccupantsModel > 0)
     {
         auto itGroup = vehDriverGroups[currentOccupantsGroup].find(currentOccupantsModel);
@@ -1015,7 +1034,14 @@ void __cdecl SetUpDriverAndPassengersForVehicleHooked(CVehicle* car, int a3, int
             const unsigned int i = CGeneral::GetRandomNumberInRange(0, (int)vehGroupWantedVariations[car->m_nModelIndex][wantedLevel].size());
             currentOccupantsModel = car->m_nModelIndex;
 
-            std::vector<unsigned short> zoneGroups = iniVeh.ReadLine(std::to_string(car->m_nModelIndex), currentZone, 1);
+            std::string section;
+            auto it2 = vehModels.find(car->m_nModelIndex);
+            if (it2 != vehModels.end())
+                section = it2->second;
+            else
+                section = std::to_string(car->m_nModelIndex);
+
+            std::vector<unsigned short> zoneGroups = iniVeh.ReadLine(section, currentZone, 1);
             checkNumGroups(zoneGroups, it->second);
             if (vehGroups.find(car->m_nModelIndex) != vehGroups.end())
             {
@@ -1117,7 +1143,14 @@ CPed* __cdecl AddPedInCarHooked(CVehicle* a1, char a2, int a3, signed int a4, in
     unsigned int random = 0;
     if (a1)
     {
-        int replacePassenger = iniVeh.ReadInteger(std::to_string(a1->m_nModelIndex), "ReplacePassengers", 0);
+        std::string section;
+        auto it2 = vehModels.find(a1->m_nModelIndex);
+        if (it2 != vehModels.end())
+            section = it2->second;
+        else
+            section = std::to_string(a1->m_nModelIndex);
+
+        int replacePassenger = iniVeh.ReadInteger(section, "ReplacePassengers", 0);
         auto it = vehPassengers.find(a1->m_nModelIndex);
         if (currentOccupantsGroup > -1 && currentOccupantsGroup < 9 && currentOccupantsModel > 0)
         {
@@ -1319,8 +1352,14 @@ void* __cdecl GetNewVehicleDependingOnCarModelHooked(int modelIndex, int created
             for (unsigned int i = 0; i < 17; i++)
                 slotsToInstall[i] = (CGeneral::GetRandomNumberInRange(0, 3) == 1 ? true : false);
 
+            std::string section;
+            auto it2 = vehModels.find(veh->m_nModelIndex);
+            if (it2 != vehModels.end())
+                section = it2->second;
+            else
+                section = std::to_string(veh->m_nModelIndex);
 
-            if (iniVeh.ReadInteger(std::to_string(veh->m_nModelIndex), "TuningFullBodykit", 0) == 1)
+            if (iniVeh.ReadInteger(section, "TuningFullBodykit", 0) == 1)
                 if (slotsToInstall[14] == true || slotsToInstall[15] == true || slotsToInstall[3] == true)
                     slotsToInstall[14] = slotsToInstall[15] = slotsToInstall[3] = true;
 

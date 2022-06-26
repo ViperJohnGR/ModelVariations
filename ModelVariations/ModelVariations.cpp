@@ -75,6 +75,8 @@ std::map<unsigned short, unsigned short> pedOriginalModels;
 std::map<unsigned short, std::array<std::vector<unsigned short>, 6>> vehGroupWantedVariations;
 std::map<unsigned short, std::string> wepVariationModels;
 std::map<unsigned short, std::vector<unsigned short>> vehCurrentTuning;
+std::map<unsigned short, std::string> vehModels;
+std::map<unsigned short, std::string> pedModels;
 
 std::set<unsigned short> dontInheritBehaviourModels;
 std::set<unsigned short> parkedCars;
@@ -293,16 +295,23 @@ void updateVariations(CZone* zInfo)
     {
         vectorUnion(pedVariations[modelid][4], pedVariations[modelid][currentTown], pedCurrentVariations[modelid]);
 
-        std::vector<unsigned short> vec = iniPed.ReadLine(std::to_string(modelid), ((lastZone[0] == 0) ? zInfo->m_szLabel : lastZone));
+        std::string section;
+        auto it = pedModels.find(modelid);
+        if (it != pedModels.end())
+            section = it->second;
+        else
+            section = std::to_string(modelid);
+
+        std::vector<unsigned short> vec = iniPed.ReadLine(section, ((lastZone[0] == 0) ? zInfo->m_szLabel : lastZone));
         if (!vec.empty())
         {
-            if (pedMergeZones.find((unsigned short)modelid) != pedMergeZones.end())
+            if (pedMergeZones.find(modelid) != pedMergeZones.end())
                 pedCurrentVariations[modelid] = vectorUnion(pedCurrentVariations[modelid], vec);
             else
                 pedCurrentVariations[modelid] = vec;
         }
 
-        vec = iniPed.ReadLine(std::to_string(modelid), currentInterior);
+        vec = iniPed.ReadLine(section, currentInterior);
         if (!vec.empty())
             pedCurrentVariations[modelid] = vectorUnion(pedCurrentVariations[modelid], vec);
 
@@ -318,7 +327,14 @@ void updateVariations(CZone* zInfo)
     {
         vectorUnion(i.second[4], i.second[currentTown], vehCurrentTuning[i.first]);
 
-        std::vector<unsigned short> vec = iniPed.ReadLine(std::to_string(i.first), ((lastZone[0] == 0) ? zInfo->m_szLabel : lastZone), 2);
+        std::string section;
+        auto it = vehModels.find(i.first);
+        if (it != vehModels.end())
+            section = it->second;
+        else
+            section = std::to_string(i.first);
+
+        std::vector<unsigned short> vec = iniPed.ReadLine(section, ((lastZone[0] == 0) ? zInfo->m_szLabel : lastZone), 2);
         if (!vec.empty())
         {
             if (vehMergeZones.find(i.first) != vehMergeZones.end())
@@ -332,7 +348,14 @@ void updateVariations(CZone* zInfo)
     {
         vectorUnion(vehVariations[modelid][4], vehVariations[modelid][currentTown], vehCurrentVariations[modelid]);
 
-        std::vector<unsigned short> vec = iniVeh.ReadLine(std::to_string(modelid + 400), ((lastZone[0] == 0) ? zInfo->m_szLabel : lastZone));
+        std::string section;
+        auto it = vehModels.find(modelid + 400U);
+        if (it != vehModels.end())
+            section = it->second;
+        else
+            section = std::to_string(modelid + 400);
+
+        std::vector<unsigned short> vec = iniVeh.ReadLine(section, ((lastZone[0] == 0) ? zInfo->m_szLabel : lastZone));
         if (!vec.empty())
         {
             if (vehMergeZones.find((unsigned short)(modelid + 400)) != vehMergeZones.end())
@@ -463,7 +486,10 @@ void loadIniData(bool firstTime)
         if (section[0] >= '0' && section[0] <= '9')
             i = std::stoi(iniData.first);
         else
+        {
             CModelInfo::GetModelInfo((char*)section.c_str(), &i);
+            pedModels.insert({ i, section });
+        }
 
         if (isValidPedId(i))
         {
@@ -593,6 +619,8 @@ void clearEverything()
     wepVariationModels.clear();
     vehTuning.clear();
     vehCurrentTuning.clear();
+    vehModels.clear();
+    pedModels.clear();
 
     //sets
     dontInheritBehaviourModels.clear();

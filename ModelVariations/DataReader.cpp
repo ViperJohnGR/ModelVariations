@@ -74,13 +74,13 @@ std::vector<unsigned short> DataReader::ReadLine(std::string section, std::strin
 		{
 			if (parseType == 1 && strncmp(token, "Group", 5) == 0)
 				retVector.push_back((unsigned short)(token[5] - '0'));
-			else if (token[0] >= '0' && token[0] <= '9')
+			else if (token[0] >= '0' && token[0] <= '9' && parseType != 2 )
 				retVector.push_back((unsigned short)atoi(token));
 			else
 			{
 				auto *mInfo = CModelInfo::GetModelInfo(token, &modelid);
 				if (mInfo != NULL)
-					if ((mInfo->GetModelType() != 6 && mInfo->GetModelType() != 7 && parseType == 2) || (((mInfo->GetModelType() == 6 || mInfo->GetModelType() == 7) && parseType == 0)) )
+					if ( (mInfo->GetModelType() != 6 && mInfo->GetModelType() != 7 && parseType == 2 && modelid > 300) || (((mInfo->GetModelType() == 6 || mInfo->GetModelType() == 7) && parseType == 0)) )
 						retVector.push_back((unsigned short)modelid);
 			}
 

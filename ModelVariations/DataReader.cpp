@@ -1,6 +1,7 @@
 #include "DataReader.hpp"
 
 #include <CModelInfo.h>
+#include <CWeaponInfo.h>
 
 int DataReader::ReadInteger(std::string_view szSection, std::string_view szKey, int iDefaultValue)
 {
@@ -53,11 +54,6 @@ std::string DataReader::ReadString(std::string_view szSection, std::string_view 
 
 std::vector<unsigned short> DataReader::ReadLine(std::string section, std::string key, int parseType)
 {
-	//parseType
-	//0 - Normal
-	//1 - Groups
-	//2 - Tuning parts
-
 	std::vector<unsigned short> retVector;
 
 	std::string iniString = this->ReadString(section, key, "");
@@ -72,16 +68,59 @@ std::vector<unsigned short> DataReader::ReadLine(std::string section, std::strin
 
 		while (token != NULL)
 		{
-			if (parseType == 1 && strncmp(token, "Group", 5) == 0)
-				retVector.push_back((unsigned short)(token[5] - '0'));
-			else if (token[0] >= '0' && token[0] <= '9' && parseType != 2 )
-				retVector.push_back((unsigned short)atoi(token));
+			if (parseType == READ_WEAPONS)
+			{
+				int weaponType = -1;
+				if (token[0] >= '0' && token[0] <= '9')
+					weaponType = atoi(token);
+				auto wInfo = CWeaponInfo::GetWeaponInfo((eWeaponType)weaponType, 1);
+				if (wInfo != NULL)
+					retVector.push_back((unsigned short)weaponType);
+			}
+			else if (parseType == READ_GROUPS)
+			{
+				if (strncmp(token, "Group", 5) == 0)
+					retVector.push_back((unsigned short)(token[5] - '0'));
+				break;
+			}
+			else if (parseType == READ_TUNING)
+			{
+				if (token[0] != 'G')
+				{
+					auto mInfo = CModelInfo::GetModelInfo(token, &modelid);
+					if (mInfo != NULL)
+					{
+						auto modelType = mInfo->GetModelType();
+						if (modelType != MODEL_INFO_VEHICLE && modelType != MODEL_INFO_PED && modelType != MODEL_INFO_WEAPON && modelid > 300)
+							retVector.push_back((unsigned short)modelid);
+						break;
+					}
+				}
+			}
 			else
 			{
-				auto *mInfo = CModelInfo::GetModelInfo(token, &modelid);
+				CBaseModelInfo* mInfo = NULL;
+				if (token[0] >= '0' && token[0] <= '9')
+				{
+					modelid = atoi(token);
+					mInfo = CModelInfo::GetModelInfo(modelid);
+				}
+				else
+					mInfo = CModelInfo::GetModelInfo(token, &modelid);
+
 				if (mInfo != NULL)
-					if ( (mInfo->GetModelType() != 6 && mInfo->GetModelType() != 7 && parseType == 2 && modelid > 300) || (((mInfo->GetModelType() == 6 || mInfo->GetModelType() == 7) && parseType == 0)) )
-						retVector.push_back((unsigned short)modelid);
+				{
+					if (parseType == READ_VEHICLES)
+					{
+						if (mInfo->GetModelType() == MODEL_INFO_VEHICLE)
+							retVector.push_back((unsigned short)modelid);
+					}
+					else if (parseType == READ_PEDS)
+					{
+						if (mInfo->GetModelType() == MODEL_INFO_PED)
+							retVector.push_back((unsigned short)modelid);
+					}
+				}
 			}
 
 			token = strtok(NULL, ",");

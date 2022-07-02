@@ -515,6 +515,10 @@ void readVehicleIni(bool firstTime)
             vec = iniVeh.ReadLine(i.first, "Passengers", READ_PEDS);
             if (!vec.empty())
                 vehPassengers.insert({ modelid, vec });
+
+            unsigned short parentID = (unsigned short)iniVeh.ReadInteger(i.first, "ParentID", 0);
+            if (parentID >= 400)
+                vehOriginalModels[modelid] = parentID;
         }
     }
 

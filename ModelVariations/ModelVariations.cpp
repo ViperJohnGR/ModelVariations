@@ -86,6 +86,7 @@ std::set<unsigned short> vehMergeZones;
 std::set<unsigned short> pedHasVariations;
 std::set<unsigned short> vehHasVariations;
 std::set<unsigned int> modifiedAddresses;
+std::set<unsigned short> cloneRemoverIncludeVariations;
 
 std::stack<CPed*> pedStack;
 std::stack<CVehicle*> vehStack;
@@ -124,7 +125,6 @@ int enableSpecialFeatures = 0;
 int changeScriptedCars = 0;
 int enableCloneRemover = 0;
 int cloneRemoverVehicleOccupants = 0;
-int cloneRemoverIncludeVariations = 0;
 int spawnDelay = 3;
 
 bool keyDown = false;
@@ -551,6 +551,9 @@ void loadIniData(bool firstTime)
 
             if (iniPed.ReadInteger(section, "DontInheritBehaviour", 0) == 1)
                 dontInheritBehaviourModels.insert((unsigned short)i);
+
+            if (iniPed.ReadInteger(section, "CloneRemoverIncludeVariations", 0) == 1)
+                cloneRemoverIncludeVariations.insert((unsigned short)i);
         }
     }
 
@@ -568,7 +571,6 @@ void loadIniData(bool firstTime)
     if (firstTime)
     {
         enableCloneRemover = iniPed.ReadInteger("Settings", "EnableCloneRemover", 0);
-        cloneRemoverIncludeVariations = iniPed.ReadInteger("Settings", "CloneRemoverIncludeVariations", 0);
         cloneRemoverVehicleOccupants = iniPed.ReadInteger("Settings", "CloneRemoverIncludeVehicleOccupants", 0);
         cloneRemoverExclusions = iniPed.ReadLine("Settings", "CloneRemoverExcludeModels", READ_PEDS);
         spawnDelay = iniPed.ReadInteger("Settings", "SpawnDelay", 3);
@@ -630,6 +632,7 @@ void clearEverything()
     vehMergeZones.clear();
     pedHasVariations.clear();
     vehHasVariations.clear();
+    cloneRemoverIncludeVariations.clear();
 
     //stacks
     while (!pedStack.empty()) pedStack.pop();
@@ -1059,7 +1062,8 @@ public:
 
                 if (IsPedPointerValid(ped) && enableCloneRemover == 1 && ped->m_nCreatedBy != 2 && CPools::ms_pPedPool && pedRemoved == false) //Clone remover
                 {
-                    if (pedTimeSinceLastSpawned.find((cloneRemoverIncludeVariations == 1) ? getVariationOriginalModel(ped->m_nModelIndex) : ped->m_nModelIndex) != pedTimeSinceLastSpawned.end()) //Delete peds spawned before SpawnTime
+                    bool includeVariations = cloneRemoverIncludeVariations.find(ped->m_nModelIndex) != cloneRemoverIncludeVariations.end();
+                    if (pedTimeSinceLastSpawned.find((includeVariations) ? getVariationOriginalModel(ped->m_nModelIndex) : ped->m_nModelIndex) != pedTimeSinceLastSpawned.end()) //Delete peds spawned before SpawnTime
                     {
                         if (!IsVehiclePointerValid(ped->m_pVehicle))
                         {
@@ -1101,9 +1105,9 @@ public:
 
                     if (!pedRemoved && IsPedPointerValid(ped) && !IdExists(cloneRemoverExclusions, ped->m_nModelIndex) && ped->m_nModelIndex > 0) //Delete peds already spawned
                     {
-                        pedTimeSinceLastSpawned.insert({ ((cloneRemoverIncludeVariations == 1) ? getVariationOriginalModel(ped->m_nModelIndex) : ped->m_nModelIndex), clock() });
+                        pedTimeSinceLastSpawned.insert({ ((includeVariations) ? getVariationOriginalModel(ped->m_nModelIndex) : ped->m_nModelIndex), clock() });
                         for (CPed* ped2 : CPools::ms_pPedPool)
-                            if ( IsPedPointerValid(ped2) && ped2 != ped && ((cloneRemoverIncludeVariations == 1) ?
+                            if ( IsPedPointerValid(ped2) && ped2 != ped && ((includeVariations) ?
                                                                             (getVariationOriginalModel(ped->m_nModelIndex) == getVariationOriginalModel(ped2->m_nModelIndex)) :
                                                                             (ped->m_nModelIndex == ped2->m_nModelIndex)) )
                             {

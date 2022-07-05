@@ -35,10 +35,7 @@ inline void callOriginal(Args... args)
 {
     auto it = hookedCalls.find(address);
     if (it != hookedCalls.end())
-    {
-        unsigned int originalCall = (unsigned int)(it->second.originalFunction);
-        reinterpret_cast<void(__cdecl*)(Args...)>(originalCall)(args...);
-    }
+        reinterpret_cast<void(__cdecl*)(Args...)>(it->second.originalFunction)(args...);
 }
 
 template <typename Ret, unsigned int address, typename... Args>
@@ -46,10 +43,8 @@ inline Ret callOriginalAndReturn(Args... args)
 {
     auto it = hookedCalls.find(address);
     if (it != hookedCalls.end())
-    {
-        unsigned int originalCall = (unsigned int)(it->second.originalFunction);
-        return reinterpret_cast<Ret(__cdecl*)(Args...)>(originalCall)(args...);
-    }
+        return reinterpret_cast<Ret(__cdecl*)(Args...)>(it->second.originalFunction)(args...);
+
     return 0;
 }
 
@@ -59,10 +54,7 @@ inline void callMethodOriginal(C _this, Args... args)
 {
     auto it = hookedCalls.find(address);
     if (it != hookedCalls.end())
-    {
-        unsigned int originalCall = (unsigned int)(it->second.originalFunction);
-        reinterpret_cast<void(__thiscall*)(C, Args...)>(originalCall)(_this, args...);
-    }
+        reinterpret_cast<void(__thiscall*)(C, Args...)>(it->second.originalFunction)(_this, args...);
 }
 
 template <typename Ret, unsigned int address, typename C, typename... Args>
@@ -70,9 +62,7 @@ inline Ret callMethodOriginalAndReturn(C _this, Args... args)
 {
     auto it = hookedCalls.find(address);
     if (it != hookedCalls.end())
-    {
-        unsigned int originalCall = (unsigned int)(it->second.originalFunction);
-        return reinterpret_cast<Ret(__thiscall*)(C, Args...)>(originalCall)(_this, args...);
-    }
+        return reinterpret_cast<Ret(__thiscall*)(C, Args...)>(it->second.originalFunction)(_this, args...);
+
     return 0;
 }

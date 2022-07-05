@@ -24,9 +24,12 @@
 #include <stack>
 #include <unordered_set>
 #include <ctime>
+#include <urlmon.h>
 
 #include <Psapi.h>
 #include <shlwapi.h>
+
+#pragma comment(lib, "urlmon.lib")
 
 using namespace plugin;
 
@@ -71,7 +74,7 @@ std::map<unsigned short, std::pair<CVector, float>> LightPositions;
 std::map<unsigned short, rgba> LightColors;
 std::map<unsigned short, rgba> LightColors2;
 std::map<unsigned short, int> pedTimeSinceLastSpawned;
-std::map<unsigned short, unsigned short> pedOriginalModels;
+std::map<unsigned short, std::vector<unsigned short>> pedOriginalModels;
 std::map<unsigned short, std::array<std::vector<unsigned short>, 6>> vehGroupWantedVariations;
 std::map<unsigned short, std::string> wepVariationModels;
 std::map<unsigned short, std::vector<unsigned short>> vehCurrentTuning;
@@ -86,13 +89,13 @@ std::set<unsigned short> vehMergeZones;
 std::set<unsigned short> pedHasVariations;
 std::set<unsigned short> vehHasVariations;
 std::set<unsigned int> modifiedAddresses;
-std::set<unsigned short> cloneRemoverIncludeVariations;
 
 std::stack<CPed*> pedStack;
 std::stack<CVehicle*> vehStack;
 std::stack<std::pair<CVehicle*, std::array<std::vector<unsigned short>, 17>>> tuningStack;
 //std::stack<std::pair<CVehicle*, std::array<int, 16>>> tuningStack;
 
+std::vector<unsigned short> cloneRemoverIncludeVariations;
 std::vector<unsigned short> cloneRemoverExclusions;
 std::vector<unsigned short> pedCurrentVariations[MAX_PED_ID];
 std::vector<unsigned short> vehCurrentVariations[212];
@@ -129,6 +132,8 @@ int spawnDelay = 3;
 
 bool keyDown = false;
 
+int timeUpdate = 8001;
+
 void getLoadedModules()
 {
     modulesSet.clear();
@@ -144,6 +149,93 @@ void getLoadedModules()
             if (GetModuleFileNameEx(hProcess, modules[i], szModName, sizeof(szModName) / sizeof(TCHAR)))
                 modulesSet.insert(std::make_pair((unsigned int)modules[i], szModName));
         }
+}
+
+bool checkForUpdate()
+{
+    auto funcFail = []() {
+        if (logfile.is_open())
+            logfile << "Check for updates failed." << std::endl;
+
+        return false;
+    };
+
+    IStream* stream;
+
+    if (URLOpenBlockingStream(0, "http://api.github.com/repos/ViperJohnGR/ModelVariations/tags", &stream, 0, 0) != S_OK)
+        return funcFail();
+
+    std::string str(51, 0);
+    if (stream->Read(&str[0], 50, NULL) != S_OK)
+        return funcFail();
+
+    stream->Release();
+    str = str.substr(11, 10);
+    str.erase(str.find('"'));
+
+    const char *newV = str.c_str();
+    const char *oldV = MOD_VERSION;
+
+    return std::lexicographical_compare(oldV, oldV+strlen(oldV), newV, newV+strlen(newV));
+}
+
+bool pedDelaySpawn(unsigned short model, bool includeParentModels)
+{
+    if (!includeParentModels)
+    {
+        if (pedTimeSinceLastSpawned.find(model) != pedTimeSinceLastSpawned.end())
+            return true;
+    }
+    else
+    {
+        auto it = pedOriginalModels.find(model);
+        if (it != pedOriginalModels.end())
+            for (auto &i : it->second)
+                if (pedTimeSinceLastSpawned.find(i) != pedTimeSinceLastSpawned.end())
+                    return true;
+    }
+    return false;
+}
+
+void insertPedSpawnedOriginalModels(unsigned short model)
+{
+    auto it = pedOriginalModels.find(model);
+    if (it != pedOriginalModels.end())
+        for (auto& i : it->second)
+            pedTimeSinceLastSpawned.insert({ i, clock() });
+}
+
+bool compareOriginalModels(unsigned short model1, unsigned short model2)
+{
+    if (model1 == model2)
+        return true;
+
+    auto it1 = pedOriginalModels.find(model1);
+    auto it2 = pedOriginalModels.find(model2);
+    if (it1 != pedOriginalModels.end() && it2 != pedOriginalModels.end())
+        return std::find_first_of(it1->second.begin(), it1->second.end(), it2->second.begin(), it2->second.end()) != it1->second.end();
+    else
+    {
+        unsigned short model = 0;
+        std::vector<unsigned short> *vec = NULL;
+        if (it1 != pedOriginalModels.end())
+        {
+            model = model2;
+            vec = &it1->second;
+        }
+        else if (it2 != pedOriginalModels.end())
+        {
+            model = model1;
+            vec = &it2->second;
+        }
+        else
+            return false;
+
+        if (std::find(vec->begin(), vec->end(), model) != vec->end())
+            return true;
+    }
+
+    return false;
 }
 
 void filterWantedVariations(std::vector<unsigned short>& vec, std::vector<unsigned short>& wantedVec)
@@ -165,15 +257,6 @@ void filterWantedVariations(std::vector<unsigned short>& vec, std::vector<unsign
         vec = vec2;
 }
 
-static unsigned short getVariationOriginalModel(unsigned short model)
-{
-    auto it = pedOriginalModels.find(model);
-    if (it != pedOriginalModels.end())
-        return it->second;
-
-    return model;
-}
-
 bool IdExists(std::vector<unsigned short>& vec, int id)
 {
     if (vec.size() < 1)
@@ -187,7 +270,7 @@ bool IdExists(std::vector<unsigned short>& vec, int id)
 
 bool isValidPedId(int id)
 {
-    if (id <= 0 && id >= MAX_PED_ID)
+    if (id <= 0 || id >= MAX_PED_ID)
         return false;
     if (id >= 190 && id <= 195)
         return false;
@@ -543,17 +626,22 @@ void loadIniData(bool firstTime)
 
             for (unsigned int j = 0; j < 16; j++)
                 for (unsigned int k = 0; k < pedVariations[i][j].size(); k++)
-                    if (pedVariations[i][j][k] > 0 && pedVariations[i][j][k] < 32000 && pedVariations[i][j][k] != i)
-                        pedOriginalModels.insert({ pedVariations[i][j][k], i });
+                    if (pedVariations[i][j][k] > 0 && pedVariations[i][j][k] != i)
+                    {
+                        if (pedOriginalModels.find(pedVariations[i][j][k]) != pedOriginalModels.end())
+                            pedOriginalModels[pedVariations[i][j][k]].push_back((unsigned short)i);
+                        else
+                            pedOriginalModels.insert({ pedVariations[i][j][k], {(unsigned short)i} });
+                    }
+
+            for (auto it : pedOriginalModels)
+                std::sort(it.second.begin(), it.second.end());
 
             if (iniPed.ReadInteger(section, "MergeZonesWithCities", 0) == 1)
                 pedMergeZones.insert((unsigned short)i);
 
             if (iniPed.ReadInteger(section, "DontInheritBehaviour", 0) == 1)
                 dontInheritBehaviourModels.insert((unsigned short)i);
-
-            if (iniPed.ReadInteger(section, "CloneRemoverIncludeVariations", 0) == 1)
-                cloneRemoverIncludeVariations.insert((unsigned short)i);
         }
     }
 
@@ -567,6 +655,8 @@ void loadIniData(bool firstTime)
         if (modelid > 0)
             wepVariationModels.insert({ modelid, section });
     }
+
+    cloneRemoverIncludeVariations = iniPed.ReadLine("Settings", "CloneRemoverIncludeVariations", READ_PEDS);
 
     if (firstTime)
     {
@@ -771,6 +861,9 @@ public:
 
         Events::initRwEvent += []
         {
+            //if (checkForUpdate())
+                //MessageBox(NULL, "Model Variations: New version available!\nhttps://github.com/ViperJohnGR/ModelVariations", "Update available", MB_ICONINFORMATION);
+
             loadIniData(true);
             installHooks();
 
@@ -804,6 +897,11 @@ public:
 
             if (logfile.is_open())
                 getLoadedModules();
+
+            if (checkForUpdate())
+                timeUpdate = clock();
+            else
+                timeUpdate = -1;
         };
 
         Events::processScriptsEvent += []
@@ -854,6 +952,11 @@ public:
 
         Events::gameProcessEvent += []
         {
+            if (timeUpdate > -1 && ((clock() - timeUpdate) / CLOCKS_PER_SEC > 6))
+            {
+                CMessages::AddMessageJumpQ((char*)"~y~Model Variations~s~: Update available.", 4000, 0, false);
+                timeUpdate = -1;
+            }
 
             if (disableKey > 0 && KeyPressed(disableKey))
             {
@@ -1062,8 +1165,8 @@ public:
 
                 if (IsPedPointerValid(ped) && enableCloneRemover == 1 && ped->m_nCreatedBy != 2 && CPools::ms_pPedPool && pedRemoved == false) //Clone remover
                 {
-                    bool includeVariations = cloneRemoverIncludeVariations.find(ped->m_nModelIndex) != cloneRemoverIncludeVariations.end();
-                    if (pedTimeSinceLastSpawned.find((includeVariations) ? getVariationOriginalModel(ped->m_nModelIndex) : ped->m_nModelIndex) != pedTimeSinceLastSpawned.end()) //Delete peds spawned before SpawnTime
+                    bool includeVariations = std::find(cloneRemoverIncludeVariations.begin(), cloneRemoverIncludeVariations.end(), ped->m_nModelIndex) != cloneRemoverIncludeVariations.end();
+                    if (pedDelaySpawn(ped->m_nModelIndex, includeVariations)) //Delete peds spawned before SpawnTime
                     {
                         if (!IsVehiclePointerValid(ped->m_pVehicle))
                         {
@@ -1105,11 +1208,14 @@ public:
 
                     if (!pedRemoved && IsPedPointerValid(ped) && !IdExists(cloneRemoverExclusions, ped->m_nModelIndex) && ped->m_nModelIndex > 0) //Delete peds already spawned
                     {
-                        pedTimeSinceLastSpawned.insert({ ((includeVariations) ? getVariationOriginalModel(ped->m_nModelIndex) : ped->m_nModelIndex), clock() });
+                        if (includeVariations)
+                            insertPedSpawnedOriginalModels(ped->m_nModelIndex);
+                        else
+                            pedTimeSinceLastSpawned.insert({ ped->m_nModelIndex, clock() });
+
                         for (CPed* ped2 : CPools::ms_pPedPool)
                             if ( IsPedPointerValid(ped2) && ped2 != ped && ((includeVariations) ?
-                                                                            (getVariationOriginalModel(ped->m_nModelIndex) == getVariationOriginalModel(ped2->m_nModelIndex)) :
-                                                                            (ped->m_nModelIndex == ped2->m_nModelIndex)) )
+                                (compareOriginalModels(ped->m_nModelIndex, ped2->m_nModelIndex)) : (ped->m_nModelIndex == ped2->m_nModelIndex)) )
                             {
                                 if (!IsVehiclePointerValid(ped->m_pVehicle))
                                 {

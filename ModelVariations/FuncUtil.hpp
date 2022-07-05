@@ -21,11 +21,10 @@ inline void vectorUnion(std::vector<unsigned short>& vec1, std::vector<unsigned 
 inline std::string bytesToString(unsigned int address, int nBytes)
 {
     std::stringstream ss;
+    unsigned char* c = reinterpret_cast<unsigned char*>(address);
 
     for (int i = 0; i < nBytes; i++, ss << " ")
-        ss << std::hex << (unsigned int)(((unsigned char*)address)[i]);
+        ss << std::hex << static_cast<unsigned int>(c[i]);
 
-    std::string retString(ss.str());
-
-    return retString;
+    return ss.str();
 }

@@ -516,9 +516,9 @@ void readVehicleIni(bool firstTime)
             if (!vec.empty())
                 vehPassengers.insert({ modelid, vec });
 
-            unsigned short parentID = (unsigned short)iniVeh.ReadInteger(i.first, "ParentID", 0);
-            if (parentID >= 400)
-                vehOriginalModels[modelid] = parentID;
+            vec = iniVeh.ReadLine(i.first, "ParentModel", READ_VEHICLES);
+            if (!vec.empty() && vec[0] >= 400)
+                vehOriginalModels[modelid] = vec[0];
         }
     }
 
@@ -532,7 +532,7 @@ void readVehicleIni(bool firstTime)
 }
 
 template <unsigned int address, typename... Args>
-void changeModel(std::string funcName, unsigned short oldModel, int newModel, std::vector<unsigned short*> addresses, Args... args)
+void changeModel(const char *funcName, unsigned short oldModel, int newModel, std::vector<unsigned short*> addresses, Args... args)
 {
     if (newModel < 400 || newModel > 65535)
     {
@@ -543,7 +543,7 @@ void changeModel(std::string funcName, unsigned short oldModel, int newModel, st
     for (auto& i : addresses)
         if (*i != oldModel)
         {
-            logModified((unsigned int)i, printToString("Modified method detected : %s - 0x%X is %u", funcName.c_str(), i, *i));
+            logModified((unsigned int)i, printToString("Modified method detected : %s - 0x%X is %u", funcName, i, *i));
             return callMethodOriginal<address>(args...);
         }
 
@@ -555,7 +555,7 @@ void changeModel(std::string funcName, unsigned short oldModel, int newModel, st
 }
 
 template <typename T, unsigned int address, typename... Args>
-T changeModelAndReturn(std::string funcName, unsigned short oldModel, int newModel, std::vector<unsigned short*> addresses, Args... args)
+T changeModelAndReturn(const char* funcName, unsigned short oldModel, int newModel, std::vector<unsigned short*> addresses, Args... args)
 {
     if (newModel < 400 || newModel > 65535)
     {
@@ -565,7 +565,7 @@ T changeModelAndReturn(std::string funcName, unsigned short oldModel, int newMod
     for (auto& i : addresses)
         if (*i != oldModel)
         {
-            logModified((unsigned int)i, printToString("Modified method detected : %s - 0x%X is %u", funcName.c_str(), i, *i));
+            logModified((unsigned int)i, printToString("Modified method detected : %s - 0x%X is %u", funcName, i, *i));
             return callMethodOriginalAndReturn<T, address>(args...);
         }
 

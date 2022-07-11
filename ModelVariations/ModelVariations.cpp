@@ -170,8 +170,16 @@ bool checkForUpdate()
         return funcFail();
 
     stream->Release();
-    str = str.substr(11, 10);
+    str = str.substr(str.find("\"name\":\"v")+9, 10);
     str.erase(str.find('"'));
+    for (auto ch : str)
+        if (!((ch >= '0' && ch <= '9') || (ch == '.')))
+        {
+            if (logfile.is_open())
+                logfile << "Check for updates failed. Invalid version string." << std::endl;
+
+            return false;
+        }
 
     const char *newV = str.c_str();
     const char *oldV = MOD_VERSION;
@@ -952,6 +960,9 @@ public:
 
         Events::gameProcessEvent += []
         {
+            //if (timeUpdate > -1 && strncmp(currentZone, "GAN1", 8) == 0 && *(int*)0xB7CE50 == 0)
+                //timeUpdate = clock();
+
             if (timeUpdate > -1 && ((clock() - timeUpdate) / CLOCKS_PER_SEC > 6))
             {
                 CMessages::AddMessageJumpQ((char*)"~y~Model Variations~s~: Update available.", 4000, 0, false);

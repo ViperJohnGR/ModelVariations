@@ -68,6 +68,9 @@ std::vector<unsigned short> DataReader::ReadLine(std::string section, std::strin
 
 		while (token != NULL)
 		{
+			while (token[0] == ' ')
+				token++;
+
 			if (parseType == READ_WEAPONS)
 			{
 				int weaponType = -1;

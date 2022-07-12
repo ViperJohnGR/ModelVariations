@@ -33,7 +33,7 @@
 
 using namespace plugin;
 
-const int MAX_PED_ID = 300;
+constexpr int MAX_PED_ID = 300;
 
 std::string pedIniPath("ModelVariations_Peds.ini");
 std::string pedWepIniPath("ModelVariations_PedWeapons.ini");
@@ -154,7 +154,7 @@ void getLoadedModules()
 
 bool checkForUpdate()
 {
-    auto funcFail = []() {
+    const auto funcFail = []() {
         if (logfile.is_open())
             logfile << "Check for updates failed." << std::endl;
 
@@ -292,7 +292,7 @@ void detectExe()
     char path[256] = {};
     GetModuleFileName(NULL, path, 255);
     exePath = path;
-    char* name = PathFindFileName(path);
+    const char* name = PathFindFileName(path);
     exeName = name;
     exeFilesize = getFilesize(path);
 
@@ -381,7 +381,7 @@ void updateVariations(CZone* zInfo)
         currentTown = 15;
 
 
-    CWanted* wanted = FindPlayerWanted(-1);
+    const CWanted* wanted = FindPlayerWanted(-1);
 
     for (auto& modelid : pedHasVariations)
     {
@@ -409,7 +409,7 @@ void updateVariations(CZone* zInfo)
 
         if (wanted)
         {
-            unsigned int wantedLevel = (wanted->m_nWantedLevel > 0) ? (wanted->m_nWantedLevel - 1) : (wanted->m_nWantedLevel);
+            const unsigned int wantedLevel = (wanted->m_nWantedLevel > 0) ? (wanted->m_nWantedLevel - 1) : (wanted->m_nWantedLevel);
             if (!pedWantedVariations[modelid][wantedLevel].empty() && !pedCurrentVariations[modelid].empty())
                 filterWantedVariations(pedCurrentVariations[modelid], pedWantedVariations[modelid][wantedLevel]);
         }
@@ -458,7 +458,7 @@ void updateVariations(CZone* zInfo)
 
         if (wanted)
         {
-            unsigned int wantedLevel = (wanted->m_nWantedLevel > 0) ? (wanted->m_nWantedLevel - 1) : (wanted->m_nWantedLevel);
+            const unsigned int wantedLevel = (wanted->m_nWantedLevel > 0) ? (wanted->m_nWantedLevel - 1) : (wanted->m_nWantedLevel);
             if (!vehWantedVariations[modelid][wantedLevel].empty() && !vehCurrentVariations[modelid].empty())
                 filterWantedVariations(vehCurrentVariations[modelid], vehWantedVariations[modelid][wantedLevel]);
         }
@@ -944,13 +944,13 @@ public:
         {
             if (isValidPedId(ped->m_nModelIndex) && !pedCurrentVariations[ped->m_nModelIndex].empty())
             {
-                unsigned int random = CGeneral::GetRandomNumberInRange(0, (int)pedCurrentVariations[ped->m_nModelIndex].size());
-                unsigned short variationModel = pedCurrentVariations[ped->m_nModelIndex][random];
+                const unsigned int random = CGeneral::GetRandomNumberInRange(0, (int)pedCurrentVariations[ped->m_nModelIndex].size());
+                const unsigned short variationModel = pedCurrentVariations[ped->m_nModelIndex][random];
                 if (variationModel > 0 && variationModel != ped->m_nModelIndex)
                 {
                     CStreaming::RequestModel(variationModel, 2);
                     CStreaming::LoadAllRequestedModels(false);
-                    unsigned short index = ped->m_nModelIndex;
+                    const unsigned short index = ped->m_nModelIndex;
                     ped->DeleteRwObject();
                     (static_cast<CEntity*>(ped))->SetModelIndex(variationModel);
                     if (dontInheritBehaviourModels.find(index) == dontInheritBehaviourModels.end())
@@ -1021,7 +1021,7 @@ public:
             CVector pPos = FindPlayerCoors(-1);
             CZone* zInfo = NULL;
             CTheZones::GetZoneInfo(&pPos, &zInfo);
-            CWanted* wanted = FindPlayerWanted(-1);
+            const CWanted* wanted = FindPlayerWanted(-1);
 
             Command<COMMAND_GET_NAME_OF_ENTRY_EXIT_CHAR_USED>(FindPlayerPed(), &currentInterior);
             if (strncmp(currentInterior, lastInterior, 16) != 0)
@@ -1100,7 +1100,7 @@ public:
                     {
                         if (!slot.empty())
                         {
-                            unsigned i = CGeneral::GetRandomNumberInRange(0, slot.size());
+                            const unsigned i = CGeneral::GetRandomNumberInRange(0, (int)slot.size());
 
                             CStreaming::RequestVehicleUpgrade(slot[i], 2);
                             CStreaming::LoadAllRequestedModels(false);
@@ -1131,7 +1131,7 @@ public:
 
             while (!pedStack.empty())
             {
-                auto vehDeleteDriver = [](CVehicle *veh) {
+                const auto vehDeleteDriver = [](CVehicle *veh) {
                     if (IsPedPointerValid(veh->m_pDriver))
                     {
                         veh->m_pDriver->DropEntityThatThisPedIsHolding(true);
@@ -1139,7 +1139,7 @@ public:
                     }
                 };
 
-                auto vehDeletePassengers = [](CVehicle* veh) {
+                const auto vehDeletePassengers = [](CVehicle* veh) {
                     for (int i = 0; i < 8; i++)
                         if (IsPedPointerValid(veh->m_apPassengers[i]))
                         {
@@ -1275,7 +1275,7 @@ public:
 
                 if (!pedRemoved)
                 {
-                    auto wepFound = [ped](eWeaponType weaponId, eWeaponType originalWeaponId) -> bool {
+                    const auto wepFound = [ped](eWeaponType weaponId, eWeaponType originalWeaponId) -> bool {
                         int weapModel = 0;
                         Command<COMMAND_GET_WEAPONTYPE_MODEL>(weaponId, &weapModel);
                         if (weapModel >= 321)
@@ -1299,7 +1299,7 @@ public:
                     if (wepModel != wepVariationModels.end())
                         section = wepModel->second;
                     std::string currentZoneString(currentZone);
-                    int mergeWeapons = iniWeap.ReadInteger(section, "MergeZonesWithGlobal", 0);
+                    const int mergeWeapons = iniWeap.ReadInteger(section, "MergeZonesWithGlobal", 0);
 
                     //if (ped->m_pVehicle != NULL)
                         //currentVehicle = reinterpret_cast<CVehicleModelInfo*>(CModelInfo::GetModelInfo(ped->m_pVehicle->m_nModelIndex))->m_szGameName;
@@ -1310,14 +1310,14 @@ public:
                     std::vector<unsigned short> vec = iniWeap.ReadLine(section, "WEAPONFORCE", READ_WEAPONS);
                     if (!vec.empty())
                     {
-                        eWeaponType forceWeapon = (eWeaponType)vec[CGeneral::GetRandomNumberInRange(0, vec.size())];
+                        const eWeaponType forceWeapon = (eWeaponType)vec[CGeneral::GetRandomNumberInRange(0, (int)vec.size())];
                         if ((wepChanged = wepFound(forceWeapon, (eWeaponType)0)) == true)
                             changeWeapon = (bool)CGeneral::GetRandomNumberInRange(0, 2);
                     }
 
                     if ((changeWeapon || mergeWeapons == 0) && !(vec = iniWeap.ReadLine(section, currentZoneString + "_WEAPONFORCE", READ_WEAPONS)).empty())
                     {
-                        eWeaponType forceWeapon = (eWeaponType)vec[CGeneral::GetRandomNumberInRange(0, vec.size())];
+                        const eWeaponType forceWeapon = (eWeaponType)vec[CGeneral::GetRandomNumberInRange(0, (int)vec.size())];
                         wepChanged |= wepFound(forceWeapon, (eWeaponType)0);
                     }
 
@@ -1325,7 +1325,7 @@ public:
                         for (int i = 0; i < 13; i++)
                             if (ped->m_aWeapons[i].m_nType > 0)
                             {
-                                eWeaponType weaponId = ped->m_aWeapons[i].m_nType;
+                                const eWeaponType weaponId = ped->m_aWeapons[i].m_nType;
                                 bool changeZoneWeapon = true;
                                 bool changeZoneSlot = true;
                                 int currentSlot = ped->m_nActiveWeaponSlot;

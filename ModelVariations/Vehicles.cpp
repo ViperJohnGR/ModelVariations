@@ -149,8 +149,8 @@ int getRandomVariation(const int modelid, bool parked = false)
             return modelid;
     }
 
-    unsigned int random = CGeneral::GetRandomNumberInRange(0, (int)vehCurrentVariations[modelid - 400].size());
-    unsigned short variationModel = vehCurrentVariations[modelid - 400][random];
+    const unsigned int random = CGeneral::GetRandomNumberInRange(0, (int)vehCurrentVariations[modelid - 400].size());
+    const unsigned short variationModel = vehCurrentVariations[modelid - 400][random];
     if (variationModel > 0)
     {
         CStreaming::RequestModel(variationModel, 2);
@@ -382,7 +382,7 @@ void readVehicleIni(bool firstTime, std::string gamePath)
             vec = iniVeh.ReadLine(i.first, "AngelPine", READ_TUNING);
             vehTuning[modelid][15] = vectorUnion(vec, vehTuning[modelid][14]);
 
-            int tuningRarity = iniVeh.ReadInteger(i.first, "TuningRarity", -1);
+            const int tuningRarity = iniVeh.ReadInteger(i.first, "TuningRarity", -1);
             if (tuningRarity > -1)
                 tuningRarities.insert({modelid, (BYTE)tuningRarity});
 
@@ -391,10 +391,10 @@ void readVehicleIni(bool firstTime, std::string gamePath)
 
             if (enableLights)
             {
-                float lightWidth = iniVeh.ReadFloat(i.first, "LightWidth", -999.0);
-                float lightX = iniVeh.ReadFloat(i.first, "LightX", -999.0);
-                float lightY = iniVeh.ReadFloat(i.first, "LightY", -999.0);
-                float lightZ = iniVeh.ReadFloat(i.first, "LightZ", -999.0);
+                const float lightWidth = iniVeh.ReadFloat(i.first, "LightWidth", -999.0);
+                const float lightX = iniVeh.ReadFloat(i.first, "LightX", -999.0);
+                const float lightY = iniVeh.ReadFloat(i.first, "LightY", -999.0);
+                const float lightZ = iniVeh.ReadFloat(i.first, "LightZ", -999.0);
 
                 int r = iniVeh.ReadInteger(i.first, "LightR", -1);
                 int g = iniVeh.ReadInteger(i.first, "LightG", -1);
@@ -577,7 +577,7 @@ void hookTaxi()
     static bool isPlayerInTaxi = false;
     if (enableSideMissions == false)
         return;
-    CPlayerPed* player = FindPlayerPed();
+    const CPlayerPed* player = FindPlayerPed();
     if (player == NULL)
         return;
     const CVehicle* vehicle = player->m_pVehicle;
@@ -699,7 +699,7 @@ signed int __fastcall PickRandomCarHooked(CLoadedCarGroup* cargrp, void*, char a
     if (cargrp == NULL)
         return -1;
 
-    int originalModel = callMethodOriginalAndReturn<signed int, address>(cargrp, a2, a3);
+    const int originalModel = callMethodOriginalAndReturn<signed int, address>(cargrp, a2, a3);
     int variation = getRandomVariation(originalModel, true);
 
     if (originalModel == 531) //Tractor
@@ -743,7 +743,7 @@ void __fastcall DoInternalProcessingHooked(CCarGenerator* park) //for non-random
             return;
         }
 
-        short model = park->m_nModelId;
+        const short model = park->m_nModelId;
         if (changeCarGenerators == 1)
         {
             if (!vehCarGenExclude.empty())
@@ -848,7 +848,7 @@ char __fastcall IsLawEnforcementVehicleHooked(CVehicle* vehicle)
 {
     if (vehicle == NULL)
         return 0;
-    unsigned short modelIndex = vehicle->m_nModelIndex;
+    const unsigned short modelIndex = vehicle->m_nModelIndex;
 
     vehicle->m_nModelIndex = (unsigned short)getVariationOriginalModel(vehicle->m_nModelIndex);
 
@@ -898,7 +898,7 @@ void __cdecl AddAmbulanceOccupantsHooked(CVehicle* pVehicle)
     if (pVehicle == NULL)
         return;
     
-    auto model = pVehicle->m_nModelIndex;
+    const auto model = pVehicle->m_nModelIndex;
 
     if (isModelAmbulance(pVehicle->m_nModelIndex))
         pVehicle->m_nModelIndex = 416;
@@ -912,7 +912,7 @@ void __cdecl AddFiretruckOccupantsHooked(CVehicle* pVehicle)
     if (pVehicle == NULL)
         return;
 
-    auto model = pVehicle->m_nModelIndex;
+    const auto model = pVehicle->m_nModelIndex;
 
     if (isModelFiretruck(pVehicle->m_nModelIndex))
         pVehicle->m_nModelIndex = 407;
@@ -935,13 +935,13 @@ DWORD __cdecl FindSpecificDriverModelForCar_ToUseHooked(int carModel)
     else
         section = std::to_string(carModel);
 
-    int replaceDriver = iniVeh.ReadInteger(section, "ReplaceDriver", 0);
+    const int replaceDriver = iniVeh.ReadInteger(section, "ReplaceDriver", 0);
     if (currentOccupantsGroup > -1 && currentOccupantsGroup < 9 && currentOccupantsModel > 0)
     {
         auto itGroup = vehDriverGroups[currentOccupantsGroup].find(currentOccupantsModel);
         if (itGroup != vehDriverGroups[currentOccupantsGroup].end())
         {
-            unsigned int random = CGeneral::GetRandomNumberInRange(0, (int)itGroup->second.size());
+            const unsigned int random = CGeneral::GetRandomNumberInRange(0, (int)itGroup->second.size());
             CStreaming::RequestModel(itGroup->second[random], 2);
             CStreaming::LoadAllRequestedModels(false);
             return itGroup->second[random];
@@ -949,7 +949,7 @@ DWORD __cdecl FindSpecificDriverModelForCar_ToUseHooked(int carModel)
     }
     if (it != vehDrivers.end() && ((replaceDriver == 0 && CGeneral::GetRandomNumberInRange(0, 100) > 50) || replaceDriver == 1))
     {
-        unsigned int random = CGeneral::GetRandomNumberInRange(0, (int)it->second.size());
+        const unsigned int random = CGeneral::GetRandomNumberInRange(0, (int)it->second.size());
         CStreaming::RequestModel(it->second[random], 2);
         CStreaming::LoadAllRequestedModels(false);
         return it->second[random];
@@ -1078,7 +1078,7 @@ void __cdecl SetUpDriverAndPassengersForVehicleHooked(CVehicle* car, int a3, int
     
     CStreaming::LoadAllRequestedModels(false);
 
-    auto model = car->m_nModelIndex;
+    const auto model = car->m_nModelIndex;
 
     car->m_nModelIndex = (unsigned short)getVariationOriginalModel(car->m_nModelIndex);
 
@@ -1145,7 +1145,7 @@ CPed* __cdecl AddPedInCarHooked(CVehicle* a1, char a2, int a3, signed int a4, in
         else
             section = std::to_string(a1->m_nModelIndex);
 
-        int replacePassenger = iniVeh.ReadInteger(section, "ReplacePassengers", 0);
+        const int replacePassenger = iniVeh.ReadInteger(section, "ReplacePassengers", 0);
         auto it = vehPassengers.find(a1->m_nModelIndex);
         if (currentOccupantsGroup > -1 && currentOccupantsGroup < 9 && currentOccupantsModel > 0)
         {
@@ -1343,7 +1343,7 @@ void* __cdecl GetNewVehicleDependingOnCarModelHooked(int modelIndex, int created
             }
             auto tuningRarity = tuningRarities.find(veh->m_nModelIndex);
 
-            std::array<bool, 17> slotsToInstall;
+            std::array<bool, 17> slotsToInstall = {};
             for (unsigned int i = 0; i < 17; i++)
                 if (tuningRarity != tuningRarities.end())
                     slotsToInstall[i] = (tuningRarity->second == 0) ? false : ((CGeneral::GetRandomNumberInRange(0, tuningRarity->second)) == 0 ? true : false);

@@ -76,8 +76,8 @@ std::vector<unsigned short> DataReader::ReadLine(std::string section, std::strin
 				int weaponType = -1;
 				if (token[0] >= '0' && token[0] <= '9')
 					weaponType = atoi(token);
-				auto wInfo = CWeaponInfo::GetWeaponInfo((eWeaponType)weaponType, 1);
-				if (wInfo != NULL)
+
+				if (CWeaponInfo::GetWeaponInfo((eWeaponType)weaponType, 1) != NULL)
 					retVector.push_back((unsigned short)weaponType);
 			}
 			else if (parseType == READ_GROUPS)
@@ -93,7 +93,7 @@ std::vector<unsigned short> DataReader::ReadLine(std::string section, std::strin
 					auto mInfo = CModelInfo::GetModelInfo(token, &modelid);
 					if (mInfo != NULL)
 					{
-						auto modelType = mInfo->GetModelType();
+						const auto modelType = mInfo->GetModelType();
 						if (modelType != MODEL_INFO_VEHICLE && modelType != MODEL_INFO_PED && modelType != MODEL_INFO_WEAPON && modelid > 300)
 							retVector.push_back((unsigned short)modelid);
 					}

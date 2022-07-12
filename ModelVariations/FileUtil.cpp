@@ -7,7 +7,7 @@ DWORD getFilesize(const std::string& filename)
     HANDLE hFile = CreateFile(filename.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
     if (hFile == INVALID_HANDLE_VALUE)
         return 0;
-    DWORD filesize = GetFileSize(hFile, NULL);
+    const DWORD filesize = GetFileSize(hFile, NULL);
     CloseHandle(hFile);
     return filesize;
 }
@@ -34,7 +34,7 @@ std::string fileToString(const std::string& filename)
         return "";
 
     fseek(fp, 0, SEEK_END);
-    int filesize = ftell(fp);
+    const int filesize = ftell(fp);
     if (filesize < 1)
     {
         fclose(fp);

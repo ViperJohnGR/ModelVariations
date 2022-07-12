@@ -161,27 +161,16 @@ int getRandomVariation(const int modelid, bool parked = false)
 }
 
 
-void readVehicleIni(bool firstTime)
+void readVehicleIni(bool firstTime, std::string gamePath)
 {
     std::string str;
     std::vector <std::string> result;
-    std::ifstream zoneFile("data\\info.zon");
+    std::ifstream zoneFile(gamePath + "\\data\\info.zon");
 
     if (firstTime)
         vehInheritExclude = iniVeh.ReadLine("Settings", "ExcludeModelsFromInheritance", READ_VEHICLES);
 
-    if (!zoneFile.is_open())
-    {
-        zoneFile.open("..\\data\\info.zon"); //If asi is in scripts folder
-        if (!zoneFile.is_open())
-        {
-            zoneFile.open("..\\..\\data\\info.zon"); //If asi is in folder in modloader
-            if (!zoneFile.is_open())
-                zoneFile.open("..\\..\\..\\data\\info.zon"); //If asi is in folder in folder in modloader
-        }
-    }
-
-    if (enableLog == 1)
+    if (logfile.is_open())
     {
         if (zoneFile.is_open())
             logfile << "Zone file 'info.zon' found." << std::endl;

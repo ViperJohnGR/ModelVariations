@@ -676,7 +676,7 @@ void loadIniData(bool firstTime)
     }
 
     if (enableVehicles == 1)
-        readVehicleIni(firstTime);
+        readVehicleIni(firstTime, exePath.substr(0, exePath.find_last_of("/\\")));
 }
 
 void clearEverything()

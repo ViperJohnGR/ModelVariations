@@ -42,6 +42,7 @@ extern std::map<unsigned short, rgba> LightColors;
 extern std::map<unsigned short, rgba> LightColors2;
 extern std::map<unsigned short, std::vector<unsigned short>> vehCurrentTuning;
 extern std::map<unsigned short, std::string> vehModels;
+extern std::map<unsigned short, BYTE> tuningRarities;
 
 extern std::vector<unsigned short> vehCurrentVariations[212];
 extern std::vector<unsigned short> vehCarGenExclude;

@@ -96,7 +96,6 @@ std::vector<unsigned short> DataReader::ReadLine(std::string section, std::strin
 						auto modelType = mInfo->GetModelType();
 						if (modelType != MODEL_INFO_VEHICLE && modelType != MODEL_INFO_PED && modelType != MODEL_INFO_WEAPON && modelid > 300)
 							retVector.push_back((unsigned short)modelid);
-						break;
 					}
 				}
 			}

@@ -345,7 +345,6 @@ void readVehicleIni(bool firstTime, std::string gamePath)
             vehGroups[modelid][15] = vectorUnion(vec, vehGroups[modelid][14]);
 
             //Veh Tuning
-
             vehTuning[modelid][0] = iniVeh.ReadLine(i.first, "Countryside", READ_TUNING);
             vehTuning[modelid][1] = iniVeh.ReadLine(i.first, "LosSantos", READ_TUNING);
             vehTuning[modelid][2] = iniVeh.ReadLine(i.first, "SanFierro", READ_TUNING);
@@ -383,6 +382,9 @@ void readVehicleIni(bool firstTime, std::string gamePath)
             vec = iniVeh.ReadLine(i.first, "AngelPine", READ_TUNING);
             vehTuning[modelid][15] = vectorUnion(vec, vehTuning[modelid][14]);
 
+            int tuningRarity = iniVeh.ReadInteger(i.first, "TuningRarity", -1);
+            if (tuningRarity > -1)
+                tuningRarities.insert({modelid, (BYTE)tuningRarity});
 
             if (iniVeh.ReadInteger(i.first, "UseOnlyGroups", 0) == 1)
                 vehUseOnlyGroups.insert(modelid);
@@ -1339,11 +1341,14 @@ void* __cdecl GetNewVehicleDependingOnCarModelHooked(int modelIndex, int created
                 if (modSlot < 17)
                     partsToInstall[modSlot].push_back(part);
             }
-
+            auto tuningRarity = tuningRarities.find(veh->m_nModelIndex);
 
             std::array<bool, 17> slotsToInstall;
             for (unsigned int i = 0; i < 17; i++)
-                slotsToInstall[i] = (CGeneral::GetRandomNumberInRange(0, 3) == 1 ? true : false);
+                if (tuningRarity != tuningRarities.end())
+                    slotsToInstall[i] = (tuningRarity->second == 0) ? false : ((CGeneral::GetRandomNumberInRange(0, tuningRarity->second)) == 0 ? true : false);
+                else
+                    slotsToInstall[i] = (CGeneral::GetRandomNumberInRange(0, 3) == 0 ? true : false);
 
             std::string section;
             auto it2 = vehModels.find(veh->m_nModelIndex);

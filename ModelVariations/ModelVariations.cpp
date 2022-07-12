@@ -80,6 +80,7 @@ std::map<unsigned short, std::string> wepVariationModels;
 std::map<unsigned short, std::vector<unsigned short>> vehCurrentTuning;
 std::map<unsigned short, std::string> vehModels;
 std::map<unsigned short, std::string> pedModels;
+std::map<unsigned short, BYTE> tuningRarities;
 
 std::set<unsigned short> dontInheritBehaviourModels;
 std::set<unsigned short> parkedCars;
@@ -721,6 +722,7 @@ void clearEverything()
     vehCurrentTuning.clear();
     vehModels.clear();
     pedModels.clear();
+    tuningRarities.clear();
 
     //sets
     dontInheritBehaviourModels.clear();

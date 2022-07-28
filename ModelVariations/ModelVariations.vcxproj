@@ -46,6 +46,7 @@
     <TargetName>ModelVariations</TargetName>
     <TargetExt>.asi</TargetExt>
     <CodeAnalysisRuleSet>ModelVariations.ruleset</CodeAnalysisRuleSet>
+    <IncludePath>$(PLUGIN_SDK_DIR);$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='GTASA zDebug|Win32'">
     <OutDir>$(GTA_SA_DIR)\</OutDir>

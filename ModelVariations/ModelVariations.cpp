@@ -13,6 +13,7 @@
 #include <CModelInfo.h>
 #include <CPopulation.h>
 #include <CStreaming.h>
+#include <CTheScripts.h>
 #include <CTheZones.h>
 #include <CVector.h>
 #include <CWorld.h>
@@ -186,6 +187,11 @@ bool checkForUpdate()
     const char *oldV = MOD_VERSION;
 
     return std::lexicographical_compare(oldV, oldV+strlen(oldV), newV, newV+strlen(newV));
+}
+
+bool isOnMission()
+{
+    return (CTheScripts::OnAMissionFlag && *(CTheScripts::ScriptSpace + CTheScripts::OnAMissionFlag));
 }
 
 bool pedDelaySpawn(unsigned short model, bool includeParentModels)
@@ -798,7 +804,12 @@ public:
             {
                 SYSTEMTIME systime;
                 GetSystemTime(&systime);
-                logfile << "Model Variations " MOD_VERSION << "\n" << getWindowsVersion() << "\n"
+                const char *isDebug = "";
+#ifdef _DEBUG
+                isDebug = " DEBUG";
+#endif
+
+                logfile << "Model Variations " MOD_VERSION << isDebug << "\n" << getWindowsVersion() << "\n"
                         << systime.wDay << "/" << systime.wMonth << "/" << systime.wYear << " "
                         << std::setfill('0') << std::setw(2) << systime.wHour << ":"
                         << std::setfill('0') << std::setw(2) << systime.wMinute << ":"
@@ -1272,7 +1283,6 @@ public:
                     }
                 }
 
-
                 if (!pedRemoved)
                 {
                     const auto wepFound = [ped](eWeaponType weaponId, eWeaponType originalWeaponId) -> bool {
@@ -1308,20 +1318,25 @@ public:
                     bool wepChanged = false;
 
                     std::vector<unsigned short> vec = iniWeap.ReadLine(section, "WEAPONFORCE", READ_WEAPONS);
-                    if (!vec.empty())
+                    int disableOnMission = iniWeap.ReadInteger(section, "DisableOnMission", 0);
+
+                    if (!(disableOnMission > 0 && isOnMission()))
                     {
-                        const eWeaponType forceWeapon = (eWeaponType)vec[CGeneral::GetRandomNumberInRange(0, (int)vec.size())];
-                        if ((wepChanged = wepFound(forceWeapon, (eWeaponType)0)) == true)
-                            changeWeapon = (bool)CGeneral::GetRandomNumberInRange(0, 2);
+                        if (!vec.empty())
+                        {
+                            const eWeaponType forceWeapon = (eWeaponType)vec[CGeneral::GetRandomNumberInRange(0, (int)vec.size())];
+                            if ((wepChanged = wepFound(forceWeapon, (eWeaponType)0)) == true)
+                                changeWeapon = (bool)CGeneral::GetRandomNumberInRange(0, 2);
+                        }
+
+                        if ((changeWeapon || mergeWeapons == 0) && !(vec = iniWeap.ReadLine(section, currentZoneString + "_WEAPONFORCE", READ_WEAPONS)).empty())
+                        {
+                            const eWeaponType forceWeapon = (eWeaponType)vec[CGeneral::GetRandomNumberInRange(0, (int)vec.size())];
+                            wepChanged |= wepFound(forceWeapon, (eWeaponType)0);
+                        }
                     }
 
-                    if ((changeWeapon || mergeWeapons == 0) && !(vec = iniWeap.ReadLine(section, currentZoneString + "_WEAPONFORCE", READ_WEAPONS)).empty())
-                    {
-                        const eWeaponType forceWeapon = (eWeaponType)vec[CGeneral::GetRandomNumberInRange(0, (int)vec.size())];
-                        wepChanged |= wepFound(forceWeapon, (eWeaponType)0);
-                    }
-
-                    if (!wepChanged)
+                    if (!wepChanged && !(disableOnMission == 1 && isOnMission()))
                         for (int i = 0; i < 13; i++)
                             if (ped->m_aWeapons[i].m_nType > 0)
                             {

@@ -1338,16 +1338,16 @@ public:
 
                     if (!wepChanged && !(disableOnMission == 1 && isOnMission()))
                         for (int i = 0; i < 13; i++)
-                            if (ped->m_aWeapons[i].m_nType > 0)
+                            if (ped->m_aWeapons[i].m_eWeaponType > 0)
                             {
-                                const eWeaponType weaponId = ped->m_aWeapons[i].m_nType;
+                                const eWeaponType weaponId = ped->m_aWeapons[i].m_eWeaponType;
                                 bool changeZoneWeapon = true;
                                 bool changeZoneSlot = true;
                                 int currentSlot = ped->m_nActiveWeaponSlot;
 
                                 std::string slot = "SLOT" + std::to_string(i);
                                 vec = iniWeap.ReadLine(section, slot, READ_WEAPONS);
-                                if (!vec.empty() && (wepChanged = wepFound((eWeaponType)vec[CGeneral::GetRandomNumberInRange(0, (int)vec.size())], ped->m_aWeapons[i].m_nType)) == true)
+                                if (!vec.empty() && (wepChanged = wepFound((eWeaponType)vec[CGeneral::GetRandomNumberInRange(0, (int)vec.size())], ped->m_aWeapons[i].m_eWeaponType)) == true)
                                     changeZoneSlot = (bool)CGeneral::GetRandomNumberInRange(0, 2);
 
                                 if (changeZoneSlot || mergeWeapons == 0)
@@ -1356,12 +1356,12 @@ public:
                                     slot += "_SLOT" + std::to_string(i);
                                     vec = iniWeap.ReadLine(section, slot, READ_WEAPONS);
                                     if (!vec.empty())
-                                        wepChanged |= wepFound((eWeaponType)vec[CGeneral::GetRandomNumberInRange(0, (int)vec.size())], ped->m_aWeapons[i].m_nType);
+                                        wepChanged |= wepFound((eWeaponType)vec[CGeneral::GetRandomNumberInRange(0, (int)vec.size())], ped->m_aWeapons[i].m_eWeaponType);
                                 }
 
                                 std::string wep = "WEAPON" + std::to_string(weaponId);
                                 vec = iniWeap.ReadLine(section, wep, READ_WEAPONS);
-                                if (!vec.empty() && (wepChanged = wepFound((eWeaponType)vec[CGeneral::GetRandomNumberInRange(0, (int)vec.size())], ped->m_aWeapons[i].m_nType)) == true)
+                                if (!vec.empty() && (wepChanged = wepFound((eWeaponType)vec[CGeneral::GetRandomNumberInRange(0, (int)vec.size())], ped->m_aWeapons[i].m_eWeaponType)) == true)
                                     changeZoneWeapon = (bool)CGeneral::GetRandomNumberInRange(0, 2);
 
                                 if (changeZoneWeapon || mergeWeapons == 0)
@@ -1370,7 +1370,7 @@ public:
                                     wep += "_WEAPON" + std::to_string(weaponId);
                                     vec = iniWeap.ReadLine(section, wep, READ_WEAPONS);
                                     if (!vec.empty())
-                                        wepChanged |= wepFound((eWeaponType)vec[CGeneral::GetRandomNumberInRange(0, (int)vec.size())], ped->m_aWeapons[i].m_nType);
+                                        wepChanged |= wepFound((eWeaponType)vec[CGeneral::GetRandomNumberInRange(0, (int)vec.size())], ped->m_aWeapons[i].m_eWeaponType);
                                 }
                                 if (wepChanged)
                                     ped->SetCurrentWeapon(currentSlot);

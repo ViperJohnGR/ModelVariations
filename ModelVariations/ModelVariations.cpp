@@ -673,14 +673,11 @@ void loadIniData(bool firstTime)
 
     cloneRemoverIncludeVariations = iniPed.ReadLine("Settings", "CloneRemoverIncludeVariations", READ_PEDS);
 
-    if (firstTime)
-    {
-        enableCloneRemover = iniPed.ReadInteger("Settings", "EnableCloneRemover", 0);
-        cloneRemoverVehicleOccupants = iniPed.ReadInteger("Settings", "CloneRemoverIncludeVehicleOccupants", 0);
-        cloneRemoverExclusions = iniPed.ReadLine("Settings", "CloneRemoverExcludeModels", READ_PEDS);
-        spawnDelay = iniPed.ReadInteger("Settings", "SpawnDelay", 3);
-        enableVehicles = iniVeh.ReadInteger("Settings", "Enable", 0);
-    }
+    enableCloneRemover = iniPed.ReadInteger("Settings", "EnableCloneRemover", 0);
+    cloneRemoverVehicleOccupants = iniPed.ReadInteger("Settings", "CloneRemoverIncludeVehicleOccupants", 0);
+    cloneRemoverExclusions = iniPed.ReadLine("Settings", "CloneRemoverExcludeModels", READ_PEDS);
+    spawnDelay = iniPed.ReadInteger("Settings", "SpawnDelay", 3);
+    enableVehicles = iniVeh.ReadInteger("Settings", "Enable", 0);
 
     if (enableVehicles == 1)
         readVehicleIni(firstTime, exePath.substr(0, exePath.find_last_of("/\\")));
@@ -765,6 +762,8 @@ void clearEverything()
     iniWeap.SetIniPath(pedWepIniPath);
     iniSettings.SetIniPath(settingsIniPath);
     iniVeh.SetIniPath(vehIniPath);
+
+    enableCloneRemover = 0;
 }
 
 class ModelVariations {
@@ -1317,7 +1316,7 @@ public:
                     //CVehicleModelInfo* vehModelInfo = static_cast<CVehicleModelInfo*>(CModelInfo::ms_modelInfoPtrs[ped->m_pVehicle->m_nModelIndex]);
                     //vehName = vehModelInfo->m_szGameName;
 
-                    std::string prefix = "";
+                    std::string vehId = "";
 
                     for (int j = 0; j < 2; j++)
                     {
@@ -1327,14 +1326,14 @@ public:
                         if (j == 1)
                         {
                             if (IsVehiclePointerValid(ped->m_pVehicle))
-                                prefix = std::to_string(ped->m_pVehicle->m_nModelIndex) + "_";
+                                vehId = std::to_string(ped->m_pVehicle->m_nModelIndex) + "_";
                             else
                                 break;
                         }
 
                         if (!(disableOnMission > 0 && isOnMission()))
                         {
-                            vec = iniWeap.ReadLine(section, prefix + "WEAPONFORCE", READ_WEAPONS);
+                            vec = iniWeap.ReadLine(section, vehId + "WEAPONFORCE", READ_WEAPONS);
                             if (!vec.empty())
                             {
                                 const eWeaponType forceWeapon = (eWeaponType)vec[CGeneral::GetRandomNumberInRange(0, (int)vec.size())];
@@ -1342,7 +1341,7 @@ public:
                                     changeWeapon = (bool)CGeneral::GetRandomNumberInRange(0, 2);
                             }
 
-                            if ((changeWeapon || mergeWeapons == 0) && !(vec = iniWeap.ReadLine(section, prefix + currentZoneString + "_WEAPONFORCE", READ_WEAPONS)).empty())
+                            if ((changeWeapon || mergeWeapons == 0) && !(vec = iniWeap.ReadLine(section, vehId + currentZoneString + "_WEAPONFORCE", READ_WEAPONS)).empty())
                             {
                                 const eWeaponType forceWeapon = (eWeaponType)vec[CGeneral::GetRandomNumberInRange(0, (int)vec.size())];
                                 wepChanged |= wepFound(forceWeapon, (eWeaponType)0);
@@ -1359,7 +1358,7 @@ public:
                                     const int currentSlot = ped->m_nActiveWeaponSlot;
 
                                     std::string slot = "SLOT" + std::to_string(i);
-                                    vec = iniWeap.ReadLine(section, prefix + slot, READ_WEAPONS);
+                                    vec = iniWeap.ReadLine(section, vehId + slot, READ_WEAPONS);
                                     if (!vec.empty() && (wepChanged = wepFound((eWeaponType)vec[CGeneral::GetRandomNumberInRange(0, (int)vec.size())], ped->m_aWeapons[i].m_eWeaponType)) == true)
                                         changeZoneSlot = (bool)CGeneral::GetRandomNumberInRange(0, 2);
 
@@ -1367,13 +1366,13 @@ public:
                                     {
                                         slot = currentZone;
                                         slot += "_SLOT" + std::to_string(i);
-                                        vec = iniWeap.ReadLine(section, prefix + slot, READ_WEAPONS);
+                                        vec = iniWeap.ReadLine(section, vehId + slot, READ_WEAPONS);
                                         if (!vec.empty())
                                             wepChanged |= wepFound((eWeaponType)vec[CGeneral::GetRandomNumberInRange(0, (int)vec.size())], ped->m_aWeapons[i].m_eWeaponType);
                                     }
 
                                     std::string wep = "WEAPON" + std::to_string(weaponId);
-                                    vec = iniWeap.ReadLine(section, prefix + wep, READ_WEAPONS);
+                                    vec = iniWeap.ReadLine(section, vehId + wep, READ_WEAPONS);
                                     if (!vec.empty() && (wepChanged = wepFound((eWeaponType)vec[CGeneral::GetRandomNumberInRange(0, (int)vec.size())], ped->m_aWeapons[i].m_eWeaponType)) == true)
                                         changeZoneWeapon = (bool)CGeneral::GetRandomNumberInRange(0, 2);
 
@@ -1381,7 +1380,7 @@ public:
                                     {
                                         wep = currentZone;
                                         wep += "_WEAPON" + std::to_string(weaponId);
-                                        vec = iniWeap.ReadLine(section, prefix + wep, READ_WEAPONS);
+                                        vec = iniWeap.ReadLine(section, vehId + wep, READ_WEAPONS);
                                         if (!vec.empty())
                                             wepChanged |= wepFound((eWeaponType)vec[CGeneral::GetRandomNumberInRange(0, (int)vec.size())], ped->m_aWeapons[i].m_eWeaponType);
                                     }

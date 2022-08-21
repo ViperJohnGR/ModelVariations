@@ -1,6 +1,9 @@
 #include "FileUtil.hpp"
 #include <sys/stat.h>
 
+#include <fstream>
+#include <sstream>
+
 
 DWORD getFilesize(const std::string& filename)
 {
@@ -29,36 +32,11 @@ bool fileExists(const std::string &filename)
 
 std::string fileToString(const std::string& filename)
 {
-    FILE* fp = fopen(filename.c_str(), "rb");
-    if (fp == NULL)
-        return "";
+    std::stringstream ss;
+    std::ifstream file(filename);
 
-    fseek(fp, 0, SEEK_END);
-    const int filesize = ftell(fp);
-    if (filesize < 1)
-    {
-        fclose(fp);
-        return "";
-    }
-    fseek(fp, 0, SEEK_SET);
+    if (file.is_open())
+        ss << file.rdbuf();
 
-    char* filebuf = (char*)calloc((size_t)filesize + 1, 1);
-    if (filebuf == NULL)
-    {
-        fclose(fp);
-        return "";
-    }
-
-    if (fread(filebuf, 1, (size_t)filesize, fp) != (size_t)filesize)
-    {
-        fclose(fp);
-        free(filebuf);
-        return "";
-    }
-    fclose(fp);
-
-    std::string retString(filebuf);
-    free(filebuf);
-    retString.erase(std::remove(retString.begin(), retString.end(), 0x0D), retString.end());
-    return retString;
+    return ss.str();
 }

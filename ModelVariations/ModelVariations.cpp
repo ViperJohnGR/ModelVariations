@@ -42,8 +42,9 @@ const char* vehIniPath("ModelVariations_Vehicles.ini");
 const char* settingsIniPath("ModelVariations.ini");
 
 
-const std::string exeHashes[2] = { "a559aa772fd136379155efa71f00c47aad34bbfeae6196b0fe1047d0645cbd26",     //HOODLUM
-                                   "25580ae242c6ecb6f6175ca9b4c912aa042f33986ded87f20721b48302adc9c9" };   //Compact
+const std::string exeHashes[3] = { "a559aa772fd136379155efa71f00c47aad34bbfeae6196b0fe1047d0645cbd26",     //HOODLUM
+                                   "25580ae242c6ecb6f6175ca9b4c912aa042f33986ded87f20721b48302adc9c9",     //Compact
+                                   "f01a00ce950fa40ca1ed59df0e789848c6edcf6405456274965885d0929343ac" };   //HOODLUM LARGEADDRESSAWARE
 
 
 std::string exeHash;
@@ -333,8 +334,10 @@ void detectExe()
         exeVersion = 1;
     else if (exeHash == exeHashes[1])
         exeVersion = 2;
-    else
+    else if (exeHash == exeHashes[2])
         exeVersion = 3;
+    else
+        exeVersion = 4;
 }
 
 void drugDealerFix()
@@ -827,6 +830,8 @@ public:
                     logfile << "Supported exe detected: 1.0 US HOODLUM" << std::endl;
                 else if (exeVersion == 2)
                     logfile << "Supported exe detected: 1.0 US Compact" << std::endl;
+                else if (exeVersion == 3)
+                    logfile << "Supported exe detected: 1.0 US HOODLUM LARGEADDRESSAWARE" << std::endl;
                 else
                     logfile << "Unsupported exe detected: " << exeName << " " << exeFilesize << " bytes " << exeHash << std::endl;
             }

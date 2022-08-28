@@ -114,7 +114,7 @@ std::vector<unsigned short> DataReader::ReadLine(std::string section, std::strin
 				{
 					if (parseType == READ_VEHICLES)
 					{
-						if (mInfo->GetModelType() == MODEL_INFO_VEHICLE)
+						if (mInfo->GetModelType() == MODEL_INFO_VEHICLE || modelid == 0)
 							retVector.push_back((unsigned short)modelid);
 					}
 					else if (parseType == READ_PEDS)

@@ -3,43 +3,21 @@
 #include <iomanip>
 #include <fstream>
 #include <sstream>
-#include <Windows.h>
-#include <shlwapi.h>
-#include <bcrypt.h>
-#include <Psapi.h>
 
-#pragma comment (lib, "Advapi32.lib")
 #pragma comment (lib, "bcrypt.lib")
-#pragma comment (lib, "shlwapi.lib")
 
-std::string tolower(const char *orgStr)
+
+bool compareLower(const char* a, const char* b)
 {
-    if (orgStr == NULL)
+    for (int i = 0; a[i] && b[i]; i++)
     {
-        std::string str;
-        return str;
-    }
-    std::string str(orgStr);
-
-    for (char &i : str)
-    {
-        if (i >= 'A' && i <= 'Z')
-            i += 32;
+        char c = (a[i] >= 'A' && a[i] <= 'Z') ? (a[i] + 32) : a[i];
+        char d = (b[i] >= 'A' && b[i] <= 'Z') ? (b[i] + 32) : b[i];
+        if (c != d)
+            return false;
     }
 
-    return str;
-}
-
-std::string tolower(std::string &orgStr)
-{
-    std::string str(orgStr);
-    for (char &i : str)
-    {
-        if (i >= 'A' && i <= 'Z')
-            i += 32;
-    }
-
-    return str;
+    return true;
 }
 
 std::string hashFile(const char* filename)
@@ -105,11 +83,6 @@ std::string hashFile(const char* filename)
     return hashString;
 }
 
-unsigned int getAddressFromCall(unsigned char* data)
-{
-    return ((*data == 0xE8) ? ( (unsigned int)data + *(unsigned int*)(data + 1) + 5 ) : 0);
-}
-
 std::string getParentModuleName(unsigned int address)
 {
     std::string emptyString;
@@ -133,13 +106,13 @@ std::string getParentModuleName(unsigned int address)
 
 void checkCallModified(const std::string &callName, unsigned int callAddress, bool isDirectAddress)
 {
-    unsigned int functionAddress = (isDirectAddress == false) ? getAddressFromCall((BYTE*)callAddress) : *(unsigned int*)callAddress;
+    unsigned int functionAddress = (isDirectAddress == false) ? injector::GetBranchDestination(callAddress).as_int() : *(unsigned int*)callAddress;
     std::string modulePath = getParentModuleName(functionAddress);
     unsigned int baseAddress = 0;
 
     std::string moduleName = modulePath.substr(modulePath.find_last_of("/\\") + 1);
 
-    if (tolower(moduleName) == tolower(MOD_NAME))
+    if (compareLower(moduleName.c_str(), MOD_NAME))
         return;
     if (callChecks.find({ callAddress , moduleName}) != callChecks.end())
         return;
@@ -227,4 +200,15 @@ std::string printToString(const char* format, ...)
 
     std::string retString(buf);
     return retString;
+}
+
+std::string bytesToString(unsigned int address, int nBytes)
+{
+    std::stringstream ss;
+    unsigned char* c = reinterpret_cast<unsigned char*>(address);
+
+    for (int i = 0; i < nBytes; i++, ss << " ")
+        ss << std::hex << static_cast<unsigned int>(c[i]);
+
+    return ss.str();
 }

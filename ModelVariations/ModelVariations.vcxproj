@@ -105,14 +105,12 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="DataReader.cpp" />
-    <ClCompile Include="FileUtil.cpp" />
     <ClCompile Include="LogUtil.cpp" />
     <ClCompile Include="ModelVariations.cpp" />
     <ClCompile Include="Vehicles.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="DataReader.hpp" />
-    <ClInclude Include="FileUtil.hpp" />
     <ClInclude Include="FuncUtil.hpp" />
     <ClInclude Include="LogUtil.hpp" />
     <ClInclude Include="Hooks.hpp" />

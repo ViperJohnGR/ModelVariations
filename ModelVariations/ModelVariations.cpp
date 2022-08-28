@@ -4,7 +4,6 @@
 #include "LogUtil.hpp"
 #include "Vehicles.hpp"
 #include "Hooks.hpp"
-#include "FileUtil.hpp"
 
 #include <extensions/ScriptCommands.h>
 
@@ -31,20 +30,25 @@
 #include <shlwapi.h>
 
 #pragma comment(lib, "urlmon.lib")
+#pragma comment (lib, "shlwapi.lib")
 
 using namespace plugin;
 
 constexpr int MAX_PED_ID = 300;
 
-std::string pedIniPath("ModelVariations_Peds.ini");
-std::string pedWepIniPath("ModelVariations_PedWeapons.ini");
-std::string vehIniPath("ModelVariations_Vehicles.ini");
-std::string settingsIniPath("ModelVariations.ini");
+const char* pedIniPath("ModelVariations_Peds.ini");
+const char* pedWepIniPath("ModelVariations_PedWeapons.ini");
+const char* vehIniPath("ModelVariations_Vehicles.ini");
+const char* settingsIniPath("ModelVariations.ini");
+
+
+const std::string exeHashes[2] = { "a559aa772fd136379155efa71f00c47aad34bbfeae6196b0fe1047d0645cbd26",     //HOODLUM
+                                   "25580ae242c6ecb6f6175ca9b4c912aa042f33986ded87f20721b48302adc9c9" };   //Compact
 
 
 std::string exeHash;
 unsigned int exeFilesize = 0;
-eExeVersion exeVersion = SA_EXE_NONE;
+int exeVersion = 0;
 std::string exePath;
 std::string exeName;
 
@@ -135,6 +139,17 @@ int spawnDelay = 3;
 bool keyDown = false;
 
 int timeUpdate = 8001;
+
+std::string fileToString(const std::string& filename)
+{
+    std::stringstream ss;
+    std::ifstream file(filename);
+
+    if (file.is_open())
+        ss << file.rdbuf();
+
+    return ss.str();
+}
 
 void getLoadedModules()
 {
@@ -300,20 +315,26 @@ void detectExe()
     exePath = path;
     const char* name = PathFindFileName(path);
     exeName = name;
-    exeFilesize = getFilesize(path);
 
-    if (!fileExists(path))
+    HANDLE hFile = CreateFile(path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (hFile != INVALID_HANDLE_VALUE)
+    {
+        exeFilesize = GetFileSize(hFile, NULL);
+        CloseHandle(hFile);
+    }
+
+    if (GetFileAttributes(path) == INVALID_FILE_ATTRIBUTES && GetLastError() == ERROR_FILE_NOT_FOUND)
         return;
 
     if (exeHash.empty())
         exeHash = hashFile(path);
 
     if (exeHash == exeHashes[0])
-        exeVersion = SA_EXE_HOODLUM;
+        exeVersion = 1;
     else if (exeHash == exeHashes[1])
-        exeVersion = SA_EXE_COMPACT;
+        exeVersion = 2;
     else
-        exeVersion = SA_EXE_UNKNOWN;
+        exeVersion = 3;
 }
 
 void drugDealerFix()
@@ -391,7 +412,7 @@ void updateVariations(CZone* zInfo)
 
     for (auto& modelid : pedHasVariations)
     {
-        vectorUnion(pedVariations[modelid][4], pedVariations[modelid][currentTown], pedCurrentVariations[modelid]);
+        pedCurrentVariations[modelid] = vectorUnion(pedVariations[modelid][4], pedVariations[modelid][currentTown]);
 
         std::string section;
         auto it = pedModels.find(modelid);
@@ -423,7 +444,7 @@ void updateVariations(CZone* zInfo)
 
     for (auto& i : vehTuning)
     {
-        vectorUnion(i.second[4], i.second[currentTown], vehCurrentTuning[i.first]);
+        vehCurrentTuning[i.first] = vectorUnion(i.second[4], i.second[currentTown]);
 
         std::string section;
         auto it = vehModels.find(i.first);
@@ -444,7 +465,7 @@ void updateVariations(CZone* zInfo)
 
     for (auto& modelid : vehHasVariations)
     {
-        vectorUnion(vehVariations[modelid][4], vehVariations[modelid][currentTown], vehCurrentVariations[modelid]);
+        vehCurrentVariations[modelid] = vectorUnion(vehVariations[modelid][4], vehVariations[modelid][currentTown]);
 
         std::string section;
         auto it = vehModels.find(modelid + 400U);
@@ -770,18 +791,6 @@ class ModelVariations {
 public:
     ModelVariations() {
 
-        if (!fileExists(pedIniPath))
-            pedIniPath = "ModelVariations\\" + pedIniPath;
-
-        if (!fileExists(pedWepIniPath))
-            pedWepIniPath = "ModelVariations\\" + pedWepIniPath;
-
-        if (!fileExists(vehIniPath))
-            vehIniPath = "ModelVariations\\" + vehIniPath;
-
-        if (!fileExists(settingsIniPath))
-            settingsIniPath = "ModelVariations\\" + settingsIniPath;
-
         iniPed.SetIniPath(pedIniPath);
         iniWeap.SetIniPath(pedWepIniPath);
         iniSettings.SetIniPath(settingsIniPath);
@@ -794,10 +803,7 @@ public:
 
         if ((enableLog = iniSettings.ReadInteger("Settings", "EnableLog", 0)) == 1)
         {
-            if (folderExists("ModelVariations"))
-                logfile.open("ModelVariations\\ModelVariations.log");
-            else
-                logfile.open("ModelVariations.log");
+            logfile.open("ModelVariations.log");
 
             if (logfile.is_open())
             {
@@ -817,9 +823,9 @@ public:
                 detectExe();
                 logfile << exePath << std::endl;
 
-                if (exeVersion == SA_EXE_HOODLUM)
+                if (exeVersion == 1)
                     logfile << "Supported exe detected: 1.0 US HOODLUM" << std::endl;
-                else if (exeVersion == SA_EXE_COMPACT)
+                else if (exeVersion == 2)
                     logfile << "Supported exe detected: 1.0 US Compact" << std::endl;
                 else
                     logfile << "Unsupported exe detected: " << exeName << " " << exeFilesize << " bytes " << exeHash << std::endl;
@@ -830,21 +836,21 @@ public:
 
         if (enableLog == 1)
         {
-            if (!fileExists(pedIniPath))
+            if (GetFileAttributes(pedIniPath) == INVALID_FILE_ATTRIBUTES && GetLastError() == ERROR_FILE_NOT_FOUND)
                 logfile << "\nModelVariations_Peds.ini not found!\n" << std::endl;
             else
                 logfile << "##############################\n"
                            "## ModelVariations_Peds.ini ##\n"
                            "##############################\n" << fileToString(pedIniPath) << std::endl;
 
-            if (!fileExists(pedWepIniPath))
+            if (GetFileAttributes(pedWepIniPath) == INVALID_FILE_ATTRIBUTES && GetLastError() == ERROR_FILE_NOT_FOUND)
                 logfile << "\nModelVariations_PedWeapons.ini not found!\n" << std::endl;
             else
                 logfile << "####################################\n"
                            "## ModelVariations_PedWeapons.ini ##\n"
                            "####################################\n" << fileToString(pedWepIniPath) << std::endl;
 
-            if (!fileExists(vehIniPath))
+            if (GetFileAttributes(vehIniPath) == INVALID_FILE_ATTRIBUTES && GetLastError() == ERROR_FILE_NOT_FOUND)
                 logfile << "\nModelVariations_Vehicles.ini not found!\n" << std::endl;
             else
                 logfile << "##################################\n"

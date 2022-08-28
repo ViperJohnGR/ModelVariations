@@ -25,3 +25,4 @@ std::string getWindowsVersion();
 void checkAllCalls();
 void logModified(unsigned int address, const std::string &message);
 std::string printToString(const char* format, ...);
+std::string bytesToString(unsigned int address, int nBytes);

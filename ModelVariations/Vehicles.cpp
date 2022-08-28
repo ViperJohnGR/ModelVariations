@@ -69,6 +69,7 @@ constexpr unsigned int jmp6B0CF6 = 0x6B0CF6;
 constexpr unsigned int jmp729B7B = 0x729B7B;
 int carGenModel = -1;
 
+
 void checkNumGroups(std::vector<unsigned short>& vec, uint8_t numGroups)
 {
     auto it = vec.begin();
@@ -2079,7 +2080,7 @@ void installVehicleHooks()
         hookASM(*(uint32_t*)0x51E5B8 == 0x227E8166 && *(uint16_t*)0x51E5BC == 0x01B0, 0x51E5B8, 6, cmpWordPtrRegModel<REG_ESI, 0x51E5BE, 0x1B0>, "CCamera::TryToStartNewCamMode");
         hookASM(*(uint32_t*)0x6B4CE8 == 0x224E8B66 && *(uint32_t*)0x6B4CEC == 0x1BF98166, 0x6B4CE8, 5, movReg16WordPtrReg<REG_CX, REG_ESI, 0x6B4CF1, 5, 0x1BF98166, 0x90909002>, "CAutomobile::ProcessAI");
 
-        if (exeVersion != SA_EXE_COMPACT)
+        if (exeVersion != 2)
             hookASM(*(uint32_t*)0x407293 == 0x000259BB && *(uint8_t*)0x407297 == 0x00, 0x407293, 5, patch407293, "CAutomobile::FireTruckControl");
         else
             hookASM(*(uint32_t*)0x729B76 == 0x000259BB && *(uint8_t*)0x729B7A == 0x00, 0x729B76, 5, patch407293, "CAutomobile::FireTruckControl");

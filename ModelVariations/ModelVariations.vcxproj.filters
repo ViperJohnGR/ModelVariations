@@ -4,9 +4,6 @@
     <ClCompile Include="ModelVariations.cpp" />
     <ClCompile Include="Vehicles.cpp" />
     <ClCompile Include="DataReader.cpp" />
-    <ClCompile Include="FileUtil.cpp">
-      <Filter>Utils</Filter>
-    </ClCompile>
     <ClCompile Include="LogUtil.cpp">
       <Filter>Utils</Filter>
     </ClCompile>
@@ -15,9 +12,6 @@
     <ClInclude Include="Vehicles.hpp" />
     <ClInclude Include="Hooks.hpp" />
     <ClInclude Include="DataReader.hpp" />
-    <ClInclude Include="FileUtil.hpp">
-      <Filter>Utils</Filter>
-    </ClInclude>
     <ClInclude Include="FuncUtil.hpp">
       <Filter>Utils</Filter>
     </ClInclude>

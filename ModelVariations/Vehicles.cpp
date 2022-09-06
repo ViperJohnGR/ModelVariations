@@ -69,6 +69,13 @@ constexpr unsigned int jmp6B0CF6 = 0x6B0CF6;
 constexpr unsigned int jmp729B7B = 0x729B7B;
 int carGenModel = -1;
 
+uint32_t asmNextinstr[4] = {};
+uint16_t asmModel16 = 0;
+uint32_t asmModel32 = 0;
+uint32_t asmModel = 0;
+uint32_t asmJmpAddress = 0;
+uint32_t* jmpDest = NULL;
+
 
 void checkNumGroups(std::vector<unsigned short>& vec, uint8_t numGroups)
 {
@@ -90,6 +97,7 @@ bool hasModelSideMission(int model)
         case 416: //Ambulance
         case 537: //Freight
         case 538: //Brown Streak
+        case 570: //Streak Car
         case 575: //Broadway
         case 609: //Boxville Mission
             return true;
@@ -969,7 +977,7 @@ void __fastcall CollectParametersHooked(CRunningScript* script, void*, unsigned 
             return;
 
         if (strcmp(script->m_szName, "r3") != 0 && strcmp(script->m_szName, "ambulan") != 0 && strcmp(script->m_szName, "firetru") != 0 &&
-            strcmp(script->m_szName, "freight") != 0)
+            strcmp(script->m_szName, "freight") != 0 && strcmp(script->m_szName, "trains") != 0 && strcmp(script->m_szName, "trainsl") != 0)
             return;
     }
 
@@ -1133,10 +1141,13 @@ void __declspec(naked) patchPassengerModel()
 }
 
 template <unsigned int address>
-CPed* __cdecl AddPedInCarHooked(CVehicle* a1, char a2, int a3, signed int a4, int a5, char a6)
+CPed* __cdecl AddPedInCarHooked(CVehicle* a1, char driver, int a3, signed int a4, int a5, char a6)
 {
-    const unsigned char originalData[5] = { 0x8D, 0x54, 0x24, 0x10, 0x52 };
+    unsigned char originalData[5] = {};
+    memcpy(originalData, (void*)0x613B78, 5);
+
     unsigned int random = 0;
+
     if (a1)
     {
         std::string section;
@@ -1166,14 +1177,14 @@ ModelChosen:
             CStreaming::RequestModel(passengerModelIndex, 2);
             CStreaming::LoadAllRequestedModels(false);
             injector::MakeJMP(0x613B78, patchPassengerModel);
-            CPed* ped = callOriginalAndReturn<CPed*, address>(a1, a2, a3, a4, a5, a6);
+            CPed* ped = callOriginalAndReturn<CPed*, address>(a1, driver, a3, a4, a5, a6);
             memcpy((void*)0x613B78, originalData, 5);
             passengerModelIndex = -1;
             return ped;
         }
     }
 
-    return callOriginalAndReturn<CPed*, address>(a1, a2, a3, a4, a5, a6);
+    return callOriginalAndReturn<CPed*, address>(a1, driver, a3, a4, a5, a6);
     //return CPopulation::AddPedInCar(a1, a2, a3, a4, a5, a6);
 }
 
@@ -1214,8 +1225,8 @@ void __cdecl RegisterCoronaHooked(CCoronas* _this, unsigned int a2, unsigned __i
 }
 
 void __cdecl RegisterCoronaHooked2(CCoronas* _this, unsigned int a2, unsigned __int8 a3, unsigned __int8 a4, unsigned __int8 a5, unsigned __int8 a6, CVector* a7, const CVector* a8,
-    float a9, void* texture, unsigned __int8 a11, unsigned __int8 a12, unsigned __int8 a13, int a14, float a15, float a16, float a17, float a18,
-    float a19, float a20, bool a21)
+                                   float a9, void* texture, unsigned __int8 a11, unsigned __int8 a12, unsigned __int8 a13, int a14, float a15, float a16, float a17, float a18,
+                                   float a19, float a20, bool a21)
 {
     if (a7 && lightsModel > 0)
     {
@@ -1845,12 +1856,6 @@ void __declspec(naked) patchCoronas()
     }
 }
 
-uint32_t asmNextinstr[4] = {};
-uint16_t asmModel16 = 0;
-uint32_t asmModel = 0;
-uint32_t asmJmpAddress = 0;
-uint32_t *jmpDest = NULL;
-
 template <eRegs32 reg, unsigned int jmpAddress, unsigned int model>
 void __declspec(naked) cmpWordPtrRegModel()
 {
@@ -1958,6 +1963,59 @@ void __declspec(naked) movReg16WordPtrReg()
     }
 }
 
+template <eRegs32 target, eRegs32 source, unsigned int jmpAddress, uint8_t nextInstrSize, uint32_t nextInstr, uint32_t nextInstr2>
+void __declspec(naked) movsxReg32WordPtrReg()
+{
+    __asm {
+        pushfd
+        pushad
+    }
+
+    asmNextinstr[0] = nextInstr;
+    asmNextinstr[1] = nextInstr2;
+    jmpDest = asmNextinstr;
+    asmJmpAddress = jmpAddress;
+    ((uint8_t*)asmNextinstr)[nextInstrSize] = 0xFF;
+    ((uint8_t*)asmNextinstr)[nextInstrSize + 1] = 0x25;
+    *((uint32_t**)((uint8_t*)asmNextinstr + nextInstrSize + 2)) = &asmJmpAddress;
+
+    __asm {
+        popad
+        pushad
+    }
+
+    if constexpr (source == REG_EAX) { __asm { movsx eax, word ptr[eax + 0x22]} }
+    else if constexpr (source == REG_ECX) { __asm { movsx eax, word ptr[ecx + 0x22]} }
+    else if constexpr (source == REG_EDX) { __asm { movsx eax, word ptr[edx + 0x22]} }
+    else if constexpr (source == REG_EBX) { __asm { movsx eax, word ptr[ebx + 0x22]} }
+    else if constexpr (source == REG_ESP) { __asm { movsx eax, word ptr[esp + 0x22]} }
+    else if constexpr (source == REG_EBP) { __asm { movsx eax, word ptr[ebp + 0x22]} }
+    else if constexpr (source == REG_ESI) { __asm { movsx eax, word ptr[esi + 0x22]} }
+    else if constexpr (source == REG_EDI) { __asm { movsx eax, word ptr[edi + 0x22]} }
+
+    __asm {
+        push eax
+        call getVariationOriginalModel
+        mov asmModel32, eax
+        popad
+        popfd
+    }
+
+    if constexpr (target == REG_EAX) { __asm { mov eax, asmModel32 } }
+    else if constexpr (target == REG_ECX) { __asm { mov ecx, asmModel32 } }
+    else if constexpr (target == REG_EDX) { __asm { mov edx, asmModel32 } }
+    else if constexpr (target == REG_EBX) { __asm { mov ebx, asmModel32 } }
+    else if constexpr (target == REG_ESP) { __asm { mov esp, asmModel32 } }
+    else if constexpr (target == REG_EBP) { __asm { mov ebp, asmModel32 } }
+    else if constexpr (target == REG_ESI) { __asm { mov esi, asmModel32 } }
+    else if constexpr (target == REG_EDI) { __asm { mov edi, asmModel32 } }
+
+    __asm {
+        jmp jmpDest
+    }
+
+}
+
 
 void hookASM(bool notModified, unsigned int address, int nBytes, injector::memory_pointer_raw hookDest, std::string funcName)
 {
@@ -2010,6 +2068,12 @@ void installVehicleHooks()
     //patch::RedirectCall(0x5D2B15, CTrainHooked); //CPools::LoadVehiclePool
     hookCall(0x6F7634, CTrainHooked<0x6F7634>, "CTrain"); //CTrain::CreateMissionTrain 
 
+    hookASM(*(uint32_t*)0x64475D == 0x22788166 && *(uint16_t*)0x644761 == 0x023A, 0x64475D, 6, cmpWordPtrRegModel<REG_EAX, 0x644763, 0x23A>, "CTaskSimpleCarDrive::ProcessPed");
+    hookASM(*(uint32_t*)0x6F60D9 == 0x227E8166 && *(uint16_t*)0x6F60DD == 0x023A, 0x6F60D9, 6, cmpWordPtrRegModel<REG_ESI, 0x6F60DF, 0x23A>, "CTrain::CTrain");
+    hookASM(*(uint32_t*)0x6F6576 == 0x227F8166 && *(uint16_t*)0x6F657A == 0x023A, 0x6F6576, 6, cmpWordPtrRegModel<REG_EDI, 0x6F657C, 0x23A>, "CTrain::OpenDoor");
+    hookASM(*(uint32_t*)0x6F8E8A == 0x227E8166 && *(uint16_t*)0x6F8E8E == 0x023A, 0x6F8E8A, 6, cmpWordPtrRegModel<REG_ESI, 0x6F8E90, 0x23A>, "CTrain::ProcessControl");
+    hookASM(*(uint32_t*)0x613A68 == 0x2247BF0F && *(uint8_t*)0x613A6C == 0x05, 0x613A68, 5, movsxReg32WordPtrReg<REG_EAX, REG_EDI, 0x613A71, 5, 0xFFFE6905, 0x909090FF>, "CPopulation::AddPedInCar");
+
     //Boats
     hookCall(0x42149E, CBoatHooked<0x42149E>, "CBoat"); //CCarCtrl::GetNewVehicleDependingOnCarModel
     hookCall(0x431FD0, CBoatHooked<0x431FD0>, "CBoat"); //CCarCtrl::CreateCarForScript
@@ -2035,6 +2099,7 @@ void installVehicleHooks()
 
     hookCall(0x613A43, FindSpecificDriverModelForCar_ToUseHooked<0x613A43>, "FindSpecificDriverModelForCar_ToUse"); //CPopulation::AddPedInCar
     hookCall(0x6D1B0E, AddPedInCarHooked<0x6D1B0E>, "AddPedInCar"); //CVehicle::SetupPassenger 
+    hookCall(0x6F6986, AddPedInCarHooked<0x6F6986>, "AddPedInCar"); //CTrain::RemoveRandomPassenger
 
     hookCall(0x431DE2, SetUpDriverAndPassengersForVehicleHooked<0x431DE2>, "SetUpDriverAndPassengersForVehicle"); //CCarCtrl::GenerateOneRandomCar
     hookCall(0x431DF9, SetUpDriverAndPassengersForVehicleHooked<0x431DF9>, "SetUpDriverAndPassengersForVehicle"); //CCarCtrl::GenerateOneRandomCar
@@ -2172,7 +2237,7 @@ void installVehicleHooks()
     {
         enableSideMissions = true;
         hookCall(0x48DA81, IsLawEnforcementVehicleHooked<0x48DA81>, "IsLawEnforcementVehicle");
-        hookCall(0x469612, CollectParametersHooked<0x469612>, "CollectParameters");
+        hookCall(0x469612, CollectParametersHooked<0x469612>, "CollectParameters"); //00DD: IS_CHAR_IN_MODEL
     }
 
     hookCall(0x4306A1, GetNewVehicleDependingOnCarModelHooked<0x4306A1>, "GetNewVehicleDependingOnCarModel"); ///CCarCtrl::GenerateOneRandomCar

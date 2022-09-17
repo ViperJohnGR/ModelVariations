@@ -1825,23 +1825,6 @@ isCement:
     }
 }
 
-void __declspec(naked) patch6B0CF0()
-{
-    __asm {
-        push eax
-        movsx eax, word ptr [esi+0x22]
-        push ecx
-        push edx
-        push eax
-        call getVariationOriginalModel
-        pop edx
-        pop ecx
-        cmp eax, 0x1B0
-        pop eax
-        jmp jmp6B0CF6
-    }
-}
-
 void __declspec(naked) patchCoronas()
 {
     __asm {
@@ -2139,11 +2122,11 @@ void installVehicleHooks()
         hookCall(0x871B94, SetUpWheelColModelHooked<0x871B94>, "SetUpWheelColModel", true);
         hookCall(0x871CD4, SetUpWheelColModelHooked<0x871CD4>, "SetUpWheelColModel", true);
      
-        hookASM(*(uint32_t*)0x525462 == 0x22478B66 && *(uint32_t*)0x525466 == 0x01BB3D66, 0x525462, 5, movReg16WordPtrReg<REG_AX, REG_EDI, 0x52546A, 4, 0x01BB3D66, 0x90909090>, "sub_525252");
-        hookASM(*(uint32_t*)0x431BEB == 0x22468B66 && *(uint32_t*)0x431BEF == 0x6604C483, 0x431BEB, 5, movReg16WordPtrReg<REG_AX, REG_ESI, 0x431BF2, 3, 0x9004C483, 0x90909090>, "CCarCtrl::GenerateOneRandomCar");
+        hookASM(*(uint32_t*)0x525462 == 0x22478B66 && *(uint32_t*)0x525466 == 0x01BB3D66, 0x525462, 8, movReg16WordPtrReg<REG_AX, REG_EDI, 0x52546A, 4, 0x01BB3D66, 0x90909090>, "sub_525252");
+        hookASM(*(uint32_t*)0x431BEB == 0x22468B66 && *(uint32_t*)0x431BEF == 0x6604C483, 0x431BEB, 8, movReg16WordPtrReg<REG_AX, REG_ESI, 0x431BF2, 3, 0x9004C483, 0x90909090>, "CCarCtrl::GenerateOneRandomCar");
         hookASM(*(uint32_t*)0x64467D == 0x22788166 && *(uint16_t*)0x644681 == 0x0213, 0x64467D, 6, cmpWordPtrRegModel<REG_EAX, 0x644683, 0x213>, "CTaskSimpleCarDrive::ProcessPed");
         hookASM(*(uint32_t*)0x51E5B8 == 0x227E8166 && *(uint16_t*)0x51E5BC == 0x01B0, 0x51E5B8, 6, cmpWordPtrRegModel<REG_ESI, 0x51E5BE, 0x1B0>, "CCamera::TryToStartNewCamMode");
-        hookASM(*(uint32_t*)0x6B4CE8 == 0x224E8B66 && *(uint32_t*)0x6B4CEC == 0x1BF98166, 0x6B4CE8, 5, movReg16WordPtrReg<REG_CX, REG_ESI, 0x6B4CF1, 5, 0x1BF98166, 0x90909002>, "CAutomobile::ProcessAI");
+        hookASM(*(uint32_t*)0x6B4CE8 == 0x224E8B66 && *(uint32_t*)0x6B4CEC == 0x1BF98166, 0x6B4CE8, 8, movReg16WordPtrReg<REG_CX, REG_ESI, 0x6B4CF1, 5, 0x1BF98166, 0x90909002>, "CAutomobile::ProcessAI");
 
         if (exeVersion != 2)
             hookASM(*(uint32_t*)0x407293 == 0x000259BB && *(uint8_t*)0x407297 == 0x00, 0x407293, 5, patch407293, "CAutomobile::FireTruckControl");
@@ -2186,8 +2169,10 @@ void installVehicleHooks()
         hookASM(*(uint32_t*)0x6C8F3D == 0x0200FF81 && *(uint16_t*)0x6C8F41 == 0x0000,     0x6C8F3D, 6, cmpReg32Model<REG_EDI, 0x6C8F43, 0x200>, "CPlane::CPlane");
         hookASM(*(uint32_t*)0x6D67B7 == 0x22468B66 && *(uint32_t*)0x6D67BB == 0x01963D66, 0x6D67B7, 8, movReg16WordPtrReg<REG_AX, REG_ESI, 0x6D67BF, 4, 0x01963D66, 0x90909090>, "CVehicle::SpecialEntityPreCollisionStuff");
         hookASM(*(uint32_t*)0x6B0F47 == 0x22468B66 && *(uint32_t*)0x6B0F4B == 0x8B3805D9, 0x6B0F47, 8, movReg16WordPtrReg<REG_AX, REG_ESI, 0x6B0F51, 6, 0x8B3805D9, 0x90900085>, "CAutomobile::CAutomobile");
-        hookASM(*(uint32_t*)0x6B0CF0 == 0x227E8166 && *(uint16_t*)0x6B0CF4 == 0x01B0,     0x6B0CF0, 6, patch6B0CF0, "CAutomobile::CAutomobile");
+        hookASM(*(uint32_t*)0x6B0CF0 == 0x227E8166 && *(uint16_t*)0x6B0CF4 == 0x01B0,     0x6B0CF0, 6, cmpWordPtrRegModel<REG_ESI, 0x6B0CF6, 0x1B0>, "CAutomobile::CAutomobile");
         hookASM(*(uint32_t*)0x6B0EE2 == 0x22468B66 && *(uint32_t*)0x6B0EE6 == 0x020D3D66, 0x6B0EE2, 8, movReg16WordPtrReg<REG_AX, REG_ESI, 0x6B0EEA, 4, 0x020D3D66, 0x90909090>, "CAutomobile::CAutomobile");
+        hookASM(*(uint32_t*)0x6B11D5 == 0x22468B66 && *(uint32_t*)0x6B11D9 == 0xFFFE3D66, 0x6B11D5, 8, movReg16WordPtrReg<REG_AX, REG_ESI, 0x6B11DD, 4, 0xFFFE3D66, 0x90909090>, "CAutomobile::CAutomobile");
+
 
         hookCall(0x871238, ProcessSuspensionHooked<0x871238>, "ProcessSuspension", true);
         hookCall(0x871200, VehicleDamageHooked<0x871200>, "VehicleDamage", true);

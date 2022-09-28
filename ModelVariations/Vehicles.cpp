@@ -401,9 +401,9 @@ void readVehicleIni(bool firstTime, std::string gamePath)
             if (enableLights)
             {
                 const float lightWidth = iniVeh.ReadFloat(i.first, "LightWidth", -999.0);
-                const float lightX = iniVeh.ReadFloat(i.first, "LightX", -999.0);
-                const float lightY = iniVeh.ReadFloat(i.first, "LightY", -999.0);
-                const float lightZ = iniVeh.ReadFloat(i.first, "LightZ", -999.0);
+                const float lightX = iniVeh.ReadFloat(i.first, "LightX", 0.0);
+                const float lightY = iniVeh.ReadFloat(i.first, "LightY", 0.0);
+                const float lightZ = iniVeh.ReadFloat(i.first, "LightZ", 0.0);
 
                 int r = iniVeh.ReadInteger(i.first, "LightR", -1);
                 int g = iniVeh.ReadInteger(i.first, "LightG", -1);
@@ -416,7 +416,7 @@ void readVehicleIni(bool firstTime, std::string gamePath)
                     LightColors.insert({ modelid, colors });
                 }
 
-                if (lightX > -900.0 || lightY > -900.0 || lightZ > -900.0)
+                if (lightX != 0.0 || lightY != 0.0 || lightZ != 0.0 || lightWidth > -900.0)
                     LightPositions.insert({ modelid, {{ lightX, lightY, lightZ }, lightWidth} });
 
                 r = iniVeh.ReadInteger(i.first, "LightR2", -1);
@@ -1200,11 +1200,11 @@ void __cdecl RegisterCoronaHooked(CCoronas* _this, unsigned int a2, unsigned __i
         {
             if (it->second.second > -900.0)
                 a7->x *= it->second.second;
-            if (it->second.first.x > -900.0)
+            if (it->second.first.x != 0.0)
                 a7->x += it->second.first.x;
-            if (it->second.first.y > -900.0)
+            if (it->second.first.y != 0.0)
                 a7->y += it->second.first.y;
-            if (it->second.first.z > -900.0)
+            if (it->second.first.z != 0.0)
                 a7->z += it->second.first.z;
         }
     }
@@ -1235,11 +1235,11 @@ void __cdecl RegisterCoronaHooked2(CCoronas* _this, unsigned int a2, unsigned __
         {
             if (it->second.second > -900.0)
                 a7->x *= it->second.second;
-            if (it->second.first.x > -900.0)
+            if (it->second.first.x != 0.0)
                 a7->x += it->second.first.x;
-            if (it->second.first.y > -900.0)
+            if (it->second.first.y != 0.0)
                 a7->y += it->second.first.y;
-            if (it->second.first.z > -900.0)
+            if (it->second.first.z != 0.0)
                 a7->z += it->second.first.z;
         }
     }
@@ -1270,11 +1270,11 @@ void __cdecl AddLightHooked(char type, float x, float y, float z, float dir_x, f
         {
             if (it->second.second > -900.0)
                 x *= it->second.second;
-            if (it->second.first.x > -900.0)
+            if (it->second.first.x != 0.0)
                 x += it->second.first.x;
-            if (it->second.first.y > -900.0)
+            if (it->second.first.y != 0.0)
                 y += it->second.first.y;
-            if (it->second.first.z > -900.0)
+            if (it->second.first.z != 0.0)
                 z += it->second.first.z;
         }
     }

@@ -1331,7 +1331,6 @@ public:
 
                     for (int j = 0; j < 2; j++)
                     {
-                        bool changeWeapon = true;
                         bool wepChanged = false;
 
                         if (j == 1)
@@ -1344,6 +1343,7 @@ public:
 
                         if (!(disableOnMission > 0 && isOnMission()))
                         {
+                            bool changeWeapon = true;
                             vec = iniWeap.ReadLine(section, vehId + "WEAPONFORCE", READ_WEAPONS);
                             if (!vec.empty())
                             {

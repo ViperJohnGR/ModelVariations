@@ -894,6 +894,7 @@ public:
         {
             //if (checkForUpdate())
                 //MessageBox(NULL, "Model Variations: New version available!\nhttps://github.com/ViperJohnGR/ModelVariations", "Update available", MB_ICONINFORMATION);
+            getLoadedModules();
 
             loadIniData(true);
             installHooks();
@@ -901,8 +902,6 @@ public:
             if (logfile.is_open())
             {
                 logfile << "\nLoaded modules:" << std::endl;
-
-                getLoadedModules();
 
                 for (auto& i : modulesSet)
                     logfile << "0x" << std::setfill('0') << std::setw(8) << std::hex << i.first << " " << i.second << "\n";

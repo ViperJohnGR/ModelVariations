@@ -208,7 +208,7 @@ std::string bytesToString(unsigned int address, int nBytes)
     unsigned char* c = reinterpret_cast<unsigned char*>(address);
 
     for (int i = 0; i < nBytes; i++, ss << " ")
-        ss << std::hex << static_cast<unsigned int>(c[i]);
+        ss << std::setfill('0') << std::setw(2) << std::hex << static_cast<unsigned int>(c[i]);
 
     return ss.str();
 }

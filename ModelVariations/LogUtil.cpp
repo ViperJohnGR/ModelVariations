@@ -104,6 +104,31 @@ std::string getParentModuleName(unsigned int address)
     return emptyString;
 }
 
+std::pair<unsigned int, std::string> getAddressBaseModule(uint32_t functionAddress)
+{
+    std::pair<unsigned int, std::string> moduleInfo = {0, ""};
+
+    std::pair<unsigned int, std::string> prev;
+    for (auto it = modulesSet.begin(); it != modulesSet.end(); it++)
+        if (it->first > functionAddress)
+        {
+            moduleInfo = prev;
+            break;
+        }
+        else if (std::next(it) == modulesSet.end())
+        {
+            moduleInfo.first = it->first;
+            moduleInfo.second = it->second;
+        }
+        else
+        {
+            prev.first = it->first;
+            prev.second = it->second;
+        }
+
+    return moduleInfo;
+}
+
 void checkCallModified(const std::string &callName, unsigned int callAddress, bool isDirectAddress)
 {
     unsigned int functionAddress = (isDirectAddress == false) ? injector::GetBranchDestination(callAddress).as_int() : *(unsigned int*)callAddress;
@@ -120,22 +145,7 @@ void checkCallModified(const std::string &callName, unsigned int callAddress, bo
     callChecks.insert({ callAddress, moduleName});
 
     if (functionAddress > 0)
-    {
-        std::pair<unsigned int, std::string> prev;
-        for (auto it = modulesSet.begin(); it != modulesSet.end(); it++)
-            if (it->first > functionAddress)
-            {
-                baseAddress = prev.first;
-                break;
-            }
-            else if (std::next(it) == modulesSet.end())
-                baseAddress = it->first;
-            else 
-            {
-                prev.first = it->first;
-                prev.second = it->second;
-            }
-    }
+        baseAddress = getAddressBaseModule(functionAddress).first;
 
     logfile << "Modified call found: " << callName << " 0x" << std::uppercase << std::hex << callAddress << " 0x" << functionAddress << " ";
     logfile << moduleName << " 0x" << baseAddress << std::endl;

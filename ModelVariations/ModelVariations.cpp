@@ -342,42 +342,23 @@ void detectExe()
 
 void drugDealerFix()
 {
-    bool enableFix = false;
+    int id = 28;
 
-    for (unsigned int i = 0; i < 16; i++)
-        if (!pedVariations[28][i].empty() || !pedVariations[29][i].empty() || !pedVariations[30][i].empty() || !pedVariations[254][i].empty())
-            enableFix = true;
-
-    if (!enableFix)
-        return;
-
-    std::vector<unsigned short> totalVariations;
-    std::set<unsigned short> drugDealers;
-
-    for (unsigned int i = 0; i < 16; i++)
-        totalVariations.insert(totalVariations.end(), pedVariations[28][i].begin(), pedVariations[28][i].end());
-
-    for (unsigned int i = 0; i < 16; i++)
-        totalVariations.insert(totalVariations.end(), pedVariations[29][i].begin(), pedVariations[29][i].end());
-
-    for (unsigned int i = 0; i < 16; i++)
-        totalVariations.insert(totalVariations.end(), pedVariations[30][i].begin(), pedVariations[30][i].end());
-
-    for (unsigned int i = 0; i < 16; i++)
-        totalVariations.insert(totalVariations.end(), pedVariations[254][i].begin(), pedVariations[254][i].end());
-
-
-
-    for (auto& i : totalVariations)
-        if (i > MAX_PED_ID)
-            drugDealers.insert(i);
-
-    for (auto& i : drugDealers)
+    while (id < 255)
     {
-        if (enableLog == 1)
-            logfile << i << "\n";
-        Command<COMMAND_ALLOCATE_STREAMED_SCRIPT_TO_RANDOM_PED>(19, i, 100);
-        //Command<COMMAND_ATTACH_ANIMS_TO_MODEL>(i, "DEALER");
+        for (unsigned int i = 0; i < 16; i++)
+            if (!pedVariations[id][i].empty())
+                for (auto& j : pedVariations[id][i])
+                    if (j > MAX_PED_ID)
+                    {
+                        if (enableLog == 1)
+                            logfile << j << "\n";
+                        Command<COMMAND_ALLOCATE_STREAMED_SCRIPT_TO_RANDOM_PED>(19, j, 100);
+                    }
+
+        if (id < 30) id++;
+        else if (id == 30) id = 254;
+        else id = 255;
     }
 }
 

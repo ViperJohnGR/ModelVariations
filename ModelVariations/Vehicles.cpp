@@ -1797,32 +1797,6 @@ void __declspec(naked) patch6AC730()
     }
 }
 
-void __declspec(naked) patch6A155C()
-{
-    __asm {
-        push ecx
-        push eax
-        movsx eax, word ptr [edi+0x22]
-        push edx
-        push eax
-        call getVariationOriginalModel
-        pop edx
-        mov cx, ax
-        pop eax
-        mov ax, cx
-        pop ecx
-        cmp ax, 0x20C
-        je isCement
-        cmp ax, 0x220
-        mov ax, [edi+0x22]
-        jmp jmp6A1564
-
-isCement:
-        mov ax, [edi+0x22]
-        jmp jmp6A1564
-    }
-}
-
 void __declspec(naked) patchCoronas()
 {
     __asm {
@@ -2017,22 +1991,7 @@ void hookASM(uint32_t address1, uint32_t address1Bytes, uint8_t address2Size, ui
         std::string moduleName;
         auto dest = injector::GetBranchDestination(address1);
         if (dest != nullptr)
-        {
-            std::pair<unsigned int, std::string> prev;
-            for (auto it = modulesSet.begin(); it != modulesSet.end(); it++)
-                if (it->first > dest.as_int())
-                {
-                    moduleName = prev.second;
-                    break;
-                }
-                else if (std::next(it) == modulesSet.end())
-                    moduleName = it->second;
-                else
-                {
-                    prev.first = it->first;
-                    prev.second = it->second;
-                }
-        }
+            moduleName = getAddressBaseModule(dest.as_int()).second;
 
 
         if (funcName.find("::") != std::string::npos)
@@ -2187,7 +2146,7 @@ void installVehicleHooks()
         hookASM(0x43064C, 0x01AFFF81, 2, 0x430650, 0x0000, cmpReg32Model<REG_EDI, 0x430652, 0x1AF>, "CCarCtrl::GenerateOneRandomCar");
         hookASM(0x64BCB3, 0x22788166, 2, 0x64BCB7, 0x01AF, cmpWordPtrRegModel<REG_EAX, 0x64BCB9, 0x1AF>, "CTaskSimpleCarSetPedInAsDriver::ProcessPed");
         hookASM(0x430640, 0x01B5FF81, 2, 0x430644, 0x0000, cmpReg32Model<REG_EDI, 0x430646, 0x1B5>, "CCarCtrl::GenerateOneRandomCar");
-        hookASM(0x6A155C, 0x22478B66, 1, 0x6A1560, 0x66,   patch6A155C, "CAutomobile::UpdateMovingCollision");
+        hookASM(0x6A155C, 0x22478B66, 4, 0x6A1560, 0x020C3D66, movReg16WordPtrReg<REG_AX, REG_EDI, 0x6A1564, 4, 0x020C3D66, 0x90909090>, "CAutomobile::UpdateMovingCollision");
         hookASM(0x502222, 0x22788166, 2, 0x502226, 0x0214,     cmpWordPtrRegModel<REG_EAX, 0x502228, 0x214>, "CAEVehicleAudioEntity::ProcessVehicle");
         hookASM(0x6AA515, 0x224E8B66, 4, 0x6AA519, 0x14F98166, movReg16WordPtrReg<REG_CX, REG_ESI, 0x6AA51E, 5, 0x14F98166, 0x90909002>, "CAutomobile::UpdateWheelMatrix");
         hookASM(0x6D1ABA, 0x22478B66, 2, 0x6D1ABE, 0xD232,     movReg16WordPtrReg<REG_AX, REG_EDI, 0x6D1AC0, 2, 0x9090D232, 0x90909090 >, "CVehicle::SetupPassenger");

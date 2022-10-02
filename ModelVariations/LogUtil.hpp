@@ -21,6 +21,7 @@ extern std::set<unsigned int> modifiedAddresses;
 extern int enableLog;
 
 std::string hashFile(const char* filename);
+std::pair<unsigned int, std::string> getAddressBaseModule(uint32_t functionAddress);
 std::string getWindowsVersion();
 void checkAllCalls();
 void logModified(unsigned int address, const std::string &message);

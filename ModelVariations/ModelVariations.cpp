@@ -437,7 +437,7 @@ void updateVariations(CZone* zInfo)
         else
             section = std::to_string(i.first);
 
-        std::vector<unsigned short> vec = iniPed.ReadLine(section, ((lastZone[0] == 0) ? zInfo->m_szLabel : lastZone), READ_TUNING);
+        std::vector<unsigned short> vec = iniVeh.ReadLine(section, ((lastZone[0] == 0) ? zInfo->m_szLabel : lastZone), READ_TUNING);
         if (!vec.empty())
         {
             if (vehMergeZones.find(i.first) != vehMergeZones.end())

@@ -171,7 +171,7 @@ int getRandomVariation(const int modelid, bool parked = false)
 void readVehicleIni(bool firstTime, std::string gamePath)
 {
     std::string str;
-    std::vector <std::string> result;
+    std::vector<std::string> result;
     std::ifstream zoneFile(gamePath + "\\data\\info.zon");
 
     if (firstTime)

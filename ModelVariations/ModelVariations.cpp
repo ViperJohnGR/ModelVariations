@@ -1126,7 +1126,12 @@ public:
                     if (it != vehPassengers.end() && it->second[0] == 0)
                         for (int i = 0; i < 8; i++)
                             if (veh->m_apPassengers[i] != NULL)
-                                veh->RemovePassenger(veh->m_apPassengers[i]);
+                            {
+                                CPed* passenger = veh->m_apPassengers[i];
+                                if (passenger->m_pIntelligence)
+                                    passenger->m_pIntelligence->FlushImmediately(false);
+                                CTheScripts::RemoveThisPed(passenger);
+                            }
                 }
             }
 
@@ -1135,8 +1140,11 @@ public:
                 const auto vehDeleteDriver = [](CVehicle *veh) {
                     if (IsPedPointerValid(veh->m_pDriver))
                     {
-                        veh->m_pDriver->DropEntityThatThisPedIsHolding(true);
-                        Command<COMMAND_DELETE_CHAR>(CPools::GetPedRef(veh->m_pDriver));
+                        CPed *driver = veh->m_pDriver;
+                        if (driver->m_pIntelligence)
+                            driver->m_pIntelligence->FlushImmediately(false);
+                        driver->DropEntityThatThisPedIsHolding(true);
+                        CTheScripts::RemoveThisPed(driver);
                     }
                 };
 
@@ -1144,8 +1152,11 @@ public:
                     for (int i = 0; i < 8; i++)
                         if (IsPedPointerValid(veh->m_apPassengers[i]))
                         {
-                            veh->m_apPassengers[i]->DropEntityThatThisPedIsHolding(true);
-                            Command<COMMAND_DELETE_CHAR>(CPools::GetPedRef(veh->m_apPassengers[i]));
+                            CPed* passenger = veh->m_apPassengers[i];
+                            if (passenger->m_pIntelligence)
+                                passenger->m_pIntelligence->FlushImmediately(false);
+                            passenger->DropEntityThatThisPedIsHolding(true);
+                            CTheScripts::RemoveThisPed(passenger);
                         }
                 };
 
@@ -1170,8 +1181,10 @@ public:
                         }
                         else
                         {
+                            if (ped->m_pIntelligence)
+                                ped->m_pIntelligence->FlushImmediately(false);
                             ped->DropEntityThatThisPedIsHolding(true);
-                            Command<COMMAND_DELETE_CHAR>(CPools::GetPedRef(ped));
+                            CTheScripts::RemoveThisPed(ped);
                         }
 
                         pedRemoved = true;
@@ -1184,8 +1197,10 @@ public:
                     {
                         if (!IsVehiclePointerValid(ped->m_pVehicle))
                         {
+                            if (ped->m_pIntelligence)
+                                ped->m_pIntelligence->FlushImmediately(false);
                             ped->DropEntityThatThisPedIsHolding(true);
-                            Command<COMMAND_DELETE_CHAR>(CPools::GetPedRef(ped));
+                            CTheScripts::RemoveThisPed(ped);
                             pedRemoved = true;
                         }
                         else if (cloneRemoverVehicleOccupants == 1)
@@ -1233,8 +1248,10 @@ public:
                             {
                                 if (!IsVehiclePointerValid(ped->m_pVehicle))
                                 {
+                                    if (ped->m_pIntelligence)
+                                        ped->m_pIntelligence->FlushImmediately(false);
                                     ped->DropEntityThatThisPedIsHolding(true);
-                                    Command<COMMAND_DELETE_CHAR>(CPools::GetPedRef(ped));
+                                    CTheScripts::RemoveThisPed(ped);
  
                                     pedRemoved = true;
                                     break;

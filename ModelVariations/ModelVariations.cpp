@@ -112,8 +112,8 @@ std::vector<unsigned short> vehInheritExclude;
 BYTE dealersFixed = 0;
 short framesSinceCallsChecked = 0;
 unsigned short modelIndex = 0;
-char currentInterior[16] = {};
-char lastInterior[16] = {};
+char lastInterior[8] = {};
+const char* currentInterior = lastInterior;
 char currentZone[8] = {};
 char lastZone[8] = {};
 BYTE currentTown = 0;
@@ -369,28 +369,43 @@ void updateVariations(CZone* zInfo)
     if (zInfo == NULL)
         return;
 
-    currentTown = (BYTE)CTheZones::m_CurrLevel;
-    if (Command<COMMAND_IS_CHAR_IN_ZONE>(FindPlayerPed(), "ROBAD"))
-        currentTown = 6;
-    else if (Command<COMMAND_IS_CHAR_IN_ZONE>(FindPlayerPed(), "BONE"))
-        currentTown = 7;
-    else if (Command<COMMAND_IS_CHAR_IN_ZONE>(FindPlayerPed(), "RED"))
-        currentTown = 8;
-    else if (Command<COMMAND_IS_CHAR_IN_ZONE>(FindPlayerPed(), "BLUEB"))
-        currentTown = 9;
-    else if (Command<COMMAND_IS_CHAR_IN_ZONE>(FindPlayerPed(), "MONT"))
-        currentTown = 10;
-    else if (Command<COMMAND_IS_CHAR_IN_ZONE>(FindPlayerPed(), "DILLI"))
-        currentTown = 11;
-    else if (Command<COMMAND_IS_CHAR_IN_ZONE>(FindPlayerPed(), "PALO"))
-        currentTown = 12;
-    else if (Command<COMMAND_IS_CHAR_IN_ZONE>(FindPlayerPed(), "FLINTC"))
-        currentTown = 13;
-    else if (Command<COMMAND_IS_CHAR_IN_ZONE>(FindPlayerPed(), "WHET"))
-        currentTown = 14;
-    else if (Command<COMMAND_IS_CHAR_IN_ZONE>(FindPlayerPed(), "ANGPI"))
-        currentTown = 15;
+    auto isPlayerInZone = [](const char* zoneName)
+    {
+        if (FindPlayerPed() != NULL)
+        {
+            CVector position = FindPlayerCoors(-1);
+            return CTheZones::FindZone(&position, (*(int32_t*)zoneName), (*(int32_t*)(zoneName + 4)), ZONE_TYPE_NAVI);
+        }
+        return false;
+    };
 
+    currentTown = (BYTE)CTheZones::m_CurrLevel;
+    if (currentTown == LEVEL_NAME_COUNTRY_SIDE)
+    {
+        //COUNTRY_LA
+        if (isPlayerInZone("BLUEB"))
+            currentTown = 9;
+        else if (isPlayerInZone("MONT"))
+            currentTown = 10;
+        else if (isPlayerInZone("DILLI"))
+            currentTown = 11;
+        else if (isPlayerInZone("PALO"))
+            currentTown = 12;
+        else if (isPlayerInZone("RED"))
+        currentTown = 8;
+        //COUNTRY_SF
+        else if (isPlayerInZone("ANGPI"))
+            currentTown = 15;
+        else if (isPlayerInZone("FLINTC"))
+            currentTown = 13;
+        else if (isPlayerInZone("WHET"))
+            currentTown = 14;
+        //COUNTRY_LV
+        else if (isPlayerInZone("ROBAD"))
+            currentTown = 6;
+        else if (isPlayerInZone("BONE"))
+            currentTown = 7;
+    }
 
     const CWanted* wanted = FindPlayerWanted(-1);
 
@@ -1024,8 +1039,14 @@ public:
             CTheZones::GetZoneInfo(&pPos, &zInfo);
             const CWanted* wanted = FindPlayerWanted(-1);
 
-            Command<COMMAND_GET_NAME_OF_ENTRY_EXIT_CHAR_USED>(FindPlayerPed(), &currentInterior);
-            if (strncmp(currentInterior, lastInterior, 16) != 0)
+            CPlayerPed* player = FindPlayerPed();
+
+            if (player && player->m_pEnex)
+                currentInterior = (const char*)player->m_pEnex;
+            else 
+                currentInterior = "";
+
+            if (strncmp(currentInterior, lastInterior, 7) != 0)
             {
                 if (enableLog == 1)
                 {
@@ -1035,7 +1056,7 @@ public:
                     logfile << "currentInterior = " << currentInterior << " lastInterior = " << lastInterior << "\n" << std::endl;
                 }
 
-                strncpy(lastInterior, currentInterior, 15);
+                strncpy(lastInterior, currentInterior, 7);
                 updateVariations(zInfo);
 
                 if (enableLog == 1)
@@ -1065,7 +1086,7 @@ public:
             if (zInfo && strncmp(zInfo->m_szLabel, currentZone, 7) != 0)
             {
                 if (lastZone[0] == 0 && strncmp(zInfo->m_szLabel, "SAN_AND", 7) == 0)
-                    strcpy(lastZone, currentZone);
+                    strncpy(lastZone, currentZone, 7);
                 else if (strncmp(zInfo->m_szLabel, "SAN_AND", 7) != 0)
                     lastZone[0] = 0;
 
@@ -1294,7 +1315,10 @@ public:
                 {
                     const auto wepFound = [ped](eWeaponType weaponId, eWeaponType originalWeaponId) -> bool {
                         int weapModel = 0;
-                        Command<COMMAND_GET_WEAPONTYPE_MODEL>(weaponId, &weapModel);
+                        CWeaponInfo *wInfo = CWeaponInfo::GetWeaponInfo(weaponId, 1);
+                        if (wInfo != NULL)
+                            weapModel = wInfo->m_nModelId1;
+
                         if (weapModel >= 321)
                         {
                             CStreaming::RequestModel(weapModel, 2);

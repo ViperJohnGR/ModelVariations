@@ -1993,7 +1993,6 @@ void hookASM(uint32_t address1, uint32_t address1Bytes, uint8_t address2Size, ui
         if (dest != nullptr)
             moduleName = getAddressBaseModule(dest.as_int()).second;
 
-
         if (funcName.find("::") != std::string::npos)
           logModified(address1, printToString("Modified method detected: %s - 0x%X is %s %s", funcName.c_str(), address1, bytesToString(address1, 4 + address2Size).c_str(), PathFindFileName(moduleName.c_str())));
         else if (strncmp(funcName.c_str(), "sub_", 4) == 0)

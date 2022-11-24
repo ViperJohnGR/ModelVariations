@@ -52,7 +52,7 @@ std::string DataReader::ReadString(std::string_view szSection, std::string_view 
 	}
 }
 
-std::vector<unsigned short> DataReader::ReadLine(std::string section, std::string key, int parseType)
+std::vector<unsigned short> DataReader::ReadLine(std::string section, std::string key, modelTypeToRead parseType)
 {
 	std::vector<unsigned short> retVector;
 

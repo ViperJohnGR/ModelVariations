@@ -3,6 +3,7 @@
 #include <iomanip>
 #include <fstream>
 #include <sstream>
+#include <ntstatus.h>
 
 #pragma comment (lib, "bcrypt.lib")
 
@@ -21,65 +22,42 @@ bool compareLower(const char* a, const char* b)
 }
 
 std::string hashFile(const char* filename)
-//NTSTATUS hashFile(BYTE* hash, BYTE* data, unsigned int len)
 {
-    FILE* fp = fopen(filename, "rb");
-    if (fp == NULL)
-        return "";
+    std::string hashString = "";
+    HANDLE hFile = CreateFile(filename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 
-    fseek(fp, 0, SEEK_END);
-    int filesize = ftell(fp);
-    BYTE* hash = (BYTE*)calloc(50, 1);
-    if (hash == NULL || filesize < 1)
+    if (hFile != INVALID_HANDLE_VALUE)
     {
-        fclose(fp);
-        return "";
+        auto filesize = GetFileSize(hFile, NULL);
+        if (filesize != INVALID_FILE_SIZE)
+        {
+            DWORD lpNumberOfBytesRead;
+            BCRYPT_ALG_HANDLE hProvider = NULL;
+            BCRYPT_HASH_HANDLE ctx = NULL;
+            BYTE* filebuf = new BYTE[filesize + 1];
+
+            if (ReadFile(hFile, filebuf, filesize, &lpNumberOfBytesRead, NULL))
+                if (BCryptOpenAlgorithmProvider(&hProvider, BCRYPT_SHA256_ALGORITHM, NULL, 0) == STATUS_SUCCESS)
+                    if (BCryptCreateHash(hProvider, &ctx, NULL, 0, NULL, 0, 0) == STATUS_SUCCESS && ctx != NULL)
+                    {
+                        BYTE* hash = new BYTE[50];
+                        std::stringstream stream;
+                        BCryptHashData(ctx, filebuf, filesize, 0);
+                        BCryptFinishHash(ctx, hash, 32, 0);
+                        BCryptDestroyHash(ctx);
+                        BCryptCloseAlgorithmProvider(hProvider, 0);
+
+                        for (int i = 0; i < 32; i++)
+                            stream << std::setfill('0') << std::setw(2) << std::hex << static_cast<int>(hash[i]);
+
+                        hashString = stream.str();
+                        delete[] hash;
+                    }
+            delete[] filebuf;
+        }
+        CloseHandle(hFile);
     }
-    fseek(fp, 0, SEEK_SET);
-
-    BYTE* filebuf = (BYTE*)calloc((size_t)filesize, 1);
-    if (filebuf == NULL)
-    {
-        fclose(fp);
-        free(hash);
-        return "";
-    }
-
-    if ((int)fread(filebuf, 1, (size_t)filesize, fp) != filesize)
-    {
-        fclose(fp);
-        free(hash);
-        free(filebuf);
-        return "";
-    }
-    fclose(fp);
-
-    BCRYPT_ALG_HANDLE hProvider = NULL;
-    BCRYPT_HASH_HANDLE ctx = NULL;
-
-    BCryptOpenAlgorithmProvider(&hProvider, BCRYPT_SHA256_ALGORITHM, NULL, 0);
-
-    BCryptCreateHash(hProvider, &ctx, NULL, 0, NULL, 0, 0);
-    if (ctx != NULL)
-    {
-        BCryptHashData(ctx, filebuf, (ULONG)filesize, 0);
-        BCryptFinishHash(ctx, hash, 32, 0);
-    }
-    free(filebuf);
-
-    if (ctx != NULL)
-        BCryptDestroyHash(ctx);
-
-    if (hProvider != NULL)
-        BCryptCloseAlgorithmProvider(hProvider, 0);
-
-    std::stringstream stream;
-
-    for (int i = 0; i < 32; i++)
-        stream << std::setfill('0') << std::setw(2) << std::hex << (int)(hash[i]);
-
-    free(hash);
-    std::string hashString(stream.str());
+    
     return hashString;
 }
 
@@ -169,14 +147,12 @@ std::string getWindowsVersion()
         RegCloseKey(hkey);
     }
 	
-	
     if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, "SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Environment", 0, KEY_QUERY_VALUE, &hkey) == ERROR_SUCCESS)
     {
         if (RegQueryValueEx(hkey, "PROCESSOR_ARCHITECTURE", NULL, NULL, (LPBYTE)str, &cbData) == ERROR_SUCCESS)
             retString += str;
         RegCloseKey(hkey);
     }
-
 
     return retString;
 }

@@ -102,12 +102,8 @@ std::stack<CVehicle*> vehStack;
 std::stack<std::pair<CVehicle*, std::array<std::vector<unsigned short>, 17>>> tuningStack;
 //std::stack<std::pair<CVehicle*, std::array<int, 16>>> tuningStack;
 
-std::vector<unsigned short> cloneRemoverIncludeVariations;
-std::vector<unsigned short> cloneRemoverExclusions;
 std::vector<unsigned short> pedCurrentVariations[MAX_PED_ID];
 std::vector<unsigned short> vehCurrentVariations[212];
-std::vector<unsigned short> vehCarGenExclude;
-std::vector<unsigned short> vehInheritExclude;
 
 BYTE dealersFixed = 0;
 short framesSinceCallsChecked = 0;
@@ -118,28 +114,37 @@ char currentZone[8] = {};
 char lastZone[8] = {};
 BYTE currentTown = 0;
 
-//ini options
+//INI Options
+//General
 int enableLog = 0;
+int enablePeds = 0;
+int enableVehicles = 0;
+int enablePedWeapons = 0;
 unsigned int disableKey = 0;
 unsigned int reloadKey = 0;
-
-int changeCarGenerators = 0;
-bool enableSideMissions = false;
-int enableAllSideMissions = 0;
-int enableVehicles = 0;
-int loadAllVehicles = 0;
-int enableLights = 0;
-int enableSiren = 0;
-int disablePayAndSpray = 0;
-int enableSpecialFeatures = 0;
-int changeScriptedCars = 0;
+//Peds
 int enableCloneRemover = 0;
 int cloneRemoverVehicleOccupants = 0;
-int spawnDelay = 3;
+int cloneRemoverSpawnDelay = 3;
+std::vector<unsigned short> cloneRemoverIncludeVariations;
+std::vector<unsigned short> cloneRemoverExclusions;
+//Vehicles
+int changeCarGenerators = 0;
+int changeScriptedCars = 0;
+int disablePayAndSpray = 0;
+int enableLights = 0;
+bool enableSideMissions = false;
+int enableAllSideMissions = 0;
+int enableSiren = 0;
+int enableSpecialFeatures = 0;
+int loadAllVehicles = 0;
+std::vector<unsigned short> vehCarGenExclude;
+std::vector<unsigned short> vehInheritExclude;        
+
 
 bool keyDown = false;
 
-int timeUpdate = 8001;
+int timeUpdate = -1;
 
 std::string fileToString(const std::string& filename)
 {
@@ -409,106 +414,111 @@ void updateVariations(CZone* zInfo)
 
     const CWanted* wanted = FindPlayerWanted(-1);
 
-    for (auto& modelid : pedHasVariations)
-    {
-        pedCurrentVariations[modelid] = vectorUnion(pedVariations[modelid][4], pedVariations[modelid][currentTown]);
-
-        std::string section;
-        auto it = pedModels.find(modelid);
-        if (it != pedModels.end())
-            section = it->second;
-        else
-            section = std::to_string(modelid);
-
-        std::vector<unsigned short> vec = iniPed.ReadLine(section, ((lastZone[0] == 0) ? zInfo->m_szLabel : lastZone), READ_PEDS);
-        if (!vec.empty())
+    if (enablePeds)
+        for (auto& modelid : pedHasVariations)
         {
-            if (pedMergeZones.find(modelid) != pedMergeZones.end())
+            pedCurrentVariations[modelid] = vectorUnion(pedVariations[modelid][4], pedVariations[modelid][currentTown]);
+
+            std::string section;
+            auto it = pedModels.find(modelid);
+            if (it != pedModels.end())
+                section = it->second;
+            else
+                section = std::to_string(modelid);
+
+            std::vector<unsigned short> vec = iniPed.ReadLine(section, ((lastZone[0] == 0) ? zInfo->m_szLabel : lastZone), READ_PEDS);
+            if (!vec.empty())
+            {
+                if (pedMergeZones.find(modelid) != pedMergeZones.end())
+                    pedCurrentVariations[modelid] = vectorUnion(pedCurrentVariations[modelid], vec);
+                else
+                    pedCurrentVariations[modelid] = vec;
+            }
+
+            vec = iniPed.ReadLine(section, currentInterior, READ_PEDS);
+            if (!vec.empty())
                 pedCurrentVariations[modelid] = vectorUnion(pedCurrentVariations[modelid], vec);
+
+            if (wanted)
+            {
+                const unsigned int wantedLevel = (wanted->m_nWantedLevel > 0) ? (wanted->m_nWantedLevel - 1) : (wanted->m_nWantedLevel);
+                if (!pedWantedVariations[modelid][wantedLevel].empty() && !pedCurrentVariations[modelid].empty())
+                    filterWantedVariations(pedCurrentVariations[modelid], pedWantedVariations[modelid][wantedLevel]);
+            }
+        }
+
+    if (enableVehicles)
+        for (auto& i : vehTuning)
+        {
+            vehCurrentTuning[i.first] = vectorUnion(i.second[4], i.second[currentTown]);
+
+            std::string section;
+            auto it = vehModels.find(i.first);
+            if (it != vehModels.end())
+                section = it->second;
             else
-                pedCurrentVariations[modelid] = vec;
+                section = std::to_string(i.first);
+
+            std::vector<unsigned short> vec = iniVeh.ReadLine(section, ((lastZone[0] == 0) ? zInfo->m_szLabel : lastZone), READ_TUNING);
+            if (!vec.empty())
+            {
+                if (vehMergeZones.find(i.first) != vehMergeZones.end())
+                    vehCurrentTuning[i.first] = vectorUnion(vehCurrentTuning[i.first], vec);
+                else
+                    vehCurrentTuning[i.first] = vec;
+            }
         }
 
-        vec = iniPed.ReadLine(section, currentInterior, READ_PEDS);
-        if (!vec.empty())
-            pedCurrentVariations[modelid] = vectorUnion(pedCurrentVariations[modelid], vec);
-
-        if (wanted)
+    if (enableVehicles)
+        for (auto& modelid : vehHasVariations)
         {
-            const unsigned int wantedLevel = (wanted->m_nWantedLevel > 0) ? (wanted->m_nWantedLevel - 1) : (wanted->m_nWantedLevel);
-            if (!pedWantedVariations[modelid][wantedLevel].empty() && !pedCurrentVariations[modelid].empty())
-                filterWantedVariations(pedCurrentVariations[modelid], pedWantedVariations[modelid][wantedLevel]);
-        }
-    }
+            vehCurrentVariations[modelid] = vectorUnion(vehVariations[modelid][4], vehVariations[modelid][currentTown]);
 
-    for (auto& i : vehTuning)
-    {
-        vehCurrentTuning[i.first] = vectorUnion(i.second[4], i.second[currentTown]);
-
-        std::string section;
-        auto it = vehModels.find(i.first);
-        if (it != vehModels.end())
-            section = it->second;
-        else
-            section = std::to_string(i.first);
-
-        std::vector<unsigned short> vec = iniVeh.ReadLine(section, ((lastZone[0] == 0) ? zInfo->m_szLabel : lastZone), READ_TUNING);
-        if (!vec.empty())
-        {
-            if (vehMergeZones.find(i.first) != vehMergeZones.end())
-                vehCurrentTuning[i.first] = vectorUnion(vehCurrentTuning[i.first], vec);
+            std::string section;
+            auto it = vehModels.find(modelid + 400U);
+            if (it != vehModels.end())
+                section = it->second;
             else
-                vehCurrentTuning[i.first] = vec;
+                section = std::to_string(modelid + 400);
+
+            std::vector<unsigned short> vec = iniVeh.ReadLine(section, ((lastZone[0] == 0) ? zInfo->m_szLabel : lastZone), READ_VEHICLES);
+            if (!vec.empty())
+            {
+                if (vehMergeZones.find((unsigned short)(modelid + 400)) != vehMergeZones.end())
+                    vehCurrentVariations[modelid] = vectorUnion(vehCurrentVariations[modelid], vec);
+                else
+                    vehCurrentVariations[modelid] = vec;
+            }
+
+            if (wanted)
+            {
+                const unsigned int wantedLevel = (wanted->m_nWantedLevel > 0) ? (wanted->m_nWantedLevel - 1) : (wanted->m_nWantedLevel);
+                if (!vehWantedVariations[modelid][wantedLevel].empty() && !vehCurrentVariations[modelid].empty())
+                    filterWantedVariations(vehCurrentVariations[modelid], vehWantedVariations[modelid][wantedLevel]);
+            }
         }
-    }
-
-    for (auto& modelid : vehHasVariations)
-    {
-        vehCurrentVariations[modelid] = vectorUnion(vehVariations[modelid][4], vehVariations[modelid][currentTown]);
-
-        std::string section;
-        auto it = vehModels.find(modelid + 400U);
-        if (it != vehModels.end())
-            section = it->second;
-        else
-            section = std::to_string(modelid + 400);
-
-        std::vector<unsigned short> vec = iniVeh.ReadLine(section, ((lastZone[0] == 0) ? zInfo->m_szLabel : lastZone), READ_VEHICLES);
-        if (!vec.empty())
-        {
-            if (vehMergeZones.find((unsigned short)(modelid + 400)) != vehMergeZones.end())
-                vehCurrentVariations[modelid] = vectorUnion(vehCurrentVariations[modelid], vec);
-            else
-                vehCurrentVariations[modelid] = vec;
-        }
-
-        if (wanted)
-        {
-            const unsigned int wantedLevel = (wanted->m_nWantedLevel > 0) ? (wanted->m_nWantedLevel - 1) : (wanted->m_nWantedLevel);
-            if (!vehWantedVariations[modelid][wantedLevel].empty() && !vehCurrentVariations[modelid].empty())
-                filterWantedVariations(vehCurrentVariations[modelid], vehWantedVariations[modelid][wantedLevel]);
-        }
-    }
 }
 
 void printCurrentVariations()
 {
-    logfile << std::dec << "pedCurrentVariations\n";
-    for (int i = 0; i < MAX_PED_ID; i++)
-        if (!pedCurrentVariations[i].empty())
-        {
-            logfile << i << ": ";
-            for (auto j : pedCurrentVariations[i])
-                logfile << j << " ";
-            logfile << "\n";
-        }
+    if (enablePeds == 1)
+    {
+        logfile << std::dec << "pedCurrentVariations\n";
+        for (int i = 0; i < MAX_PED_ID; i++)
+            if (!pedCurrentVariations[i].empty())
+            {
+                logfile << i << ": ";
+                for (auto j : pedCurrentVariations[i])
+                    logfile << j << " ";
+                logfile << "\n";
+            }
 
-    logfile << std::endl;
+        logfile << std::endl;
+    }
 
     if (enableVehicles == 1)
     {
-
-        logfile << "vehCurrentVariations\n";
+        logfile << std::dec << "vehCurrentVariations\n";
         for (int i = 0; i < 212; i++)
             if (!vehCurrentVariations[i].empty())
             {
@@ -579,7 +589,8 @@ void __fastcall UpdateRpHAnimHooked(CEntity* entity)
 
 void installHooks()
 {
-    hookCall(0x5E49EF, UpdateRpHAnimHooked<0x5E49EF>, "UpdateRpHAnim");
+    if (enablePeds == 1)
+        hookCall(0x5E49EF, UpdateRpHAnimHooked<0x5E49EF>, "UpdateRpHAnim");
 
     if (enableVehicles == 1)
     {
@@ -596,108 +607,112 @@ void installHooks()
 void loadIniData(bool firstTime)
 {
     //for (unsigned short i = 0; i < MAX_PED_ID; i++)
-    for (auto& iniData : iniPed.data)
-    {
-        int i = 0;
-        std::string section = iniData.first;
+    enablePeds = iniSettings.ReadInteger("Settings", "EnablePeds", 0);
+    enableVehicles = iniSettings.ReadInteger("Settings", "EnableVehicles", 0);
+    enablePedWeapons = iniSettings.ReadInteger("Settings", "EnablePedWeapons", 0);
 
-        if (section[0] >= '0' && section[0] <= '9')
-            i = std::stoi(iniData.first);
-        else
+    if (enablePeds == 1)
+        for (auto& iniData : iniPed.data)
         {
-            CModelInfo::GetModelInfo((char*)section.c_str(), &i);
-            pedModels.insert({ i, section });
+            int i = 0;
+            std::string section = iniData.first;
+
+            if (section[0] >= '0' && section[0] <= '9')
+                i = std::stoi(iniData.first);
+            else
+            {
+                CModelInfo::GetModelInfo((char*)section.c_str(), &i);
+                pedModels.insert({ i, section });
+            }
+
+            if (isValidPedId(i))
+            {
+                pedHasVariations.insert((unsigned short)i);
+
+                pedVariations[i][0] = iniPed.ReadLine(section, "Countryside", READ_PEDS);
+                pedVariations[i][1] = iniPed.ReadLine(section, "LosSantos", READ_PEDS);
+                pedVariations[i][2] = iniPed.ReadLine(section, "SanFierro", READ_PEDS);
+                pedVariations[i][3] = iniPed.ReadLine(section, "LasVenturas", READ_PEDS);
+                pedVariations[i][4] = iniPed.ReadLine(section, "Global", READ_PEDS);
+                pedVariations[i][5] = iniPed.ReadLine(section, "Desert", READ_PEDS);
+
+                std::vector<unsigned short> vec = iniPed.ReadLine(section, "TierraRobada", READ_PEDS);
+                pedVariations[i][6] = vectorUnion(vec, pedVariations[i][5]);
+
+                vec = iniPed.ReadLine(section, "BoneCounty", READ_PEDS);
+                pedVariations[i][7] = vectorUnion(vec, pedVariations[i][5]);
+
+                vec = iniPed.ReadLine(section, "RedCounty", READ_PEDS);
+                pedVariations[i][8] = vectorUnion(vec, pedVariations[i][0]);
+
+                vec = iniPed.ReadLine(section, "Blueberry", READ_PEDS);
+                pedVariations[i][9] = vectorUnion(vec, pedVariations[i][8]);
+
+                vec = iniPed.ReadLine(section, "Montgomery", READ_PEDS);
+                pedVariations[i][10] = vectorUnion(vec, pedVariations[i][8]);
+
+                vec = iniPed.ReadLine(section, "Dillimore", READ_PEDS);
+                pedVariations[i][11] = vectorUnion(vec, pedVariations[i][8]);
+
+                vec = iniPed.ReadLine(section, "PalominoCreek", READ_PEDS);
+                pedVariations[i][12] = vectorUnion(vec, pedVariations[i][8]);
+
+                vec = iniPed.ReadLine(section, "FlintCounty", READ_PEDS);
+                pedVariations[i][13] = vectorUnion(vec, pedVariations[i][0]);
+
+                vec = iniPed.ReadLine(section, "Whetstone", READ_PEDS);
+                pedVariations[i][14] = vectorUnion(vec, pedVariations[i][0]);
+
+                vec = iniPed.ReadLine(section, "AngelPine", READ_PEDS);
+                pedVariations[i][15] = vectorUnion(vec, pedVariations[i][14]);
+
+
+                pedWantedVariations[i][0] = iniPed.ReadLine(section, "Wanted1", READ_PEDS);
+                pedWantedVariations[i][1] = iniPed.ReadLine(section, "Wanted2", READ_PEDS);
+                pedWantedVariations[i][2] = iniPed.ReadLine(section, "Wanted3", READ_PEDS);
+                pedWantedVariations[i][3] = iniPed.ReadLine(section, "Wanted4", READ_PEDS);
+                pedWantedVariations[i][4] = iniPed.ReadLine(section, "Wanted5", READ_PEDS);
+                pedWantedVariations[i][5] = iniPed.ReadLine(section, "Wanted6", READ_PEDS);
+
+
+                for (unsigned int j = 0; j < 16; j++)
+                    for (unsigned int k = 0; k < pedVariations[i][j].size(); k++)
+                        if (pedVariations[i][j][k] > 0 && pedVariations[i][j][k] != i)
+                        {
+                            if (pedOriginalModels.find(pedVariations[i][j][k]) != pedOriginalModels.end())
+                                pedOriginalModels[pedVariations[i][j][k]].push_back((unsigned short)i);
+                            else
+                                pedOriginalModels.insert({ pedVariations[i][j][k], {(unsigned short)i} });
+                        }
+
+                for (auto it : pedOriginalModels)
+                    std::sort(it.second.begin(), it.second.end());
+
+                if (iniPed.ReadInteger(section, "MergeZonesWithCities", 0) == 1)
+                    pedMergeZones.insert((unsigned short)i);
+
+                if (iniPed.ReadInteger(section, "DontInheritBehaviour", 0) == 1)
+                    dontInheritBehaviourModels.insert((unsigned short)i);
+            }
         }
 
-        if (isValidPedId(i))
+    if (enablePedWeapons == 1)
+        for (auto& iniData : iniWeap.data)
         {
-            pedHasVariations.insert((unsigned short)i);
+            int modelid = 0;
+            std::string section = iniData.first;
 
-            pedVariations[i][0] = iniPed.ReadLine(section, "Countryside", READ_PEDS);
-            pedVariations[i][1] = iniPed.ReadLine(section, "LosSantos", READ_PEDS);
-            pedVariations[i][2] = iniPed.ReadLine(section, "SanFierro", READ_PEDS);
-            pedVariations[i][3] = iniPed.ReadLine(section, "LasVenturas", READ_PEDS);
-            pedVariations[i][4] = iniPed.ReadLine(section, "Global", READ_PEDS);
-            pedVariations[i][5] = iniPed.ReadLine(section, "Desert", READ_PEDS);
-
-            std::vector<unsigned short> vec = iniPed.ReadLine(section, "TierraRobada", READ_PEDS);
-            pedVariations[i][6] = vectorUnion(vec, pedVariations[i][5]);
-
-            vec = iniPed.ReadLine(section, "BoneCounty", READ_PEDS);
-            pedVariations[i][7] = vectorUnion(vec, pedVariations[i][5]);
-
-            vec = iniPed.ReadLine(section, "RedCounty", READ_PEDS);
-            pedVariations[i][8] = vectorUnion(vec, pedVariations[i][0]);
-
-            vec = iniPed.ReadLine(section, "Blueberry", READ_PEDS);
-            pedVariations[i][9] = vectorUnion(vec, pedVariations[i][8]);
-
-            vec = iniPed.ReadLine(section, "Montgomery", READ_PEDS);
-            pedVariations[i][10] = vectorUnion(vec, pedVariations[i][8]);
-
-            vec = iniPed.ReadLine(section, "Dillimore", READ_PEDS);
-            pedVariations[i][11] = vectorUnion(vec, pedVariations[i][8]);
-
-            vec = iniPed.ReadLine(section, "PalominoCreek", READ_PEDS);
-            pedVariations[i][12] = vectorUnion(vec, pedVariations[i][8]);
-
-            vec = iniPed.ReadLine(section, "FlintCounty", READ_PEDS);
-            pedVariations[i][13] = vectorUnion(vec, pedVariations[i][0]);
-
-            vec = iniPed.ReadLine(section, "Whetstone", READ_PEDS);
-            pedVariations[i][14] = vectorUnion(vec, pedVariations[i][0]);
-
-            vec = iniPed.ReadLine(section, "AngelPine", READ_PEDS);
-            pedVariations[i][15] = vectorUnion(vec, pedVariations[i][14]);
-
-
-            pedWantedVariations[i][0] = iniPed.ReadLine(section, "Wanted1", READ_PEDS);
-            pedWantedVariations[i][1] = iniPed.ReadLine(section, "Wanted2", READ_PEDS);
-            pedWantedVariations[i][2] = iniPed.ReadLine(section, "Wanted3", READ_PEDS);
-            pedWantedVariations[i][3] = iniPed.ReadLine(section, "Wanted4", READ_PEDS);
-            pedWantedVariations[i][4] = iniPed.ReadLine(section, "Wanted5", READ_PEDS);
-            pedWantedVariations[i][5] = iniPed.ReadLine(section, "Wanted6", READ_PEDS);
-
-
-            for (unsigned int j = 0; j < 16; j++)
-                for (unsigned int k = 0; k < pedVariations[i][j].size(); k++)
-                    if (pedVariations[i][j][k] > 0 && pedVariations[i][j][k] != i)
-                    {
-                        if (pedOriginalModels.find(pedVariations[i][j][k]) != pedOriginalModels.end())
-                            pedOriginalModels[pedVariations[i][j][k]].push_back((unsigned short)i);
-                        else
-                            pedOriginalModels.insert({ pedVariations[i][j][k], {(unsigned short)i} });
-                    }
-
-            for (auto it : pedOriginalModels)
-                std::sort(it.second.begin(), it.second.end());
-
-            if (iniPed.ReadInteger(section, "MergeZonesWithCities", 0) == 1)
-                pedMergeZones.insert((unsigned short)i);
-
-            if (iniPed.ReadInteger(section, "DontInheritBehaviour", 0) == 1)
-                dontInheritBehaviourModels.insert((unsigned short)i);
+            if (!(section[0] >= '0' && section[0] <= '9'))
+                CModelInfo::GetModelInfo((char*)section.c_str(), &modelid);
+            if (modelid > 0)
+                wepVariationModels.insert({ modelid, section });
         }
-    }
-
-    for (auto& iniData : iniWeap.data)
-    {
-        int modelid = 0;
-        std::string section = iniData.first;
-
-        if (!(section[0] >= '0' && section[0] <= '9'))
-            CModelInfo::GetModelInfo((char*)section.c_str(), &modelid);
-        if (modelid > 0)
-            wepVariationModels.insert({ modelid, section });
-    }
-
-    cloneRemoverIncludeVariations = iniPed.ReadLine("Settings", "CloneRemoverIncludeVariations", READ_PEDS);
 
     enableCloneRemover = iniPed.ReadInteger("Settings", "EnableCloneRemover", 0);
     cloneRemoverVehicleOccupants = iniPed.ReadInteger("Settings", "CloneRemoverIncludeVehicleOccupants", 0);
+    cloneRemoverSpawnDelay = iniPed.ReadInteger("Settings", "CloneRemoverSpawnDelay", 3);
+    cloneRemoverIncludeVariations = iniPed.ReadLine("Settings", "CloneRemoverIncludeVariations", READ_PEDS);
     cloneRemoverExclusions = iniPed.ReadLine("Settings", "CloneRemoverExcludeModels", READ_PEDS);
-    spawnDelay = iniPed.ReadInteger("Settings", "SpawnDelay", 3);
-    enableVehicles = iniVeh.ReadInteger("Settings", "Enable", 0);
 
     if (enableVehicles == 1)
         readVehicleIni(firstTime, exePath.substr(0, exePath.find_last_of("/\\")));
@@ -1028,7 +1043,7 @@ public:
             {
                 auto it = pedTimeSinceLastSpawned.begin();
                 while (it != pedTimeSinceLastSpawned.end())
-                    if ((clock() - it->second) / CLOCKS_PER_SEC < spawnDelay)
+                    if ((clock() - it->second) / CLOCKS_PER_SEC < cloneRemoverSpawnDelay)
                         it++;
                     else
                         it = pedTimeSinceLastSpawned.erase(it);
@@ -1311,7 +1326,7 @@ public:
                     }
                 }
 
-                if (!pedRemoved)
+                if (!pedRemoved && enablePedWeapons == 1)
                 {
                     const auto wepFound = [ped](eWeaponType weaponId, eWeaponType originalWeaponId) -> bool {
                         int weapModel = 0;

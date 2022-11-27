@@ -82,7 +82,8 @@ std::map<unsigned short, rgba> LightColors2;
 std::map<unsigned short, int> pedTimeSinceLastSpawned;
 std::map<unsigned short, std::vector<unsigned short>> pedOriginalModels;
 std::map<unsigned short, std::array<std::vector<unsigned short>, 6>> vehGroupWantedVariations;
-std::map<unsigned short, std::string> wepVariationModels;
+std::map<unsigned short, std::string> wepPedModels;
+std::map<unsigned short, std::string> wepVehModels;
 std::map<unsigned short, std::vector<unsigned short>> vehCurrentTuning;
 std::map<unsigned short, std::string> vehModels;
 std::map<unsigned short, std::string> pedModels;
@@ -361,7 +362,7 @@ void drugDealerFix()
                     {
                         if (logfile.is_open())
                             logfile << j << "\n";
-                        CTheScripts::ScriptsForBrains.AddNewScriptBrain(CTheScripts::StreamedScripts.GetProperIndexFromIndexUsedByScript(19), j, 100, 0, -1, -1.0);
+                        CTheScripts::ScriptsForBrains.AddNewScriptBrain(CTheScripts::StreamedScripts.GetProperIndexFromIndexUsedByScript(19), (short)j, 100, 0, -1, -1.0);
                     }
 
         if (id < 30) id++;
@@ -689,7 +690,14 @@ void loadIniData(bool firstTime)
             if (!(section[0] >= '0' && section[0] <= '9'))
                 CModelInfo::GetModelInfo((char*)section.c_str(), &modelid);
             if (modelid > 0)
-                wepVariationModels.insert({ modelid, section });
+                wepPedModels.insert({ modelid, section });
+
+            for (auto& keys : iniData.second)
+            {
+                std::string name = keys.first.substr(0, keys.first.find("_"));
+                if (CModelInfo::GetModelInfo((char*)name.c_str(), &modelid))
+                    wepVehModels.insert({ modelid, name });
+            }
         }
 
     if (enablePeds == 1)
@@ -742,7 +750,8 @@ void clearEverything()
     pedTimeSinceLastSpawned.clear();
     pedOriginalModels.clear();
     vehGroupWantedVariations.clear();
-    wepVariationModels.clear();
+    wepPedModels.clear();
+    wepVehModels.clear();
     vehTuning.clear();
     vehCurrentTuning.clear();
     vehModels.clear();
@@ -1283,8 +1292,8 @@ public:
                     };
 
                     std::string section = std::to_string(ped->m_nModelIndex);
-                    auto wepModel = wepVariationModels.find(ped->m_nModelIndex);
-                    if (wepModel != wepVariationModels.end())
+                    auto wepModel = wepPedModels.find(ped->m_nModelIndex);
+                    if (wepModel != wepPedModels.end())
                         section = wepModel->second;
                     std::string currentZoneString(currentZone);
                     const int mergeWeapons = iniWeap.ReadInteger(section, "MergeZonesWithGlobal", 0);
@@ -1304,7 +1313,13 @@ public:
                         if (j == 1)
                         {
                             if (IsVehiclePointerValid(ped->m_pVehicle))
-                                vehId = std::to_string(ped->m_pVehicle->m_nModelIndex) + "_";
+                            {
+                                auto it = wepVehModels.find(ped->m_pVehicle->m_nModelIndex);
+                                if (it != wepVehModels.end())
+                                    vehId = it->second + "_";
+                                else
+                                    vehId = std::to_string(ped->m_pVehicle->m_nModelIndex) + "_";
+                            }
                             else
                                 break;
                         }

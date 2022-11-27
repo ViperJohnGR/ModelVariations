@@ -160,7 +160,7 @@ int getRandomVariation(const int modelid, bool parked = false)
     const unsigned short variationModel = vehCurrentVariations[modelid - 400][random];
     if (variationModel > 0)
     {
-        CStreaming::RequestModel(variationModel, 2);
+        CStreaming::RequestModel(variationModel, GAME_REQUIRED);
         CStreaming::LoadAllRequestedModels(false);
         return variationModel;
     }
@@ -253,36 +253,16 @@ void readVehicleIni(bool firstTime, std::string gamePath)
             vehVariations[i - 400][4] = iniVeh.ReadLine(section, "Global", READ_VEHICLES);
             vehVariations[i - 400][5] = iniVeh.ReadLine(section, "Desert", READ_VEHICLES);
 
-            std::vector<unsigned short> vec = iniVeh.ReadLine(section, "TierraRobada", READ_VEHICLES);
-            vehVariations[i - 400][6] = vectorUnion(vec, vehVariations[i - 400][5]);
-
-            vec = iniVeh.ReadLine(section, "BoneCounty", READ_VEHICLES);
-            vehVariations[i - 400][7] = vectorUnion(vec, vehVariations[i - 400][5]);
-
-            vec = iniVeh.ReadLine(section, "RedCounty", READ_VEHICLES);
-            vehVariations[i - 400][8] = vectorUnion(vec, vehVariations[i - 400][0]);
-
-            vec = iniVeh.ReadLine(section, "Blueberry", READ_VEHICLES);
-            vehVariations[i - 400][9] = vectorUnion(vec, vehVariations[i - 400][8]);
-
-            vec = iniVeh.ReadLine(section, "Montgomery", READ_VEHICLES);
-            vehVariations[i - 400][10] = vectorUnion(vec, vehVariations[i - 400][8]);
-
-            vec = iniVeh.ReadLine(section, "Dillimore", READ_VEHICLES);
-            vehVariations[i - 400][11] = vectorUnion(vec, vehVariations[i - 400][8]);
-
-            vec = iniVeh.ReadLine(section, "PalominoCreek", READ_VEHICLES);
-            vehVariations[i - 400][12] = vectorUnion(vec, vehVariations[i - 400][8]);
-
-            vec = iniVeh.ReadLine(section, "FlintCounty", READ_VEHICLES);
-            vehVariations[i - 400][13] = vectorUnion(vec, vehVariations[i - 400][0]);
-
-            vec = iniVeh.ReadLine(section, "Whetstone", READ_VEHICLES);
-            vehVariations[i - 400][14] = vectorUnion(vec, vehVariations[i - 400][0]);
-
-            vec = iniVeh.ReadLine(section, "AngelPine", READ_VEHICLES);
-            vehVariations[i - 400][15] = vectorUnion(vec, vehVariations[i - 400][14]);
-
+            vehVariations[i - 400][6] = vectorUnion(iniVeh.ReadLine(section, "TierraRobada", READ_VEHICLES), vehVariations[i - 400][5]);
+            vehVariations[i - 400][7] = vectorUnion(iniVeh.ReadLine(section, "BoneCounty", READ_VEHICLES), vehVariations[i - 400][5]);
+            vehVariations[i - 400][8] = vectorUnion(iniVeh.ReadLine(section, "RedCounty", READ_VEHICLES), vehVariations[i - 400][0]);
+            vehVariations[i - 400][9] = vectorUnion(iniVeh.ReadLine(section, "Blueberry", READ_VEHICLES), vehVariations[i - 400][8]);
+            vehVariations[i - 400][10] = vectorUnion(iniVeh.ReadLine(section, "Montgomery", READ_VEHICLES), vehVariations[i - 400][8]);
+            vehVariations[i - 400][11] = vectorUnion(iniVeh.ReadLine(section, "Dillimore", READ_VEHICLES), vehVariations[i - 400][8]);
+            vehVariations[i - 400][12] = vectorUnion(iniVeh.ReadLine(section, "PalominoCreek", READ_VEHICLES), vehVariations[i - 400][8]);
+            vehVariations[i - 400][13] = vectorUnion(iniVeh.ReadLine(section, "FlintCounty", READ_VEHICLES), vehVariations[i - 400][0]);
+            vehVariations[i - 400][14] = vectorUnion(iniVeh.ReadLine(section, "Whetstone", READ_VEHICLES), vehVariations[i - 400][0]);
+            vehVariations[i - 400][15] = vectorUnion(iniVeh.ReadLine(section, "AngelPine", READ_VEHICLES), vehVariations[i - 400][14]);
 
             vehWantedVariations[i - 400][0] = iniVeh.ReadLine(section, "Wanted1", READ_VEHICLES);
             vehWantedVariations[i - 400][1] = iniVeh.ReadLine(section, "Wanted2", READ_VEHICLES);
@@ -321,35 +301,16 @@ void readVehicleIni(bool firstTime, std::string gamePath)
             vehGroups[modelid][4] = iniVeh.ReadLine(i.first, "Global", READ_GROUPS);
             vehGroups[modelid][5] = iniVeh.ReadLine(i.first, "Desert", READ_GROUPS);
 
-            std::vector<unsigned short> vec = iniVeh.ReadLine(i.first, "TierraRobada", READ_GROUPS);
-            vehGroups[modelid][6] = vectorUnion(vec, vehGroups[modelid][5]);
-
-            vec = iniVeh.ReadLine(i.first, "BoneCounty", READ_GROUPS);
-            vehGroups[modelid][7] = vectorUnion(vec, vehGroups[modelid][5]);
-
-            vec = iniVeh.ReadLine(i.first, "RedCounty", READ_GROUPS);
-            vehGroups[modelid][8] = vectorUnion(vec, vehGroups[modelid][0]);
-
-            vec = iniVeh.ReadLine(i.first, "Blueberry", READ_GROUPS);
-            vehGroups[modelid][9] = vectorUnion(vec, vehGroups[modelid][8]);
-
-            vec = iniVeh.ReadLine(i.first, "Montgomery", READ_GROUPS);
-            vehGroups[modelid][10] = vectorUnion(vec, vehGroups[modelid][8]);
-
-            vec = iniVeh.ReadLine(i.first, "Dillimore", READ_GROUPS);
-            vehGroups[modelid][11] = vectorUnion(vec, vehGroups[modelid][8]);
-
-            vec = iniVeh.ReadLine(i.first, "PalominoCreek", READ_GROUPS);
-            vehGroups[modelid][12] = vectorUnion(vec, vehGroups[modelid][8]);
-
-            vec = iniVeh.ReadLine(i.first, "FlintCounty", READ_GROUPS);
-            vehGroups[modelid][13] = vectorUnion(vec, vehGroups[modelid][0]);
-
-            vec = iniVeh.ReadLine(i.first, "Whetstone", READ_GROUPS);
-            vehGroups[modelid][14] = vectorUnion(vec, vehGroups[modelid][0]);
-
-            vec = iniVeh.ReadLine(i.first, "AngelPine", READ_GROUPS);
-            vehGroups[modelid][15] = vectorUnion(vec, vehGroups[modelid][14]);
+            vehGroups[modelid][6] = vectorUnion(iniVeh.ReadLine(i.first, "TierraRobada", READ_GROUPS), vehGroups[modelid][5]);
+            vehGroups[modelid][7] = vectorUnion(iniVeh.ReadLine(i.first, "BoneCounty", READ_GROUPS), vehGroups[modelid][5]);
+            vehGroups[modelid][8] = vectorUnion(iniVeh.ReadLine(i.first, "RedCounty", READ_GROUPS), vehGroups[modelid][0]);
+            vehGroups[modelid][9] = vectorUnion(iniVeh.ReadLine(i.first, "Blueberry", READ_GROUPS), vehGroups[modelid][8]);
+            vehGroups[modelid][10] = vectorUnion(iniVeh.ReadLine(i.first, "Montgomery", READ_GROUPS), vehGroups[modelid][8]);
+            vehGroups[modelid][11] = vectorUnion(iniVeh.ReadLine(i.first, "Dillimore", READ_GROUPS), vehGroups[modelid][8]);
+            vehGroups[modelid][12] = vectorUnion(iniVeh.ReadLine(i.first, "PalominoCreek", READ_GROUPS), vehGroups[modelid][8]);
+            vehGroups[modelid][13] = vectorUnion(iniVeh.ReadLine(i.first, "FlintCounty", READ_GROUPS), vehGroups[modelid][0]);
+            vehGroups[modelid][14] = vectorUnion(iniVeh.ReadLine(i.first, "Whetstone", READ_GROUPS), vehGroups[modelid][0]);
+            vehGroups[modelid][15] = vectorUnion(iniVeh.ReadLine(i.first, "AngelPine", READ_GROUPS), vehGroups[modelid][14]);
 
             //Veh Tuning
             vehTuning[modelid][0] = iniVeh.ReadLine(i.first, "Countryside", READ_TUNING);
@@ -359,35 +320,16 @@ void readVehicleIni(bool firstTime, std::string gamePath)
             vehTuning[modelid][4] = iniVeh.ReadLine(i.first, "Global", READ_TUNING);
             vehTuning[modelid][5] = iniVeh.ReadLine(i.first, "Desert", READ_TUNING);
 
-            vec = iniVeh.ReadLine(i.first, "TierraRobada", READ_TUNING);
-            vehTuning[modelid][6] = vectorUnion(vec, vehTuning[modelid][5]);
-
-            vec = iniVeh.ReadLine(i.first, "BoneCounty", READ_TUNING);
-            vehTuning[modelid][7] = vectorUnion(vec, vehTuning[modelid][5]);
-
-            vec = iniVeh.ReadLine(i.first, "RedCounty", READ_TUNING);
-            vehTuning[modelid][8] = vectorUnion(vec, vehTuning[modelid][0]);
-
-            vec = iniVeh.ReadLine(i.first, "Blueberry", READ_TUNING);
-            vehTuning[modelid][9] = vectorUnion(vec, vehTuning[modelid][8]);
-
-            vec = iniVeh.ReadLine(i.first, "Montgomery", READ_TUNING);
-            vehTuning[modelid][10] = vectorUnion(vec, vehTuning[modelid][8]);
-
-            vec = iniVeh.ReadLine(i.first, "Dillimore", READ_TUNING);
-            vehTuning[modelid][11] = vectorUnion(vec, vehTuning[modelid][8]);
-
-            vec = iniVeh.ReadLine(i.first, "PalominoCreek", READ_TUNING);
-            vehTuning[modelid][12] = vectorUnion(vec, vehTuning[modelid][8]);
-
-            vec = iniVeh.ReadLine(i.first, "FlintCounty", READ_TUNING);
-            vehTuning[modelid][13] = vectorUnion(vec, vehTuning[modelid][0]);
-
-            vec = iniVeh.ReadLine(i.first, "Whetstone", READ_TUNING);
-            vehTuning[modelid][14] = vectorUnion(vec, vehTuning[modelid][0]);
-
-            vec = iniVeh.ReadLine(i.first, "AngelPine", READ_TUNING);
-            vehTuning[modelid][15] = vectorUnion(vec, vehTuning[modelid][14]);
+            vehTuning[modelid][6] = vectorUnion(iniVeh.ReadLine(i.first, "TierraRobada", READ_TUNING), vehTuning[modelid][5]);
+            vehTuning[modelid][7] = vectorUnion(iniVeh.ReadLine(i.first, "BoneCounty", READ_TUNING), vehTuning[modelid][5]);
+            vehTuning[modelid][8] = vectorUnion(iniVeh.ReadLine(i.first, "RedCounty", READ_TUNING), vehTuning[modelid][0]);
+            vehTuning[modelid][9] = vectorUnion(iniVeh.ReadLine(i.first, "Blueberry", READ_TUNING), vehTuning[modelid][8]);
+            vehTuning[modelid][10] = vectorUnion(iniVeh.ReadLine(i.first, "Montgomery", READ_TUNING), vehTuning[modelid][8]);
+            vehTuning[modelid][11] = vectorUnion(iniVeh.ReadLine(i.first, "Dillimore", READ_TUNING), vehTuning[modelid][8]);
+            vehTuning[modelid][12] = vectorUnion(iniVeh.ReadLine(i.first, "PalominoCreek", READ_TUNING), vehTuning[modelid][8]);
+            vehTuning[modelid][13] = vectorUnion(iniVeh.ReadLine(i.first, "FlintCounty", READ_TUNING), vehTuning[modelid][0]);
+            vehTuning[modelid][14] = vectorUnion(iniVeh.ReadLine(i.first, "Whetstone", READ_TUNING), vehTuning[modelid][0]);
+            vehTuning[modelid][15] = vectorUnion(iniVeh.ReadLine(i.first, "AngelPine", READ_TUNING), vehTuning[modelid][14]);
 
             const int tuningRarity = iniVeh.ReadInteger(i.first, "TuningRarity", -1);
             if (tuningRarity > -1)
@@ -433,6 +375,7 @@ void readVehicleIni(bool firstTime, std::string gamePath)
                 vehMergeZones.insert(modelid);
 
             uint8_t numGroups = 0;
+            std::vector<unsigned short> vec;
             for (int j = 0; j < 9; j++)
             {
                 str = "DriverGroup" + std::to_string(j + 1);
@@ -820,7 +763,7 @@ void __fastcall DoInternalProcessingHooked(CCarGenerator* park) //for non-random
             case 470: //Patriot
             case 432: //Rhino
             case 430: //Predator
-            case 496: //Police Maverick
+            case 497: //Police Maverick
             case 488: //News Chopper
                 park->m_nModelId = (short)getRandomVariation(park->m_nModelId, true);
                 callMethodOriginal<address>(park);
@@ -949,7 +892,7 @@ DWORD __cdecl FindSpecificDriverModelForCar_ToUseHooked(int carModel)
         if (itGroup != vehDriverGroups[currentOccupantsGroup].end())
         {
             const unsigned int random = CGeneral::GetRandomNumberInRange(0, (int)itGroup->second.size());
-            CStreaming::RequestModel(itGroup->second[random], 2);
+            CStreaming::RequestModel(itGroup->second[random], GAME_REQUIRED);
             CStreaming::LoadAllRequestedModels(false);
             return itGroup->second[random];
         }
@@ -957,7 +900,7 @@ DWORD __cdecl FindSpecificDriverModelForCar_ToUseHooked(int carModel)
     if (it != vehDrivers.end() && ((replaceDriver == 0 && CGeneral::GetRandomNumberInRange(0, 100) > 50) || replaceDriver == 1))
     {
         const unsigned int random = CGeneral::GetRandomNumberInRange(0, (int)it->second.size());
-        CStreaming::RequestModel(it->second[random], 2);
+        CStreaming::RequestModel(it->second[random], GAME_REQUIRED);
         CStreaming::LoadAllRequestedModels(false);
         return it->second[random];
     }
@@ -1067,21 +1010,21 @@ void __cdecl SetUpDriverAndPassengersForVehicleHooked(CVehicle* car, int a3, int
         }
     }
 
-    CStreaming::RequestModel(274, 2);//laemt1
-    CStreaming::RequestModel(275, 2);//lvemt1
-    CStreaming::RequestModel(276, 2);//sfemt1
-    CStreaming::RequestModel(277, 2);//lafd1
-    CStreaming::RequestModel(278, 2);//lvfd1
-    CStreaming::RequestModel(279, 2);//sffd1
-    CStreaming::RequestModel(280, 2);//lapd1
-    CStreaming::RequestModel(281, 2);//sfpd1
-    CStreaming::RequestModel(282, 2);//lvpd1
-    CStreaming::RequestModel(283, 2);//csher
-    CStreaming::RequestModel(284, 2);//lapdm1
-    CStreaming::RequestModel(285, 2);//swat
-    CStreaming::RequestModel(286, 2);//fbi
-    CStreaming::RequestModel(287, 2);//army
-    CStreaming::RequestModel(288, 2);//dsher
+    CStreaming::RequestModel(274, GAME_REQUIRED);//laemt1
+    CStreaming::RequestModel(275, GAME_REQUIRED);//lvemt1
+    CStreaming::RequestModel(276, GAME_REQUIRED);//sfemt1
+    CStreaming::RequestModel(277, GAME_REQUIRED);//lafd1
+    CStreaming::RequestModel(278, GAME_REQUIRED);//lvfd1
+    CStreaming::RequestModel(279, GAME_REQUIRED);//sffd1
+    CStreaming::RequestModel(280, GAME_REQUIRED);//lapd1
+    CStreaming::RequestModel(281, GAME_REQUIRED);//sfpd1
+    CStreaming::RequestModel(282, GAME_REQUIRED);//lvpd1
+    CStreaming::RequestModel(283, GAME_REQUIRED);//csher
+    CStreaming::RequestModel(284, GAME_REQUIRED);//lapdm1
+    CStreaming::RequestModel(285, GAME_REQUIRED);//swat
+    CStreaming::RequestModel(286, GAME_REQUIRED);//fbi
+    CStreaming::RequestModel(287, GAME_REQUIRED);//army
+    CStreaming::RequestModel(288, GAME_REQUIRED);//dsher
     
     CStreaming::LoadAllRequestedModels(false);
 
@@ -1106,8 +1049,8 @@ CHeli* __cdecl GenerateHeliHooked(CPed* ped, char newsHeli)
 
     if (CHeli::pHelis)
     {
-        CStreaming::RequestModel(488, 2);
-        CStreaming::RequestModel(497, 2);
+        CStreaming::RequestModel(488, GAME_REQUIRED);
+        CStreaming::RequestModel(497, GAME_REQUIRED);
         CStreaming::LoadAllRequestedModels(false);
 
         newsHeli = 1;
@@ -1172,7 +1115,7 @@ CPed* __cdecl AddPedInCarHooked(CVehicle* a1, char driver, int a3, signed int a4
             random = CGeneral::GetRandomNumberInRange(0, (int)it->second.size());
             passengerModelIndex = it->second[random];
 ModelChosen:
-            CStreaming::RequestModel(passengerModelIndex, 2);
+            CStreaming::RequestModel(passengerModelIndex, GAME_REQUIRED);
             CStreaming::LoadAllRequestedModels(false);
             injector::MakeJMP(0x613B78, patchPassengerModel);
             CPed* ped = callOriginalAndReturn<CPed*, address>(a1, driver, a3, a4, a5, a6);

@@ -241,34 +241,37 @@ void insertPedSpawnedOriginalModels(unsigned short model)
             pedTimeSinceLastSpawned.insert({ i, clock() });
 }
 
-bool compareOriginalModels(unsigned short model1, unsigned short model2)
+bool compareOriginalModels(unsigned short model1, unsigned short model2, bool includeVariations = false)
 {
     if (model1 == model2)
         return true;
 
-    auto it1 = pedOriginalModels.find(model1);
-    auto it2 = pedOriginalModels.find(model2);
-    if (it1 != pedOriginalModels.end() && it2 != pedOriginalModels.end())
-        return std::find_first_of(it1->second.begin(), it1->second.end(), it2->second.begin(), it2->second.end()) != it1->second.end();
-    else
+    if (includeVariations)
     {
-        unsigned short model = 0;
-        std::vector<unsigned short> *vec = NULL;
-        if (it1 != pedOriginalModels.end())
-        {
-            model = model2;
-            vec = &it1->second;
-        }
-        else if (it2 != pedOriginalModels.end())
-        {
-            model = model1;
-            vec = &it2->second;
-        }
+        auto it1 = pedOriginalModels.find(model1);
+        auto it2 = pedOriginalModels.find(model2);
+        if (it1 != pedOriginalModels.end() && it2 != pedOriginalModels.end())
+            return std::find_first_of(it1->second.begin(), it1->second.end(), it2->second.begin(), it2->second.end()) != it1->second.end();
         else
-            return false;
+        {
+            unsigned short model = 0;
+            std::vector<unsigned short>* vec = NULL;
+            if (it1 != pedOriginalModels.end())
+            {
+                model = model2;
+                vec = &it1->second;
+            }
+            else if (it2 != pedOriginalModels.end())
+            {
+                model = model1;
+                vec = &it2->second;
+            }
+            else
+                return false;
 
-        if (std::find(vec->begin(), vec->end(), model) != vec->end())
-            return true;
+            if (std::find(vec->begin(), vec->end(), model) != vec->end())
+                return true;
+        }
     }
 
     return false;
@@ -356,9 +359,9 @@ void drugDealerFix()
                 for (auto& j : pedVariations[id][i])
                     if (j > MAX_PED_ID)
                     {
-                        if (enableLog == 1)
+                        if (logfile.is_open())
                             logfile << j << "\n";
-                        Command<COMMAND_ALLOCATE_STREAMED_SCRIPT_TO_RANDOM_PED>(19, j, 100);
+                        CTheScripts::ScriptsForBrains.AddNewScriptBrain(CTheScripts::StreamedScripts.GetProperIndexFromIndexUsedByScript(19), j, 100, 0, -1, -1.0);
                     }
 
         if (id < 30) id++;
@@ -636,35 +639,16 @@ void loadIniData(bool firstTime)
                 pedVariations[i][4] = iniPed.ReadLine(section, "Global", READ_PEDS);
                 pedVariations[i][5] = iniPed.ReadLine(section, "Desert", READ_PEDS);
 
-                std::vector<unsigned short> vec = iniPed.ReadLine(section, "TierraRobada", READ_PEDS);
-                pedVariations[i][6] = vectorUnion(vec, pedVariations[i][5]);
-
-                vec = iniPed.ReadLine(section, "BoneCounty", READ_PEDS);
-                pedVariations[i][7] = vectorUnion(vec, pedVariations[i][5]);
-
-                vec = iniPed.ReadLine(section, "RedCounty", READ_PEDS);
-                pedVariations[i][8] = vectorUnion(vec, pedVariations[i][0]);
-
-                vec = iniPed.ReadLine(section, "Blueberry", READ_PEDS);
-                pedVariations[i][9] = vectorUnion(vec, pedVariations[i][8]);
-
-                vec = iniPed.ReadLine(section, "Montgomery", READ_PEDS);
-                pedVariations[i][10] = vectorUnion(vec, pedVariations[i][8]);
-
-                vec = iniPed.ReadLine(section, "Dillimore", READ_PEDS);
-                pedVariations[i][11] = vectorUnion(vec, pedVariations[i][8]);
-
-                vec = iniPed.ReadLine(section, "PalominoCreek", READ_PEDS);
-                pedVariations[i][12] = vectorUnion(vec, pedVariations[i][8]);
-
-                vec = iniPed.ReadLine(section, "FlintCounty", READ_PEDS);
-                pedVariations[i][13] = vectorUnion(vec, pedVariations[i][0]);
-
-                vec = iniPed.ReadLine(section, "Whetstone", READ_PEDS);
-                pedVariations[i][14] = vectorUnion(vec, pedVariations[i][0]);
-
-                vec = iniPed.ReadLine(section, "AngelPine", READ_PEDS);
-                pedVariations[i][15] = vectorUnion(vec, pedVariations[i][14]);
+                pedVariations[i][6] = vectorUnion(iniPed.ReadLine(section, "TierraRobada", READ_PEDS), pedVariations[i][5]);
+                pedVariations[i][7] = vectorUnion(iniPed.ReadLine(section, "BoneCounty", READ_PEDS), pedVariations[i][5]);
+                pedVariations[i][8] = vectorUnion(iniPed.ReadLine(section, "RedCounty", READ_PEDS), pedVariations[i][0]);
+                pedVariations[i][9] = vectorUnion(iniPed.ReadLine(section, "Blueberry", READ_PEDS), pedVariations[i][8]);
+                pedVariations[i][10] = vectorUnion(iniPed.ReadLine(section, "Montgomery", READ_PEDS), pedVariations[i][8]);
+                pedVariations[i][11] = vectorUnion(iniPed.ReadLine(section, "Dillimore", READ_PEDS), pedVariations[i][8]);
+                pedVariations[i][12] = vectorUnion(iniPed.ReadLine(section, "PalominoCreek", READ_PEDS), pedVariations[i][8]);
+                pedVariations[i][13] = vectorUnion(iniPed.ReadLine(section, "FlintCounty", READ_PEDS), pedVariations[i][0]);
+                pedVariations[i][14] = vectorUnion(iniPed.ReadLine(section, "Whetstone", READ_PEDS), pedVariations[i][0]);
+                pedVariations[i][15] = vectorUnion(iniPed.ReadLine(section, "AngelPine", READ_PEDS), pedVariations[i][14]);
 
 
                 pedWantedVariations[i][0] = iniPed.ReadLine(section, "Wanted1", READ_PEDS);
@@ -708,11 +692,14 @@ void loadIniData(bool firstTime)
                 wepVariationModels.insert({ modelid, section });
         }
 
-    enableCloneRemover = iniPed.ReadInteger("Settings", "EnableCloneRemover", 0);
-    cloneRemoverVehicleOccupants = iniPed.ReadInteger("Settings", "CloneRemoverIncludeVehicleOccupants", 0);
-    cloneRemoverSpawnDelay = iniPed.ReadInteger("Settings", "CloneRemoverSpawnDelay", 3);
-    cloneRemoverIncludeVariations = iniPed.ReadLine("Settings", "CloneRemoverIncludeVariations", READ_PEDS);
-    cloneRemoverExclusions = iniPed.ReadLine("Settings", "CloneRemoverExcludeModels", READ_PEDS);
+    if (enablePeds == 1)
+    {
+        enableCloneRemover = iniPed.ReadInteger("Settings", "EnableCloneRemover", 0);
+        cloneRemoverVehicleOccupants = iniPed.ReadInteger("Settings", "CloneRemoverIncludeVehicleOccupants", 0);
+        cloneRemoverSpawnDelay = iniPed.ReadInteger("Settings", "CloneRemoverSpawnDelay", 3);
+        cloneRemoverIncludeVariations = iniPed.ReadLine("Settings", "CloneRemoverIncludeVariations", READ_PEDS);
+        cloneRemoverExclusions = iniPed.ReadLine("Settings", "CloneRemoverExcludeModels", READ_PEDS);
+    }
 
     if (enableVehicles == 1)
         readVehicleIni(firstTime, exePath.substr(0, exePath.find_last_of("/\\")));
@@ -850,7 +837,7 @@ public:
                 enableLog = 0;
         }
 
-        if (enableLog == 1)
+        if (logfile.is_open())
         {
             if (GetFileAttributes(pedIniPath) == INVALID_FILE_ATTRIBUTES && GetLastError() == ERROR_FILE_NOT_FOUND)
                 logfile << "\nModelVariations_Peds.ini not found!\n" << std::endl;
@@ -952,10 +939,10 @@ public:
 
             if (dealersFixed == 10)
             {
-                if (enableLog == 1)
+                if (logfile.is_open())
                     logfile << "Applying drug dealer fix...\n";
                 drugDealerFix();
-                if (enableLog == 1)
+                if (logfile.is_open())
                     logfile << std::endl;
                 dealersFixed = 11;
             }
@@ -979,7 +966,7 @@ public:
                 const unsigned short variationModel = pedCurrentVariations[ped->m_nModelIndex][random];
                 if (variationModel > 0 && variationModel != ped->m_nModelIndex)
                 {
-                    CStreaming::RequestModel(variationModel, 2);
+                    CStreaming::RequestModel(variationModel, GAME_REQUIRED);
                     CStreaming::LoadAllRequestedModels(false);
                     const unsigned short index = ped->m_nModelIndex;
                     ped->DeleteRwObject();
@@ -1061,28 +1048,11 @@ public:
             else 
                 currentInterior = "";
 
-            if (strncmp(currentInterior, lastInterior, 7) != 0)
+            const auto printVariationChange = [zInfo, wanted](const char *msg)
             {
-                if (enableLog == 1)
+                if (logfile.is_open())
                 {
-                    logfile << "Interior changed. Updating variations...\n";
-                    logfile << "currentWanted = " << currentWanted << " wanted->m_nWantedLevel = " << wanted->m_nWantedLevel << "\n";
-                    logfile << "currentZone = " << currentZone << " zInfo->m_szLabel = " << zInfo->m_szLabel << " lastZone = " << lastZone << "\n";
-                    logfile << "currentInterior = " << currentInterior << " lastInterior = " << lastInterior << "\n" << std::endl;
-                }
-
-                strncpy(lastInterior, currentInterior, 7);
-                updateVariations(zInfo);
-
-                if (enableLog == 1)
-                    printCurrentVariations();
-            }
-
-            if (wanted && (int)(wanted->m_nWantedLevel) != currentWanted)
-            {
-                if (enableLog == 1)
-                {
-                    logfile << "Wanted level changed. Updating variations...\n";
+                    logfile << msg << " Updating variations...\n";
                     logfile << "currentWanted = " << currentWanted << " wanted->m_nWantedLevel = " << wanted->m_nWantedLevel << "\n";
                     logfile << "currentZone = " << currentZone << " zInfo->m_szLabel = " << zInfo->m_szLabel << " lastZone = " << lastZone << "\n";
                     if (currentInterior[0] != 0 || lastInterior[0] != 0)
@@ -1090,11 +1060,27 @@ public:
                     else
                         logfile << std::endl;
                 }
+            };
+
+            if (strncmp(currentInterior, lastInterior, 7) != 0)
+            {
+                printVariationChange("Interior changed.");
+
+                strncpy(lastInterior, currentInterior, 7);
+                updateVariations(zInfo);
+
+                if (logfile.is_open())
+                    printCurrentVariations();
+            }
+
+            if (wanted && (int)(wanted->m_nWantedLevel) != currentWanted)
+            {
+                printVariationChange("Wanted level changed.");
 
                 currentWanted = (int)wanted->m_nWantedLevel;
                 updateVariations(zInfo);
 
-                if (enableLog == 1)
+                if (logfile.is_open())
                     printCurrentVariations();
             }
 
@@ -1105,21 +1091,12 @@ public:
                 else if (strncmp(zInfo->m_szLabel, "SAN_AND", 7) != 0)
                     lastZone[0] = 0;
 
-                if (enableLog == 1)
-                {
-                    logfile << "Zone changed. Updating variations...\n";
-                    logfile << "currentWanted = " << currentWanted << " wanted->m_nWantedLevel = " << wanted->m_nWantedLevel << "\n";
-                    logfile << "currentZone = " << currentZone << " zInfo->m_szLabel = " << zInfo->m_szLabel << " lastZone = " << lastZone << "\n";
-                    if (currentInterior[0] != 0 || lastInterior[0] != 0)
-                        logfile << "currentInterior = " << currentInterior << " lastInterior = " << lastInterior << "\n" << std::endl;
-                    else
-                        logfile << std::endl;
-                }
+                printVariationChange("Zone changed.");
 
                 strncpy(currentZone, zInfo->m_szLabel, 7);
                 updateVariations(zInfo);
 
-                if (enableLog == 1)
+                if (logfile.is_open())
                     printCurrentVariations();
             }
 
@@ -1173,60 +1150,71 @@ public:
 
             while (!pedStack.empty())
             {
-                const auto vehDeleteDriver = [](CVehicle *veh) {
+                const auto vehDeleteDriver = [](CVehicle *veh) 
+                {
                     if (IsPedPointerValid(veh->m_pDriver))
                     {
                         CPed *driver = veh->m_pDriver;
                         if (driver->m_pIntelligence)
                             driver->m_pIntelligence->FlushImmediately(false);
-                        driver->DropEntityThatThisPedIsHolding(true);
                         CTheScripts::RemoveThisPed(driver);
                     }
                 };
 
-                const auto vehDeletePassengers = [](CVehicle* veh) {
+                const auto vehDeletePassengers = [](CVehicle* veh) 
+                {
                     for (int i = 0; i < 8; i++)
                         if (IsPedPointerValid(veh->m_apPassengers[i]))
                         {
                             CPed* passenger = veh->m_apPassengers[i];
                             if (passenger->m_pIntelligence)
                                 passenger->m_pIntelligence->FlushImmediately(false);
-                            passenger->DropEntityThatThisPedIsHolding(true);
                             CTheScripts::RemoveThisPed(passenger);
                         }
                 };
 
+                const auto pedDeleteVeh = [vehDeleteDriver, vehDeletePassengers](CPed *ped)
+                {
+                    CVehicle* veh = ped->m_pVehicle;
+                    if (ped->m_pVehicle->m_pDriver == ped)
+                    {
+                        vehDeleteDriver(veh);
+                        vehDeletePassengers(veh);
+                        DestroyVehicleAndDriverAndPassengers(veh);
+                    }
+                    else
+                        vehDeletePassengers(veh);
+                };
+
+                const auto isCarEmpty = [](CVehicle* veh)
+                {
+                    if (IsPedPointerValid(veh->m_pDriver))
+                        return false;
+                    else
+                        for (int i = 0; i < 8; i++)
+                            if (IsPedPointerValid(veh->m_apPassengers[i]))
+                                return false;
+   
+                    return true;
+                };
+
                 CPed* ped = pedStack.top();
                 pedStack.pop();
-                bool pedRemoved = false;
 
                 if (IsPedPointerValid(ped) && isValidPedId(ped->m_nModelIndex))
                     if (!pedCurrentVariations[ped->m_nModelIndex].empty() && pedCurrentVariations[ped->m_nModelIndex][0] == 0 && ped->m_nCreatedBy != 2) //Delete models with a 0 id variation
                     {
                         if (IsVehiclePointerValid(ped->m_pVehicle))
-                        {
-                            CVehicle* veh = ped->m_pVehicle;
-                            if (ped->m_pVehicle->m_pDriver == ped)
-                            {
-                                vehDeleteDriver(veh);
-                                vehDeletePassengers(veh);
-                                DestroyVehicleAndDriverAndPassengers(veh);
-                            }
-                            else
-                                vehDeletePassengers(veh);
-                        }
+                            pedDeleteVeh(ped);
                         else
                         {
                             if (ped->m_pIntelligence)
                                 ped->m_pIntelligence->FlushImmediately(false);
-                            ped->DropEntityThatThisPedIsHolding(true);
                             CTheScripts::RemoveThisPed(ped);
                         }
-
-                        pedRemoved = true;
                     }
 
-                if (IsPedPointerValid(ped) && enableCloneRemover == 1 && ped->m_nCreatedBy != 2 && CPools::ms_pPedPool && pedRemoved == false) //Clone remover
+                if (IsPedPointerValid(ped) && enableCloneRemover == 1 && ped->m_nCreatedBy != 2 && CPools::ms_pPedPool) //Clone remover
                 {
                     bool includeVariations = std::find(cloneRemoverIncludeVariations.begin(), cloneRemoverIncludeVariations.end(), ped->m_nModelIndex) != cloneRemoverIncludeVariations.end();
                     if (pedDelaySpawn(ped->m_nModelIndex, includeVariations)) //Delete peds spawned before SpawnTime
@@ -1235,43 +1223,15 @@ public:
                         {
                             if (ped->m_pIntelligence)
                                 ped->m_pIntelligence->FlushImmediately(false);
-                            ped->DropEntityThatThisPedIsHolding(true);
                             CTheScripts::RemoveThisPed(ped);
-                            pedRemoved = true;
                         }
-                        else if (cloneRemoverVehicleOccupants == 1)
-                        {
-                            int carIsEmpty = true;
-
-                            if (IsPedPointerValid(ped->m_pVehicle->m_pDriver))
-                                carIsEmpty = false;
-                            else
-                                for (int i = 0; i < 8; i++)
-                                    if (IsPedPointerValid(ped->m_pVehicle->m_apPassengers[i]))
-                                    {
-                                        carIsEmpty = false;
-                                        break;
-                                    }
-                            
-                            if (!carIsEmpty)
-                            {
-                                CVehicle* veh = ped->m_pVehicle;
-                                if (ped->m_pVehicle->m_pDriver == ped)
-                                {
-                                    
-                                    vehDeleteDriver(veh);
-                                    vehDeletePassengers(veh);
-                                    DestroyVehicleAndDriverAndPassengers(veh);
-                                }
-                                else
-                                    vehDeletePassengers(veh);
-                                
-                                pedRemoved = true;
-                            }
+                        else if (cloneRemoverVehicleOccupants == 1 && !isCarEmpty(ped->m_pVehicle))
+                        {                            
+                            pedDeleteVeh(ped);
                         }
                     }
 
-                    if (!pedRemoved && IsPedPointerValid(ped) && !IdExists(cloneRemoverExclusions, ped->m_nModelIndex) && ped->m_nModelIndex > 0) //Delete peds already spawned
+                    if (IsPedPointerValid(ped) && !IdExists(cloneRemoverExclusions, ped->m_nModelIndex) && ped->m_nModelIndex > 0) //Delete peds already spawned
                     {
                         if (includeVariations)
                             insertPedSpawnedOriginalModels(ped->m_nModelIndex);
@@ -1279,54 +1239,26 @@ public:
                             pedTimeSinceLastSpawned.insert({ ped->m_nModelIndex, clock() });
 
                         for (CPed* ped2 : CPools::ms_pPedPool)
-                            if ( IsPedPointerValid(ped2) && ped2 != ped && ((includeVariations) ?
-                                (compareOriginalModels(ped->m_nModelIndex, ped2->m_nModelIndex)) : (ped->m_nModelIndex == ped2->m_nModelIndex)) )
+                            if (IsPedPointerValid(ped2) && ped2 != ped && compareOriginalModels(ped->m_nModelIndex, ped2->m_nModelIndex, includeVariations))
                             {
                                 if (!IsVehiclePointerValid(ped->m_pVehicle))
                                 {
                                     if (ped->m_pIntelligence)
                                         ped->m_pIntelligence->FlushImmediately(false);
-                                    ped->DropEntityThatThisPedIsHolding(true);
                                     CTheScripts::RemoveThisPed(ped);
  
-                                    pedRemoved = true;
                                     break;
                                 }
-                                else if (cloneRemoverVehicleOccupants == 1)
+                                else if (cloneRemoverVehicleOccupants == 1 && !isCarEmpty(ped->m_pVehicle))
                                 {
-                                    int carIsEmpty = true;
-
-                                    if (IsPedPointerValid(ped->m_pVehicle->m_pDriver))
-                                        carIsEmpty = false;
-                                    else
-                                        for (int i = 0; i < 8; i++)
-                                            if (IsPedPointerValid(ped->m_pVehicle->m_apPassengers[i]))
-                                            {
-                                                carIsEmpty = false;
-                                                break;
-                                            }
-
-                                    if (!carIsEmpty)
-                                    {
-                                        CVehicle* veh = ped->m_pVehicle;
-                                        if (ped->m_pVehicle->m_pDriver == ped)
-                                        {
-                                            vehDeleteDriver(veh);
-                                            vehDeletePassengers(veh);
-                                            DestroyVehicleAndDriverAndPassengers(veh);
-                                        }
-                                        else
-                                            vehDeletePassengers(veh);
-
-                                        pedRemoved = true;
-                                    }
+                                    pedDeleteVeh(ped);
                                     break;
                                 }
                             }
                     }
                 }
 
-                if (!pedRemoved && enablePedWeapons == 1)
+                if (IsPedPointerValid(ped) && enablePedWeapons == 1)
                 {
                     const auto wepFound = [ped](eWeaponType weaponId, eWeaponType originalWeaponId) -> bool {
                         int weapModel = 0;
@@ -1336,15 +1268,15 @@ public:
 
                         if (weapModel >= 321)
                         {
-                            CStreaming::RequestModel(weapModel, 2);
+                            CStreaming::RequestModel(weapModel, GAME_REQUIRED);
                             CStreaming::LoadAllRequestedModels(false);
 
                             if (originalWeaponId > 0)
                                 ped->ClearWeapon(originalWeaponId);
                             else
                                 ped->ClearWeapons();
-                            Command<COMMAND_GIVE_WEAPON_TO_CHAR>(CPools::GetPedRef(ped), weaponId, 9999);
-                            //ped->GiveWeapon(weaponId, 9999, 0);                                
+
+                            ped->GiveWeapon(weaponId, 9999, true);                             
                             return true;
                         }
                         return false;

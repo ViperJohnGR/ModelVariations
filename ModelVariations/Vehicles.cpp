@@ -396,50 +396,44 @@ void readVehicleIni(bool firstTime, std::string gamePath)
                     vehPassengerGroups[j].insert({ modelid, vec });
             }
 
-            vec = iniVeh.ReadLine(i.first, "Wanted1", READ_GROUPS);
+            vec = iniVeh.ReadLineUnique(i.first, "Wanted1", READ_GROUPS);
             if (!vec.empty())
             {
-                vec.erase(unique(vec.begin(), vec.end()), vec.end());
                 checkNumGroups(vec, modelNumGroups[modelid]);
                 vehGroupWantedVariations[modelid][0] = vec;
             }
 
-            vec = iniVeh.ReadLine(i.first, "Wanted2", READ_GROUPS);
+            vec = iniVeh.ReadLineUnique(i.first, "Wanted2", READ_GROUPS);
             if (!vec.empty())
             {
-                vec.erase(unique(vec.begin(), vec.end()), vec.end());
                 checkNumGroups(vec, modelNumGroups[modelid]);
                 vehGroupWantedVariations[modelid][1] = vec;
             }
 
-            vec = iniVeh.ReadLine(i.first, "Wanted3", READ_GROUPS);
+            vec = iniVeh.ReadLineUnique(i.first, "Wanted3", READ_GROUPS);
             if (!vec.empty())
             {
-                vec.erase(unique(vec.begin(), vec.end()), vec.end());
                 checkNumGroups(vec, modelNumGroups[modelid]);
                 vehGroupWantedVariations[modelid][2] = vec;
             }
 
-            vec = iniVeh.ReadLine(i.first, "Wanted4", READ_GROUPS);
+            vec = iniVeh.ReadLineUnique(i.first, "Wanted4", READ_GROUPS);
             if (!vec.empty())
             {
-                vec.erase(unique(vec.begin(), vec.end()), vec.end());
                 checkNumGroups(vec, modelNumGroups[modelid]);
                 vehGroupWantedVariations[modelid][3] = vec;
             }
 
-            vec = iniVeh.ReadLine(i.first, "Wanted5", READ_GROUPS);
+            vec = iniVeh.ReadLineUnique(i.first, "Wanted5", READ_GROUPS);
             if (!vec.empty())
             {
-                vec.erase(unique(vec.begin(), vec.end()), vec.end());
                 checkNumGroups(vec, modelNumGroups[modelid]);
                 vehGroupWantedVariations[modelid][4] = vec;
             }
 
-            vec = iniVeh.ReadLine(i.first, "Wanted6", READ_GROUPS);
+            vec = iniVeh.ReadLineUnique(i.first, "Wanted6", READ_GROUPS);
             if (!vec.empty())
             {
-                vec.erase(unique(vec.begin(), vec.end()), vec.end());
                 checkNumGroups(vec, modelNumGroups[modelid]);
                 vehGroupWantedVariations[modelid][5] = vec;
             }
@@ -1084,10 +1078,18 @@ void __declspec(naked) patchPassengerModel()
 template <unsigned int address>
 CPed* __cdecl AddPedInCarHooked(CVehicle* a1, char driver, int a3, signed int a4, int a5, char a6)
 {
-    unsigned char originalData[5] = {};
-    memcpy(originalData, (void*)0x613B78, 5);
-
-    unsigned int random = 0;
+    auto modelChoosen = [&]()
+    {
+        unsigned char originalData[5] = {};
+        memcpy(originalData, (void*)0x613B78, 5);
+        CStreaming::RequestModel(passengerModelIndex, GAME_REQUIRED);
+        CStreaming::LoadAllRequestedModels(false);
+        injector::MakeJMP(0x613B78, patchPassengerModel);
+        CPed* ped = callOriginalAndReturn<CPed*, address>(a1, driver, a3, a4, a5, a6);
+        memcpy((void*)0x613B78, originalData, 5);
+        passengerModelIndex = -1;
+        return ped;
+    };
 
     if (a1)
     {
@@ -1105,23 +1107,16 @@ CPed* __cdecl AddPedInCarHooked(CVehicle* a1, char driver, int a3, signed int a4
             auto itGroup = vehPassengerGroups[currentOccupantsGroup].find(currentOccupantsModel);
             if (itGroup != vehPassengerGroups[currentOccupantsGroup].end())
             {
-                random = CGeneral::GetRandomNumberInRange(0, (int)itGroup->second.size());
+                unsigned int random = CGeneral::GetRandomNumberInRange(0, (int)itGroup->second.size());
                 passengerModelIndex = itGroup->second[random];
-                goto ModelChosen;
+                return modelChoosen();
             }
         }
         if (it != vehPassengers.end() && ((replacePassenger == 0 && CGeneral::GetRandomNumberInRange(0, 100) > 50) || replacePassenger == 1))
         {
-            random = CGeneral::GetRandomNumberInRange(0, (int)it->second.size());
+            unsigned int random = CGeneral::GetRandomNumberInRange(0, (int)it->second.size());
             passengerModelIndex = it->second[random];
-ModelChosen:
-            CStreaming::RequestModel(passengerModelIndex, GAME_REQUIRED);
-            CStreaming::LoadAllRequestedModels(false);
-            injector::MakeJMP(0x613B78, patchPassengerModel);
-            CPed* ped = callOriginalAndReturn<CPed*, address>(a1, driver, a3, a4, a5, a6);
-            memcpy((void*)0x613B78, originalData, 5);
-            passengerModelIndex = -1;
-            return ped;
+            return modelChoosen();
         }
     }
 
@@ -1631,7 +1626,7 @@ signed int __cdecl SetupEntityVisibilityHooked(CEntity* a1, float* a2)
 {
     if (a1 != NULL && getVariationOriginalModel(a1->m_nModelIndex) == 437)
     {
-        if (*(uint16_t*)0x554336 == 437)
+        if (*(uint16_t*)0x554336 == 437) //Coach
         {
             *(uint16_t*)0x554336 = a1->m_nModelIndex;
             const signed int retValue = callOriginalAndReturn<signed int, address>(a1, a2);
@@ -1651,7 +1646,7 @@ signed int __cdecl SetupEntityVisibilityHooked(CEntity* a1, float* a2)
 template <unsigned int address>
 int __cdecl GetMaximumNumberOfPassengersFromNumberOfDoorsHooked(__int16 modelIndex)
 {
-    if (getVariationOriginalModel(modelIndex) == 437)
+    if (getVariationOriginalModel(modelIndex) == 437) //Coach
     {
         if (*(short*)0x4C8AD3 == 437)
         {
@@ -1666,7 +1661,7 @@ int __cdecl GetMaximumNumberOfPassengersFromNumberOfDoorsHooked(__int16 modelInd
             return callOriginalAndReturn<int, address>(modelIndex);
         }
     }
-    else if (getVariationOriginalModel(modelIndex) == 431)
+    else if (getVariationOriginalModel(modelIndex) == 431) //Bus
     {
         if (*(short*)0x4C8ADB == 431)
         {
@@ -1914,7 +1909,6 @@ void __declspec(naked) movsxReg32WordPtrReg()
 
 }
 
-
 void hookASM(uint32_t address1, uint32_t address1Bytes, uint8_t address2Size, uint32_t address2, uint32_t address2Bytes, injector::memory_pointer_raw hookDest, std::string funcName)
 {
     bool check = *(uint32_t*)address1 == address1Bytes;
@@ -1944,7 +1938,6 @@ void hookASM(uint32_t address1, uint32_t address1Bytes, uint8_t address2Size, ui
             logModified(address1, printToString("Modified address detected: %s - 0x%X is %s %s", funcName.c_str(), address1, bytesToString(address1, 4 + address2Size).c_str(), PathFindFileName(moduleName.c_str())));
     }
 }
-
 
 void installVehicleHooks()
 {
@@ -2148,9 +2141,8 @@ void installVehicleHooks()
     if ((disablePayAndSpray = iniVeh.ReadInteger("Settings", "DisablePayAndSpray", 0)) == 1)
         hookCall(0x44AC75, IsCarSprayableHooked<0x44AC75>, "IsCarSprayable"); //CGarage::Update
 
-    if (iniVeh.ReadInteger("Settings", "EnableSideMissions", 0))
+    if ((enableSideMissions = iniVeh.ReadInteger("Settings", "EnableSideMissions", 0)) == 1)
     {
-        enableSideMissions = true;
         hookCall(0x48DA81, IsLawEnforcementVehicleHooked<0x48DA81>, "IsLawEnforcementVehicle");
         hookCall(0x469612, CollectParametersHooked<0x469612>, "CollectParameters"); //00DD: IS_CHAR_IN_MODEL
     }

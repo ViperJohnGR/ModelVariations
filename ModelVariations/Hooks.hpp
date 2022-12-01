@@ -21,11 +21,11 @@ inline void hookCall(unsigned int address, void* pFunction, std::string name, bo
     void* originalAddress;
     if (isVTableAddress)
     {
-        originalAddress = *(void**)address;
-        *(void**)address = pFunction;
+        originalAddress = *reinterpret_cast<void**>(address);
+        *reinterpret_cast<void**>(address) = pFunction;
     }
     else
-        originalAddress = (void*)injector::MakeCALL(address, pFunction).as_int();
+        originalAddress = reinterpret_cast<void*>(injector::MakeCALL(address, pFunction).as_int());
 
     hookedCalls.insert({ address, {name, originalAddress, pFunction, isVTableAddress} });
 }

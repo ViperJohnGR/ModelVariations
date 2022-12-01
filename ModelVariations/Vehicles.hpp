@@ -56,7 +56,7 @@ extern int loadAllVehicles;
 
 extern int enableLog;
 extern int changeCarGenerators;
-extern bool enableSideMissions;
+extern int enableSideMissions;
 extern int enableAllSideMissions;
 extern int enableLights;
 extern int enableSiren;

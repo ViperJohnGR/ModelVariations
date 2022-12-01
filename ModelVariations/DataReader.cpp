@@ -84,7 +84,6 @@ std::vector<unsigned short> DataReader::ReadLine(std::string section, std::strin
 			{
 				if (strncmp(token, "Group", 5) == 0)
 					retVector.push_back((unsigned short)(token[5] - '0'));
-				break;
 			}
 			else if (parseType == READ_TUNING)
 			{
@@ -132,4 +131,11 @@ std::vector<unsigned short> DataReader::ReadLine(std::string section, std::strin
 	}
 	std::sort(retVector.begin(), retVector.end());
 	return retVector;
+}
+
+std::vector<unsigned short> DataReader::ReadLineUnique(std::string section, std::string key, modelTypeToRead parseType)
+{
+	auto vec = ReadLine(section, key, parseType);
+	vec.erase(unique(vec.begin(), vec.end()), vec.end());
+	return vec;
 }

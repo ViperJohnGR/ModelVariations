@@ -19,4 +19,5 @@ public:
 	bool ReadBoolean(std::string_view szSection, std::string_view szKey, bool bolDefaultValue);
 	std::string ReadString(std::string_view szSection, std::string_view szKey, std::string_view szDefaultValue);
 	std::vector<unsigned short> ReadLine(std::string section, std::string key, modelTypeToRead parseType);
+	std::vector<unsigned short> ReadLineUnique(std::string section, std::string key, modelTypeToRead parseType);
 };

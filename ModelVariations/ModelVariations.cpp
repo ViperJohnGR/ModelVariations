@@ -134,7 +134,7 @@ int changeCarGenerators = 0;
 int changeScriptedCars = 0;
 int disablePayAndSpray = 0;
 int enableLights = 0;
-bool enableSideMissions = false;
+int enableSideMissions = 0;
 int enableAllSideMissions = 0;
 int enableSiren = 0;
 int enableSpecialFeatures = 0;
@@ -283,7 +283,7 @@ void filterWantedVariations(std::vector<unsigned short>& vec, std::vector<unsign
     bool matchFound = false;
     std::vector<unsigned short> vec2 = vec;
 
-    std::vector<unsigned short>::iterator it = vec.begin();
+    auto it = vec.begin();
     while (it != vec.end())
         if (std::find(wantedVec.begin(), wantedVec.end(), *it) != wantedVec.end())
         {

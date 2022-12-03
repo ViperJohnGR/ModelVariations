@@ -156,7 +156,7 @@ int getRandomVariation(const int modelid, bool parked = false)
             return modelid;
     }
 
-    const unsigned int random = CGeneral::GetRandomNumberInRange(0, (int)vehCurrentVariations[modelid - 400].size());
+    const unsigned int random = rand<uint32_t>(0, vehCurrentVariations[modelid - 400].size());
     const unsigned short variationModel = vehCurrentVariations[modelid - 400][random];
     if (variationModel > 0)
     {
@@ -579,14 +579,14 @@ void __cdecl AddPoliceCarOccupantsHooked(CVehicle* a2, char a3)
     if (a2 == NULL)
         return;
 
-    if (vehUseOnlyGroups.find(a2->m_nModelIndex) != vehUseOnlyGroups.end() || (CGeneral::GetRandomNumberInRange(0, 100) > 50))
+    if (vehUseOnlyGroups.find(a2->m_nModelIndex) != vehUseOnlyGroups.end() || rand<bool>())
     {
         auto it = modelNumGroups.find(a2->m_nModelIndex);
         if (it != modelNumGroups.end())
         {
             const CWanted* wanted = FindPlayerWanted(-1);
             const unsigned int wantedLevel = (wanted->m_nWantedLevel > 0) ? (wanted->m_nWantedLevel - 1) : (wanted->m_nWantedLevel);
-            const unsigned int i = CGeneral::GetRandomNumberInRange(0, (int)vehGroupWantedVariations[a2->m_nModelIndex][wantedLevel].size());
+            const unsigned int i = rand<uint32_t>(0, vehGroupWantedVariations[a2->m_nModelIndex][wantedLevel].size());
             currentOccupantsModel = a2->m_nModelIndex;
 
             std::string section;
@@ -613,9 +613,9 @@ void __cdecl AddPoliceCarOccupantsHooked(CVehicle* a2, char a3)
                 if (!vehGroupWantedVariations[a2->m_nModelIndex][wantedLevel].empty())
                     filterWantedVariations(zoneGroups, vehGroupWantedVariations[a2->m_nModelIndex][wantedLevel]);
                 if (!zoneGroups.empty())
-                    currentOccupantsGroup = zoneGroups[CGeneral::GetRandomNumberInRange(0, (int)zoneGroups.size())] - 1;
+                    currentOccupantsGroup = vectorGetRandom(zoneGroups) - 1;
                 else
-                    currentOccupantsGroup = (int)CGeneral::GetRandomNumberInRange(0, (int)it->second);
+                    currentOccupantsGroup = rand<int32_t>(0, it->second);
             }
         }
     }
@@ -885,15 +885,15 @@ DWORD __cdecl FindSpecificDriverModelForCar_ToUseHooked(int carModel)
         auto itGroup = vehDriverGroups[currentOccupantsGroup].find(currentOccupantsModel);
         if (itGroup != vehDriverGroups[currentOccupantsGroup].end())
         {
-            const unsigned int random = CGeneral::GetRandomNumberInRange(0, (int)itGroup->second.size());
+            const unsigned int random = rand<uint32_t>(0, itGroup->second.size());
             CStreaming::RequestModel(itGroup->second[random], GAME_REQUIRED);
             CStreaming::LoadAllRequestedModels(false);
             return itGroup->second[random];
         }
     }
-    if (it != vehDrivers.end() && ((replaceDriver == 0 && CGeneral::GetRandomNumberInRange(0, 100) > 50) || replaceDriver == 1))
+    if (it != vehDrivers.end() && ((replaceDriver == 0 && rand<bool>()) || replaceDriver == 1))
     {
-        const unsigned int random = CGeneral::GetRandomNumberInRange(0, (int)it->second.size());
+        const unsigned int random = rand<uint32_t>(0, it->second.size());
         CStreaming::RequestModel(it->second[random], GAME_REQUIRED);
         CStreaming::LoadAllRequestedModels(false);
         return it->second[random];
@@ -963,14 +963,14 @@ void __cdecl SetUpDriverAndPassengersForVehicleHooked(CVehicle* car, int a3, int
     if (car == NULL)
         return;
 
-    if (vehUseOnlyGroups.find(car->m_nModelIndex) != vehUseOnlyGroups.end() || (CGeneral::GetRandomNumberInRange(0, 100) > 50))
+    if (vehUseOnlyGroups.find(car->m_nModelIndex) != vehUseOnlyGroups.end() || rand<bool>())
     {
         auto it = modelNumGroups.find(car->m_nModelIndex);
         if (it != modelNumGroups.end())
         {
             const CWanted* wanted = FindPlayerWanted(-1);
             const unsigned int wantedLevel = (wanted->m_nWantedLevel > 0) ? (wanted->m_nWantedLevel - 1) : (wanted->m_nWantedLevel);
-            const unsigned int i = CGeneral::GetRandomNumberInRange(0, (int)vehGroupWantedVariations[car->m_nModelIndex][wantedLevel].size());
+            const unsigned int i = rand<uint32_t>(0, vehGroupWantedVariations[car->m_nModelIndex][wantedLevel].size());
             currentOccupantsModel = car->m_nModelIndex;
 
             std::string section;
@@ -997,9 +997,9 @@ void __cdecl SetUpDriverAndPassengersForVehicleHooked(CVehicle* car, int a3, int
                 if (!vehGroupWantedVariations[car->m_nModelIndex][wantedLevel].empty())
                     filterWantedVariations(zoneGroups, vehGroupWantedVariations[car->m_nModelIndex][wantedLevel]);
                 if (!zoneGroups.empty())
-                    currentOccupantsGroup = zoneGroups[CGeneral::GetRandomNumberInRange(0, (int)zoneGroups.size())] - 1;
+                    currentOccupantsGroup = zoneGroups[rand<uint32_t>(0, zoneGroups.size())] - 1;
                 else
-                    currentOccupantsGroup = (int)CGeneral::GetRandomNumberInRange(0, it->second);
+                    currentOccupantsGroup = rand<int32_t>(0, it->second);
             }
         }
     }
@@ -1107,15 +1107,13 @@ CPed* __cdecl AddPedInCarHooked(CVehicle* a1, char driver, int a3, signed int a4
             auto itGroup = vehPassengerGroups[currentOccupantsGroup].find(currentOccupantsModel);
             if (itGroup != vehPassengerGroups[currentOccupantsGroup].end())
             {
-                unsigned int random = CGeneral::GetRandomNumberInRange(0, (int)itGroup->second.size());
-                passengerModelIndex = itGroup->second[random];
+                passengerModelIndex = itGroup->second[rand<uint32_t>(0, itGroup->second.size())];
                 return modelChoosen();
             }
         }
-        if (it != vehPassengers.end() && ((replacePassenger == 0 && CGeneral::GetRandomNumberInRange(0, 100) > 50) || replacePassenger == 1))
+        if (it != vehPassengers.end() && ((replacePassenger == 0 && rand<bool>()) || replacePassenger == 1))
         {
-            unsigned int random = CGeneral::GetRandomNumberInRange(0, (int)it->second.size());
-            passengerModelIndex = it->second[random];
+            passengerModelIndex = it->second[rand<uint32_t>(0, it->second.size())];
             return modelChoosen();
         }
     }
@@ -1276,7 +1274,7 @@ void* __cdecl GetNewVehicleDependingOnCarModelHooked(int modelIndex, int created
     *   16 - misc
     */
 
-    if (createdBy != 2)
+    if (createdBy != eVehicleCreatedBy::MISSION_VEHICLE)
     {
         auto it = vehCurrentTuning.find(veh->m_nModelIndex);
         if (it != vehCurrentTuning.end() && !it->second.empty())
@@ -1294,9 +1292,9 @@ void* __cdecl GetNewVehicleDependingOnCarModelHooked(int modelIndex, int created
             std::array<bool, 17> slotsToInstall = {};
             for (unsigned int i = 0; i < 17; i++)
                 if (tuningRarity != tuningRarities.end())
-                    slotsToInstall[i] = (tuningRarity->second == 0) ? false : ((CGeneral::GetRandomNumberInRange(0, tuningRarity->second)) == 0 ? true : false);
+                    slotsToInstall[i] = (tuningRarity->second == 0) ? false : ((rand<uint32_t>(0, tuningRarity->second)) == 0 ? true : false);
                 else
-                    slotsToInstall[i] = (CGeneral::GetRandomNumberInRange(0, 3) == 0 ? true : false);
+                    slotsToInstall[i] = (rand<uint32_t>(0, 3) == 0 ? true : false);
 
             std::string section;
             auto it2 = vehModels.find(veh->m_nModelIndex);
@@ -1332,30 +1330,30 @@ void __fastcall ProcessControlHooked(CAutomobile* veh)
 {
     switch (getVariationOriginalModel(veh->m_nModelIndex))
     {
-    case 406: //Dumper
-        return changeModel<address>("CAutomobile::ProcessControl", 406, veh->m_nModelIndex, { (uint16_t*)0x6B1F9D }, veh);
-    case 407: //Firetruck
-        return changeModel<address>("CAutomobile::ProcessControl", 407, veh->m_nModelIndex, { (uint16_t*)0x6B1F51 }, veh);
-    case 423: //Mr. Whoopie
-        return changeModel<address>("CAutomobile::ProcessControl", 423, veh->m_nModelIndex, { (uint16_t*)0x6B2BD8 }, veh);
-    case 432: //Rhino
-        return changeModel<address>("CAutomobile::ProcessControl", 432, veh->m_nModelIndex, { (uint16_t*)0x6B1F7D, (uint16_t*)0x6B36D8 }, veh);
-    case 443: //Packer
-        return changeModel<address>("CAutomobile::ProcessControl", 443, veh->m_nModelIndex, { (uint16_t*)0x6B1F91 }, veh);
-    case 486: //Dozer
-        return changeModel<address>("CAutomobile::ProcessControl", 486, veh->m_nModelIndex, { (uint16_t*)0x6B1F97 }, veh);
-    case 524: //Cement Truck
-        return changeModel<address>("CAutomobile::ProcessControl", 524, veh->m_nModelIndex, { (uint16_t*)0x6B1FA3 }, veh);
-    case 525: //Towtruck
-        return changeModel<address>("CAutomobile::ProcessControl", 525, veh->m_nModelIndex, { (uint16_t*)0x6B1FB5 }, veh);
-    case 530: //Forklift
-        return changeModel<address>("CAutomobile::ProcessControl", 530, veh->m_nModelIndex, { (uint16_t*)0x6B1FAF }, veh);
-    case 531: //Tractor
-        return changeModel<address>("CAutomobile::ProcessControl", 531, veh->m_nModelIndex, { (uint16_t*)0x6B1FBB }, veh);
-    case 532: //Combine Harverster
-        return changeModel<address>("CAutomobile::ProcessControl", 532, veh->m_nModelIndex, { (uint16_t*)0x6B36C9 }, veh);
-    case 601: //Swat Tank
-        return changeModel<address>("CAutomobile::ProcessControl", 601, veh->m_nModelIndex, { (uint16_t*)0x6B1F57 }, veh);
+        case 406: //Dumper
+            return changeModel<address>("CAutomobile::ProcessControl", 406, veh->m_nModelIndex, { (uint16_t*)0x6B1F9D }, veh);
+        case 407: //Firetruck
+            return changeModel<address>("CAutomobile::ProcessControl", 407, veh->m_nModelIndex, { (uint16_t*)0x6B1F51 }, veh);
+        case 423: //Mr. Whoopie
+            return changeModel<address>("CAutomobile::ProcessControl", 423, veh->m_nModelIndex, { (uint16_t*)0x6B2BD8 }, veh);
+        case 432: //Rhino
+            return changeModel<address>("CAutomobile::ProcessControl", 432, veh->m_nModelIndex, { (uint16_t*)0x6B1F7D, (uint16_t*)0x6B36D8 }, veh);
+        case 443: //Packer
+            return changeModel<address>("CAutomobile::ProcessControl", 443, veh->m_nModelIndex, { (uint16_t*)0x6B1F91 }, veh);
+        case 486: //Dozer
+            return changeModel<address>("CAutomobile::ProcessControl", 486, veh->m_nModelIndex, { (uint16_t*)0x6B1F97 }, veh);
+        case 524: //Cement Truck
+            return changeModel<address>("CAutomobile::ProcessControl", 524, veh->m_nModelIndex, { (uint16_t*)0x6B1FA3 }, veh);
+        case 525: //Towtruck
+            return changeModel<address>("CAutomobile::ProcessControl", 525, veh->m_nModelIndex, { (uint16_t*)0x6B1FB5 }, veh);
+        case 530: //Forklift
+            return changeModel<address>("CAutomobile::ProcessControl", 530, veh->m_nModelIndex, { (uint16_t*)0x6B1FAF }, veh);
+        case 531: //Tractor
+            return changeModel<address>("CAutomobile::ProcessControl", 531, veh->m_nModelIndex, { (uint16_t*)0x6B1FBB }, veh);
+        case 532: //Combine Harverster
+            return changeModel<address>("CAutomobile::ProcessControl", 532, veh->m_nModelIndex, { (uint16_t*)0x6B36C9 }, veh);
+        case 601: //Swat Tank
+            return changeModel<address>("CAutomobile::ProcessControl", 601, veh->m_nModelIndex, { (uint16_t*)0x6B1F57 }, veh);
     }
 
     callMethodOriginal<address>(veh);
@@ -1373,6 +1371,9 @@ void __declspec(naked) enableSirenLights()
 template <unsigned int address>
 void __fastcall PreRenderHooked(CAutomobile* veh)
 {
+    if (veh == NULL)
+        return;
+
     const uint8_t sirenOriginal[5] = { *(uint8_t*)0x6AB350, *(uint8_t*)0x6AB351, *(uint8_t*)0x6AB352, *(uint8_t*)0x6AB353, *(uint8_t*)0x6AB354 };
 
     const auto sirenRestore = [sirenOriginal]()
@@ -1383,9 +1384,6 @@ void __fastcall PreRenderHooked(CAutomobile* veh)
         ((uint8_t*)0x6AB350)[3] = sirenOriginal[3];
         ((uint8_t*)0x6AB350)[4] = sirenOriginal[4];
     };
-
-    if (veh == NULL)
-        return;
 
     sirenModel = -1;
     lightsModel = 0;
@@ -1435,34 +1433,37 @@ void __fastcall PreRenderHooked(CAutomobile* veh)
 template <unsigned int address>
 char __fastcall GetTowBarPosHooked(CAutomobile* automobile, void*, CVector* outPos, char ignoreModelType, CVehicle* attachTo)
 {
-    if (getVariationOriginalModel(automobile->m_nModelIndex) == 403) //Linerunner
-        return changeModelAndReturn<char, address>("CAutomobile::GetTowBarPos", 403, automobile->m_nModelIndex, { (uint16_t*)0x6AF27A }, automobile, outPos, ignoreModelType, attachTo);
-    else if (getVariationOriginalModel(automobile->m_nModelIndex) == 485) //Baggage
-        return changeModelAndReturn<char, address>("CAutomobile::GetTowBarPos", 485, automobile->m_nModelIndex, { (uint16_t*)0x6AF29C }, automobile, outPos, ignoreModelType, attachTo);
-    else if (getVariationOriginalModel(automobile->m_nModelIndex) == 514) //Tanker
-        return changeModelAndReturn<char, address>("CAutomobile::GetTowBarPos", 514, automobile->m_nModelIndex, { (uint16_t*)0x6AF26E }, automobile, outPos, ignoreModelType, attachTo);
-    else if (getVariationOriginalModel(automobile->m_nModelIndex) == 515) //Roadtrain
-        return changeModelAndReturn<char, address>("CAutomobile::GetTowBarPos", 515, automobile->m_nModelIndex, { (uint16_t*)0x6AF274 }, automobile, outPos, ignoreModelType, attachTo);
-    else if (getVariationOriginalModel(automobile->m_nModelIndex) == 525) //Towtruck
-        return changeModelAndReturn<char, address>("CAutomobile::GetTowBarPos", 525, automobile->m_nModelIndex, { (uint16_t*)0x6AF259 }, automobile, outPos, ignoreModelType, attachTo);
-    else if (getVariationOriginalModel(automobile->m_nModelIndex) == 531) //Tractor
-        return changeModelAndReturn<char, address>("CAutomobile::GetTowBarPos", 531, automobile->m_nModelIndex, { (uint16_t*)0x6AF264, (uint16_t*)0x6AF343 }, automobile, outPos, ignoreModelType, attachTo);
-    else if (getVariationOriginalModel(automobile->m_nModelIndex) == 552) //Utility Van
-        return changeModelAndReturn<char, address>("CAutomobile::GetTowBarPos", 552, automobile->m_nModelIndex, { (uint16_t*)0x6AF286 }, automobile, outPos, ignoreModelType, attachTo);
-    else if (getVariationOriginalModel(automobile->m_nModelIndex) == 583) //Tug
-        return changeModelAndReturn<char, address>("CAutomobile::GetTowBarPos", 583, automobile->m_nModelIndex, { (uint16_t*)0x6AF2A2 }, automobile, outPos, ignoreModelType, attachTo);
-    else if (getVariationOriginalModel(automobile->m_nModelIndex) == 591) //Artic Trailer
-        return changeModelAndReturn<char, address>("CAutomobile::GetTowBarPos", 591, automobile->m_nModelIndex, { (uint16_t*)0x6AF280 }, automobile, outPos, ignoreModelType, attachTo);
-    else if (getVariationOriginalModel(automobile->m_nModelIndex) == 606) //Bag Box A
-        return changeModelAndReturn<char, address>("CAutomobile::GetTowBarPos", 606, automobile->m_nModelIndex, { (uint16_t*)0x6AF2A8, (uint16_t*)0x6AF2BC }, automobile, outPos, ignoreModelType, attachTo);
-    else if (getVariationOriginalModel(automobile->m_nModelIndex) == 607) //Bag Box B
-        return changeModelAndReturn<char, address>("CAutomobile::GetTowBarPos", 607, automobile->m_nModelIndex, { (uint16_t*)0x6AF2AE, (uint16_t*)0x6AF2C2 }, automobile, outPos, ignoreModelType, attachTo);
-    else if (getVariationOriginalModel(automobile->m_nModelIndex) == 608) //Stairs
-        return changeModelAndReturn<char, address>("CAutomobile::GetTowBarPos", 608, automobile->m_nModelIndex, { (uint16_t*)0x6AF2C8 }, automobile, outPos, ignoreModelType, attachTo);
-    else if (getVariationOriginalModel(automobile->m_nModelIndex) == 610) //Farm Trailer
-        return changeModelAndReturn<char, address>("CAutomobile::GetTowBarPos", 610, automobile->m_nModelIndex, { (uint16_t*)0x6AF362 }, automobile, outPos, ignoreModelType, attachTo);
-    else if (getVariationOriginalModel(automobile->m_nModelIndex) == 611) //Utility Trailer
-        return changeModelAndReturn<char, address>("CAutomobile::GetTowBarPos", 611, automobile->m_nModelIndex, { (uint16_t*)0x6AF296 }, automobile, outPos, ignoreModelType, attachTo);
+    switch (getVariationOriginalModel(automobile->m_nModelIndex))
+    {
+        case 403: //Linerunner
+            return changeModelAndReturn<char, address>("CAutomobile::GetTowBarPos", 403, automobile->m_nModelIndex, { (uint16_t*)0x6AF27A }, automobile, outPos, ignoreModelType, attachTo);
+        case 485: //Baggage
+            return changeModelAndReturn<char, address>("CAutomobile::GetTowBarPos", 485, automobile->m_nModelIndex, { (uint16_t*)0x6AF29C }, automobile, outPos, ignoreModelType, attachTo);
+        case 514: //Tanker
+            return changeModelAndReturn<char, address>("CAutomobile::GetTowBarPos", 514, automobile->m_nModelIndex, { (uint16_t*)0x6AF26E }, automobile, outPos, ignoreModelType, attachTo);
+        case 515: //Roadtrain
+            return changeModelAndReturn<char, address>("CAutomobile::GetTowBarPos", 515, automobile->m_nModelIndex, { (uint16_t*)0x6AF274 }, automobile, outPos, ignoreModelType, attachTo);
+        case 525: //Towtruck
+            return changeModelAndReturn<char, address>("CAutomobile::GetTowBarPos", 525, automobile->m_nModelIndex, { (uint16_t*)0x6AF259 }, automobile, outPos, ignoreModelType, attachTo);
+        case 531: //Tractor
+            return changeModelAndReturn<char, address>("CAutomobile::GetTowBarPos", 531, automobile->m_nModelIndex, { (uint16_t*)0x6AF264, (uint16_t*)0x6AF343 }, automobile, outPos, ignoreModelType, attachTo);
+        case 552: //Utility Van
+            return changeModelAndReturn<char, address>("CAutomobile::GetTowBarPos", 552, automobile->m_nModelIndex, { (uint16_t*)0x6AF286 }, automobile, outPos, ignoreModelType, attachTo);
+        case 583: //Tug
+            return changeModelAndReturn<char, address>("CAutomobile::GetTowBarPos", 583, automobile->m_nModelIndex, { (uint16_t*)0x6AF2A2 }, automobile, outPos, ignoreModelType, attachTo);
+        case 591: //Artic Trailer
+            return changeModelAndReturn<char, address>("CAutomobile::GetTowBarPos", 591, automobile->m_nModelIndex, { (uint16_t*)0x6AF280 }, automobile, outPos, ignoreModelType, attachTo);
+        case 606: //Bag Box A
+            return changeModelAndReturn<char, address>("CAutomobile::GetTowBarPos", 606, automobile->m_nModelIndex, { (uint16_t*)0x6AF2A8, (uint16_t*)0x6AF2BC }, automobile, outPos, ignoreModelType, attachTo);
+        case 607: //Bag Box B
+            return changeModelAndReturn<char, address>("CAutomobile::GetTowBarPos", 607, automobile->m_nModelIndex, { (uint16_t*)0x6AF2AE, (uint16_t*)0x6AF2C2 }, automobile, outPos, ignoreModelType, attachTo);
+        case 608: //Stairs
+            return changeModelAndReturn<char, address>("CAutomobile::GetTowBarPos", 608, automobile->m_nModelIndex, { (uint16_t*)0x6AF2C8 }, automobile, outPos, ignoreModelType, attachTo);
+        case 610: //Farm Trailer
+            return changeModelAndReturn<char, address>("CAutomobile::GetTowBarPos", 610, automobile->m_nModelIndex, { (uint16_t*)0x6AF362 }, automobile, outPos, ignoreModelType, attachTo);
+        case 611: //Utility Trailer
+            return changeModelAndReturn<char, address>("CAutomobile::GetTowBarPos", 611, automobile->m_nModelIndex, { (uint16_t*)0x6AF296 }, automobile, outPos, ignoreModelType, attachTo);
+    }        
 
     return callMethodOriginalAndReturn<char, address>(automobile, outPos, ignoreModelType, attachTo);
 }
@@ -1926,7 +1927,7 @@ void hookASM(uint32_t address1, uint32_t address1Bytes, uint8_t address2Size, ui
     else
     {
         std::string moduleName;
-        auto dest = injector::GetBranchDestination(address1);
+        const auto dest = injector::GetBranchDestination(address1);
         if (dest != nullptr)
             moduleName = getAddressBaseModule(dest.as_int()).second;
 

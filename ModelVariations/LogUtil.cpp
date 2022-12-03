@@ -10,13 +10,9 @@
 
 bool compareLower(const char* a, const char* b)
 {
-    for (int i = 0; a[i] && b[i]; i++)
-    {
-        char c = (a[i] >= 'A' && a[i] <= 'Z') ? (a[i] + 32) : a[i];
-        char d = (b[i] >= 'A' && b[i] <= 'Z') ? (b[i] + 32) : b[i];
-        if (c != d)
+    for (int i = 0; a[i] || b[i]; i++)
+        if (toupper(a[i]) != toupper(b[i]))
             return false;
-    }
 
     return true;
 }
@@ -28,7 +24,7 @@ std::string hashFile(const char* filename)
 
     if (hFile != INVALID_HANDLE_VALUE)
     {
-        auto filesize = GetFileSize(hFile, NULL);
+        const auto filesize = GetFileSize(hFile, NULL);
         if (filesize != INVALID_FILE_SIZE)
         {
             DWORD lpNumberOfBytesRead;
@@ -109,7 +105,7 @@ std::pair<unsigned int, std::string> getAddressBaseModule(uint32_t functionAddre
 
 void checkCallModified(const std::string &callName, unsigned int callAddress, bool isDirectAddress)
 {
-    unsigned int functionAddress = (isDirectAddress == false) ? injector::GetBranchDestination(callAddress).as_int() : *(unsigned int*)callAddress;
+    const unsigned int functionAddress = (isDirectAddress == false) ? injector::GetBranchDestination(callAddress).as_int() : *(unsigned int*)callAddress;
     std::string modulePath = getParentModuleName(functionAddress);
     unsigned int baseAddress = 0;
 
@@ -191,7 +187,7 @@ std::string printToString(const char* format, ...)
 std::string bytesToString(unsigned int address, int nBytes)
 {
     std::stringstream ss;
-    unsigned char* c = reinterpret_cast<unsigned char*>(address);
+    const unsigned char* c = reinterpret_cast<unsigned char*>(address);
 
     for (int i = 0; i < nBytes; i++, ss << " ")
         ss << std::setfill('0') << std::setw(2) << std::hex << static_cast<unsigned int>(c[i]);

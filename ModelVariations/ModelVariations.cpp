@@ -197,7 +197,7 @@ bool checkForUpdate()
     str = str.substr(str.find("\"name\":\"v")+9, 10);
     str.erase(str.find('"'));
     for (auto ch : str)
-        if (!((ch >= '0' && ch <= '9') || (ch == '.')))
+        if ( !((ch >= '0' && ch <= '9') || (ch == '.')) )
         {
             if (logfile.is_open())
                 logfile << "Check for updates failed. Invalid version string." << std::endl;
@@ -550,7 +550,7 @@ void printVariations()
                     if (!pedVariations[i][k].empty())
                     {
                         logfile << "(" << k << ") ";
-                        for (auto& l : pedVariations[i][k])
+                        for (const auto& l : pedVariations[i][k])
                             logfile << l << " ";
                     }
 
@@ -569,7 +569,7 @@ void printVariations()
                     if (!vehVariations[i][k].empty())
                     {
                         logfile << "(" << k << ") ";
-                        for (auto& l : vehVariations[i][k])
+                        for (const auto& l : vehVariations[i][k])
                             logfile << l << " ";
                     }
 
@@ -875,21 +875,21 @@ public:
             if (!iniPed.data.empty())
             {
                 logfile << "\nPed sections detected:\n";
-                for (auto& i : iniPed.data)
+                for (const auto& i : iniPed.data)
                     logfile << std::dec << i.first << "\n";
             }
 
             if (!iniWeap.data.empty())
             {
                 logfile << "\nPed weapon sections detected:\n";
-                for (auto& i : iniWeap.data)
+                for (const auto& i : iniWeap.data)
                     logfile << i.first << "\n";
             }
 
             if (!iniVeh.data.empty())
             {
                 logfile << "\nVehicle sections detected:\n";
-                for (auto& i : iniVeh.data)
+                for (const auto& i : iniVeh.data)
                     logfile << i.first << "\n";
             }
 
@@ -910,7 +910,7 @@ public:
             {
                 logfile << "\nLoaded modules:" << std::endl;
 
-                for (auto& i : modulesSet)
+                for (const auto& i : modulesSet)
                     logfile << "0x" << std::setfill('0') << std::setw(8) << std::hex << i.first << " " << i.second << "\n";
                 logfile << std::endl;
             }
@@ -971,7 +971,7 @@ public:
         {
             if (isValidPedId(ped->m_nModelIndex) && !pedCurrentVariations[ped->m_nModelIndex].empty())
             {
-                const unsigned int random = CGeneral::GetRandomNumberInRange(0, (int)pedCurrentVariations[ped->m_nModelIndex].size());
+                const unsigned int random = rand<uint32_t>(0, pedCurrentVariations[ped->m_nModelIndex].size());
                 const unsigned short variationModel = pedCurrentVariations[ped->m_nModelIndex][random];
                 if (variationModel > 0 && variationModel != ped->m_nModelIndex)
                 {
@@ -1050,7 +1050,7 @@ public:
             CTheZones::GetZoneInfo(&pPos, &zInfo);
             const CWanted* wanted = FindPlayerWanted(-1);
 
-            CPlayerPed* player = FindPlayerPed();
+            const CPlayerPed* player = FindPlayerPed();
 
             if (player && player->m_pEnex)
                 currentInterior = (const char*)player->m_pEnex;
@@ -1120,10 +1120,9 @@ public:
 
                 if (IsVehiclePointerValid(it.first))
                     for (auto& slot : it.second)
-                    {
                         if (!slot.empty())
                         {
-                            const unsigned i = CGeneral::GetRandomNumberInRange(0, (int)slot.size());
+                            const uint32_t i = rand<uint32_t>(0, slot.size());
 
                             CStreaming::RequestVehicleUpgrade(slot[i], 2);
                             CStreaming::LoadAllRequestedModels(false);
@@ -1131,7 +1130,6 @@ public:
                             it.first->AddVehicleUpgrade(slot[i]);
                             Command<COMMAND_MARK_VEHICLE_MOD_AS_NO_LONGER_NEEDED>(slot[i]);
                         }
-                    }
             }
 
             while (!vehStack.empty())
@@ -1269,9 +1267,9 @@ public:
 
                 if (IsPedPointerValid(ped) && enablePedWeapons == 1)
                 {
-                    const auto wepFound = [ped](eWeaponType weaponId, eWeaponType originalWeaponId) -> bool {
+                    const auto wepFound = [ped](int weaponId, int originalWeaponId) -> bool {
                         int weapModel = 0;
-                        CWeaponInfo *wInfo = CWeaponInfo::GetWeaponInfo(weaponId, 1);
+                        const CWeaponInfo *wInfo = CWeaponInfo::GetWeaponInfo((eWeaponType)weaponId, 1);
                         if (wInfo != NULL)
                             weapModel = wInfo->m_nModelId1;
 
@@ -1281,11 +1279,11 @@ public:
                             CStreaming::LoadAllRequestedModels(false);
 
                             if (originalWeaponId > 0)
-                                ped->ClearWeapon(originalWeaponId);
+                                ped->ClearWeapon((eWeaponType)originalWeaponId);
                             else
                                 ped->ClearWeapons();
 
-                            ped->GiveWeapon(weaponId, 9999, true);                             
+                            ped->GiveWeapon((eWeaponType)weaponId, 9999, true);
                             return true;
                         }
                         return false;
@@ -1328,18 +1326,11 @@ public:
                         {
                             bool changeWeapon = true;
                             vec = iniWeap.ReadLine(section, vehId + "WEAPONFORCE", READ_WEAPONS);
-                            if (!vec.empty())
-                            {
-                                const eWeaponType forceWeapon = (eWeaponType)vec[CGeneral::GetRandomNumberInRange(0, (int)vec.size())];
-                                if ((wepChanged = wepFound(forceWeapon, (eWeaponType)0)) == true)
-                                    changeWeapon = (bool)CGeneral::GetRandomNumberInRange(0, 2);
-                            }
+                            if (!vec.empty() && (wepChanged = wepFound(vectorGetRandom(vec), 0)) == true)
+                                changeWeapon = rand<bool>();
 
                             if ((changeWeapon || mergeWeapons == 0) && !(vec = iniWeap.ReadLine(section, vehId + currentZoneString + "_WEAPONFORCE", READ_WEAPONS)).empty())
-                            {
-                                const eWeaponType forceWeapon = (eWeaponType)vec[CGeneral::GetRandomNumberInRange(0, (int)vec.size())];
-                                wepChanged |= wepFound(forceWeapon, (eWeaponType)0);
-                            }
+                                wepChanged |= wepFound(vectorGetRandom(vec), 0);
                         }
 
                         if (!wepChanged && !(disableOnMission > 0 && isOnMission()))
@@ -1353,8 +1344,8 @@ public:
 
                                     std::string slot = "SLOT" + std::to_string(i);
                                     vec = iniWeap.ReadLine(section, vehId + slot, READ_WEAPONS);
-                                    if (!vec.empty() && (wepChanged = wepFound((eWeaponType)vec[CGeneral::GetRandomNumberInRange(0, (int)vec.size())], ped->m_aWeapons[i].m_eWeaponType)) == true)
-                                        changeZoneSlot = (bool)CGeneral::GetRandomNumberInRange(0, 2);
+                                    if (!vec.empty() && (wepChanged = wepFound(vectorGetRandom(vec), ped->m_aWeapons[i].m_eWeaponType)) == true)
+                                        changeZoneSlot = rand<bool>();
 
                                     if (changeZoneSlot || mergeWeapons == 0)
                                     {
@@ -1362,13 +1353,13 @@ public:
                                         slot += "_SLOT" + std::to_string(i);
                                         vec = iniWeap.ReadLine(section, vehId + slot, READ_WEAPONS);
                                         if (!vec.empty())
-                                            wepChanged |= wepFound((eWeaponType)vec[CGeneral::GetRandomNumberInRange(0, (int)vec.size())], ped->m_aWeapons[i].m_eWeaponType);
+                                            wepChanged |= wepFound(vectorGetRandom(vec), ped->m_aWeapons[i].m_eWeaponType);
                                     }
 
                                     std::string wep = "WEAPON" + std::to_string(weaponId);
                                     vec = iniWeap.ReadLine(section, vehId + wep, READ_WEAPONS);
-                                    if (!vec.empty() && (wepChanged = wepFound((eWeaponType)vec[CGeneral::GetRandomNumberInRange(0, (int)vec.size())], ped->m_aWeapons[i].m_eWeaponType)) == true)
-                                        changeZoneWeapon = (bool)CGeneral::GetRandomNumberInRange(0, 2);
+                                    if (!vec.empty() && (wepChanged = wepFound(vectorGetRandom(vec), ped->m_aWeapons[i].m_eWeaponType)) == true)
+                                        changeZoneWeapon = rand<bool>();
 
                                     if (changeZoneWeapon || mergeWeapons == 0)
                                     {
@@ -1376,7 +1367,7 @@ public:
                                         wep += "_WEAPON" + std::to_string(weaponId);
                                         vec = iniWeap.ReadLine(section, vehId + wep, READ_WEAPONS);
                                         if (!vec.empty())
-                                            wepChanged |= wepFound((eWeaponType)vec[CGeneral::GetRandomNumberInRange(0, (int)vec.size())], ped->m_aWeapons[i].m_eWeaponType);
+                                            wepChanged |= wepFound(vectorGetRandom(vec), ped->m_aWeapons[i].m_eWeaponType);
                                     }
                                     if (wepChanged)
                                         ped->SetCurrentWeapon(currentSlot);

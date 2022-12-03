@@ -63,11 +63,9 @@ std::vector<unsigned short> DataReader::ReadLine(std::string section, std::strin
 		char* tkString = new char[iniString.size() + 1];
 		strcpy(tkString, iniString.c_str());
 
-		char* token = strtok(tkString, ",");
-		int modelid = 0;
-
-		while (token != NULL)
+		for (char* token = strtok(tkString, ","); token != NULL; token = strtok(NULL, ","))
 		{
+			int modelid = 0;
 			while (token[0] == ' ')
 				token++;
 
@@ -123,8 +121,6 @@ std::vector<unsigned short> DataReader::ReadLine(std::string section, std::strin
 					}
 				}
 			}
-
-			token = strtok(NULL, ",");
 		}
 
 		delete[] tkString;

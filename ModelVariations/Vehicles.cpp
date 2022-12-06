@@ -11,11 +11,9 @@
 #include <CCarGenerator.h>
 #include <CCoronas.h>
 #include <CDarkel.h>
-#include <CGeneral.h>
 #include <CHeli.h>
 #include <CModelInfo.h>
 #include <CPopulation.h>
-#include <CStreaming.h>
 #include <CTheScripts.h>
 #include <CTrain.h>
 #include <CTrailer.h>
@@ -60,7 +58,6 @@ int fireCmpModel = -1;
 
 int passengerModelIndex = -1;
 constexpr unsigned int jmp613B7E = 0x613B7E;
-constexpr unsigned int jmp6A1564 = 0x6A1564;
 constexpr unsigned int jmp6AB35A = 0x6AB35A;
 constexpr unsigned int jmp6ABA65 = 0x6ABA65;
 constexpr unsigned int jmp6AC735 = 0x6AC735;
@@ -156,12 +153,11 @@ int getRandomVariation(const int modelid, bool parked = false)
             return modelid;
     }
 
-    const unsigned int random = rand<uint32_t>(0, vehCurrentVariations[modelid - 400].size());
+    const uint32_t random = rand<uint32_t>(0, vehCurrentVariations[modelid - 400].size());
     const unsigned short variationModel = vehCurrentVariations[modelid - 400][random];
     if (variationModel > 0)
     {
-        CStreaming::RequestModel(variationModel, GAME_REQUIRED);
-        CStreaming::LoadAllRequestedModels(false);
+        loadModels({ variationModel }, GAME_REQUIRED, true);
         return variationModel;
     }
     return modelid;
@@ -212,14 +208,9 @@ void readVehicleIni(bool firstTime, std::string gamePath)
                 CModelInfo::GetModelInfo((char*)j.first.c_str(), &modelid);
 
             if (modelid > 0)
-            {
-                std::vector<unsigned short> vec = iniVeh.ReadLine(j.first, i, READ_VEHICLES); //get zone name 'i' of veh id 'j'
-
-                if (!vec.empty()) //if veh id 'j' has variations in zone 'i'
-                    for (auto& k : vec) //for every variation 'k' of veh id 'j' in zone 'i'
-                        if (modelid != k && !(IdExists(vehInheritExclude, k)))
-                            vehOriginalModels.insert({ k, modelid });
-            }            
+                for (auto& k : iniVeh.ReadLine(j.first, i, READ_VEHICLES)) //for every variation 'k' of veh id 'j' in zone 'i'
+                    if (modelid != k && !(vectorHasId(vehInheritExclude, k)))
+                        vehOriginalModels.insert({ k, modelid });           
         }
 
     if (zoneFile.is_open())
@@ -243,7 +234,7 @@ void readVehicleIni(bool firstTime, std::string gamePath)
         {
             vehHasVariations.insert((unsigned short)(i - 400));
 
-            if (iniVeh.ReadInteger(section, "ChangeOnlyParked", 0) == 1)
+            if (iniVeh.ReadBoolean(section, "ChangeOnlyParked", false))
                 parkedCars.insert(i);
 
             vehVariations[i - 400][0] = iniVeh.ReadLine(section, "Countryside", READ_VEHICLES);
@@ -274,13 +265,13 @@ void readVehicleIni(bool firstTime, std::string gamePath)
 
             for (unsigned int j = 0; j < 16; j++)
                 for (auto &k : vehVariations[i-400][j])
-                    if (k != i && !(IdExists(vehInheritExclude, k)))
+                    if (k != i && !(vectorHasId(vehInheritExclude, k)))
                         vehOriginalModels.insert({ k, i });
         }
     }
 
     if (firstTime)
-        enableLights = iniVeh.ReadInteger("Settings", "EnableLights", 0);
+        enableLights = iniVeh.ReadBoolean("Settings", "EnableLights", false);
     
     for (auto& i : iniVeh.data)
     {
@@ -335,7 +326,7 @@ void readVehicleIni(bool firstTime, std::string gamePath)
             if (tuningRarity > -1)
                 tuningRarities.insert({modelid, (BYTE)tuningRarity});
 
-            if (iniVeh.ReadInteger(i.first, "UseOnlyGroups", 0) == 1)
+            if (iniVeh.ReadBoolean(i.first, "UseOnlyGroups", false))
                 vehUseOnlyGroups.insert(modelid);
 
             if (enableLights)
@@ -371,7 +362,7 @@ void readVehicleIni(bool firstTime, std::string gamePath)
                 }
             }
 
-            if (iniVeh.ReadInteger(i.first, "MergeZonesWithCities", 0) == 1)
+            if (iniVeh.ReadBoolean(i.first, "MergeZonesWithCities", false))
                 vehMergeZones.insert(modelid);
 
             uint8_t numGroups = 0;
@@ -459,10 +450,10 @@ void readVehicleIni(bool firstTime, std::string gamePath)
 
     if (firstTime)
     {
-        changeCarGenerators = iniVeh.ReadInteger("Settings", "ChangeCarGenerators", 0);
+        changeCarGenerators = iniVeh.ReadBoolean("Settings", "ChangeCarGenerators", false);
         vehCarGenExclude = iniVeh.ReadLine("Settings", "ExcludeCarGeneratorModels", READ_VEHICLES);
-        loadAllVehicles = iniVeh.ReadInteger("Settings", "LoadAllVehicles", 0);
-        enableAllSideMissions = iniVeh.ReadInteger("Settings", "EnableSideMissionsForAllScripts", 0);
+        loadAllVehicles = iniVeh.ReadBoolean("Settings", "LoadAllVehicles", false);
+        enableAllSideMissions = iniVeh.ReadBoolean("Settings", "EnableSideMissionsForAllScripts", false);
     }
 }
 
@@ -586,7 +577,7 @@ void __cdecl AddPoliceCarOccupantsHooked(CVehicle* a2, char a3)
         {
             const CWanted* wanted = FindPlayerWanted(-1);
             const unsigned int wantedLevel = (wanted->m_nWantedLevel > 0) ? (wanted->m_nWantedLevel - 1) : (wanted->m_nWantedLevel);
-            const unsigned int i = rand<uint32_t>(0, vehGroupWantedVariations[a2->m_nModelIndex][wantedLevel].size());
+            const uint32_t i = rand<uint32_t>(0, vehGroupWantedVariations[a2->m_nModelIndex][wantedLevel].size());
             currentOccupantsModel = a2->m_nModelIndex;
 
             std::string section;
@@ -868,7 +859,7 @@ template <unsigned int address>
 DWORD __cdecl FindSpecificDriverModelForCar_ToUseHooked(int carModel)
 {
     if (carModel < 400)
-        return (DWORD)callOriginalAndReturn<int, address>(getVariationOriginalModel(carModel));
+        return callOriginalAndReturn<DWORD, address>(getVariationOriginalModel(carModel));
 
     auto it = vehDrivers.find((unsigned short)carModel);
     
@@ -879,27 +870,25 @@ DWORD __cdecl FindSpecificDriverModelForCar_ToUseHooked(int carModel)
     else
         section = std::to_string(carModel);
 
-    const int replaceDriver = iniVeh.ReadInteger(section, "ReplaceDriver", 0);
+    const auto replaceDriver = iniVeh.ReadBoolean(section, "ReplaceDriver", false);
     if (currentOccupantsGroup > -1 && currentOccupantsGroup < 9 && currentOccupantsModel > 0)
     {
         auto itGroup = vehDriverGroups[currentOccupantsGroup].find(currentOccupantsModel);
         if (itGroup != vehDriverGroups[currentOccupantsGroup].end())
         {
-            const unsigned int random = rand<uint32_t>(0, itGroup->second.size());
-            CStreaming::RequestModel(itGroup->second[random], GAME_REQUIRED);
-            CStreaming::LoadAllRequestedModels(false);
+            const uint32_t random = rand<uint32_t>(0, itGroup->second.size());
+            loadModels({ itGroup->second[random] }, GAME_REQUIRED, true);
             return itGroup->second[random];
         }
     }
-    if (it != vehDrivers.end() && ((replaceDriver == 0 && rand<bool>()) || replaceDriver == 1))
+    if (it != vehDrivers.end() && ((!replaceDriver && rand<bool>()) || replaceDriver))
     {
         const unsigned int random = rand<uint32_t>(0, it->second.size());
-        CStreaming::RequestModel(it->second[random], GAME_REQUIRED);
-        CStreaming::LoadAllRequestedModels(false);
+        loadModels({ it->second[random] }, GAME_REQUIRED, true);
         return it->second[random];
     }
 
-    return (DWORD)callOriginalAndReturn<int, address>(getVariationOriginalModel(carModel));
+    return callOriginalAndReturn<DWORD, address>(getVariationOriginalModel(carModel));
 }
 
 template <unsigned int address>
@@ -970,7 +959,7 @@ void __cdecl SetUpDriverAndPassengersForVehicleHooked(CVehicle* car, int a3, int
         {
             const CWanted* wanted = FindPlayerWanted(-1);
             const unsigned int wantedLevel = (wanted->m_nWantedLevel > 0) ? (wanted->m_nWantedLevel - 1) : (wanted->m_nWantedLevel);
-            const unsigned int i = rand<uint32_t>(0, vehGroupWantedVariations[car->m_nModelIndex][wantedLevel].size());
+            const uint32_t i = rand<uint32_t>(0, vehGroupWantedVariations[car->m_nModelIndex][wantedLevel].size());
             currentOccupantsModel = car->m_nModelIndex;
 
             std::string section;
@@ -1004,23 +993,8 @@ void __cdecl SetUpDriverAndPassengersForVehicleHooked(CVehicle* car, int a3, int
         }
     }
 
-    CStreaming::RequestModel(274, GAME_REQUIRED);//laemt1
-    CStreaming::RequestModel(275, GAME_REQUIRED);//lvemt1
-    CStreaming::RequestModel(276, GAME_REQUIRED);//sfemt1
-    CStreaming::RequestModel(277, GAME_REQUIRED);//lafd1
-    CStreaming::RequestModel(278, GAME_REQUIRED);//lvfd1
-    CStreaming::RequestModel(279, GAME_REQUIRED);//sffd1
-    CStreaming::RequestModel(280, GAME_REQUIRED);//lapd1
-    CStreaming::RequestModel(281, GAME_REQUIRED);//sfpd1
-    CStreaming::RequestModel(282, GAME_REQUIRED);//lvpd1
-    CStreaming::RequestModel(283, GAME_REQUIRED);//csher
-    CStreaming::RequestModel(284, GAME_REQUIRED);//lapdm1
-    CStreaming::RequestModel(285, GAME_REQUIRED);//swat
-    CStreaming::RequestModel(286, GAME_REQUIRED);//fbi
-    CStreaming::RequestModel(287, GAME_REQUIRED);//army
-    CStreaming::RequestModel(288, GAME_REQUIRED);//dsher
-    
-    CStreaming::LoadAllRequestedModels(false);
+    //laemt1 -> dsher
+    loadModels(274, 288, GAME_REQUIRED, true);
 
     const auto model = car->m_nModelIndex;
 
@@ -1043,10 +1017,7 @@ CHeli* __cdecl GenerateHeliHooked(CPed* ped, char newsHeli)
 
     if (CHeli::pHelis)
     {
-        CStreaming::RequestModel(488, GAME_REQUIRED);
-        CStreaming::RequestModel(497, GAME_REQUIRED);
-        CStreaming::LoadAllRequestedModels(false);
-
+        loadModels({ 488, 497 }, GAME_REQUIRED, true);
         newsHeli = 1;
         if (CHeli::pHelis[0] && (CHeli::pHelis[0]->m_nModelIndex == 488 || getVariationOriginalModel(CHeli::pHelis[0]->m_nModelIndex) == 488))
             newsHeli = 0;
@@ -1082,8 +1053,7 @@ CPed* __cdecl AddPedInCarHooked(CVehicle* a1, char driver, int a3, signed int a4
     {
         unsigned char originalData[5] = {};
         memcpy(originalData, (void*)0x613B78, 5);
-        CStreaming::RequestModel(passengerModelIndex, GAME_REQUIRED);
-        CStreaming::LoadAllRequestedModels(false);
+        loadModels({ passengerModelIndex }, GAME_REQUIRED, true);
         injector::MakeJMP(0x613B78, patchPassengerModel);
         CPed* ped = callOriginalAndReturn<CPed*, address>(a1, driver, a3, a4, a5, a6);
         memcpy((void*)0x613B78, originalData, 5);
@@ -1100,7 +1070,7 @@ CPed* __cdecl AddPedInCarHooked(CVehicle* a1, char driver, int a3, signed int a4
         else
             section = std::to_string(a1->m_nModelIndex);
 
-        const int replacePassenger = iniVeh.ReadInteger(section, "ReplacePassengers", 0);
+        const auto replacePassenger = iniVeh.ReadBoolean(section, "ReplacePassengers", false);
         auto it = vehPassengers.find(a1->m_nModelIndex);
         if (currentOccupantsGroup > -1 && currentOccupantsGroup < 9 && currentOccupantsModel > 0)
         {
@@ -1111,7 +1081,7 @@ CPed* __cdecl AddPedInCarHooked(CVehicle* a1, char driver, int a3, signed int a4
                 return modelChoosen();
             }
         }
-        if (it != vehPassengers.end() && ((replacePassenger == 0 && rand<bool>()) || replacePassenger == 1))
+        if (it != vehPassengers.end() && ((!replacePassenger && rand<bool>()) || replacePassenger))
         {
             passengerModelIndex = it->second[rand<uint32_t>(0, it->second.size())];
             return modelChoosen();
@@ -1167,13 +1137,13 @@ void __cdecl RegisterCoronaHooked2(CCoronas* _this, unsigned int a2, unsigned __
         auto it = LightPositions.find(lightsModel);
         if (it != LightPositions.end())
         {
-            if (it->second.second > -900.0)
+            if (it->second.second > -900.0f)
                 a7->x *= it->second.second;
-            if (it->second.first.x != 0.0)
+            if (it->second.first.x != 0.0f)
                 a7->x += it->second.first.x;
-            if (it->second.first.y != 0.0)
+            if (it->second.first.y != 0.0f)
                 a7->y += it->second.first.y;
-            if (it->second.first.z != 0.0)
+            if (it->second.first.z != 0.0f)
                 a7->z += it->second.first.z;
         }
     }
@@ -1202,13 +1172,13 @@ void __cdecl AddLightHooked(char type, float x, float y, float z, float dir_x, f
         auto it = LightPositions.find(lightsModel);
         if (it != LightPositions.end())
         {
-            if (it->second.second > -900.0)
+            if (it->second.second > -900.0f)
                 x *= it->second.second;
-            if (it->second.first.x != 0.0)
+            if (it->second.first.x != 0.0f)
                 x += it->second.first.x;
-            if (it->second.first.y != 0.0)
+            if (it->second.first.y != 0.0f)
                 y += it->second.first.y;
-            if (it->second.first.z != 0.0)
+            if (it->second.first.z != 0.0f)
                 z += it->second.first.z;
         }
     }
@@ -1303,7 +1273,7 @@ void* __cdecl GetNewVehicleDependingOnCarModelHooked(int modelIndex, int created
             else
                 section = std::to_string(veh->m_nModelIndex);
 
-            if (iniVeh.ReadInteger(section, "TuningFullBodykit", 0) == 1)
+            if (iniVeh.ReadBoolean(section, "TuningFullBodykit", false))
                 if (slotsToInstall[14] == true || slotsToInstall[15] == true || slotsToInstall[3] == true)
                     slotsToInstall[14] = slotsToInstall[15] = slotsToInstall[3] = true;
 
@@ -2017,10 +1987,10 @@ void installVehicleHooks()
     hookCall(0x60C4E8, PossiblyRemoveVehicleHooked<0x60C4E8>, "PossiblyRemoveVehicle"); //CPlayerPed::KeepAreaAroundPlayerClear
     hookCall(0x42CD55, PossiblyRemoveVehicleHooked<0x42CD55>, "PossiblyRemoveVehicle"); //CCarCtrl::RemoveDistantCars
 
-    if ((changeScriptedCars = iniVeh.ReadInteger("Settings", "ChangeScriptedCars", 0)) == 1)
+    if ((changeScriptedCars = iniVeh.ReadBoolean("Settings", "ChangeScriptedCars", false)) == true)
         hookCall(0x467B01, CreateCarForScriptHooked<0x467B01>, "CreateCarForScript");
 
-    if ((enableSpecialFeatures = iniVeh.ReadInteger("Settings", "EnableSpecialFeatures", 0)) == 1)
+    if ((enableSpecialFeatures = iniVeh.ReadBoolean("Settings", "EnableSpecialFeatures", false)) == true)
     {
         hookCall(0x871148, ProcessControlHooked<0x871148>, "ProcessControl", true);
         hookCall(0x6C7059, ProcessControlHooked<0x6C7059>, "ProcessControl"); //CHeli::ProcessControl
@@ -2122,10 +2092,10 @@ void installVehicleHooks()
         hookCall(0x6E2730, DoHeadLightReflectionHooked<0x6E2730>, "DoHeadLightReflection"); //CVehicle::DoVehicleLights
     }
 
-    if ((enableSiren = iniVeh.ReadInteger("Settings", "EnableSiren", 0)) == 1)
+    if ((enableSiren = iniVeh.ReadBoolean("Settings", "EnableSiren", false)) == true)
         hookCall(0x6D8492, HasCarSiren<0x6D8492>, "HasCarSiren"); //CVehicle::UsesSiren
 
-    if (enableLights == 1 && enableSpecialFeatures == 1 && enableSiren == 1)
+    if (enableLights && enableSpecialFeatures && enableSiren)
     {
         hookCall(0x6ABA60, RegisterCoronaHooked<0x6ABA60>, "RegisterCorona"); //CAutomobile::PreRender
         hookCall(0x6ABB35, RegisterCoronaHooked<0x6ABB35>, "RegisterCorona"); //CAutomobile::PreRender
@@ -2139,10 +2109,10 @@ void installVehicleHooks()
         hookCall(0x6ABBA6, AddLightHooked<0x6ABBA6>, "AddLight"); //CAutomobile::PreRender
     }
 
-    if ((disablePayAndSpray = iniVeh.ReadInteger("Settings", "DisablePayAndSpray", 0)) == 1)
+    if ((disablePayAndSpray = iniVeh.ReadBoolean("Settings", "DisablePayAndSpray", false)) == true)
         hookCall(0x44AC75, IsCarSprayableHooked<0x44AC75>, "IsCarSprayable"); //CGarage::Update
 
-    if ((enableSideMissions = iniVeh.ReadInteger("Settings", "EnableSideMissions", 0)) == 1)
+    if ((enableSideMissions = iniVeh.ReadBoolean("Settings", "EnableSideMissions", false)) == true)
     {
         hookCall(0x48DA81, IsLawEnforcementVehicleHooked<0x48DA81>, "IsLawEnforcementVehicle");
         hookCall(0x469612, CollectParametersHooked<0x469612>, "CollectParameters"); //00DD: IS_CHAR_IN_MODEL

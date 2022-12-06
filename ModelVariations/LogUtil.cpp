@@ -194,3 +194,14 @@ std::string bytesToString(unsigned int address, int nBytes)
 
     return ss.str();
 }
+
+std::string fileToString(const std::string& filename)
+{
+    std::stringstream ss;
+    std::ifstream file(filename);
+
+    if (file.is_open())
+        ss << file.rdbuf();
+
+    return ss.str();
+}

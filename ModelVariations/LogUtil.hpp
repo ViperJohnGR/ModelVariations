@@ -18,7 +18,7 @@ extern std::set<std::pair<unsigned int, std::string>> modulesSet;
 extern std::set<std::pair<unsigned int, std::string>> callChecks;
 extern std::set<unsigned int> modifiedAddresses;
 
-extern int enableLog;
+extern bool enableLog;
 
 std::string hashFile(const char* filename);
 std::pair<unsigned int, std::string> getAddressBaseModule(uint32_t functionAddress);
@@ -27,3 +27,4 @@ void checkAllCalls();
 void logModified(unsigned int address, const std::string &message);
 std::string printToString(const char* format, ...);
 std::string bytesToString(unsigned int address, int nBytes);
+std::string fileToString(const std::string& filename);

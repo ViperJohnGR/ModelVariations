@@ -8,7 +8,6 @@
 #include <set>
 #include <stack>
 #include <vector>
-#include <unordered_set>
 
 
 struct rgba
@@ -52,26 +51,25 @@ extern std::set<unsigned short> vehHasVariations;
 
 extern std::stack<std::pair<CVehicle*, std::array<std::vector<unsigned short>, 17>>> tuningStack;
 
-extern int loadAllVehicles;
+extern bool loadAllVehicles;
 
-extern int enableLog;
-extern int changeCarGenerators;
-extern int enableSideMissions;
-extern int enableAllSideMissions;
-extern int enableLights;
-extern int enableSiren;
-extern int disablePayAndSpray;
-extern int enableSpecialFeatures;
-extern int changeScriptedCars;
+extern bool enableLog;
+extern bool changeCarGenerators;
+extern bool enableSideMissions;
+extern bool enableAllSideMissions;
+extern bool enableLights;
+extern bool enableSiren;
+extern bool disablePayAndSpray;
+extern bool enableSpecialFeatures;
+extern bool changeScriptedCars;
 
 extern char currentZone[8];
-extern BYTE currentTown;
+extern unsigned int currentTown;
 extern std::set<unsigned short> vehMergeZones;
 
 extern std::set<unsigned short> vehUseOnlyGroups;
 
 extern void filterWantedVariations(std::vector<unsigned short>& vec, std::vector<unsigned short>& wantedVec);
-extern bool IdExists(std::vector<unsigned short>& vec, int id);
 
 void installVehicleHooks();
 void readVehicleIni(bool firstTime, std::string gamePath);

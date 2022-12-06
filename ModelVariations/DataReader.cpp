@@ -31,7 +31,7 @@ bool DataReader::ReadBoolean(std::string_view szSection, std::string_view szKey,
 {
 	try
 	{
-		return this->CIniReader::ReadBoolean(szSection, szKey, bolDefaultValue);
+		return static_cast<bool>(this->CIniReader::ReadInteger(szSection, szKey, bolDefaultValue));
 	}
 	catch (...)
 	{

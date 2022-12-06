@@ -7,7 +7,6 @@
 
 #include <extensions/ScriptCommands.h>
 
-#include <CGeneral.h>
 #include <CMessages.h>
 #include <CModelInfo.h>
 #include <CPopulation.h>
@@ -22,8 +21,6 @@
 #include <map>
 #include <set>
 #include <stack>
-#include <unordered_set>
-#include <ctime>
 #include <urlmon.h>
 
 #include <Psapi.h>
@@ -113,32 +110,33 @@ char lastInterior[8] = {};
 const char* currentInterior = lastInterior;
 char currentZone[8] = {};
 char lastZone[8] = {};
-BYTE currentTown = 0;
+unsigned int currentTown = 0;
+int currentWanted = 0;
 
 //INI Options
 //General
-int enableLog = 0;
-int enablePeds = 0;
-int enableVehicles = 0;
-int enablePedWeapons = 0;
+bool enableLog = 0;
+bool enablePeds = 0;
+bool enableVehicles = 0;
+bool enablePedWeapons = 0;
 unsigned int disableKey = 0;
 unsigned int reloadKey = 0;
 //Peds
-int enableCloneRemover = 0;
-int cloneRemoverVehicleOccupants = 0;
+bool enableCloneRemover = 0;
+bool cloneRemoverVehicleOccupants = 0;
 int cloneRemoverSpawnDelay = 3;
 std::vector<unsigned short> cloneRemoverIncludeVariations;
 std::vector<unsigned short> cloneRemoverExclusions;
 //Vehicles
-int changeCarGenerators = 0;
-int changeScriptedCars = 0;
-int disablePayAndSpray = 0;
-int enableLights = 0;
-int enableSideMissions = 0;
-int enableAllSideMissions = 0;
-int enableSiren = 0;
-int enableSpecialFeatures = 0;
-int loadAllVehicles = 0;
+bool changeCarGenerators = 0;
+bool changeScriptedCars = 0;
+bool disablePayAndSpray = 0;
+bool enableLights = 0;
+bool enableSideMissions = 0;
+bool enableAllSideMissions = 0;
+bool enableSiren = 0;
+bool enableSpecialFeatures = 0;
+bool loadAllVehicles = 0;
 std::vector<unsigned short> vehCarGenExclude;
 std::vector<unsigned short> vehInheritExclude;        
 
@@ -146,17 +144,6 @@ std::vector<unsigned short> vehInheritExclude;
 bool keyDown = false;
 
 int timeUpdate = -1;
-
-std::string fileToString(const std::string& filename)
-{
-    std::stringstream ss;
-    std::ifstream file(filename);
-
-    if (file.is_open())
-        ss << file.rdbuf();
-
-    return ss.str();
-}
 
 void getLoadedModules()
 {
@@ -234,14 +221,6 @@ bool pedDelaySpawn(unsigned short model, bool includeParentModels)
     return false;
 }
 
-void insertPedSpawnedOriginalModels(unsigned short model)
-{
-    auto it = pedOriginalModels.find(model);
-    if (it != pedOriginalModels.end())
-        for (auto& i : it->second)
-            pedTimeSinceLastSpawned.insert({ i, clock() });
-}
-
 bool compareOriginalModels(unsigned short model1, unsigned short model2, bool includeVariations = false)
 {
     if (model1 == model2)
@@ -295,17 +274,6 @@ void filterWantedVariations(std::vector<unsigned short>& vec, std::vector<unsign
 
     if (matchFound == false)
         vec = vec2;
-}
-
-bool IdExists(std::vector<unsigned short>& vec, int id)
-{
-    if (vec.size() < 1)
-        return false;
-
-    if (std::find(vec.begin(), vec.end(), id) != vec.end())
-        return true;
-
-    return false;
 }
 
 bool isValidPedId(int id)
@@ -388,7 +356,7 @@ void updateVariations(CZone* zInfo)
         return false;
     };
 
-    currentTown = (BYTE)CTheZones::m_CurrLevel;
+    currentTown = CTheZones::m_CurrLevel;
     if (currentTown == LEVEL_NAME_COUNTRY_SIDE)
     {
         //COUNTRY_LA
@@ -611,9 +579,9 @@ void installHooks()
 void loadIniData(bool firstTime)
 {
     //for (unsigned short i = 0; i < MAX_PED_ID; i++)
-    enablePeds = iniSettings.ReadInteger("Settings", "EnablePeds", 0);
-    enableVehicles = iniSettings.ReadInteger("Settings", "EnableVehicles", 0);
-    enablePedWeapons = iniSettings.ReadInteger("Settings", "EnablePedWeapons", 0);
+    enablePeds = iniSettings.ReadBoolean("Settings", "EnablePeds", false);
+    enableVehicles = iniSettings.ReadBoolean("Settings", "EnableVehicles", false);
+    enablePedWeapons = iniSettings.ReadBoolean("Settings", "EnablePedWeapons", false);
 
     if (enablePeds == 1)
         for (auto& iniData : iniPed.data)
@@ -673,10 +641,10 @@ void loadIniData(bool firstTime)
                 for (auto it : pedOriginalModels)
                     std::sort(it.second.begin(), it.second.end());
 
-                if (iniPed.ReadInteger(section, "MergeZonesWithCities", 0) == 1)
+                if (iniPed.ReadBoolean(section, "MergeZonesWithCities", false))
                     pedMergeZones.insert((unsigned short)i);
 
-                if (iniPed.ReadInteger(section, "DontInheritBehaviour", 0) == 1)
+                if (iniPed.ReadBoolean(section, "DontInheritBehaviour", false))
                     dontInheritBehaviourModels.insert((unsigned short)i);
             }
         }
@@ -702,8 +670,8 @@ void loadIniData(bool firstTime)
 
     if (enablePeds == 1)
     {
-        enableCloneRemover = iniPed.ReadInteger("Settings", "EnableCloneRemover", 0);
-        cloneRemoverVehicleOccupants = iniPed.ReadInteger("Settings", "CloneRemoverIncludeVehicleOccupants", 0);
+        enableCloneRemover = iniPed.ReadBoolean("Settings", "EnableCloneRemover", false);
+        cloneRemoverVehicleOccupants = iniPed.ReadBoolean("Settings", "CloneRemoverIncludeVehicleOccupants", false);
         cloneRemoverSpawnDelay = iniPed.ReadInteger("Settings", "CloneRemoverSpawnDelay", 3);
         cloneRemoverIncludeVariations = iniPed.ReadLine("Settings", "CloneRemoverIncludeVariations", READ_PEDS);
         cloneRemoverExclusions = iniPed.ReadLine("Settings", "CloneRemoverExcludeModels", READ_PEDS);
@@ -806,12 +774,10 @@ public:
         iniSettings.SetIniPath(settingsIniPath);
         iniVeh.SetIniPath(vehIniPath);
 
-        static int currentWanted = 0;
-
         disableKey = (unsigned int)iniSettings.ReadInteger("Settings", "DisableKey", 0);
         reloadKey = (unsigned int)iniSettings.ReadInteger("Settings", "ReloadKey", 0);
 
-        if ((enableLog = iniSettings.ReadInteger("Settings", "EnableLog", 0)) == 1)
+        if ((enableLog = iniSettings.ReadBoolean("Settings", "EnableLog", false)) == true)
         {
             logfile.open("ModelVariations.log");
 
@@ -926,8 +892,7 @@ public:
             printVariations();
 
             if (loadAllVehicles)
-                for (int i = 400; i < 612; i++)
-                    CStreaming::RequestModel(i, KEEP_IN_MEMORY);
+                loadModels(400, 611, KEEP_IN_MEMORY, false);
 
             dealersFixed = 0;
             framesSinceCallsChecked = 900;
@@ -975,8 +940,7 @@ public:
                 const unsigned short variationModel = pedCurrentVariations[ped->m_nModelIndex][random];
                 if (variationModel > 0 && variationModel != ped->m_nModelIndex)
                 {
-                    CStreaming::RequestModel(variationModel, GAME_REQUIRED);
-                    CStreaming::LoadAllRequestedModels(false);
+                    loadModels({ variationModel }, GAME_REQUIRED, true);
                     const unsigned short index = ped->m_nModelIndex;
                     ped->DeleteRwObject();
                     (static_cast<CEntity*>(ped))->SetModelIndex(variationModel);
@@ -1157,40 +1121,29 @@ public:
 
             while (!pedStack.empty())
             {
-                const auto vehDeleteDriver = [](CVehicle *veh) 
+                const auto deletePed = [](CPed *ped) 
                 {
-                    if (IsPedPointerValid(veh->m_pDriver))
+                    if (IsPedPointerValid(ped))
                     {
-                        CPed *driver = veh->m_pDriver;
-                        if (driver->m_pIntelligence)
-                            driver->m_pIntelligence->FlushImmediately(false);
-                        CTheScripts::RemoveThisPed(driver);
+                        if (ped->m_pIntelligence)
+                            ped->m_pIntelligence->FlushImmediately(false);
+                        CTheScripts::RemoveThisPed(ped);
                     }
                 };
 
-                const auto vehDeletePassengers = [](CVehicle* veh) 
-                {
-                    for (int i = 0; i < 8; i++)
-                        if (IsPedPointerValid(veh->m_apPassengers[i]))
-                        {
-                            CPed* passenger = veh->m_apPassengers[i];
-                            if (passenger->m_pIntelligence)
-                                passenger->m_pIntelligence->FlushImmediately(false);
-                            CTheScripts::RemoveThisPed(passenger);
-                        }
-                };
-
-                const auto pedDeleteVeh = [vehDeleteDriver, vehDeletePassengers](CPed *ped)
+                const auto pedDeleteVeh = [deletePed](CPed *ped)
                 {
                     CVehicle* veh = ped->m_pVehicle;
                     if (ped->m_pVehicle->m_pDriver == ped)
                     {
-                        vehDeleteDriver(veh);
-                        vehDeletePassengers(veh);
+                        deletePed(veh->m_pDriver);
+                        for (auto& i : veh->m_apPassengers)
+                            deletePed(i);
                         DestroyVehicleAndDriverAndPassengers(veh);
                     }
                     else
-                        vehDeletePassengers(veh);
+                        for (auto& i : veh->m_apPassengers)
+                            deletePed(i);
                 };
 
                 const auto isCarEmpty = [](CVehicle* veh)
@@ -1214,11 +1167,7 @@ public:
                         if (IsVehiclePointerValid(ped->m_pVehicle))
                             pedDeleteVeh(ped);
                         else
-                        {
-                            if (ped->m_pIntelligence)
-                                ped->m_pIntelligence->FlushImmediately(false);
-                            CTheScripts::RemoveThisPed(ped);
-                        }
+                            deletePed(ped);
                     }
 
                 if (IsPedPointerValid(ped) && enableCloneRemover == 1 && ped->m_nCreatedBy != 2 && CPools::ms_pPedPool) //Clone remover
@@ -1227,21 +1176,20 @@ public:
                     if (pedDelaySpawn(ped->m_nModelIndex, includeVariations)) //Delete peds spawned before SpawnTime
                     {
                         if (!IsVehiclePointerValid(ped->m_pVehicle))
-                        {
-                            if (ped->m_pIntelligence)
-                                ped->m_pIntelligence->FlushImmediately(false);
-                            CTheScripts::RemoveThisPed(ped);
-                        }
-                        else if (cloneRemoverVehicleOccupants == 1 && !isCarEmpty(ped->m_pVehicle))
-                        {                            
+                            deletePed(ped);
+                        else if (cloneRemoverVehicleOccupants == 1 && !isCarEmpty(ped->m_pVehicle))                           
                             pedDeleteVeh(ped);
-                        }
                     }
 
-                    if (IsPedPointerValid(ped) && !IdExists(cloneRemoverExclusions, ped->m_nModelIndex) && ped->m_nModelIndex > 0) //Delete peds already spawned
+                    if (IsPedPointerValid(ped) && !vectorHasId(cloneRemoverExclusions, ped->m_nModelIndex) && ped->m_nModelIndex > 0) //Delete peds already spawned
                     {
                         if (includeVariations)
-                            insertPedSpawnedOriginalModels(ped->m_nModelIndex);
+                        {
+                            auto it = pedOriginalModels.find(ped->m_nModelIndex);
+                            if (it != pedOriginalModels.end())
+                                for (auto& i : it->second)
+                                    pedTimeSinceLastSpawned.insert({ i, clock() });
+                        }
                         else
                             pedTimeSinceLastSpawned.insert({ ped->m_nModelIndex, clock() });
 
@@ -1250,10 +1198,7 @@ public:
                             {
                                 if (!IsVehiclePointerValid(ped->m_pVehicle))
                                 {
-                                    if (ped->m_pIntelligence)
-                                        ped->m_pIntelligence->FlushImmediately(false);
-                                    CTheScripts::RemoveThisPed(ped);
- 
+                                    deletePed(ped); 
                                     break;
                                 }
                                 else if (cloneRemoverVehicleOccupants == 1 && !isCarEmpty(ped->m_pVehicle))
@@ -1267,25 +1212,31 @@ public:
 
                 if (IsPedPointerValid(ped) && enablePedWeapons == 1)
                 {
-                    const auto wepFound = [ped](int weaponId, int originalWeaponId) -> bool {
-                        int weapModel = 0;
-                        const CWeaponInfo *wInfo = CWeaponInfo::GetWeaponInfo((eWeaponType)weaponId, 1);
-                        if (wInfo != NULL)
-                            weapModel = wInfo->m_nModelId1;
-
-                        if (weapModel >= 321)
+                    const auto changeWeapon = [ped](const std::string section, const std::string key, eWeaponType originalWeaponId = WEAPON_UNARMED) -> bool
+                    {
+                        std::vector<unsigned short> vec = iniWeap.ReadLine(section, key, READ_WEAPONS);
+                        if (!vec.empty())
                         {
-                            CStreaming::RequestModel(weapModel, GAME_REQUIRED);
-                            CStreaming::LoadAllRequestedModels(false);
+                            eWeaponType weaponId = (eWeaponType)vectorGetRandom(vec);
+                            int weaponModel = 0;
+                            const CWeaponInfo* wInfo = CWeaponInfo::GetWeaponInfo(weaponId, 1);
+                            if (wInfo != NULL)
+                                weaponModel = wInfo->m_nModelId1;
 
-                            if (originalWeaponId > 0)
-                                ped->ClearWeapon((eWeaponType)originalWeaponId);
-                            else
-                                ped->ClearWeapons();
+                            if (weaponModel >= 321)
+                            {
+                                loadModels({ weaponModel }, GAME_REQUIRED, true);
 
-                            ped->GiveWeapon((eWeaponType)weaponId, 9999, true);
-                            return true;
+                                if (originalWeaponId > 0)
+                                    ped->ClearWeapon(originalWeaponId);
+                                else
+                                    ped->ClearWeapons();
+
+                                ped->GiveWeapon(weaponId, 9999, true);
+                                return true;
+                            }
                         }
+
                         return false;
                     };
 
@@ -1293,16 +1244,9 @@ public:
                     auto wepModel = wepPedModels.find(ped->m_nModelIndex);
                     if (wepModel != wepPedModels.end())
                         section = wepModel->second;
-                    std::string currentZoneString(currentZone);
-                    const int mergeWeapons = iniWeap.ReadInteger(section, "MergeZonesWithGlobal", 0);
-
-                    std::vector<unsigned short> vec;
-                    const int disableOnMission = iniWeap.ReadInteger(section, "DisableOnMission", 0);
-
-                    //CVehicleModelInfo* vehModelInfo = static_cast<CVehicleModelInfo*>(CModelInfo::ms_modelInfoPtrs[ped->m_pVehicle->m_nModelIndex]);
-                    //vehName = vehModelInfo->m_szGameName;
-
-                    std::string vehId = "";
+                    const auto mergeWeapons = iniWeap.ReadBoolean(section, "MergeZonesWithGlobal", false);
+                    const auto disableOnMission = iniWeap.ReadBoolean(section, "DisableOnMission", false) & isOnMission();
+                    std::string vehId;
 
                     for (int j = 0; j < 2; j++)
                     {
@@ -1322,53 +1266,37 @@ public:
                                 break;
                         }
 
-                        if (!(disableOnMission > 0 && isOnMission()))
+                        if (!disableOnMission)
                         {
-                            bool changeWeapon = true;
-                            vec = iniWeap.ReadLine(section, vehId + "WEAPONFORCE", READ_WEAPONS);
-                            if (!vec.empty() && (wepChanged = wepFound(vectorGetRandom(vec), 0)) == true)
-                                changeWeapon = rand<bool>();
+                            bool changeZoneWeapon = true;
+                            if ((wepChanged = changeWeapon(section, vehId + "WEAPONFORCE")) == true)
+                                changeZoneWeapon = rand<bool>();
 
-                            if ((changeWeapon || mergeWeapons == 0) && !(vec = iniWeap.ReadLine(section, vehId + currentZoneString + "_WEAPONFORCE", READ_WEAPONS)).empty())
-                                wepChanged |= wepFound(vectorGetRandom(vec), 0);
+                            if ((changeZoneWeapon || mergeWeapons == 0))
+                                wepChanged |= changeWeapon(section, vehId + currentZone + "_WEAPONFORCE");
                         }
 
-                        if (!wepChanged && !(disableOnMission > 0 && isOnMission()))
+                        if (!wepChanged && !disableOnMission)
                             for (int i = 0; i < 13; i++)
-                                if (ped->m_aWeapons[i].m_eWeaponType > 0)
+                                if (ped->m_aWeapons[i].m_eWeaponType > 0) 
                                 {
                                     const eWeaponType weaponId = ped->m_aWeapons[i].m_eWeaponType;
                                     bool changeZoneWeapon = true;
                                     bool changeZoneSlot = true;
                                     const int currentSlot = ped->m_nActiveWeaponSlot;
 
-                                    std::string slot = "SLOT" + std::to_string(i);
-                                    vec = iniWeap.ReadLine(section, vehId + slot, READ_WEAPONS);
-                                    if (!vec.empty() && (wepChanged = wepFound(vectorGetRandom(vec), ped->m_aWeapons[i].m_eWeaponType)) == true)
+                                    if ((wepChanged = changeWeapon(section, vehId + "SLOT" + std::to_string(i), ped->m_aWeapons[i].m_eWeaponType)) == true)
                                         changeZoneSlot = rand<bool>();
 
                                     if (changeZoneSlot || mergeWeapons == 0)
-                                    {
-                                        slot = currentZone;
-                                        slot += "_SLOT" + std::to_string(i);
-                                        vec = iniWeap.ReadLine(section, vehId + slot, READ_WEAPONS);
-                                        if (!vec.empty())
-                                            wepChanged |= wepFound(vectorGetRandom(vec), ped->m_aWeapons[i].m_eWeaponType);
-                                    }
+                                        wepChanged |= changeWeapon(section, vehId + currentZone + "_SLOT" + std::to_string(i), ped->m_aWeapons[i].m_eWeaponType);
 
-                                    std::string wep = "WEAPON" + std::to_string(weaponId);
-                                    vec = iniWeap.ReadLine(section, vehId + wep, READ_WEAPONS);
-                                    if (!vec.empty() && (wepChanged = wepFound(vectorGetRandom(vec), ped->m_aWeapons[i].m_eWeaponType)) == true)
+                                    if ((changeWeapon(section, vehId + "WEAPON" + std::to_string(weaponId), ped->m_aWeapons[i].m_eWeaponType) == true) ? (wepChanged = true) : false)
                                         changeZoneWeapon = rand<bool>();
 
-                                    if (changeZoneWeapon || mergeWeapons == 0)
-                                    {
-                                        wep = currentZone;
-                                        wep += "_WEAPON" + std::to_string(weaponId);
-                                        vec = iniWeap.ReadLine(section, vehId + wep, READ_WEAPONS);
-                                        if (!vec.empty())
-                                            wepChanged |= wepFound(vectorGetRandom(vec), ped->m_aWeapons[i].m_eWeaponType);
-                                    }
+                                    if (changeZoneWeapon || mergeWeapons == 0)                                       
+                                        wepChanged |= changeWeapon(section, vehId + currentZone + "_WEAPON" + std::to_string(weaponId), ped->m_aWeapons[i].m_eWeaponType);
+
                                     if (wepChanged)
                                         ped->SetCurrentWeapon(currentSlot);
                                 }

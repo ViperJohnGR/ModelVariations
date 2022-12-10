@@ -679,7 +679,7 @@ void __fastcall DoInternalProcessingHooked(CCarGenerator* park) //for non-random
         }
 
         const short model = park->m_nModelId;
-        if (changeCarGenerators == 1)
+        if (changeCarGenerators)
         {
             if (!vehCarGenExclude.empty())
                 if (std::find(vehCarGenExclude.begin(), vehCarGenExclude.end(), model) != vehCarGenExclude.end())

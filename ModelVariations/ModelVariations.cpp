@@ -453,7 +453,7 @@ void updateVariations(CZone* zInfo)
 
 void printCurrentVariations()
 {
-    if (enablePeds == 1)
+    if (enablePeds)
     {
         logfile << std::dec << "pedCurrentVariations\n";
         for (int i = 0; i < MAX_PED_ID; i++)
@@ -461,14 +461,14 @@ void printCurrentVariations()
             {
                 logfile << i << ": ";
                 for (auto j : pedCurrentVariations[i])
-                    logfile << j << " ";
+                    logfile << j << ((std::find(addedIDs.begin(), addedIDs.end(), j) != addedIDs.end()) ? ("SP ") : " ");
                 logfile << "\n";
             }
 
         logfile << std::endl;
     }
 
-    if (enableVehicles == 1)
+    if (enableVehicles)
     {
         logfile << std::dec << "vehCurrentVariations\n";
         for (int i = 0; i < 212; i++)
@@ -564,14 +564,8 @@ void __cdecl CGame__ShutdownHooked()
 {
     delete[] destroyedModelCounters;
     for (auto i : addedIDs)
-    {
-        auto mInfo = CModelInfo::GetModelInfo(i);
-        if (mInfo != NULL)
-        {
-            CStreaming::SetMissionDoesntRequireModel(i);
+        if (CModelInfo::GetModelInfo(i) != NULL)
             CStreaming::RemoveModel(i);
-        }
-    }
 
     callOriginal<address>();
 }
@@ -599,7 +593,7 @@ void installHooks()
         bool gameHOODLUM = GetGameVersion() != GAME_10US_COMPACT;
         bool notModified = true;
 
-        destroyedModelCounters = new int16_t[10000]();
+        destroyedModelCounters = new int16_t[20000]();
 
         if ((*(uint32_t*)0x43DE6C != 0x4504FF66 || *(uint32_t*)0x43DE70 != 0x00969A50 ||
              *(uint32_t*)0x43DF5B != 0x4504FF66 || *(uint32_t*)0x43DF5F != 0x00969A50) &&
@@ -621,35 +615,29 @@ void installHooks()
                 destroyedModelCounters[regs.eax * 2]++;
             });
 
+            auto leaEAX = [](injector::reg_pack& regs)
+            {
+                regs.eax = reinterpret_cast<uint32_t>(&(destroyedModelCounters[regs.eax * 2]));
+            };
+
+            auto movAX = [](injector::reg_pack& regs)
+            {
+                regs.eax = (regs.eax & 0xFFFF0000) | static_cast<uint32_t>(destroyedModelCounters[regs.edx * 2]);
+            };
+
             if (gameHOODLUM)
             {
-                injector::MakeInline<0x1561634U, 0x1561634U + 7>([](injector::reg_pack& regs)
-                {
-                    regs.eax = reinterpret_cast<uint32_t>(&(destroyedModelCounters[regs.eax * 2]));
-                });
-
-                injector::MakeInline<0x1564C2BU, 0x1564C2BU + 8>([](injector::reg_pack& regs)
-                {
-                    regs.eax = (regs.eax & 0xFFFF0000) | static_cast<uint32_t>(destroyedModelCounters[regs.edx * 2]);
-                });
+                injector::MakeInline<0x1561634U, 0x1561634U + 7>(leaEAX);
+                injector::MakeInline<0x1564C2BU, 0x1564C2BU + 8>(movAX);
             }
             else
             {
-                injector::MakeInline<0x43D6A4, 0x43D6A4 + 7>([](injector::reg_pack& regs)
-                {
-                    regs.eax = reinterpret_cast<uint32_t>(&(destroyedModelCounters[regs.eax * 2]));
-                });
-
-                injector::MakeInline<0x43D6CB, 0x43D6CB + 8>([](injector::reg_pack& regs)
-                {
-                    regs.eax = (regs.eax & 0xFFFF0000) | static_cast<uint32_t>(destroyedModelCounters[regs.edx * 2]);
-                });
+                injector::MakeInline<0x43D6A4, 0x43D6A4 + 7>(leaEAX);
+                injector::MakeInline<0x43D6CB, 0x43D6CB + 8>(movAX);
             }
         }
         else if (logfile.is_open())
-        {
             logfile << "Count of killable model IDs not increased." << (loadedMods.fastman92LimitAdjuster ? " FLA is loaded." : "FLA is NOT loaded.") << std::endl;
-        }
     }
 
     if (enablePeds)
@@ -685,12 +673,11 @@ void installHooks()
 void loadIniData(bool firstTime)
 {
     enablePeds = iniSettings.ReadBoolean("Settings", "EnablePeds", false);
-    enableSpecialPeds = iniSettings.ReadBoolean("Settings", "EnableSpecialPeds", false);
     enableVehicles = iniSettings.ReadBoolean("Settings", "EnableVehicles", false);
     enablePedWeapons = iniSettings.ReadBoolean("Settings", "EnablePedWeapons", false);
 
-    if (enablePeds == false)
-        enableSpecialPeds = false;
+    if (enablePeds)
+        enableSpecialPeds = iniSettings.ReadBoolean("Settings", "EnableSpecialPeds", false);
 
     if (enableSpecialPeds && !loadedMods.fastman92LimitAdjuster && !loadedMods.openLimitAdjuster)
     {
@@ -699,7 +686,7 @@ void loadIniData(bool firstTime)
             MessageBox(NULL, "No limit adjuster found! EnableSpecialPeds will be disabled.", "Model Variations", MB_ICONWARNING);
     }
 
-    if (enablePeds == 1)
+    if (enablePeds)
         for (auto& iniData : iniPed.data)
         {
             int i = 0;
@@ -765,7 +752,7 @@ void loadIniData(bool firstTime)
             }
         }
 
-    if (enablePedWeapons == 1)
+    if (enablePedWeapons)
         for (auto& iniData : iniWeap.data)
         {
             int modelid = 0;
@@ -784,7 +771,7 @@ void loadIniData(bool firstTime)
             }
         }
 
-    if (enablePeds == 1)
+    if (enablePeds)
     {
         useParentVoices = iniPed.ReadBoolean("Settings", "UseParentVoices", false);
         enableCloneRemover = iniPed.ReadBoolean("Settings", "EnableCloneRemover", false);
@@ -794,7 +781,7 @@ void loadIniData(bool firstTime)
         cloneRemoverExclusions = iniPed.ReadLine("Settings", "CloneRemoverExcludeModels", READ_PEDS);
     }
 
-    if (enableVehicles == 1)
+    if (enableVehicles)
         readVehicleIni(firstTime, exePath.substr(0, exePath.find_last_of("/\\")));
 }
 
@@ -1147,7 +1134,7 @@ public:
                 framesSinceCallsChecked = 0;
             }
 
-            if (enableCloneRemover == 1)
+            if (enableCloneRemover)
             {
                 auto it = pedTimeSinceLastSpawned.begin();
                 while (it != pedTimeSinceLastSpawned.end())
@@ -1201,7 +1188,7 @@ public:
             }
 
 
-            if (enableVehicles == 1)
+            if (enableVehicles)
                 hookTaxi();
 
             while (!tuningStack.empty())
@@ -1297,14 +1284,14 @@ public:
                             deletePed(ped);
                     }
 
-                if (IsPedPointerValid(ped) && enableCloneRemover == 1 && ped->m_nCreatedBy != 2 && CPools::ms_pPedPool) //Clone remover
+                if (IsPedPointerValid(ped) && enableCloneRemover && ped->m_nCreatedBy != 2 && CPools::ms_pPedPool) //Clone remover
                 {
                     bool includeVariations = std::find(cloneRemoverIncludeVariations.begin(), cloneRemoverIncludeVariations.end(), ped->m_nModelIndex) != cloneRemoverIncludeVariations.end();
                     if (pedDelaySpawn(ped->m_nModelIndex, includeVariations)) //Delete peds spawned before SpawnTime
                     {
                         if (!IsVehiclePointerValid(ped->m_pVehicle))
                             deletePed(ped);
-                        else if (cloneRemoverVehicleOccupants == 1 && !isCarEmpty(ped->m_pVehicle))                           
+                        else if (cloneRemoverVehicleOccupants && !isCarEmpty(ped->m_pVehicle))                           
                             pedDeleteVeh(ped);
                     }
 
@@ -1328,7 +1315,7 @@ public:
                                     deletePed(ped); 
                                     break;
                                 }
-                                else if (cloneRemoverVehicleOccupants == 1 && !isCarEmpty(ped->m_pVehicle))
+                                else if (cloneRemoverVehicleOccupants && !isCarEmpty(ped->m_pVehicle))
                                 {
                                     pedDeleteVeh(ped);
                                     break;
@@ -1337,7 +1324,7 @@ public:
                     }
                 }
 
-                if (IsPedPointerValid(ped) && enablePedWeapons == 1)
+                if (IsPedPointerValid(ped) && enablePedWeapons)
                 {
                     const auto changeWeapon = [ped](const std::string section, const std::string key, eWeaponType originalWeaponId = WEAPON_UNARMED) -> bool
                     {

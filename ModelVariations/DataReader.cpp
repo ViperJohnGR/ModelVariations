@@ -132,7 +132,7 @@ std::vector<unsigned short> DataReader::ReadLine(std::string section, std::strin
 									auto pedInfo = ((CPedModelInfo * (__cdecl*)(int))injector::GetBranchDestination(0x5B74A7).as_int())(*it);
 									if (pedInfo)
 									{
-										pedInfo->SetColModel((CColModel*)0x968DF0, false); //TODO: fix crash on exit
+										pedInfo->SetColModel((CColModel*)0x968DF0, false);
 										CStreaming::RequestSpecialModel(*it, token, 0);
 										retVector.push_back(*it);
 										addedIDs.push_back(*it);

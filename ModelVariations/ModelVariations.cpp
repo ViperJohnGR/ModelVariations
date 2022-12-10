@@ -9,6 +9,7 @@
 
 #include <CMessages.h>
 #include <CModelInfo.h>
+#include <CPedModelInfo.h>
 #include <CPopulation.h>
 #include <CStreaming.h>
 #include <CTheScripts.h>
@@ -575,6 +576,21 @@ void __cdecl CGame__ShutdownHooked()
     callOriginal<address>();
 }
 
+void unknown_libname_657Hooked(void)
+{
+    int count = *(int*)0xB478F8;
+    CPedModelInfo* start = reinterpret_cast<CPedModelInfo*>(0xB478FC);
+    void(*deconstructor)(CPedModelInfo*)  = (void(*)(CPedModelInfo*))0x4C62F0;
+
+    for (int i = 0; i < count; i++)
+    {
+        if (i != 1 && i != 257)
+            deconstructor(&start[i]);
+    }
+
+    //((void(*)(void*, int, int, uint32_t))0x821E02)((void*)0xB478FC, 68, *(int*)0xB478F8, 0x4C62F0);
+}
+
 void installHooks()
 {
     //Count of killable model IDs
@@ -649,6 +665,8 @@ void installHooks()
         if (enableSpecialPeds)
         {
             hookCall(0x748E6B, CGame__ShutdownHooked<0x748E6B>, "CGame::Shutdown");
+            if (*(uint32_t*)0x8562B5 == 0xC700D6E9 && *(uint8_t*)0x8562B9 == 0xFF)
+                injector::MakeJMP(0x8562B5, unknown_libname_657Hooked);
         }
     }
 

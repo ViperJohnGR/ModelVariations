@@ -18,8 +18,6 @@ struct rgba
     BYTE a;
 };
 
-extern int exeVersion;
-
 extern DataReader iniVeh;
 
 extern std::ofstream logfile;

@@ -23,7 +23,6 @@
 #include <stack>
 #include <urlmon.h>
 
-#include <Psapi.h>
 #include <shlwapi.h>
 
 #pragma comment(lib, "urlmon.lib")
@@ -38,17 +37,15 @@ const char* pedWepIniPath("ModelVariations_PedWeapons.ini");
 const char* vehIniPath("ModelVariations_Vehicles.ini");
 const char* settingsIniPath("ModelVariations.ini");
 
-
-const std::string exeHashes[3] = { "a559aa772fd136379155efa71f00c47aad34bbfeae6196b0fe1047d0645cbd26",     //HOODLUM
-                                   "25580ae242c6ecb6f6175ca9b4c912aa042f33986ded87f20721b48302adc9c9",     //Compact
-                                   "f01a00ce950fa40ca1ed59df0e789848c6edcf6405456274965885d0929343ac" };   //HOODLUM LARGEADDRESSAWARE
-
+int16_t* destroyedModelCounters = NULL;
 
 std::string exeHash;
 unsigned int exeFilesize = 0;
-int exeVersion = 0;
 std::string exePath;
 std::string exeName;
+
+std::vector<unsigned short> addedIDs;
+std::vector<unsigned short> unusedIDs;
 
 std::ofstream logfile;
 std::set<std::pair<unsigned int, std::string>> modulesSet;
@@ -103,7 +100,13 @@ std::stack<std::pair<CVehicle*, std::array<std::vector<unsigned short>, 17>>> tu
 std::vector<unsigned short> pedCurrentVariations[MAX_PED_ID];
 std::vector<unsigned short> vehCurrentVariations[212];
 
-BYTE dealersFixed = 0;
+bool unusedIDsChecked = false;
+struct {
+    bool fastman92LimitAdjuster = false;
+    bool openLimitAdjuster = false;
+} loadedMods;
+
+BYTE dealersFrames = 0;
 short framesSinceCallsChecked = 0;
 unsigned short modelIndex = 0;
 char lastInterior[8] = {};
@@ -115,28 +118,30 @@ int currentWanted = 0;
 
 //INI Options
 //General
-bool enableLog = 0;
-bool enablePeds = 0;
-bool enableVehicles = 0;
-bool enablePedWeapons = 0;
+bool enableLog = false;
+bool enablePeds = false;
+bool enableSpecialPeds = false;
+bool enableVehicles = false;
+bool enablePedWeapons = false;
 unsigned int disableKey = 0;
 unsigned int reloadKey = 0;
 //Peds
-bool enableCloneRemover = 0;
-bool cloneRemoverVehicleOccupants = 0;
+bool useParentVoices = false;
+bool enableCloneRemover = false;
+bool cloneRemoverVehicleOccupants = false;
 int cloneRemoverSpawnDelay = 3;
 std::vector<unsigned short> cloneRemoverIncludeVariations;
 std::vector<unsigned short> cloneRemoverExclusions;
 //Vehicles
-bool changeCarGenerators = 0;
-bool changeScriptedCars = 0;
-bool disablePayAndSpray = 0;
-bool enableLights = 0;
-bool enableSideMissions = 0;
-bool enableAllSideMissions = 0;
-bool enableSiren = 0;
-bool enableSpecialFeatures = 0;
-bool loadAllVehicles = 0;
+bool changeCarGenerators = false;
+bool changeScriptedCars = false;
+bool disablePayAndSpray = false;
+bool enableLights = false;
+bool enableSideMissions = false;
+bool enableAllSideMissions = false;
+bool enableSiren = false;
+bool enableSpecialFeatures = false;
+bool loadAllVehicles = false;
 std::vector<unsigned short> vehCarGenExclude;
 std::vector<unsigned short> vehInheritExclude;        
 
@@ -144,23 +149,6 @@ std::vector<unsigned short> vehInheritExclude;
 bool keyDown = false;
 
 int timeUpdate = -1;
-
-void getLoadedModules()
-{
-    modulesSet.clear();
-
-    HMODULE modules[500] = {};
-    HANDLE hProcess = GetCurrentProcess();
-    DWORD cbNeeded = 0;
-
-    if (EnumProcessModules(hProcess, modules, sizeof(modules), &cbNeeded))
-        for (unsigned int i = 0; i < (cbNeeded / sizeof(HMODULE)); i++)
-        {
-            char szModName[MAX_PATH];
-            if (GetModuleFileNameEx(hProcess, modules[i], szModName, sizeof(szModName) / sizeof(TCHAR)))
-                modulesSet.insert(std::make_pair((unsigned int)modules[i], szModName));
-        }
-}
 
 bool checkForUpdate()
 {
@@ -306,15 +294,6 @@ void detectExe()
 
     if (exeHash.empty())
         exeHash = hashFile(path);
-
-    if (exeHash == exeHashes[0])
-        exeVersion = 1;
-    else if (exeHash == exeHashes[1])
-        exeVersion = 2;
-    else if (exeHash == exeHashes[2])
-        exeVersion = 3;
-    else
-        exeVersion = 4;
 }
 
 void drugDealerFix()
@@ -559,12 +538,121 @@ void __fastcall UpdateRpHAnimHooked(CEntity* entity)
     modelIndex = 0;
 }
 
+template <unsigned int address>
+char __fastcall CAEPedSpeechAudioEntity__InitialiseHooked(CAEPedSpeechAudioEntity* _this, void*, CPed* ped) 
+{
+    if (ped != NULL)
+    {
+        auto it = pedOriginalModels.find(ped->m_nModelIndex);
+        if (it != pedOriginalModels.end() && !it->second.empty())
+        {
+            auto parentModel = it->second[0];
+            auto currentModel = ped->m_nModelIndex;
+            ped->m_nModelIndex = parentModel;
+            char retVal = callMethodOriginalAndReturn<char, address>(_this, ped);
+            ped->m_nModelIndex = currentModel;
+            return retVal;
+        }
+    }
+
+    return callMethodOriginalAndReturn<char, address>(_this, ped);
+}
+
+template <unsigned int address>
+void __cdecl CGame__ShutdownHooked()
+{
+    delete[] destroyedModelCounters;
+    for (auto i : addedIDs)
+    {
+        auto mInfo = CModelInfo::GetModelInfo(i);
+        if (mInfo != NULL)
+        {
+            CStreaming::SetMissionDoesntRequireModel(i);
+            CStreaming::RemoveModel(i);
+        }
+    }
+
+    callOriginal<address>();
+}
+
 void installHooks()
 {
-    if (enablePeds == 1)
-        hookCall(0x5E49EF, UpdateRpHAnimHooked<0x5E49EF>, "UpdateRpHAnim");
+    //Count of killable model IDs
+    if (enablePeds && enableSpecialPeds)
+    {
+        bool gameHOODLUM = GetGameVersion() != GAME_10US_COMPACT;
+        bool notModified = true;
 
-    if (enableVehicles == 1)
+        destroyedModelCounters = new int16_t[10000]();
+
+        if ((*(uint32_t*)0x43DE6C != 0x4504FF66 || *(uint32_t*)0x43DE70 != 0x00969A50 ||
+             *(uint32_t*)0x43DF5B != 0x4504FF66 || *(uint32_t*)0x43DF5F != 0x00969A50) &&
+            (*(uint32_t*)(gameHOODLUM ? 0x1561634U : 0x43D6A4) != 0x5045048D || *(uint32_t*)(gameHOODLUM ? 0x1561638U : 0x43D6A8) != 0xB900969A ||
+             *(uint32_t*)(gameHOODLUM ? 0x1564C2BU : 0x43D6CB) != 0x55048B66 || *(uint32_t*)(gameHOODLUM ? 0x1564C2FU : 0x43D6CF) != 0x00969A50))
+        {
+            notModified = false;
+        }
+
+        if (notModified)
+        {
+            injector::MakeInline<0x43DE6C, 0x43DE6C + 8>([](injector::reg_pack& regs)
+            {
+                destroyedModelCounters[regs.eax * 2]++;
+            });
+
+            injector::MakeInline<0x43DF5B, 0x43DF5B + 8>([](injector::reg_pack& regs)
+            {
+                destroyedModelCounters[regs.eax * 2]++;
+            });
+
+            if (gameHOODLUM)
+            {
+                injector::MakeInline<0x1561634U, 0x1561634U + 7>([](injector::reg_pack& regs)
+                {
+                    regs.eax = reinterpret_cast<uint32_t>(&(destroyedModelCounters[regs.eax * 2]));
+                });
+
+                injector::MakeInline<0x1564C2BU, 0x1564C2BU + 8>([](injector::reg_pack& regs)
+                {
+                    regs.eax = (regs.eax & 0xFFFF0000) | static_cast<uint32_t>(destroyedModelCounters[regs.edx * 2]);
+                });
+            }
+            else
+            {
+                injector::MakeInline<0x43D6A4, 0x43D6A4 + 7>([](injector::reg_pack& regs)
+                {
+                    regs.eax = reinterpret_cast<uint32_t>(&(destroyedModelCounters[regs.eax * 2]));
+                });
+
+                injector::MakeInline<0x43D6CB, 0x43D6CB + 8>([](injector::reg_pack& regs)
+                {
+                    regs.eax = (regs.eax & 0xFFFF0000) | static_cast<uint32_t>(destroyedModelCounters[regs.edx * 2]);
+                });
+            }
+        }
+        else if (logfile.is_open())
+        {
+            logfile << "Count of killable model IDs not increased." << (loadedMods.fastman92LimitAdjuster ? " FLA is loaded." : "FLA is NOT loaded.") << std::endl;
+        }
+    }
+
+    if (enablePeds)
+    {
+        hookCall(0x5E49EF, UpdateRpHAnimHooked<0x5E49EF>, "UpdateRpHAnim");
+        if (useParentVoices)
+        {
+            hookCall(0x5DDBB8, CAEPedSpeechAudioEntity__InitialiseHooked<0x5DDBB8>, "CAEPedSpeechAudioEntity__Initialise"); //CCivilianPed
+            hookCall(0x5DDD24, CAEPedSpeechAudioEntity__InitialiseHooked<0x5DDD24>, "CAEPedSpeechAudioEntity__Initialise"); //CCopPed
+            hookCall(0x5DE388, CAEPedSpeechAudioEntity__InitialiseHooked<0x5DE388>, "CAEPedSpeechAudioEntity__Initialise"); //CEmergencyPed
+        }
+
+        if (enableSpecialPeds)
+        {
+            hookCall(0x748E6B, CGame__ShutdownHooked<0x748E6B>, "CGame::Shutdown");
+        }
+    }
+
+    if (enableVehicles)
     {
         if (logfile.is_open())
             logfile << "Installing vehicle hooks..." << std::endl;
@@ -578,10 +666,20 @@ void installHooks()
 
 void loadIniData(bool firstTime)
 {
-    //for (unsigned short i = 0; i < MAX_PED_ID; i++)
     enablePeds = iniSettings.ReadBoolean("Settings", "EnablePeds", false);
+    enableSpecialPeds = iniSettings.ReadBoolean("Settings", "EnableSpecialPeds", false);
     enableVehicles = iniSettings.ReadBoolean("Settings", "EnableVehicles", false);
     enablePedWeapons = iniSettings.ReadBoolean("Settings", "EnablePedWeapons", false);
+
+    if (enablePeds == false)
+        enableSpecialPeds = false;
+
+    if (enableSpecialPeds && !loadedMods.fastman92LimitAdjuster && !loadedMods.openLimitAdjuster)
+    {
+        enableSpecialPeds = false;
+        if (firstTime)
+            MessageBox(NULL, "No limit adjuster found! EnableSpecialPeds will be disabled.", "Model Variations", MB_ICONWARNING);
+    }
 
     if (enablePeds == 1)
         for (auto& iniData : iniPed.data)
@@ -670,6 +768,7 @@ void loadIniData(bool firstTime)
 
     if (enablePeds == 1)
     {
+        useParentVoices = iniPed.ReadBoolean("Settings", "UseParentVoices", false);
         enableCloneRemover = iniPed.ReadBoolean("Settings", "EnableCloneRemover", false);
         cloneRemoverVehicleOccupants = iniPed.ReadBoolean("Settings", "CloneRemoverIncludeVehicleOccupants", false);
         cloneRemoverSpawnDelay = iniPed.ReadInteger("Settings", "CloneRemoverSpawnDelay", 3);
@@ -799,12 +898,10 @@ public:
                 detectExe();
                 logfile << exePath << std::endl;
 
-                if (exeVersion == 1)
+                if (GetGameVersion() == GAME_10US_HOODLUM)
                     logfile << "Supported exe detected: 1.0 US HOODLUM" << std::endl;
-                else if (exeVersion == 2)
+                else if (GetGameVersion() == GAME_10US_COMPACT)
                     logfile << "Supported exe detected: 1.0 US Compact" << std::endl;
-                else if (exeVersion == 3)
-                    logfile << "Supported exe detected: 1.0 US HOODLUM LARGEADDRESSAWARE" << std::endl;
                 else
                     logfile << "Unsupported exe detected: " << exeName << " " << exeFilesize << " bytes " << exeHash << std::endl;
             }
@@ -867,7 +964,7 @@ public:
         {
             //if (checkForUpdate())
                 //MessageBox(NULL, "Model Variations: New version available!\nhttps://github.com/ViperJohnGR/ModelVariations", "Update available", MB_ICONINFORMATION);
-            getLoadedModules();
+            getLoadedModules(loadedMods.openLimitAdjuster, loadedMods.fastman92LimitAdjuster);
 
             loadIniData(true);
             installHooks();
@@ -882,23 +979,37 @@ public:
             }
         };
 
-        Events::initScriptsEvent += []
+        Events::initScriptsEvent.after += []
         {
             if (logfile.is_open())
                 logfile << "-- initScriptsEvent --" << std::endl;
 
             clearEverything();
+
+            if (!unusedIDsChecked && enableSpecialPeds)
+            {
+                if (logfile.is_open())
+                    logfile << "Checking unused IDs...\n";
+
+                for (uint16_t i = 1326; i < 20000; i++)
+                {
+                    if (CModelInfo::GetModelInfo(i) == NULL)
+                        unusedIDs.push_back(i);
+                }
+                unusedIDsChecked = true;
+            }
+
             loadIniData(false);
             printVariations();
 
             if (loadAllVehicles)
                 loadModels(400, 611, KEEP_IN_MEMORY, false);
 
-            dealersFixed = 0;
+            dealersFrames = 0;
             framesSinceCallsChecked = 900;
 
             if (logfile.is_open())
-                getLoadedModules();
+                getLoadedModules(loadedMods.openLimitAdjuster, loadedMods.fastman92LimitAdjuster);
 
             if (checkForUpdate())
                 timeUpdate = clock();
@@ -908,17 +1019,17 @@ public:
 
         Events::processScriptsEvent += []
         {
-            if (dealersFixed < 10)
-                dealersFixed++;
+            if (dealersFrames < 10)
+                dealersFrames++;
 
-            if (dealersFixed == 10)
+            if (dealersFrames == 10)
             {
                 if (logfile.is_open())
                     logfile << "Applying drug dealer fix...\n";
                 drugDealerFix();
                 if (logfile.is_open())
                     logfile << std::endl;
-                dealersFixed = 11;
+                dealersFrames = 11;
             }
         };
 
@@ -953,8 +1064,25 @@ public:
 
         Events::gameProcessEvent += []
         {
-            //if (timeUpdate > -1 && strncmp(currentZone, "GAN1", 8) == 0 && *(int*)0xB7CE50 == 0)
-                //timeUpdate = clock();
+            CVector pPos = FindPlayerCoors(-1);
+            CZone* zInfo = NULL;
+            CTheZones::GetZoneInfo(&pPos, &zInfo);
+            const CWanted* wanted = FindPlayerWanted(-1);
+            const CPlayerPed* player = FindPlayerPed();
+
+            const auto printVariationChange = [zInfo, wanted](const char* msg)
+            {
+                if (logfile.is_open())
+                {
+                    logfile << msg << " Updating variations...\n";
+                    logfile << "currentWanted = " << currentWanted << " wanted->m_nWantedLevel = " << wanted->m_nWantedLevel << "\n";
+                    logfile << "currentZone = " << currentZone << " zInfo->m_szLabel = " << zInfo->m_szLabel << " lastZone = " << lastZone << "\n";
+                    if (currentInterior[0] != 0 || lastInterior[0] != 0)
+                        logfile << "currentInterior = " << currentInterior << " lastInterior = " << lastInterior << "\n" << std::endl;
+                    else
+                        logfile << std::endl;
+                }
+            };
 
             if (timeUpdate > -1 && ((clock() - timeUpdate) / CLOCKS_PER_SEC > 6))
             {
@@ -984,6 +1112,8 @@ public:
                         logfile << "Reloading settings..." << std::endl;
                     clearEverything();
                     loadIniData(false);
+                    updateVariations(zInfo);
+                    printVariationChange("Settings reloaded.");
                     CMessages::AddMessageJumpQ((char*)"~y~Model Variations~s~: Settings reloaded.", 2000, 0, false);
                 }
             }
@@ -1009,31 +1139,10 @@ public:
                         it = pedTimeSinceLastSpawned.erase(it);
             }
 
-            CVector pPos = FindPlayerCoors(-1);
-            CZone* zInfo = NULL;
-            CTheZones::GetZoneInfo(&pPos, &zInfo);
-            const CWanted* wanted = FindPlayerWanted(-1);
-
-            const CPlayerPed* player = FindPlayerPed();
-
             if (player && player->m_pEnex)
                 currentInterior = (const char*)player->m_pEnex;
             else 
                 currentInterior = "";
-
-            const auto printVariationChange = [zInfo, wanted](const char *msg)
-            {
-                if (logfile.is_open())
-                {
-                    logfile << msg << " Updating variations...\n";
-                    logfile << "currentWanted = " << currentWanted << " wanted->m_nWantedLevel = " << wanted->m_nWantedLevel << "\n";
-                    logfile << "currentZone = " << currentZone << " zInfo->m_szLabel = " << zInfo->m_szLabel << " lastZone = " << lastZone << "\n";
-                    if (currentInterior[0] != 0 || lastInterior[0] != 0)
-                        logfile << "currentInterior = " << currentInterior << " lastInterior = " << lastInterior << "\n" << std::endl;
-                    else
-                        logfile << std::endl;
-                }
-            };
 
             if (strncmp(currentInterior, lastInterior, 7) != 0)
             {

@@ -1,9 +1,11 @@
 #include "LogUtil.hpp"
 
+#include <algorithm>
 #include <iomanip>
 #include <fstream>
 #include <sstream>
 #include <ntstatus.h>
+#include <Psapi.h>
 
 #pragma comment (lib, "bcrypt.lib")
 
@@ -15,6 +17,22 @@ bool compareLower(const char* a, const char* b)
             return false;
 
     return true;
+}
+
+bool strcasestr(std::string src, std::string sub)
+{
+    std::for_each(src.begin(), src.end(), [](char& c) {
+        c = (char)::toupper(c);
+    });
+
+    std::for_each(sub.begin(), sub.end(), [](char& c) {
+        c = (char)::toupper(c);
+    });
+
+    if (src.find(sub) != std::string::npos)
+        return true;
+
+    return false;
 }
 
 std::string hashFile(const char* filename)
@@ -30,13 +48,13 @@ std::string hashFile(const char* filename)
             DWORD lpNumberOfBytesRead;
             BCRYPT_ALG_HANDLE hProvider = NULL;
             BCRYPT_HASH_HANDLE ctx = NULL;
-            BYTE* filebuf = new BYTE[filesize + 1];
+            BYTE* filebuf = new BYTE[filesize + 1]();
 
             if (ReadFile(hFile, filebuf, filesize, &lpNumberOfBytesRead, NULL))
                 if (BCryptOpenAlgorithmProvider(&hProvider, BCRYPT_SHA256_ALGORITHM, NULL, 0) == STATUS_SUCCESS)
                     if (BCryptCreateHash(hProvider, &ctx, NULL, 0, NULL, 0, 0) == STATUS_SUCCESS && ctx != NULL)
                     {
-                        BYTE* hash = new BYTE[50];
+                        BYTE* hash = new BYTE[50]();
                         std::stringstream stream;
                         BCryptHashData(ctx, filebuf, filesize, 0);
                         BCryptFinishHash(ctx, hash, 32, 0);
@@ -169,6 +187,31 @@ void logModified(unsigned int address, const std::string &message)
         logfile << message << std::endl;
         modifiedAddresses.insert(address);
     }
+}
+
+void getLoadedModules(bool &isOLA, bool &isFLA)
+{
+    modulesSet.clear();
+    isOLA = false;
+    isFLA = false;
+
+    HMODULE modules[500] = {};
+    HANDLE hProcess = GetCurrentProcess();
+    DWORD cbNeeded = 0;
+
+    if (EnumProcessModules(hProcess, modules, sizeof(modules), &cbNeeded))
+        for (unsigned int i = 0; i < (cbNeeded / sizeof(HMODULE)); i++)
+        {
+            char szModName[MAX_PATH] = {};
+            if (GetModuleFileNameEx(hProcess, modules[i], szModName, sizeof(szModName) / sizeof(TCHAR)))
+            {
+                if (strcasestr(szModName, "III.VC.SA.LimitAdjuster"))
+                    isOLA = true;
+                else if (strcasestr(szModName, "fastman92limitAdjuster"))
+                    isFLA = true;
+                modulesSet.insert(std::make_pair((unsigned int)modules[i], szModName));
+            }
+        }
 }
 
 std::string printToString(const char* format, ...)

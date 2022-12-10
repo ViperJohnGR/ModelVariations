@@ -1,6 +1,8 @@
 #include "DataReader.hpp"
 
 #include <CModelInfo.h>
+#include <CPedModelInfo.h>
+#include <CStreaming.h>
 #include <CWeaponInfo.h>
 
 int DataReader::ReadInteger(std::string_view szSection, std::string_view szKey, int iDefaultValue)
@@ -60,7 +62,7 @@ std::vector<unsigned short> DataReader::ReadLine(std::string section, std::strin
 
 	if (!iniString.empty())
 	{
-		char* tkString = new char[iniString.size() + 1];
+		char* tkString = new char[iniString.size() + 1]();
 		strcpy(tkString, iniString.c_str());
 
 		for (char* token = strtok(tkString, ","); token != NULL; token = strtok(NULL, ","))
@@ -120,6 +122,24 @@ std::vector<unsigned short> DataReader::ReadLine(std::string section, std::strin
 							retVector.push_back((unsigned short)modelid);
 					}
 				}
+				else if (parseType == READ_PEDS && !(token[0] >= '0' && token[0] <= '9'))
+					if (!unusedIDs.empty())
+						for (auto it = unusedIDs.begin(); it != unusedIDs.end();it = unusedIDs.erase(it))
+							if (CModelInfo::GetModelInfo(*it) == NULL)
+							{
+								if (CStreaming::ms_pExtraObjectsDir->FindItem(token))
+								{
+									auto pedInfo = ((CPedModelInfo * (__cdecl*)(int))injector::GetBranchDestination(0x5B74A7).as_int())(*it);
+									if (pedInfo)
+									{
+										pedInfo->SetColModel((CColModel*)0x968DF0, false); //TODO: fix crash on exit
+										CStreaming::RequestSpecialModel(*it, token, 0);
+										retVector.push_back(*it);
+										addedIDs.push_back(*it);
+									}
+								}
+								break;					
+							}
 			}
 		}
 

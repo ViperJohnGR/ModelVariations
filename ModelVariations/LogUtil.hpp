@@ -25,6 +25,7 @@ std::pair<unsigned int, std::string> getAddressBaseModule(uint32_t functionAddre
 std::string getWindowsVersion();
 void checkAllCalls();
 void logModified(unsigned int address, const std::string &message);
+void getLoadedModules(bool& isOLA, bool& isFLA);
 std::string printToString(const char* format, ...);
 std::string bytesToString(unsigned int address, int nBytes);
 std::string fileToString(const std::string& filename);

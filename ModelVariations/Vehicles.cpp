@@ -2022,7 +2022,7 @@ void installVehicleHooks()
         hookASM(0x51E5B8, 0x227E8166, 2, 0x51E5BC, 0x01B0, cmpWordPtrRegModel<REG_ESI, 0x51E5BE, 0x1B0>, "CCamera::TryToStartNewCamMode");
         hookASM(0x6B4CE8, 0x224E8B66, 4, 0x6B4CEC, 0x1BF98166, movReg16WordPtrReg<REG_CX, REG_ESI, 0x6B4CF1, 5, 0x1BF98166, 0x90909002>, "CAutomobile::ProcessAI");
 
-        if (exeVersion != 2)
+        if (GetGameVersion() != GAME_10US_COMPACT)
             hookASM(0x407293, 0x000259BB, 1, 0x407297, 0x00, patch407293, "CAutomobile::FireTruckControl");
         else
             hookASM(0x729B76, 0x000259BB, 1, 0x729B7A, 0x00, patch407293, "CAutomobile::FireTruckControl");

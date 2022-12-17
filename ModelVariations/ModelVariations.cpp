@@ -489,7 +489,6 @@ void printVariations()
 {
     logfile << std::dec << "\nPed Variations:\n";
     for (unsigned int i = 0; i < MAX_PED_ID; i++)
-    {
         for (unsigned int j = 0; j < 16; j++)
             if (!pedVariations[i][j].empty())
             {
@@ -505,10 +504,9 @@ void printVariations()
                 logfile << "\n";
                 break;
             }
-    }
+
     logfile << "\nVehicle Variations:\n";
     for (unsigned int i = 0; i < 212; i++)
-    {
         for (unsigned int j = 0; j < 16; j++)
             if (!vehVariations[i][j].empty())
             {
@@ -524,7 +522,6 @@ void printVariations()
                 logfile << "\n";
                 break;
             }
-    }
 
     logfile << std::endl;
 }
@@ -562,27 +559,29 @@ char __fastcall CAEPedSpeechAudioEntity__InitialiseHooked(CAEPedSpeechAudioEntit
 template <unsigned int address>
 void __cdecl CGame__ShutdownHooked()
 {
-    delete[] destroyedModelCounters;
-    for (auto i : addedIDs)
-        if (CModelInfo::GetModelInfo(i) != NULL)
-            CStreaming::RemoveModel(i);
+    if (logfile.is_open())
+        logfile << "Game shutting down..." << std::endl;
 
-    callOriginal<address>();
-}
-
-void unknown_libname_657Hooked(void)
-{
-    int count = *(int*)0xB478F8;
-    CPedModelInfo* start = reinterpret_cast<CPedModelInfo*>(0xB478FC);
-    void(*deconstructor)(CPedModelInfo*)  = (void(*)(CPedModelInfo*))0x4C62F0;
-
-    for (int i = 0; i < count; i++)
+    if (enableSpecialPeds)
     {
-        if (i != 1 && i != 257)
-            deconstructor(&start[i]);
+        delete[] destroyedModelCounters;
+
+        CPedModelInfo* start = reinterpret_cast<CPedModelInfo*>(0xB478FC);
+        for (int i = 0; i < 278; i++)
+        {
+            if (start[i].m_pHitColModel != NULL)
+                start[i].m_pHitColModel = NULL;
+        }
+
+        for (auto i : addedIDs)
+            if (CModelInfo::GetModelInfo(i) != NULL)
+                CStreaming::RemoveModel(i);
     }
 
-    //((void(*)(void*, int, int, uint32_t))0x821E02)((void*)0xB478FC, 68, *(int*)0xB478F8, 0x4C62F0);
+    callOriginal<address>();
+
+    if (logfile.is_open())
+        logfile << "Shutdown ok." << std::endl;
 }
 
 void installHooks()
@@ -637,7 +636,7 @@ void installHooks()
             }
         }
         else if (logfile.is_open())
-            logfile << "Count of killable model IDs not increased." << (loadedMods.fastman92LimitAdjuster ? " FLA is loaded." : "FLA is NOT loaded.") << std::endl;
+            logfile << "Count of killable model IDs not increased." << (loadedMods.fastman92LimitAdjuster ? " FLA is loaded." : " FLA is NOT loaded.") << std::endl;
     }
 
     if (enablePeds)
@@ -648,13 +647,6 @@ void installHooks()
             hookCall(0x5DDBB8, CAEPedSpeechAudioEntity__InitialiseHooked<0x5DDBB8>, "CAEPedSpeechAudioEntity__Initialise"); //CCivilianPed
             hookCall(0x5DDD24, CAEPedSpeechAudioEntity__InitialiseHooked<0x5DDD24>, "CAEPedSpeechAudioEntity__Initialise"); //CCopPed
             hookCall(0x5DE388, CAEPedSpeechAudioEntity__InitialiseHooked<0x5DE388>, "CAEPedSpeechAudioEntity__Initialise"); //CEmergencyPed
-        }
-
-        if (enableSpecialPeds)
-        {
-            hookCall(0x748E6B, CGame__ShutdownHooked<0x748E6B>, "CGame::Shutdown");
-            if (*(uint32_t*)0x8562B5 == 0xC700D6E9 && *(uint8_t*)0x8562B9 == 0xFF)
-                injector::MakeJMP(0x8562B5, unknown_libname_657Hooked);
         }
     }
 
@@ -668,6 +660,8 @@ void installHooks()
         if (logfile.is_open())
             logfile << "Vehicle hooks installed." << std::endl;
     }
+
+    hookCall(0x748E6B, CGame__ShutdownHooked<0x748E6B>, "CGame::Shutdown");
 }
 
 void loadIniData(bool firstTime)
@@ -967,8 +961,6 @@ public:
 
         Events::initRwEvent += []
         {
-            //if (checkForUpdate())
-                //MessageBox(NULL, "Model Variations: New version available!\nhttps://github.com/ViperJohnGR/ModelVariations", "Update available", MB_ICONINFORMATION);
             getLoadedModules(loadedMods.openLimitAdjuster, loadedMods.fastman92LimitAdjuster);
 
             loadIniData(true);
@@ -1217,7 +1209,9 @@ public:
 
                 if (veh->m_nModelIndex >= 400 && veh->m_nModelIndex < 612 && !vehCurrentVariations[veh->m_nModelIndex - 400].empty() &&
                     vehCurrentVariations[veh->m_nModelIndex - 400][0] == 0 && veh->m_nCreatedBy != eVehicleCreatedBy::MISSION_VEHICLE)
+                {
                     veh->m_nVehicleFlags.bFadeOut = 1;
+                }
                 else
                 {
                     auto it = vehPassengers.find(veh->m_nModelIndex);

@@ -9,6 +9,7 @@
 
 #pragma comment (lib, "bcrypt.lib")
 
+std::ofstream logfile;
 
 bool compareLower(const char* a, const char* b)
 {
@@ -212,6 +213,33 @@ void getLoadedModules(bool &isOLA, bool &isFLA)
                 modulesSet.insert(std::make_pair((unsigned int)modules[i], szModName));
             }
         }
+}
+
+std::string getDatetime(bool printDate, bool printTime, bool printMs)
+{
+    SYSTEMTIME systime;
+    GetSystemTime(&systime);
+    std::stringstream ss;
+    std::string ms;
+
+    if (printMs)
+        ms += "." + std::to_string(systime.wMilliseconds);
+
+    if (printDate)
+    {
+        ss << systime.wDay << "/" << systime.wMonth << "/" << systime.wYear;
+
+        if (!printTime)
+            return ss.str() + "\n";
+
+        ss << " ";
+    }    
+
+    ss << std::setfill('0') << std::setw(2) << systime.wHour << ":"
+       << std::setfill('0') << std::setw(2) << systime.wMinute << ":"
+       << std::setfill('0') << std::setw(2) << systime.wSecond << ms;
+
+    return ss.str();
 }
 
 std::string printToString(const char* format, ...)

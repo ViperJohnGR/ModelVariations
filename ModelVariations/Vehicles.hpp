@@ -4,72 +4,33 @@
 #include <CAutomobile.h>
 #include <CPed.h>
 #include <CVector.h>
+#include <CZone.h>
 
 #include <set>
 #include <stack>
 #include <vector>
 
 
-struct rgba
-{
-    BYTE r;
-    BYTE g;
-    BYTE b;
-    BYTE a;
-};
-
 extern DataReader iniVeh;
-
-extern std::ofstream logfile;
-
-extern std::array<std::vector<unsigned short>, 16> vehVariations[212];
-extern std::array<std::vector<unsigned short>, 6> vehWantedVariations[212];
-extern std::map<unsigned short, std::array<std::vector<unsigned short>, 16>> vehGroups;
-extern std::map<unsigned short, std::array<std::vector<unsigned short>, 16>> vehTuning;
-extern std::map<unsigned short, std::array<std::vector<unsigned short>, 6>> vehGroupWantedVariations;
-extern std::map<unsigned short, unsigned short> vehOriginalModels;
-extern std::map<unsigned short, std::vector<unsigned short>> vehDrivers;
-extern std::map<unsigned short, std::vector<unsigned short>> vehPassengers;
-extern std::map<unsigned short, std::vector<unsigned short>> vehDriverGroups[9];
-extern std::map<unsigned short, std::vector<unsigned short>> vehPassengerGroups[9];
-extern std::map<unsigned short, BYTE> modelNumGroups;
-extern std::map<unsigned short, std::pair<CVector, float>> LightPositions;
-extern std::map<unsigned short, rgba> LightColors;
-extern std::map<unsigned short, rgba> LightColors2;
-extern std::map<unsigned short, std::vector<unsigned short>> vehCurrentTuning;
-extern std::map<unsigned short, std::string> vehModels;
-extern std::map<unsigned short, BYTE> tuningRarities;
-
-extern std::vector<unsigned short> vehCurrentVariations[212];
-extern std::vector<unsigned short> vehCarGenExclude;
-extern std::vector<unsigned short> vehInheritExclude;
-
-extern std::set<unsigned short> parkedCars;
-extern std::set<unsigned short> vehHasVariations;
-
-extern std::stack<std::pair<CVehicle*, std::array<std::vector<unsigned short>, 17>>> tuningStack;
+extern const char* vehIniPath;
 
 extern bool loadAllVehicles;
 
-extern bool enableLog;
-extern bool changeCarGenerators;
-extern bool enableSideMissions;
-extern bool enableAllSideMissions;
-extern bool enableLights;
-extern bool enableSiren;
-extern bool disablePayAndSpray;
-extern bool enableSpecialFeatures;
-extern bool changeScriptedCars;
-
 extern char currentZone[8];
+extern char lastZone[8];
 extern unsigned int currentTown;
-extern std::set<unsigned short> vehMergeZones;
-
-extern std::set<unsigned short> vehUseOnlyGroups;
 
 extern void filterWantedVariations(std::vector<unsigned short>& vec, std::vector<unsigned short>& wantedVec);
 
-void installVehicleHooks();
 void readVehicleIni(bool firstTime, std::string gamePath);
+void clearVehicles();
+void updateVehicleVariations(CZone* zInfo);
+
+void addToVehicleStack(CVehicle* veh);
+void processVehicleStacks();
+void printCurrentVehicleVariations();
+void printVehicleVariations();
 
 void hookTaxi();
+
+void installVehicleHooks();

@@ -48,7 +48,6 @@ std::string exeName;
 std::vector<unsigned short> addedIDs;
 std::vector<unsigned short> unusedIDs;
 
-std::ofstream logfile;
 std::set<std::pair<unsigned int, std::string>> modulesSet;
 std::set<std::pair<unsigned int, std::string>> callChecks;
 
@@ -58,48 +57,25 @@ DataReader iniVeh;
 DataReader iniSettings;
 
 std::array<std::vector<unsigned short>, 16> pedVariations[MAX_PED_ID];
-std::array<std::vector<unsigned short>, 16> vehVariations[212];
 std::array<std::vector<unsigned short>, 6> pedWantedVariations[MAX_PED_ID];
-std::array<std::vector<unsigned short>, 6> vehWantedVariations[212];
 
-std::map<unsigned short, std::array<std::vector<unsigned short>, 16>> vehGroups;
-std::map<unsigned short, std::array<std::vector<unsigned short>, 16>> vehTuning;
 std::map<unsigned int, hookinfo> hookedCalls;
-std::map<unsigned short, unsigned short> vehOriginalModels;
-std::map<unsigned short, std::vector<unsigned short>> vehDrivers;
-std::map<unsigned short, std::vector<unsigned short>> vehPassengers;
-std::map<unsigned short, std::vector<unsigned short>> vehDriverGroups[9];
-std::map<unsigned short, std::vector<unsigned short>> vehPassengerGroups[9];
-std::map<unsigned short, BYTE> modelNumGroups;
-std::map<unsigned short, std::pair<CVector, float>> LightPositions;
-std::map<unsigned short, rgba> LightColors;
-std::map<unsigned short, rgba> LightColors2;
 std::map<unsigned short, int> pedTimeSinceLastSpawned;
 std::map<unsigned short, std::vector<unsigned short>> pedOriginalModels;
-std::map<unsigned short, std::array<std::vector<unsigned short>, 6>> vehGroupWantedVariations;
 std::map<unsigned short, std::string> wepPedModels;
 std::map<unsigned short, std::string> wepVehModels;
-std::map<unsigned short, std::vector<unsigned short>> vehCurrentTuning;
-std::map<unsigned short, std::string> vehModels;
 std::map<unsigned short, std::string> pedModels;
-std::map<unsigned short, BYTE> tuningRarities;
 
 std::set<unsigned short> dontInheritBehaviourModels;
-std::set<unsigned short> parkedCars;
-std::set<unsigned short> vehUseOnlyGroups;
 std::set<unsigned short> pedMergeZones;
-std::set<unsigned short> vehMergeZones;
+
 std::set<unsigned short> pedHasVariations;
-std::set<unsigned short> vehHasVariations;
 std::set<unsigned int> modifiedAddresses;
 
 std::stack<CPed*> pedStack;
-std::stack<CVehicle*> vehStack;
-std::stack<std::pair<CVehicle*, std::array<std::vector<unsigned short>, 17>>> tuningStack;
-//std::stack<std::pair<CVehicle*, std::array<int, 16>>> tuningStack;
 
 std::vector<unsigned short> pedCurrentVariations[MAX_PED_ID];
-std::vector<unsigned short> vehCurrentVariations[212];
+
 
 bool unusedIDsChecked = false;
 struct {
@@ -133,18 +109,6 @@ bool cloneRemoverVehicleOccupants = false;
 int cloneRemoverSpawnDelay = 3;
 std::vector<unsigned short> cloneRemoverIncludeVariations;
 std::vector<unsigned short> cloneRemoverExclusions;
-//Vehicles
-bool changeCarGenerators = false;
-bool changeScriptedCars = false;
-bool disablePayAndSpray = false;
-bool enableLights = false;
-bool enableSideMissions = false;
-bool enableAllSideMissions = false;
-bool enableSiren = false;
-bool enableSpecialFeatures = false;
-bool loadAllVehicles = false;
-std::vector<unsigned short> vehCarGenExclude;
-std::vector<unsigned short> vehInheritExclude;        
 
 
 bool keyDown = false;
@@ -400,55 +364,7 @@ void updateVariations(CZone* zInfo)
         }
 
     if (enableVehicles)
-        for (auto& i : vehTuning)
-        {
-            vehCurrentTuning[i.first] = vectorUnion(i.second[4], i.second[currentTown]);
-
-            std::string section;
-            auto it = vehModels.find(i.first);
-            if (it != vehModels.end())
-                section = it->second;
-            else
-                section = std::to_string(i.first);
-
-            std::vector<unsigned short> vec = iniVeh.ReadLine(section, ((lastZone[0] == 0) ? zInfo->m_szLabel : lastZone), READ_TUNING);
-            if (!vec.empty())
-            {
-                if (vehMergeZones.find(i.first) != vehMergeZones.end())
-                    vehCurrentTuning[i.first] = vectorUnion(vehCurrentTuning[i.first], vec);
-                else
-                    vehCurrentTuning[i.first] = vec;
-            }
-        }
-
-    if (enableVehicles)
-        for (auto& modelid : vehHasVariations)
-        {
-            vehCurrentVariations[modelid] = vectorUnion(vehVariations[modelid][4], vehVariations[modelid][currentTown]);
-
-            std::string section;
-            auto it = vehModels.find(modelid + 400U);
-            if (it != vehModels.end())
-                section = it->second;
-            else
-                section = std::to_string(modelid + 400);
-
-            std::vector<unsigned short> vec = iniVeh.ReadLine(section, ((lastZone[0] == 0) ? zInfo->m_szLabel : lastZone), READ_VEHICLES);
-            if (!vec.empty())
-            {
-                if (vehMergeZones.find((unsigned short)(modelid + 400)) != vehMergeZones.end())
-                    vehCurrentVariations[modelid] = vectorUnion(vehCurrentVariations[modelid], vec);
-                else
-                    vehCurrentVariations[modelid] = vec;
-            }
-
-            if (wanted)
-            {
-                const unsigned int wantedLevel = (wanted->m_nWantedLevel > 0) ? (wanted->m_nWantedLevel - 1) : (wanted->m_nWantedLevel);
-                if (!vehWantedVariations[modelid][wantedLevel].empty() && !vehCurrentVariations[modelid].empty())
-                    filterWantedVariations(vehCurrentVariations[modelid], vehWantedVariations[modelid][wantedLevel]);
-            }
-        }
+        updateVehicleVariations(zInfo);
 }
 
 void printCurrentVariations()
@@ -461,28 +377,23 @@ void printCurrentVariations()
             {
                 logfile << i << ": ";
                 for (auto j : pedCurrentVariations[i])
-                    logfile << j << ((std::find(addedIDs.begin(), addedIDs.end(), j) != addedIDs.end()) ? ("SP ") : " ");
+                {
+                    const char *suffix = " ";
+                    if (std::find(addedIDs.begin(), addedIDs.end(), j) != addedIDs.end())
+                        suffix = "SP ";
+                    logfile << j << suffix;
+                }
                 logfile << "\n";
             }
-
-        logfile << std::endl;
     }
 
     if (enableVehicles)
     {
-        logfile << std::dec << "vehCurrentVariations\n";
-        for (int i = 0; i < 212; i++)
-            if (!vehCurrentVariations[i].empty())
-            {
-                logfile << i + 400 << ": ";
-                for (auto j : vehCurrentVariations[i])
-                    logfile << j << " ";
-                logfile << "\n";
-            }
-        logfile << "\n" << std::endl;
+        logfile << "\n";
+        printCurrentVehicleVariations();
     }
-    else
-        logfile << std::endl;
+
+    logfile << "\n" << std::endl;
 }
 
 void printVariations()
@@ -505,25 +416,13 @@ void printVariations()
                 break;
             }
 
-    logfile << "\nVehicle Variations:\n";
-    for (unsigned int i = 0; i < 212; i++)
-        for (unsigned int j = 0; j < 16; j++)
-            if (!vehVariations[i][j].empty())
-            {
-                logfile << i + 400 << ": ";
-                for (unsigned int k = 0; k < 16; k++)
-                    if (!vehVariations[i][k].empty())
-                    {
-                        logfile << "(" << k << ") ";
-                        for (const auto& l : vehVariations[i][k])
-                            logfile << l << " ";
-                    }
+    if (enableVehicles)
+    {
+        logfile << "\n";
+        printVehicleVariations();
+    }
 
-                logfile << "\n";
-                break;
-            }
-
-    logfile << std::endl;
+    logfile << "\n" << std::endl;
 }
 
 template <unsigned int address>
@@ -568,14 +467,7 @@ void __cdecl CGame__ShutdownHooked()
 
         CPedModelInfo* start = reinterpret_cast<CPedModelInfo*>(0xB478FC);
         for (int i = 0; i < 278; i++)
-        {
-            if (start[i].m_pHitColModel != NULL)
-                start[i].m_pHitColModel = NULL;
-        }
-
-        for (auto i : addedIDs)
-            if (CModelInfo::GetModelInfo(i) != NULL)
-                CStreaming::RemoveModel(i);
+            start[i].m_pHitColModel = NULL;
     }
 
     callOriginal<address>();
@@ -782,85 +674,45 @@ void loadIniData(bool firstTime)
 void clearEverything()
 {
     for (int i = 0; i < MAX_PED_ID; i++)
-    {
         for (unsigned short j = 0; j < 16; j++)
         {
             pedVariations[i][j].clear();
-            if (i < 212)
-                vehVariations[i][j].clear();
             if (j < 6)
-            {
                 pedWantedVariations[i][j].clear();
-                if (i < 212)
-                    vehWantedVariations[i][j].clear();
-            }
         }
-    }
 
     //maps
-    vehGroups.clear();
-    vehOriginalModels.clear();
-    vehDrivers.clear();
-    vehPassengers.clear();
-
-    for (int i = 0; i < 9; i++)
-    {
-        vehDriverGroups[i].clear();
-        vehPassengerGroups[i].clear();
-    }
-
-    modelNumGroups.clear();
-    LightPositions.clear();
-    LightColors.clear();
-    LightColors2.clear();
     pedTimeSinceLastSpawned.clear();
     pedOriginalModels.clear();
-    vehGroupWantedVariations.clear();
     wepPedModels.clear();
     wepVehModels.clear();
-    vehTuning.clear();
-    vehCurrentTuning.clear();
-    vehModels.clear();
     pedModels.clear();
-    tuningRarities.clear();
 
     //sets
     dontInheritBehaviourModels.clear();
-    parkedCars.clear();
-    vehUseOnlyGroups.clear();
     pedMergeZones.clear();
-    vehMergeZones.clear();
     pedHasVariations.clear();
-    vehHasVariations.clear();
     cloneRemoverIncludeVariations.clear();
 
     //stacks
     while (!pedStack.empty()) pedStack.pop();
-    while (!vehStack.empty()) vehStack.pop();
-    while (!tuningStack.empty()) tuningStack.pop();
 
     //vectors
     cloneRemoverExclusions.clear();
     for (int i = 0; i < MAX_PED_ID; i++)
-    {
         pedCurrentVariations[i].clear();
-        if (i < 212)
-            vehCurrentVariations[i].clear();
-    }
-    vehCarGenExclude.clear();
-    vehInheritExclude.clear();
 
     iniPed.data.clear();
     iniWeap.data.clear();
     iniSettings.data.clear();
-    iniVeh.data.clear();
 
     iniPed.SetIniPath(pedIniPath);
     iniWeap.SetIniPath(pedWepIniPath);
     iniSettings.SetIniPath(settingsIniPath);
-    iniVeh.SetIniPath(vehIniPath);
 
     enableCloneRemover = 0;
+
+    clearVehicles();
 }
 
 class ModelVariations {
@@ -889,10 +741,7 @@ public:
 #endif
 
                 logfile << "Model Variations " MOD_VERSION << isDebug << "\n" << getWindowsVersion() << "\n"
-                        << systime.wDay << "/" << systime.wMonth << "/" << systime.wYear << " "
-                        << std::setfill('0') << std::setw(2) << systime.wHour << ":"
-                        << std::setfill('0') << std::setw(2) << systime.wMinute << ":"
-                        << std::setfill('0') << std::setw(2) << systime.wSecond << "\n\n";
+                        << getDatetime(true, true, false) << "\n\n";
 
                 detectExe();
                 logfile << exePath << std::endl;
@@ -1037,7 +886,7 @@ public:
 
         Events::vehicleCtorEvent += [](CVehicle* veh)
         {
-            vehStack.push(veh);
+            addToVehicleStack(veh);
         };
 
         Events::pedSetModelEvent.after += [](CPed* ped, int)
@@ -1071,13 +920,14 @@ public:
             {
                 if (logfile.is_open())
                 {
-                    logfile << msg << " Updating variations...\n";
+                    logfile << "\n";
+                    logfile << getDatetime(false, true, true) << " - " << msg << " Updating variations...\n";
                     logfile << "currentWanted = " << currentWanted << " wanted->m_nWantedLevel = " << wanted->m_nWantedLevel << "\n";
                     logfile << "currentZone = " << currentZone << " zInfo->m_szLabel = " << zInfo->m_szLabel << " lastZone = " << lastZone << "\n";
                     if (currentInterior[0] != 0 || lastInterior[0] != 0)
-                        logfile << "currentInterior = " << currentInterior << " lastInterior = " << lastInterior << "\n" << std::endl;
-                    else
-                        logfile << std::endl;
+                        logfile << "currentInterior = " << currentInterior << " lastInterior = " << lastInterior << "\n";
+
+                    logfile << std::endl;                    
                 }
             };
 
@@ -1179,53 +1029,10 @@ public:
                     printCurrentVariations();
             }
 
-
             if (enableVehicles)
                 hookTaxi();
 
-            while (!tuningStack.empty())
-            {
-                auto it = tuningStack.top();
-                tuningStack.pop();
-
-                if (IsVehiclePointerValid(it.first))
-                    for (auto& slot : it.second)
-                        if (!slot.empty())
-                        {
-                            const uint32_t i = rand<uint32_t>(0, slot.size());
-
-                            CStreaming::RequestVehicleUpgrade(slot[i], 2);
-                            CStreaming::LoadAllRequestedModels(false);
-
-                            it.first->AddVehicleUpgrade(slot[i]);
-                            Command<COMMAND_MARK_VEHICLE_MOD_AS_NO_LONGER_NEEDED>(slot[i]);
-                        }
-            }
-
-            while (!vehStack.empty())
-            {
-                CVehicle* veh = vehStack.top();
-                vehStack.pop();
-
-                if (veh->m_nModelIndex >= 400 && veh->m_nModelIndex < 612 && !vehCurrentVariations[veh->m_nModelIndex - 400].empty() &&
-                    vehCurrentVariations[veh->m_nModelIndex - 400][0] == 0 && veh->m_nCreatedBy != eVehicleCreatedBy::MISSION_VEHICLE)
-                {
-                    veh->m_nVehicleFlags.bFadeOut = 1;
-                }
-                else
-                {
-                    auto it = vehPassengers.find(veh->m_nModelIndex);
-                    if (it != vehPassengers.end() && it->second[0] == 0)
-                        for (int i = 0; i < 8; i++)
-                            if (veh->m_apPassengers[i] != NULL)
-                            {
-                                CPed* passenger = veh->m_apPassengers[i];
-                                if (passenger->m_pIntelligence)
-                                    passenger->m_pIntelligence->FlushImmediately(false);
-                                CTheScripts::RemoveThisPed(passenger);
-                            }
-                }
-            }
+            processVehicleStacks();
 
             while (!pedStack.empty())
             {

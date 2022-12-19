@@ -24,6 +24,14 @@
 
 using namespace plugin;
 
+struct rgba
+{
+    BYTE r;
+    BYTE g;
+    BYTE b;
+    BYTE a;
+};
+
 enum eRegs16
 {
     REG_AX,
@@ -54,8 +62,6 @@ unsigned short lightsModel = 0;
 int currentOccupantsGroup = -1;
 unsigned short currentOccupantsModel = 0;
 
-int fireCmpModel = -1;
-
 int passengerModelIndex = -1;
 constexpr unsigned int jmp613B7E = 0x613B7E;
 constexpr unsigned int jmp6AB35A = 0x6AB35A;
@@ -70,6 +76,48 @@ uint32_t asmModel32 = 0;
 uint32_t asmModel = 0;
 uint32_t asmJmpAddress = 0;
 uint32_t* jmpDest = NULL;
+
+std::array<std::vector<unsigned short>, 16> vehVariations[212];
+std::array<std::vector<unsigned short>, 6> vehWantedVariations[212];
+
+std::map<unsigned short, std::array<std::vector<unsigned short>, 16>> vehGroups;
+std::map<unsigned short, std::array<std::vector<unsigned short>, 16>> vehTuning;
+std::map<unsigned short, std::array<std::vector<unsigned short>, 6>> vehGroupWantedVariations;
+std::map<unsigned short, unsigned short> vehOriginalModels;
+std::map<unsigned short, std::vector<unsigned short>> vehDrivers;
+std::map<unsigned short, std::vector<unsigned short>> vehPassengers;
+std::map<unsigned short, std::vector<unsigned short>> vehDriverGroups[9];
+std::map<unsigned short, std::vector<unsigned short>> vehPassengerGroups[9];
+std::map<unsigned short, BYTE> modelNumGroups;
+std::map<unsigned short, std::pair<CVector, float>> LightPositions;
+std::map<unsigned short, rgba> LightColors;
+std::map<unsigned short, rgba> LightColors2;
+std::map<unsigned short, std::vector<unsigned short>> vehCurrentTuning;
+std::map<unsigned short, std::string> vehModels;
+std::map<unsigned short, BYTE> tuningRarities;
+
+std::vector<unsigned short> vehCurrentVariations[212];
+
+std::set<unsigned short> parkedCars;
+std::set<unsigned short> vehHasVariations;
+std::set<unsigned short> vehMergeZones;
+std::set<unsigned short> vehUseOnlyGroups;
+
+std::stack<std::pair<CVehicle*, std::array<std::vector<unsigned short>, 17>>> tuningStack;
+std::stack<CVehicle*> vehStack;
+
+//INI Options
+bool changeCarGenerators = false;
+bool changeScriptedCars = false;
+bool disablePayAndSpray = false;
+bool enableLights = false;
+bool enableSideMissions = false;
+bool enableAllSideMissions = false;
+bool enableSiren = false;
+bool enableSpecialFeatures = false;
+bool loadAllVehicles = false;
+std::vector<unsigned short> vehCarGenExclude;
+std::vector<unsigned short> vehInheritExclude;
 
 
 void checkNumGroups(std::vector<unsigned short>& vec, uint8_t numGroups)
@@ -163,9 +211,10 @@ int getRandomVariation(const int modelid, bool parked = false)
     return modelid;
 }
 
-
 void readVehicleIni(bool firstTime, std::string gamePath)
 {
+    iniVeh.SetIniPath(vehIniPath);
+
     std::string str;
     std::vector<std::string> result;
     std::ifstream zoneFile(gamePath + "\\data\\info.zon");
@@ -455,6 +504,198 @@ void readVehicleIni(bool firstTime, std::string gamePath)
         loadAllVehicles = iniVeh.ReadBoolean("Settings", "LoadAllVehicles", false);
         enableAllSideMissions = iniVeh.ReadBoolean("Settings", "EnableSideMissionsForAllScripts", false);
     }
+}
+
+void clearVehicles()
+{
+    for (int i = 0; i < 212; i++)
+        for (unsigned short j = 0; j < 16; j++)
+        {
+            vehVariations[i][j].clear();
+
+            if (j < 6)
+                vehWantedVariations[i][j].clear();
+        }
+
+    //maps
+    vehGroups.clear();
+    vehOriginalModels.clear();
+    vehDrivers.clear();
+    vehPassengers.clear();
+
+    for (int i = 0; i < 9; i++)
+    {
+        vehDriverGroups[i].clear();
+        vehPassengerGroups[i].clear();
+    }
+
+    modelNumGroups.clear();
+    LightPositions.clear();
+    LightColors.clear();
+    LightColors2.clear();
+    vehGroupWantedVariations.clear();
+    vehTuning.clear();
+    vehCurrentTuning.clear();
+    vehModels.clear();
+    tuningRarities.clear();
+
+    //sets
+    parkedCars.clear();
+    vehUseOnlyGroups.clear();
+    vehMergeZones.clear();
+    vehHasVariations.clear();
+
+    //stacks
+    while (!tuningStack.empty()) tuningStack.pop();
+    while (!vehStack.empty()) vehStack.pop();
+
+    //vectors
+    for (int i = 0; i < 212; i++)
+        vehCurrentVariations[i].clear();
+
+    vehCarGenExclude.clear();
+    vehInheritExclude.clear();
+
+    iniVeh.data.clear();
+}
+
+void updateVehicleVariations(CZone* zInfo)
+{
+    for (auto& i : vehTuning)
+    {
+        vehCurrentTuning[i.first] = vectorUnion(i.second[4], i.second[currentTown]);
+
+        std::string section;
+        auto it = vehModels.find(i.first);
+        if (it != vehModels.end())
+            section = it->second;
+        else
+            section = std::to_string(i.first);
+
+        std::vector<unsigned short> vec = iniVeh.ReadLine(section, ((lastZone[0] == 0) ? zInfo->m_szLabel : lastZone), READ_TUNING);
+        if (!vec.empty())
+        {
+            if (vehMergeZones.find(i.first) != vehMergeZones.end())
+                vehCurrentTuning[i.first] = vectorUnion(vehCurrentTuning[i.first], vec);
+            else
+                vehCurrentTuning[i.first] = vec;
+        }
+    }
+
+    for (auto& modelid : vehHasVariations)
+    {
+        vehCurrentVariations[modelid] = vectorUnion(vehVariations[modelid][4], vehVariations[modelid][currentTown]);
+
+        std::string section;
+        auto it = vehModels.find(modelid + 400U);
+        if (it != vehModels.end())
+            section = it->second;
+        else
+            section = std::to_string(modelid + 400);
+
+        std::vector<unsigned short> vec = iniVeh.ReadLine(section, ((lastZone[0] == 0) ? zInfo->m_szLabel : lastZone), READ_VEHICLES);
+        if (!vec.empty())
+        {
+            if (vehMergeZones.find((unsigned short)(modelid + 400)) != vehMergeZones.end())
+                vehCurrentVariations[modelid] = vectorUnion(vehCurrentVariations[modelid], vec);
+            else
+                vehCurrentVariations[modelid] = vec;
+        }
+
+        const CWanted* wanted = FindPlayerWanted(-1);
+        if (wanted)
+        {
+            const unsigned int wantedLevel = (wanted->m_nWantedLevel > 0) ? (wanted->m_nWantedLevel - 1) : (wanted->m_nWantedLevel);
+            if (!vehWantedVariations[modelid][wantedLevel].empty() && !vehCurrentVariations[modelid].empty())
+                filterWantedVariations(vehCurrentVariations[modelid], vehWantedVariations[modelid][wantedLevel]);
+        }
+    }
+}
+
+void addToVehicleStack(CVehicle* veh)
+{
+    vehStack.push(veh);
+}
+
+void processVehicleStacks()
+{
+    while (!tuningStack.empty())
+    {
+        auto it = tuningStack.top();
+        tuningStack.pop();
+
+        if (IsVehiclePointerValid(it.first))
+            for (auto& slot : it.second)
+                if (!slot.empty())
+                {
+                    const uint32_t i = rand<uint32_t>(0, slot.size());
+
+                    CStreaming::RequestVehicleUpgrade(slot[i], 2);
+                    CStreaming::LoadAllRequestedModels(false);
+
+                    it.first->AddVehicleUpgrade(slot[i]);
+                    Command<COMMAND_MARK_VEHICLE_MOD_AS_NO_LONGER_NEEDED>(slot[i]);
+                }
+    }
+
+    while (!vehStack.empty())
+    {
+        CVehicle* veh = vehStack.top();
+        vehStack.pop();
+
+        if (veh->m_nModelIndex >= 400 && veh->m_nModelIndex < 612 && !vehCurrentVariations[veh->m_nModelIndex - 400].empty() &&
+            vehCurrentVariations[veh->m_nModelIndex - 400][0] == 0 && veh->m_nCreatedBy != eVehicleCreatedBy::MISSION_VEHICLE)
+        {
+            veh->m_nVehicleFlags.bFadeOut = 1;
+        }
+        else
+        {
+            auto it = vehPassengers.find(veh->m_nModelIndex);
+            if (it != vehPassengers.end() && it->second[0] == 0)
+                for (int i = 0; i < 8; i++)
+                    if (veh->m_apPassengers[i] != NULL)
+                    {
+                        CPed* passenger = veh->m_apPassengers[i];
+                        if (passenger->m_pIntelligence)
+                            passenger->m_pIntelligence->FlushImmediately(false);
+                        CTheScripts::RemoveThisPed(passenger);
+                    }
+        }
+    }
+}
+
+void printCurrentVehicleVariations()
+{
+    logfile << std::dec << "vehCurrentVariations\n";
+    for (int i = 0; i < 212; i++)
+        if (!vehCurrentVariations[i].empty())
+        {
+            logfile << i + 400 << ": ";
+            for (auto j : vehCurrentVariations[i])
+                logfile << j << " ";
+            logfile << "\n";
+        }
+}
+
+void printVehicleVariations()
+{
+    logfile << "Vehicle Variations:\n";
+    for (unsigned int i = 0; i < 212; i++)
+        for (unsigned int j = 0; j < 16; j++)
+            if (!vehVariations[i][j].empty())
+            {
+                logfile << i + 400 << ": ";
+                for (unsigned int k = 0; k < 16; k++)
+                    if (!vehVariations[i][k].empty())
+                    {
+                        logfile << "(" << k << ") ";
+                        for (const auto& l : vehVariations[i][k])
+                            logfile << l << " ";
+                    }
+
+                logfile << "\n";
+                break;
+            }
 }
 
 template <unsigned int address, typename... Args>

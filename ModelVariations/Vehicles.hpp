@@ -12,7 +12,6 @@
 
 
 extern DataReader iniVeh;
-extern const char* vehIniPath;
 
 extern bool loadAllVehicles;
 
@@ -22,7 +21,7 @@ extern unsigned int currentTown;
 
 extern void filterWantedVariations(std::vector<unsigned short>& vec, std::vector<unsigned short>& wantedVec);
 
-void readVehicleIni(bool firstTime, std::string gamePath);
+void readVehicleIni(bool firstTime, const char* iniPath, std::string gamePath);
 void clearVehicles();
 void updateVehicleVariations(CZone* zInfo);
 

@@ -558,6 +558,10 @@ void installHooks()
 
 void loadIniData(bool firstTime)
 {
+    iniPed.SetIniPath(pedIniPath);
+    iniWeap.SetIniPath(pedWepIniPath);
+    iniSettings.SetIniPath(settingsIniPath);
+
     enablePeds = iniSettings.ReadBoolean("Settings", "EnablePeds", false);
     enableVehicles = iniSettings.ReadBoolean("Settings", "EnableVehicles", false);
     enablePedWeapons = iniSettings.ReadBoolean("Settings", "EnablePedWeapons", false);
@@ -668,7 +672,7 @@ void loadIniData(bool firstTime)
     }
 
     if (enableVehicles)
-        readVehicleIni(firstTime, exePath.substr(0, exePath.find_last_of("/\\")));
+        readVehicleIni(firstTime, vehIniPath, exePath.substr(0, exePath.find_last_of("/\\")));
 }
 
 void clearEverything()
@@ -705,10 +709,6 @@ void clearEverything()
     iniPed.data.clear();
     iniWeap.data.clear();
     iniSettings.data.clear();
-
-    iniPed.SetIniPath(pedIniPath);
-    iniWeap.SetIniPath(pedWepIniPath);
-    iniSettings.SetIniPath(settingsIniPath);
 
     enableCloneRemover = 0;
 
@@ -754,7 +754,7 @@ public:
                     logfile << "Unsupported exe detected: " << exeName << " " << exeFilesize << " bytes " << exeHash << std::endl;
             }
             else
-                enableLog = 0;
+                enableLog = false;
         }
 
         if (logfile.is_open())
@@ -921,7 +921,7 @@ public:
                 if (logfile.is_open())
                 {
                     logfile << "\n";
-                    logfile << getDatetime(false, true, true) << " - " << msg << " Updating variations...\n";
+                    logfile << msg << " (" << getDatetime(false, true, true) << "). Updating variations...\n";
                     logfile << "currentWanted = " << currentWanted << " wanted->m_nWantedLevel = " << wanted->m_nWantedLevel << "\n";
                     logfile << "currentZone = " << currentZone << " zInfo->m_szLabel = " << zInfo->m_szLabel << " lastZone = " << lastZone << "\n";
                     if (currentInterior[0] != 0 || lastInterior[0] != 0)
@@ -993,7 +993,7 @@ public:
 
             if (strncmp(currentInterior, lastInterior, 7) != 0)
             {
-                printVariationChange("Interior changed.");
+                printVariationChange("Interior changed");
 
                 strncpy(lastInterior, currentInterior, 7);
                 updateVariations(zInfo);
@@ -1004,7 +1004,7 @@ public:
 
             if (wanted && (int)(wanted->m_nWantedLevel) != currentWanted)
             {
-                printVariationChange("Wanted level changed.");
+                printVariationChange("Wanted level changed");
 
                 currentWanted = (int)wanted->m_nWantedLevel;
                 updateVariations(zInfo);
@@ -1020,7 +1020,7 @@ public:
                 else if (strncmp(zInfo->m_szLabel, "SAN_AND", 7) != 0)
                     lastZone[0] = 0;
 
-                printVariationChange("Zone changed.");
+                printVariationChange("Zone changed");
 
                 strncpy(currentZone, zInfo->m_szLabel, 7);
                 updateVariations(zInfo);

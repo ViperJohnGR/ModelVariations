@@ -211,16 +211,28 @@ int getRandomVariation(const int modelid, bool parked = false)
     return modelid;
 }
 
-void readVehicleIni(bool firstTime, std::string gamePath)
+void readVehicleIni(bool firstTime, const char *iniPath, std::string gamePath)
 {
-    iniVeh.SetIniPath(vehIniPath);
+    iniVeh.SetIniPath(iniPath);
+
+    if (firstTime)
+    {
+        changeCarGenerators   = iniVeh.ReadBoolean("Settings", "ChangeCarGenerators", false);
+        changeScriptedCars    = iniVeh.ReadBoolean("Settings", "ChangeScriptedCars", false);
+        disablePayAndSpray    = iniVeh.ReadBoolean("Settings", "DisablePayAndSpray", false);
+        enableLights          = iniVeh.ReadBoolean("Settings", "EnableLights", false);
+        enableSideMissions    = iniVeh.ReadBoolean("Settings", "EnableSideMissions", false);
+        enableAllSideMissions = iniVeh.ReadBoolean("Settings", "EnableSideMissionsForAllScripts", false);
+        enableSiren           = iniVeh.ReadBoolean("Settings", "EnableSiren", false);
+        enableSpecialFeatures = iniVeh.ReadBoolean("Settings", "EnableSpecialFeatures", false);
+        loadAllVehicles       = iniVeh.ReadBoolean("Settings", "LoadAllVehicles", false);
+        vehCarGenExclude      = iniVeh.ReadLine("Settings", "ExcludeCarGeneratorModels", READ_VEHICLES);
+        vehInheritExclude     = iniVeh.ReadLine("Settings", "ExcludeModelsFromInheritance", READ_VEHICLES);
+    }
 
     std::string str;
     std::vector<std::string> result;
-    std::ifstream zoneFile(gamePath + "\\data\\info.zon");
-
-    if (firstTime)
-        vehInheritExclude = iniVeh.ReadLine("Settings", "ExcludeModelsFromInheritance", READ_VEHICLES);
+    std::ifstream zoneFile(gamePath + "\\data\\info.zon");        
 
     if (logfile.is_open())
     {
@@ -279,230 +291,177 @@ void readVehicleIni(bool firstTime, std::string gamePath)
         }
 
         unsigned short i = (unsigned short)modelid;
-        if (i >= 400 && i < 612)
+        if (i >= 400)
         {
-            vehHasVariations.insert((unsigned short)(i - 400));
+            if (i < 612)
+            {
+                vehHasVariations.insert((unsigned short)(i - 400));
 
-            if (iniVeh.ReadBoolean(section, "ChangeOnlyParked", false))
-                parkedCars.insert(i);
+                if (iniVeh.ReadBoolean(section, "ChangeOnlyParked", false))
+                    parkedCars.insert(i);
 
-            vehVariations[i - 400][0] = iniVeh.ReadLine(section, "Countryside", READ_VEHICLES);
-            vehVariations[i - 400][1] = iniVeh.ReadLine(section, "LosSantos", READ_VEHICLES);
-            vehVariations[i - 400][2] = iniVeh.ReadLine(section, "SanFierro", READ_VEHICLES);
-            vehVariations[i - 400][3] = iniVeh.ReadLine(section, "LasVenturas", READ_VEHICLES);
-            vehVariations[i - 400][4] = iniVeh.ReadLine(section, "Global", READ_VEHICLES);
-            vehVariations[i - 400][5] = iniVeh.ReadLine(section, "Desert", READ_VEHICLES);
+                vehVariations[i - 400][0] = iniVeh.ReadLine(section, "Countryside", READ_VEHICLES);
+                vehVariations[i - 400][1] = iniVeh.ReadLine(section, "LosSantos", READ_VEHICLES);
+                vehVariations[i - 400][2] = iniVeh.ReadLine(section, "SanFierro", READ_VEHICLES);
+                vehVariations[i - 400][3] = iniVeh.ReadLine(section, "LasVenturas", READ_VEHICLES);
+                vehVariations[i - 400][4] = iniVeh.ReadLine(section, "Global", READ_VEHICLES);
+                vehVariations[i - 400][5] = iniVeh.ReadLine(section, "Desert", READ_VEHICLES);
 
-            vehVariations[i - 400][6] = vectorUnion(iniVeh.ReadLine(section, "TierraRobada", READ_VEHICLES), vehVariations[i - 400][5]);
-            vehVariations[i - 400][7] = vectorUnion(iniVeh.ReadLine(section, "BoneCounty", READ_VEHICLES), vehVariations[i - 400][5]);
-            vehVariations[i - 400][8] = vectorUnion(iniVeh.ReadLine(section, "RedCounty", READ_VEHICLES), vehVariations[i - 400][0]);
-            vehVariations[i - 400][9] = vectorUnion(iniVeh.ReadLine(section, "Blueberry", READ_VEHICLES), vehVariations[i - 400][8]);
-            vehVariations[i - 400][10] = vectorUnion(iniVeh.ReadLine(section, "Montgomery", READ_VEHICLES), vehVariations[i - 400][8]);
-            vehVariations[i - 400][11] = vectorUnion(iniVeh.ReadLine(section, "Dillimore", READ_VEHICLES), vehVariations[i - 400][8]);
-            vehVariations[i - 400][12] = vectorUnion(iniVeh.ReadLine(section, "PalominoCreek", READ_VEHICLES), vehVariations[i - 400][8]);
-            vehVariations[i - 400][13] = vectorUnion(iniVeh.ReadLine(section, "FlintCounty", READ_VEHICLES), vehVariations[i - 400][0]);
-            vehVariations[i - 400][14] = vectorUnion(iniVeh.ReadLine(section, "Whetstone", READ_VEHICLES), vehVariations[i - 400][0]);
-            vehVariations[i - 400][15] = vectorUnion(iniVeh.ReadLine(section, "AngelPine", READ_VEHICLES), vehVariations[i - 400][14]);
+                vehVariations[i - 400][6] = vectorUnion(iniVeh.ReadLine(section, "TierraRobada", READ_VEHICLES), vehVariations[i - 400][5]);
+                vehVariations[i - 400][7] = vectorUnion(iniVeh.ReadLine(section, "BoneCounty", READ_VEHICLES), vehVariations[i - 400][5]);
+                vehVariations[i - 400][8] = vectorUnion(iniVeh.ReadLine(section, "RedCounty", READ_VEHICLES), vehVariations[i - 400][0]);
+                vehVariations[i - 400][9] = vectorUnion(iniVeh.ReadLine(section, "Blueberry", READ_VEHICLES), vehVariations[i - 400][8]);
+                vehVariations[i - 400][10] = vectorUnion(iniVeh.ReadLine(section, "Montgomery", READ_VEHICLES), vehVariations[i - 400][8]);
+                vehVariations[i - 400][11] = vectorUnion(iniVeh.ReadLine(section, "Dillimore", READ_VEHICLES), vehVariations[i - 400][8]);
+                vehVariations[i - 400][12] = vectorUnion(iniVeh.ReadLine(section, "PalominoCreek", READ_VEHICLES), vehVariations[i - 400][8]);
+                vehVariations[i - 400][13] = vectorUnion(iniVeh.ReadLine(section, "FlintCounty", READ_VEHICLES), vehVariations[i - 400][0]);
+                vehVariations[i - 400][14] = vectorUnion(iniVeh.ReadLine(section, "Whetstone", READ_VEHICLES), vehVariations[i - 400][0]);
+                vehVariations[i - 400][15] = vectorUnion(iniVeh.ReadLine(section, "AngelPine", READ_VEHICLES), vehVariations[i - 400][14]);
 
-            vehWantedVariations[i - 400][0] = iniVeh.ReadLine(section, "Wanted1", READ_VEHICLES);
-            vehWantedVariations[i - 400][1] = iniVeh.ReadLine(section, "Wanted2", READ_VEHICLES);
-            vehWantedVariations[i - 400][2] = iniVeh.ReadLine(section, "Wanted3", READ_VEHICLES);
-            vehWantedVariations[i - 400][3] = iniVeh.ReadLine(section, "Wanted4", READ_VEHICLES);
-            vehWantedVariations[i - 400][4] = iniVeh.ReadLine(section, "Wanted5", READ_VEHICLES);
-            vehWantedVariations[i - 400][5] = iniVeh.ReadLine(section, "Wanted6", READ_VEHICLES);
+                vehWantedVariations[i - 400][0] = iniVeh.ReadLine(section, "Wanted1", READ_VEHICLES);
+                vehWantedVariations[i - 400][1] = iniVeh.ReadLine(section, "Wanted2", READ_VEHICLES);
+                vehWantedVariations[i - 400][2] = iniVeh.ReadLine(section, "Wanted3", READ_VEHICLES);
+                vehWantedVariations[i - 400][3] = iniVeh.ReadLine(section, "Wanted4", READ_VEHICLES);
+                vehWantedVariations[i - 400][4] = iniVeh.ReadLine(section, "Wanted5", READ_VEHICLES);
+                vehWantedVariations[i - 400][5] = iniVeh.ReadLine(section, "Wanted6", READ_VEHICLES);
 
 
-            for (unsigned int j = 0; j < 16; j++)
-                for (auto &k : vehVariations[i-400][j])
-                    if (k != i && !(vectorHasId(vehInheritExclude, k)))
-                        vehOriginalModels.insert({ k, i });
-        }
-    }
+                for (unsigned int j = 0; j < 16; j++)
+                    for (auto& k : vehVariations[i - 400][j])
+                        if (k != i && !(vectorHasId(vehInheritExclude, k)))
+                            vehOriginalModels.insert({ k, i });
+            }
 
-    if (firstTime)
-        enableLights = iniVeh.ReadBoolean("Settings", "EnableLights", false);
-    
-    for (auto& i : iniVeh.data)
-    {
-        int k = 0;
-        if (i.first[0] >= '0' && i.first[0] <= '9')
-            k = std::stoi(i.first);
-        else
-            CModelInfo::GetModelInfo((char*)i.first.c_str(), &k);
+            
+            vehGroups[i][0] = iniVeh.ReadLine(section, "Countryside", READ_GROUPS);
+            vehGroups[i][1] = iniVeh.ReadLine(section, "LosSantos", READ_GROUPS);
+            vehGroups[i][2] = iniVeh.ReadLine(section, "SanFierro", READ_GROUPS);
+            vehGroups[i][3] = iniVeh.ReadLine(section, "LasVenturas", READ_GROUPS);
+            vehGroups[i][4] = iniVeh.ReadLine(section, "Global", READ_GROUPS);
+            vehGroups[i][5] = iniVeh.ReadLine(section, "Desert", READ_GROUPS);
 
-        unsigned short modelid = (unsigned short)k;
-
-        if (modelid >= 400)
-        {
-            vehGroups[modelid][0] = iniVeh.ReadLine(i.first, "Countryside", READ_GROUPS);
-            vehGroups[modelid][1] = iniVeh.ReadLine(i.first, "LosSantos", READ_GROUPS);
-            vehGroups[modelid][2] = iniVeh.ReadLine(i.first, "SanFierro", READ_GROUPS);
-            vehGroups[modelid][3] = iniVeh.ReadLine(i.first, "LasVenturas", READ_GROUPS);
-            vehGroups[modelid][4] = iniVeh.ReadLine(i.first, "Global", READ_GROUPS);
-            vehGroups[modelid][5] = iniVeh.ReadLine(i.first, "Desert", READ_GROUPS);
-
-            vehGroups[modelid][6] = vectorUnion(iniVeh.ReadLine(i.first, "TierraRobada", READ_GROUPS), vehGroups[modelid][5]);
-            vehGroups[modelid][7] = vectorUnion(iniVeh.ReadLine(i.first, "BoneCounty", READ_GROUPS), vehGroups[modelid][5]);
-            vehGroups[modelid][8] = vectorUnion(iniVeh.ReadLine(i.first, "RedCounty", READ_GROUPS), vehGroups[modelid][0]);
-            vehGroups[modelid][9] = vectorUnion(iniVeh.ReadLine(i.first, "Blueberry", READ_GROUPS), vehGroups[modelid][8]);
-            vehGroups[modelid][10] = vectorUnion(iniVeh.ReadLine(i.first, "Montgomery", READ_GROUPS), vehGroups[modelid][8]);
-            vehGroups[modelid][11] = vectorUnion(iniVeh.ReadLine(i.first, "Dillimore", READ_GROUPS), vehGroups[modelid][8]);
-            vehGroups[modelid][12] = vectorUnion(iniVeh.ReadLine(i.first, "PalominoCreek", READ_GROUPS), vehGroups[modelid][8]);
-            vehGroups[modelid][13] = vectorUnion(iniVeh.ReadLine(i.first, "FlintCounty", READ_GROUPS), vehGroups[modelid][0]);
-            vehGroups[modelid][14] = vectorUnion(iniVeh.ReadLine(i.first, "Whetstone", READ_GROUPS), vehGroups[modelid][0]);
-            vehGroups[modelid][15] = vectorUnion(iniVeh.ReadLine(i.first, "AngelPine", READ_GROUPS), vehGroups[modelid][14]);
+            vehGroups[i][6] = vectorUnion(iniVeh.ReadLine(section, "TierraRobada", READ_GROUPS), vehGroups[i][5]);
+            vehGroups[i][7] = vectorUnion(iniVeh.ReadLine(section, "BoneCounty", READ_GROUPS), vehGroups[i][5]);
+            vehGroups[i][8] = vectorUnion(iniVeh.ReadLine(section, "RedCounty", READ_GROUPS), vehGroups[i][0]);
+            vehGroups[i][9] = vectorUnion(iniVeh.ReadLine(section, "Blueberry", READ_GROUPS), vehGroups[i][8]);
+            vehGroups[i][10] = vectorUnion(iniVeh.ReadLine(section, "Montgomery", READ_GROUPS), vehGroups[i][8]);
+            vehGroups[i][11] = vectorUnion(iniVeh.ReadLine(section, "Dillimore", READ_GROUPS), vehGroups[i][8]);
+            vehGroups[i][12] = vectorUnion(iniVeh.ReadLine(section, "PalominoCreek", READ_GROUPS), vehGroups[i][8]);
+            vehGroups[i][13] = vectorUnion(iniVeh.ReadLine(section, "FlintCounty", READ_GROUPS), vehGroups[i][0]);
+            vehGroups[i][14] = vectorUnion(iniVeh.ReadLine(section, "Whetstone", READ_GROUPS), vehGroups[i][0]);
+            vehGroups[i][15] = vectorUnion(iniVeh.ReadLine(section, "AngelPine", READ_GROUPS), vehGroups[i][14]);
 
             //Veh Tuning
-            vehTuning[modelid][0] = iniVeh.ReadLine(i.first, "Countryside", READ_TUNING);
-            vehTuning[modelid][1] = iniVeh.ReadLine(i.first, "LosSantos", READ_TUNING);
-            vehTuning[modelid][2] = iniVeh.ReadLine(i.first, "SanFierro", READ_TUNING);
-            vehTuning[modelid][3] = iniVeh.ReadLine(i.first, "LasVenturas", READ_TUNING);
-            vehTuning[modelid][4] = iniVeh.ReadLine(i.first, "Global", READ_TUNING);
-            vehTuning[modelid][5] = iniVeh.ReadLine(i.first, "Desert", READ_TUNING);
+            vehTuning[i][0] = iniVeh.ReadLine(section, "Countryside", READ_TUNING);
+            vehTuning[i][1] = iniVeh.ReadLine(section, "LosSantos", READ_TUNING);
+            vehTuning[i][2] = iniVeh.ReadLine(section, "SanFierro", READ_TUNING);
+            vehTuning[i][3] = iniVeh.ReadLine(section, "LasVenturas", READ_TUNING);
+            vehTuning[i][4] = iniVeh.ReadLine(section, "Global", READ_TUNING);
+            vehTuning[i][5] = iniVeh.ReadLine(section, "Desert", READ_TUNING);
 
-            vehTuning[modelid][6] = vectorUnion(iniVeh.ReadLine(i.first, "TierraRobada", READ_TUNING), vehTuning[modelid][5]);
-            vehTuning[modelid][7] = vectorUnion(iniVeh.ReadLine(i.first, "BoneCounty", READ_TUNING), vehTuning[modelid][5]);
-            vehTuning[modelid][8] = vectorUnion(iniVeh.ReadLine(i.first, "RedCounty", READ_TUNING), vehTuning[modelid][0]);
-            vehTuning[modelid][9] = vectorUnion(iniVeh.ReadLine(i.first, "Blueberry", READ_TUNING), vehTuning[modelid][8]);
-            vehTuning[modelid][10] = vectorUnion(iniVeh.ReadLine(i.first, "Montgomery", READ_TUNING), vehTuning[modelid][8]);
-            vehTuning[modelid][11] = vectorUnion(iniVeh.ReadLine(i.first, "Dillimore", READ_TUNING), vehTuning[modelid][8]);
-            vehTuning[modelid][12] = vectorUnion(iniVeh.ReadLine(i.first, "PalominoCreek", READ_TUNING), vehTuning[modelid][8]);
-            vehTuning[modelid][13] = vectorUnion(iniVeh.ReadLine(i.first, "FlintCounty", READ_TUNING), vehTuning[modelid][0]);
-            vehTuning[modelid][14] = vectorUnion(iniVeh.ReadLine(i.first, "Whetstone", READ_TUNING), vehTuning[modelid][0]);
-            vehTuning[modelid][15] = vectorUnion(iniVeh.ReadLine(i.first, "AngelPine", READ_TUNING), vehTuning[modelid][14]);
+            vehTuning[i][6] = vectorUnion(iniVeh.ReadLine(section, "TierraRobada", READ_TUNING), vehTuning[i][5]);
+            vehTuning[i][7] = vectorUnion(iniVeh.ReadLine(section, "BoneCounty", READ_TUNING), vehTuning[i][5]);
+            vehTuning[i][8] = vectorUnion(iniVeh.ReadLine(section, "RedCounty", READ_TUNING), vehTuning[i][0]);
+            vehTuning[i][9] = vectorUnion(iniVeh.ReadLine(section, "Blueberry", READ_TUNING), vehTuning[i][8]);
+            vehTuning[i][10] = vectorUnion(iniVeh.ReadLine(section, "Montgomery", READ_TUNING), vehTuning[i][8]);
+            vehTuning[i][11] = vectorUnion(iniVeh.ReadLine(section, "Dillimore", READ_TUNING), vehTuning[i][8]);
+            vehTuning[i][12] = vectorUnion(iniVeh.ReadLine(section, "PalominoCreek", READ_TUNING), vehTuning[i][8]);
+            vehTuning[i][13] = vectorUnion(iniVeh.ReadLine(section, "FlintCounty", READ_TUNING), vehTuning[i][0]);
+            vehTuning[i][14] = vectorUnion(iniVeh.ReadLine(section, "Whetstone", READ_TUNING), vehTuning[i][0]);
+            vehTuning[i][15] = vectorUnion(iniVeh.ReadLine(section, "AngelPine", READ_TUNING), vehTuning[i][14]);
 
-            const int tuningRarity = iniVeh.ReadInteger(i.first, "TuningRarity", -1);
+            const int tuningRarity = iniVeh.ReadInteger(section, "TuningRarity", -1);
             if (tuningRarity > -1)
-                tuningRarities.insert({modelid, (BYTE)tuningRarity});
+                tuningRarities.insert({ i, (BYTE)tuningRarity });
 
-            if (iniVeh.ReadBoolean(i.first, "UseOnlyGroups", false))
-                vehUseOnlyGroups.insert(modelid);
+            if (iniVeh.ReadBoolean(section, "UseOnlyGroups", false))
+                vehUseOnlyGroups.insert(i);
 
             if (enableLights)
             {
-                const float lightWidth = iniVeh.ReadFloat(i.first, "LightWidth", -999.0);
-                const float lightX = iniVeh.ReadFloat(i.first, "LightX", 0.0);
-                const float lightY = iniVeh.ReadFloat(i.first, "LightY", 0.0);
-                const float lightZ = iniVeh.ReadFloat(i.first, "LightZ", 0.0);
+                const float lightWidth = iniVeh.ReadFloat(section, "LightWidth", -999.0);
+                const float lightX = iniVeh.ReadFloat(section, "LightX", 0.0);
+                const float lightY = iniVeh.ReadFloat(section, "LightY", 0.0);
+                const float lightZ = iniVeh.ReadFloat(section, "LightZ", 0.0);
 
-                int r = iniVeh.ReadInteger(i.first, "LightR", -1);
-                int g = iniVeh.ReadInteger(i.first, "LightG", -1);
-                int b = iniVeh.ReadInteger(i.first, "LightB", -1);
-                int a = iniVeh.ReadInteger(i.first, "LightA", -1);
+                int r = iniVeh.ReadInteger(section, "LightR", -1);
+                int g = iniVeh.ReadInteger(section, "LightG", -1);
+                int b = iniVeh.ReadInteger(section, "LightB", -1);
+                int a = iniVeh.ReadInteger(section, "LightA", -1);
 
                 if (r >= 0 && r <= 255 && g >= 0 && g <= 255 && b >= 0 && b <= 255 && a >= 0 && a <= 255)
                 {
                     rgba colors = { (uint8_t)r, (uint8_t)g, (uint8_t)b, (uint8_t)a };
-                    LightColors.insert({ modelid, colors });
+                    LightColors.insert({ i, colors });
                 }
 
                 if (lightX != 0.0 || lightY != 0.0 || lightZ != 0.0 || lightWidth > -900.0)
-                    LightPositions.insert({ modelid, {{ lightX, lightY, lightZ }, lightWidth} });
+                    LightPositions.insert({ i, {{ lightX, lightY, lightZ }, lightWidth} });
 
-                r = iniVeh.ReadInteger(i.first, "LightR2", -1);
-                g = iniVeh.ReadInteger(i.first, "LightG2", -1);
-                b = iniVeh.ReadInteger(i.first, "LightB2", -1);
-                a = iniVeh.ReadInteger(i.first, "LightA2", -1);
+                r = iniVeh.ReadInteger(section, "LightR2", -1);
+                g = iniVeh.ReadInteger(section, "LightG2", -1);
+                b = iniVeh.ReadInteger(section, "LightB2", -1);
+                a = iniVeh.ReadInteger(section, "LightA2", -1);
 
                 if (r >= 0 && r <= 255 && g >= 0 && g <= 255 && b >= 0 && b <= 255 && a >= 0 && a <= 255)
                 {
                     rgba colors = { (uint8_t)r, (uint8_t)g, (uint8_t)b, (uint8_t)a };
-                    LightColors2.insert({ modelid, colors });
+                    LightColors2.insert({ i, colors });
                 }
             }
 
-            if (iniVeh.ReadBoolean(i.first, "MergeZonesWithCities", false))
-                vehMergeZones.insert(modelid);
+            if (iniVeh.ReadBoolean(section, "MergeZonesWithCities", false))
+                vehMergeZones.insert(i);
 
             uint8_t numGroups = 0;
             std::vector<unsigned short> vec;
             for (int j = 0; j < 9; j++)
             {
                 str = "DriverGroup" + std::to_string(j + 1);
-                vec = iniVeh.ReadLine(i.first, str, READ_PEDS);
+                vec = iniVeh.ReadLine(section, str, READ_PEDS);
                 if (!vec.empty())
                 {
-                    vehDriverGroups[j].insert({ modelid, vec });
+                    vehDriverGroups[j].insert({ i, vec });
                     numGroups++;
                 }
                 if (numGroups > 0)
-                    modelNumGroups[modelid] = numGroups;
+                    modelNumGroups[i] = numGroups;
                 else
                     continue;
 
                 str = "PassengerGroup" + std::to_string(j + 1);
-                vec = iniVeh.ReadLine(i.first, str, READ_PEDS);
+                vec = iniVeh.ReadLine(section, str, READ_PEDS);
                 if (!vec.empty())
-                    vehPassengerGroups[j].insert({ modelid, vec });
+                    vehPassengerGroups[j].insert({ i, vec });
             }
 
-            vec = iniVeh.ReadLineUnique(i.first, "Wanted1", READ_GROUPS);
-            if (!vec.empty())
+            for (unsigned short j = 0; j < 6; j++)
             {
-                checkNumGroups(vec, modelNumGroups[modelid]);
-                vehGroupWantedVariations[modelid][0] = vec;
+                vec = iniVeh.ReadLineUnique(section, "Wanted" + std::to_string(j + 1), READ_GROUPS);
+                if (!vec.empty())
+                {
+                    checkNumGroups(vec, modelNumGroups[i]);
+                    vehGroupWantedVariations[i][j] = vec;
+                }
             }
 
-            vec = iniVeh.ReadLineUnique(i.first, "Wanted2", READ_GROUPS);
-            if (!vec.empty())
-            {
-                checkNumGroups(vec, modelNumGroups[modelid]);
-                vehGroupWantedVariations[modelid][1] = vec;
-            }
-
-            vec = iniVeh.ReadLineUnique(i.first, "Wanted3", READ_GROUPS);
-            if (!vec.empty())
-            {
-                checkNumGroups(vec, modelNumGroups[modelid]);
-                vehGroupWantedVariations[modelid][2] = vec;
-            }
-
-            vec = iniVeh.ReadLineUnique(i.first, "Wanted4", READ_GROUPS);
-            if (!vec.empty())
-            {
-                checkNumGroups(vec, modelNumGroups[modelid]);
-                vehGroupWantedVariations[modelid][3] = vec;
-            }
-
-            vec = iniVeh.ReadLineUnique(i.first, "Wanted5", READ_GROUPS);
-            if (!vec.empty())
-            {
-                checkNumGroups(vec, modelNumGroups[modelid]);
-                vehGroupWantedVariations[modelid][4] = vec;
-            }
-
-            vec = iniVeh.ReadLineUnique(i.first, "Wanted6", READ_GROUPS);
-            if (!vec.empty())
-            {
-                checkNumGroups(vec, modelNumGroups[modelid]);
-                vehGroupWantedVariations[modelid][5] = vec;
-            }
-
-            if (vehGroups.find(modelid) != vehGroups.end())
+            if (vehGroups.find(i) != vehGroups.end())
                 for (unsigned int j = 0; j < 16; j++)
-                    checkNumGroups(vehGroups[modelid][j], modelNumGroups[modelid]);
+                    checkNumGroups(vehGroups[i][j], modelNumGroups[i]);
 
 
-            vec = iniVeh.ReadLine(i.first, "Drivers", READ_PEDS);
+            vec = iniVeh.ReadLine(section, "Drivers", READ_PEDS);
             if (!vec.empty())
-                vehDrivers.insert({ modelid, vec });
+                vehDrivers.insert({ i, vec });
 
-            vec = iniVeh.ReadLine(i.first, "Passengers", READ_PEDS);
+            vec = iniVeh.ReadLine(section, "Passengers", READ_PEDS);
             if (!vec.empty())
-                vehPassengers.insert({ modelid, vec });
+                vehPassengers.insert({ i, vec });
 
-            vec = iniVeh.ReadLine(i.first, "ParentModel", READ_VEHICLES);
+            vec = iniVeh.ReadLine(section, "ParentModel", READ_VEHICLES);
             if (!vec.empty() && vec[0] >= 400)
-                vehOriginalModels[modelid] = vec[0];
+                vehOriginalModels[i] = vec[0];
         }
-    }
-
-    if (firstTime)
-    {
-        changeCarGenerators = iniVeh.ReadBoolean("Settings", "ChangeCarGenerators", false);
-        vehCarGenExclude = iniVeh.ReadLine("Settings", "ExcludeCarGeneratorModels", READ_VEHICLES);
-        loadAllVehicles = iniVeh.ReadBoolean("Settings", "LoadAllVehicles", false);
-        enableAllSideMissions = iniVeh.ReadBoolean("Settings", "EnableSideMissionsForAllScripts", false);
     }
 }
 
@@ -699,7 +658,7 @@ void printVehicleVariations()
 }
 
 template <unsigned int address, typename... Args>
-void changeModel(const char *funcName, unsigned short oldModel, int newModel, std::vector<unsigned short*> addresses, Args... args)
+void changeModel(const char *funcName, unsigned short oldModel, int newModel, std::vector<unsigned int> addresses, Args... args)
 {
     if (newModel < 400 || newModel > 65535)
     {
@@ -708,21 +667,21 @@ void changeModel(const char *funcName, unsigned short oldModel, int newModel, st
     }
 
     for (auto& i : addresses)
-        if (*i != oldModel)
+        if (*((uint16_t*)i) != oldModel)
         {
-            logModified((unsigned int)i, printToString("Modified method detected : %s - 0x%X is %u", funcName, i, *i));
+            logModified(i, printToString("Modified method detected : %s - 0x%X is %u", funcName, i, *(uint16_t*)i));
             return callMethodOriginal<address>(args...);
         }
 
     for (auto& i : addresses)
-        *i = (unsigned short)newModel;
+        *(uint16_t*)i = (unsigned short)newModel;
     callMethodOriginal<address>(args...);
     for (auto& i : addresses)
-        *i = oldModel;
+        *(uint16_t*)i = oldModel;
 }
 
 template <typename T, unsigned int address, typename... Args>
-T changeModelAndReturn(const char* funcName, unsigned short oldModel, int newModel, std::vector<unsigned short*> addresses, Args... args)
+T changeModelAndReturn(const char* funcName, unsigned short oldModel, int newModel, std::vector<unsigned int> addresses, Args... args)
 {
     if (newModel < 400 || newModel > 65535)
     {
@@ -730,17 +689,17 @@ T changeModelAndReturn(const char* funcName, unsigned short oldModel, int newMod
     }
 
     for (auto& i : addresses)
-        if (*i != oldModel)
+        if (*((uint16_t*)i) != oldModel)
         {
-            logModified((unsigned int)i, printToString("Modified method detected : %s - 0x%X is %u", funcName, i, *i));
+            logModified(i, printToString("Modified method detected : %s - 0x%X is %u", funcName, i, *(uint16_t*)i));
             return callMethodOriginalAndReturn<T, address>(args...);
         }
 
     for (auto& i : addresses)
-        *i = (unsigned short)newModel;
+        *(uint16_t*)i = (unsigned short)newModel;
     T retValue = callMethodOriginalAndReturn<T, address>(args...);
     for (auto& i : addresses)
-        *i = oldModel;
+        *(uint16_t*)i = oldModel;
     return retValue;
 }
 
@@ -1542,29 +1501,29 @@ void __fastcall ProcessControlHooked(CAutomobile* veh)
     switch (getVariationOriginalModel(veh->m_nModelIndex))
     {
         case 406: //Dumper
-            return changeModel<address>("CAutomobile::ProcessControl", 406, veh->m_nModelIndex, { (uint16_t*)0x6B1F9D }, veh);
+            return changeModel<address>("CAutomobile::ProcessControl", 406, veh->m_nModelIndex, { 0x6B1F9D }, veh);
         case 407: //Firetruck
-            return changeModel<address>("CAutomobile::ProcessControl", 407, veh->m_nModelIndex, { (uint16_t*)0x6B1F51 }, veh);
+            return changeModel<address>("CAutomobile::ProcessControl", 407, veh->m_nModelIndex, { 0x6B1F51 }, veh);
         case 423: //Mr. Whoopie
-            return changeModel<address>("CAutomobile::ProcessControl", 423, veh->m_nModelIndex, { (uint16_t*)0x6B2BD8 }, veh);
+            return changeModel<address>("CAutomobile::ProcessControl", 423, veh->m_nModelIndex, { 0x6B2BD8 }, veh);
         case 432: //Rhino
-            return changeModel<address>("CAutomobile::ProcessControl", 432, veh->m_nModelIndex, { (uint16_t*)0x6B1F7D, (uint16_t*)0x6B36D8 }, veh);
+            return changeModel<address>("CAutomobile::ProcessControl", 432, veh->m_nModelIndex, { 0x6B1F7D, 0x6B36D8 }, veh);
         case 443: //Packer
-            return changeModel<address>("CAutomobile::ProcessControl", 443, veh->m_nModelIndex, { (uint16_t*)0x6B1F91 }, veh);
+            return changeModel<address>("CAutomobile::ProcessControl", 443, veh->m_nModelIndex, { 0x6B1F91 }, veh);
         case 486: //Dozer
-            return changeModel<address>("CAutomobile::ProcessControl", 486, veh->m_nModelIndex, { (uint16_t*)0x6B1F97 }, veh);
+            return changeModel<address>("CAutomobile::ProcessControl", 486, veh->m_nModelIndex, { 0x6B1F97 }, veh);
         case 524: //Cement Truck
-            return changeModel<address>("CAutomobile::ProcessControl", 524, veh->m_nModelIndex, { (uint16_t*)0x6B1FA3 }, veh);
+            return changeModel<address>("CAutomobile::ProcessControl", 524, veh->m_nModelIndex, { 0x6B1FA3 }, veh);
         case 525: //Towtruck
-            return changeModel<address>("CAutomobile::ProcessControl", 525, veh->m_nModelIndex, { (uint16_t*)0x6B1FB5 }, veh);
+            return changeModel<address>("CAutomobile::ProcessControl", 525, veh->m_nModelIndex, { 0x6B1FB5 }, veh);
         case 530: //Forklift
-            return changeModel<address>("CAutomobile::ProcessControl", 530, veh->m_nModelIndex, { (uint16_t*)0x6B1FAF }, veh);
+            return changeModel<address>("CAutomobile::ProcessControl", 530, veh->m_nModelIndex, { 0x6B1FAF }, veh);
         case 531: //Tractor
-            return changeModel<address>("CAutomobile::ProcessControl", 531, veh->m_nModelIndex, { (uint16_t*)0x6B1FBB }, veh);
+            return changeModel<address>("CAutomobile::ProcessControl", 531, veh->m_nModelIndex, { 0x6B1FBB }, veh);
         case 532: //Combine Harverster
-            return changeModel<address>("CAutomobile::ProcessControl", 532, veh->m_nModelIndex, { (uint16_t*)0x6B36C9 }, veh);
+            return changeModel<address>("CAutomobile::ProcessControl", 532, veh->m_nModelIndex, { 0x6B36C9 }, veh);
         case 601: //Swat Tank
-            return changeModel<address>("CAutomobile::ProcessControl", 601, veh->m_nModelIndex, { (uint16_t*)0x6B1F57 }, veh);
+            return changeModel<address>("CAutomobile::ProcessControl", 601, veh->m_nModelIndex, { 0x6B1F57 }, veh);
     }
 
     callMethodOriginal<address>(veh);
@@ -1609,31 +1568,31 @@ void __fastcall PreRenderHooked(CAutomobile* veh)
     }
 
     if (getVariationOriginalModel(veh->m_nModelIndex) == 407) //Firetruck
-        changeModel<address>("CAutomobile::PreRender", 407, veh->m_nModelIndex, { (uint16_t*)0x6ACA59 }, veh);
+        changeModel<address>("CAutomobile::PreRender", 407, veh->m_nModelIndex, { 0x6ACA59 }, veh);
     else if (getVariationOriginalModel(veh->m_nModelIndex) == 432) //Rhino
-        changeModel<address>("CAutomobile::PreRender", 432, veh->m_nModelIndex, { (uint16_t*)0x6ABC83, 
-                                                                                  (uint16_t*)0x6ABD11, 
-                                                                                  (uint16_t*)0x6ABFCC, 
-                                                                                  (uint16_t*)0x6AC029, 
-                                                                                  (uint16_t*)0x6ACA4D }, veh);
+        changeModel<address>("CAutomobile::PreRender", 432, veh->m_nModelIndex, { 0x6ABC83, 
+                                                                                  0x6ABD11, 
+                                                                                  0x6ABFCC, 
+                                                                                  0x6AC029, 
+                                                                                  0x6ACA4D }, veh);
     else if (getVariationOriginalModel(veh->m_nModelIndex) == 434) //Hotknife
-        changeModel<address>("CAutomobile::PreRender", 434, veh->m_nModelIndex, { (uint16_t*)0x6ACA43 }, veh);
+        changeModel<address>("CAutomobile::PreRender", 434, veh->m_nModelIndex, { 0x6ACA43 }, veh);
     else if (getVariationOriginalModel(veh->m_nModelIndex) == 443) //Packer
-        changeModel<address>("CAutomobile::PreRender", 443, veh->m_nModelIndex, { (uint16_t*)0x6AC4DB }, veh);
+        changeModel<address>("CAutomobile::PreRender", 443, veh->m_nModelIndex, { 0x6AC4DB }, veh);
     else if (getVariationOriginalModel(veh->m_nModelIndex) == 486) //Dozer
-        changeModel<address>("CAutomobile::PreRender", 486, veh->m_nModelIndex, { (uint16_t*)0x6AC40E }, veh);
+        changeModel<address>("CAutomobile::PreRender", 486, veh->m_nModelIndex, { 0x6AC40E }, veh);
     else if (getVariationOriginalModel(veh->m_nModelIndex) == 524) //Cement Truck
-        changeModel<address>("CAutomobile::PreRender", 524, veh->m_nModelIndex, { (uint16_t*)0x6AC43D }, veh);
+        changeModel<address>("CAutomobile::PreRender", 524, veh->m_nModelIndex, { 0x6AC43D }, veh);
     else if (getVariationOriginalModel(veh->m_nModelIndex) == 525) //Towtruck
-        changeModel<address>("CAutomobile::PreRender", 525, veh->m_nModelIndex, { (uint16_t*)0x6AC509 }, veh);
+        changeModel<address>("CAutomobile::PreRender", 525, veh->m_nModelIndex, { 0x6AC509 }, veh);
     else if (getVariationOriginalModel(veh->m_nModelIndex) == 530) //Forklift
-        changeModel<address>("CAutomobile::PreRender", 530, veh->m_nModelIndex, { (uint16_t*)0x6AC71E }, veh);
+        changeModel<address>("CAutomobile::PreRender", 530, veh->m_nModelIndex, { 0x6AC71E }, veh);
     else if (getVariationOriginalModel(veh->m_nModelIndex) == 531) //Tractor
-        changeModel<address>("CAutomobile::PreRender", 531, veh->m_nModelIndex, { (uint16_t*)0x6AC6DB }, veh);
+        changeModel<address>("CAutomobile::PreRender", 531, veh->m_nModelIndex, { 0x6AC6DB }, veh);
     else if (getVariationOriginalModel(veh->m_nModelIndex) == 532) //Combine Harverster
-        changeModel<address>("CAutomobile::PreRender", 532, veh->m_nModelIndex, { (uint16_t*)0x6ABCA3, (uint16_t*)0x6AC7AD }, veh);
+        changeModel<address>("CAutomobile::PreRender", 532, veh->m_nModelIndex, { 0x6ABCA3, 0x6AC7AD }, veh);
     else if (getVariationOriginalModel(veh->m_nModelIndex) == 601) //SWAT Tank
-        changeModel<address>("CAutomobile::PreRender", 601, veh->m_nModelIndex, { (uint16_t*)0x6ACA53 }, veh); 
+        changeModel<address>("CAutomobile::PreRender", 601, veh->m_nModelIndex, { 0x6ACA53 }, veh); 
     else
         callMethodOriginal<address>(veh);
 
@@ -1647,33 +1606,33 @@ char __fastcall GetTowBarPosHooked(CAutomobile* automobile, void*, CVector* outP
     switch (getVariationOriginalModel(automobile->m_nModelIndex))
     {
         case 403: //Linerunner
-            return changeModelAndReturn<char, address>("CAutomobile::GetTowBarPos", 403, automobile->m_nModelIndex, { (uint16_t*)0x6AF27A }, automobile, outPos, ignoreModelType, attachTo);
+            return changeModelAndReturn<char, address>("CAutomobile::GetTowBarPos", 403, automobile->m_nModelIndex, { 0x6AF27A }, automobile, outPos, ignoreModelType, attachTo);
         case 485: //Baggage
-            return changeModelAndReturn<char, address>("CAutomobile::GetTowBarPos", 485, automobile->m_nModelIndex, { (uint16_t*)0x6AF29C }, automobile, outPos, ignoreModelType, attachTo);
+            return changeModelAndReturn<char, address>("CAutomobile::GetTowBarPos", 485, automobile->m_nModelIndex, { 0x6AF29C }, automobile, outPos, ignoreModelType, attachTo);
         case 514: //Tanker
-            return changeModelAndReturn<char, address>("CAutomobile::GetTowBarPos", 514, automobile->m_nModelIndex, { (uint16_t*)0x6AF26E }, automobile, outPos, ignoreModelType, attachTo);
+            return changeModelAndReturn<char, address>("CAutomobile::GetTowBarPos", 514, automobile->m_nModelIndex, { 0x6AF26E }, automobile, outPos, ignoreModelType, attachTo);
         case 515: //Roadtrain
-            return changeModelAndReturn<char, address>("CAutomobile::GetTowBarPos", 515, automobile->m_nModelIndex, { (uint16_t*)0x6AF274 }, automobile, outPos, ignoreModelType, attachTo);
+            return changeModelAndReturn<char, address>("CAutomobile::GetTowBarPos", 515, automobile->m_nModelIndex, { 0x6AF274 }, automobile, outPos, ignoreModelType, attachTo);
         case 525: //Towtruck
-            return changeModelAndReturn<char, address>("CAutomobile::GetTowBarPos", 525, automobile->m_nModelIndex, { (uint16_t*)0x6AF259 }, automobile, outPos, ignoreModelType, attachTo);
+            return changeModelAndReturn<char, address>("CAutomobile::GetTowBarPos", 525, automobile->m_nModelIndex, { 0x6AF259 }, automobile, outPos, ignoreModelType, attachTo);
         case 531: //Tractor
-            return changeModelAndReturn<char, address>("CAutomobile::GetTowBarPos", 531, automobile->m_nModelIndex, { (uint16_t*)0x6AF264, (uint16_t*)0x6AF343 }, automobile, outPos, ignoreModelType, attachTo);
+            return changeModelAndReturn<char, address>("CAutomobile::GetTowBarPos", 531, automobile->m_nModelIndex, { 0x6AF264, 0x6AF343 }, automobile, outPos, ignoreModelType, attachTo);
         case 552: //Utility Van
-            return changeModelAndReturn<char, address>("CAutomobile::GetTowBarPos", 552, automobile->m_nModelIndex, { (uint16_t*)0x6AF286 }, automobile, outPos, ignoreModelType, attachTo);
+            return changeModelAndReturn<char, address>("CAutomobile::GetTowBarPos", 552, automobile->m_nModelIndex, { 0x6AF286 }, automobile, outPos, ignoreModelType, attachTo);
         case 583: //Tug
-            return changeModelAndReturn<char, address>("CAutomobile::GetTowBarPos", 583, automobile->m_nModelIndex, { (uint16_t*)0x6AF2A2 }, automobile, outPos, ignoreModelType, attachTo);
+            return changeModelAndReturn<char, address>("CAutomobile::GetTowBarPos", 583, automobile->m_nModelIndex, { 0x6AF2A2 }, automobile, outPos, ignoreModelType, attachTo);
         case 591: //Artic Trailer
-            return changeModelAndReturn<char, address>("CAutomobile::GetTowBarPos", 591, automobile->m_nModelIndex, { (uint16_t*)0x6AF280 }, automobile, outPos, ignoreModelType, attachTo);
+            return changeModelAndReturn<char, address>("CAutomobile::GetTowBarPos", 591, automobile->m_nModelIndex, { 0x6AF280 }, automobile, outPos, ignoreModelType, attachTo);
         case 606: //Bag Box A
-            return changeModelAndReturn<char, address>("CAutomobile::GetTowBarPos", 606, automobile->m_nModelIndex, { (uint16_t*)0x6AF2A8, (uint16_t*)0x6AF2BC }, automobile, outPos, ignoreModelType, attachTo);
+            return changeModelAndReturn<char, address>("CAutomobile::GetTowBarPos", 606, automobile->m_nModelIndex, { 0x6AF2A8, 0x6AF2BC }, automobile, outPos, ignoreModelType, attachTo);
         case 607: //Bag Box B
-            return changeModelAndReturn<char, address>("CAutomobile::GetTowBarPos", 607, automobile->m_nModelIndex, { (uint16_t*)0x6AF2AE, (uint16_t*)0x6AF2C2 }, automobile, outPos, ignoreModelType, attachTo);
+            return changeModelAndReturn<char, address>("CAutomobile::GetTowBarPos", 607, automobile->m_nModelIndex, { 0x6AF2AE, 0x6AF2C2 }, automobile, outPos, ignoreModelType, attachTo);
         case 608: //Stairs
-            return changeModelAndReturn<char, address>("CAutomobile::GetTowBarPos", 608, automobile->m_nModelIndex, { (uint16_t*)0x6AF2C8 }, automobile, outPos, ignoreModelType, attachTo);
+            return changeModelAndReturn<char, address>("CAutomobile::GetTowBarPos", 608, automobile->m_nModelIndex, { 0x6AF2C8 }, automobile, outPos, ignoreModelType, attachTo);
         case 610: //Farm Trailer
-            return changeModelAndReturn<char, address>("CAutomobile::GetTowBarPos", 610, automobile->m_nModelIndex, { (uint16_t*)0x6AF362 }, automobile, outPos, ignoreModelType, attachTo);
+            return changeModelAndReturn<char, address>("CAutomobile::GetTowBarPos", 610, automobile->m_nModelIndex, { 0x6AF362 }, automobile, outPos, ignoreModelType, attachTo);
         case 611: //Utility Trailer
-            return changeModelAndReturn<char, address>("CAutomobile::GetTowBarPos", 611, automobile->m_nModelIndex, { (uint16_t*)0x6AF296 }, automobile, outPos, ignoreModelType, attachTo);
+            return changeModelAndReturn<char, address>("CAutomobile::GetTowBarPos", 611, automobile->m_nModelIndex, { 0x6AF296 }, automobile, outPos, ignoreModelType, attachTo);
     }        
 
     return callMethodOriginalAndReturn<char, address>(automobile, outPos, ignoreModelType, attachTo);
@@ -1685,9 +1644,9 @@ char __fastcall SetTowLinkHooked(CAutomobile* automobile, void*, CVehicle* vehic
     if (vehicle != NULL)
     {
         if (getVariationOriginalModel(vehicle->m_nModelIndex) == 525) //Towtruck
-            return changeModelAndReturn<char, address>("CAutomobile::SetTowLink", 525, vehicle->m_nModelIndex, { (uint16_t*)0x6B44B0 }, automobile, vehicle, a3);
+            return changeModelAndReturn<char, address>("CAutomobile::SetTowLink", 525, vehicle->m_nModelIndex, { 0x6B44B0 }, automobile, vehicle, a3);
         else if (getVariationOriginalModel(vehicle->m_nModelIndex) == 531) //Tractor
-            return changeModelAndReturn<char, address>("CAutomobile::SetTowLink", 531, vehicle->m_nModelIndex, { (uint16_t*)0x6B44E6 }, automobile, vehicle, a3);
+            return changeModelAndReturn<char, address>("CAutomobile::SetTowLink", 531, vehicle->m_nModelIndex, { 0x6B44E6 }, automobile, vehicle, a3);
     }
 
     return callMethodOriginalAndReturn<char, address>(automobile, vehicle, a3);
@@ -1698,7 +1657,7 @@ char __fastcall GetTowHitchPosHooked(CTrailer* trailer, void*, CVector* point, c
 {
     if (a4 != NULL)
         if (getVariationOriginalModel(a4->m_nModelIndex) == 525) //Towtruck
-            return changeModelAndReturn<char, address>("CTrailer::GetTowHitchPos", 525, a4->m_nModelIndex, { (uint16_t*)0x6CEED9 }, trailer, point, a3, a4);
+            return changeModelAndReturn<char, address>("CTrailer::GetTowHitchPos", 525, a4->m_nModelIndex, { 0x6CEED9 }, trailer, point, a3, a4);
 
     return callMethodOriginalAndReturn<char, address>(trailer, point, a3, a4);
 }
@@ -1709,9 +1668,9 @@ void __fastcall UpdateTrailerLinkHooked(CVehicle* veh, void*, char a2, char a3)
     if (veh != NULL && veh->m_pTractor != NULL)
     {
         if (getVariationOriginalModel(veh->m_pTractor->m_nModelIndex) == 525) //Towtruck
-            return changeModel<address>("CVehicle::UpdateTrailerLink", 525, veh->m_pTractor->m_nModelIndex, { (uint16_t*)0x6DFDB8 }, veh, a2, a3);
+            return changeModel<address>("CVehicle::UpdateTrailerLink", 525, veh->m_pTractor->m_nModelIndex, { 0x6DFDB8 }, veh, a2, a3);
         else if (getVariationOriginalModel(veh->m_pTractor->m_nModelIndex) == 531) //Tractor
-            return changeModel<address>("CVehicle::UpdateTrailerLink", 531, veh->m_pTractor->m_nModelIndex, { (uint16_t*)0x6DFDBE }, veh, a2, a3);
+            return changeModel<address>("CVehicle::UpdateTrailerLink", 531, veh->m_pTractor->m_nModelIndex, { 0x6DFDBE }, veh, a2, a3);
     }
 
     callMethodOriginal<address>(veh, a2, a3);
@@ -1723,9 +1682,9 @@ void __fastcall UpdateTractorLinkHooked(CVehicle* veh, void*, bool a3, bool a4)
     if (veh != NULL)
     {
         if (getVariationOriginalModel(veh->m_nModelIndex) == 525) //Towtruck
-            return changeModel<address>("CVehicle::UpdateTractorLink", 525, veh->m_nModelIndex, { (uint16_t*)0x6E00D6 }, veh, a3, a4);
+            return changeModel<address>("CVehicle::UpdateTractorLink", 525, veh->m_nModelIndex, { 0x6E00D6 }, veh, a3, a4);
         else if (getVariationOriginalModel(veh->m_nModelIndex) == 531) //Tractor
-            return changeModel<address>("CVehicle::UpdateTractorLink", 531, veh->m_nModelIndex, { (uint16_t*)0x6E00FC }, veh, a3, a4);
+            return changeModel<address>("CVehicle::UpdateTractorLink", 531, veh->m_nModelIndex, { 0x6E00FC }, veh, a3, a4);
     }
     
     callMethodOriginal<address>(veh, a3, a4);
@@ -1744,7 +1703,7 @@ template <unsigned int address>
 void __fastcall ProcessSuspensionHooked(CAutomobile* veh)
 {
     if (getVariationOriginalModel(veh->m_nModelIndex) == 432) //Rhino
-        return changeModel<address>("CAutomobile::ProcessSuspension", 432, veh->m_nModelIndex, { (uint16_t*)0x6B029C, (uint16_t*)0x6AFB48 }, veh);
+        return changeModel<address>("CAutomobile::ProcessSuspension", 432, veh->m_nModelIndex, { 0x6B029C, 0x6AFB48 }, veh);
 
     callMethodOriginal<address>(veh);
 }
@@ -1753,7 +1712,7 @@ template <unsigned int address>
 void __fastcall VehicleDamageHooked(CAutomobile* veh, void*, float fDamageIntensity, __int16 tCollisionComponent, int Damager, RwV3d* vecCollisionCoors,  RwV3d* vecCollisionDirection, signed int a7)
 {
     if (veh->m_pDamageEntity && getVariationOriginalModel(veh->m_pDamageEntity->m_nModelIndex) == 432) //Rhino
-        return changeModel<address>("CAutomobile::VehicleDamage", 432, veh->m_pDamageEntity->m_nModelIndex, { (uint16_t*)0x6A80C0, (uint16_t*)0x6A8384 }, veh, fDamageIntensity, tCollisionComponent, Damager, vecCollisionCoors, vecCollisionDirection, a7);
+        return changeModel<address>("CAutomobile::VehicleDamage", 432, veh->m_pDamageEntity->m_nModelIndex, { 0x6A80C0, 0x6A8384 }, veh, fDamageIntensity, tCollisionComponent, Damager, vecCollisionCoors, vecCollisionDirection, a7);
 
     callMethodOriginal<address>(veh, fDamageIntensity, tCollisionComponent, Damager, vecCollisionCoors, vecCollisionDirection, a7);
 }
@@ -1762,7 +1721,7 @@ template <unsigned int address>
 void __fastcall SetupSuspensionLinesHooked(CAutomobile* veh)
 {
     if (getVariationOriginalModel(veh->m_nModelIndex) == 432) //Rhino
-        return changeModel<address>("CAutomobile::SetupSuspensionLines", 432, veh->m_nModelIndex, { (uint16_t*)0x6A6606, (uint16_t*)0x6A6999 }, veh);
+        return changeModel<address>("CAutomobile::SetupSuspensionLines", 432, veh->m_nModelIndex, { 0x6A6606, 0x6A6999 }, veh);
 
     callMethodOriginal<address>(veh);
 }
@@ -1771,7 +1730,7 @@ template <unsigned int address>
 void __fastcall DoBurstAndSoftGroundRatiosHooked(CAutomobile* a1)
 {
     if (getVariationOriginalModel(a1->m_nModelIndex) == 432) //Rhino
-        return changeModel<address>("CAutomobile::DoBurstAndSoftGroundRatios", 432, a1->m_nModelIndex, { (uint16_t*)0x6A4917 }, a1);
+        return changeModel<address>("CAutomobile::DoBurstAndSoftGroundRatios", 432, a1->m_nModelIndex, { 0x6A4917 }, a1);
 
     callMethodOriginal<address>(a1);
 }
@@ -1780,7 +1739,7 @@ template <unsigned int address>
 char __fastcall BurstTyreHooked(CAutomobile* veh, void*, char componentId, char a3)
 {
     if (getVariationOriginalModel(veh->m_nModelIndex) == 432) //Rhino
-        return changeModelAndReturn<char, address>("CAutomobile::BurstTyre", 432, veh->m_nModelIndex, { (uint16_t*)0x6A32BB }, veh, componentId, a3);
+        return changeModelAndReturn<char, address>("CAutomobile::BurstTyre", 432, veh->m_nModelIndex, { 0x6A32BB }, veh, componentId, a3);
 
     return callMethodOriginalAndReturn<char, address>(veh, componentId, a3);
 }
@@ -1789,7 +1748,7 @@ template <unsigned int address>
 void __fastcall CAutomobileRenderHooked(CAutomobile* veh)
 {
     if (getVariationOriginalModel(veh->m_nModelIndex) == 432) //Rhino
-        return changeModel<address>("CAutomobile::Render", 432, veh->m_nModelIndex, { (uint16_t*)0x6A2C2D, (uint16_t*)0x6A2EAD }, veh);
+        return changeModel<address>("CAutomobile::Render", 432, veh->m_nModelIndex, { 0x6A2C2D, 0x6A2EAD }, veh);
 
     callMethodOriginal<address>(veh);
 }
@@ -1798,7 +1757,7 @@ template <unsigned int address>
 int __fastcall ProcessEntityCollisionHooked(CAutomobile* _this, void*, CVehicle* collEntity, CColPoint* colPoint)
 {
     if (_this && getVariationOriginalModel(_this->m_nModelIndex) == 432) //Rhino
-        return changeModelAndReturn<int, address>("CAutomobile::ProcessEntityCollision", 432, _this->m_nModelIndex, { (uint16_t*)0x6ACEE9, (uint16_t*)0x6AD242 }, _this, collEntity, colPoint);
+        return changeModelAndReturn<int, address>("CAutomobile::ProcessEntityCollision", 432, _this->m_nModelIndex, { 0x6ACEE9, 0x6AD242 }, _this, collEntity, colPoint);
     
     return callMethodOriginalAndReturn<int, address>(_this, collEntity, colPoint);
 }
@@ -1819,7 +1778,7 @@ template <unsigned int address>
 void __fastcall TankControlHooked(CAutomobile* veh)
 {
     if (getVariationOriginalModel(veh->m_nModelIndex) == 432) //Rhino
-        return changeModel<address>("CAutomobile::TankControl", 432, veh->m_nModelIndex, { (uint16_t*)0x6AE9CB }, veh);
+        return changeModel<address>("CAutomobile::TankControl", 432, veh->m_nModelIndex, { 0x6AE9CB }, veh);
 
     callMethodOriginal<address>(veh);
 }
@@ -1828,7 +1787,7 @@ template <unsigned int address>
 void __fastcall DoSoftGroundResistanceHooked(CAutomobile* veh, void*, unsigned int *a3)
 {
     if (getVariationOriginalModel(veh->m_nModelIndex) == 432) //Rhino
-        return changeModel<address>("CAutomobile::DoSoftGroundResistance", 432, veh->m_nModelIndex, { (uint16_t*)0x6A4BBA, (uint16_t*)0x6A4E0E }, veh, a3);
+        return changeModel<address>("CAutomobile::DoSoftGroundResistance", 432, veh->m_nModelIndex, { 0x6A4BBA, 0x6A4E0E }, veh, a3);
 
     callMethodOriginal<address>(veh, a3);
 }
@@ -1896,7 +1855,7 @@ template <unsigned int address>
 void __fastcall DoHeadLightReflectionHooked(CVehicle* veh, void*, RwMatrixTag* matrix, char twin, char left, char right)
 {
     if (veh != NULL && getVariationOriginalModel(veh->m_nModelIndex) == 532) //Combine Harvester
-        return changeModel<address>("CVehicle::DoHeadLightReflection", 532, veh->m_nModelIndex, { (uint16_t*)0x6E176A }, veh, matrix, twin, left, right);
+        return changeModel<address>("CVehicle::DoHeadLightReflection", 532, veh->m_nModelIndex, { 0x6E176A }, veh, matrix, twin, left, right);
 
     callMethodOriginal<address>(veh, matrix, twin, left, right);
 }
@@ -2016,7 +1975,7 @@ void __declspec(naked) cmpReg32Model()
     }
 }
 
-template <eRegs16 target, eRegs32 source, unsigned int jmpAddress, uint8_t nextInstrSize, uint32_t nextInstr, uint32_t nextInstr2>
+template <eRegs16 target, eRegs32 source, unsigned int jmpAddress, uint8_t nextInstrSize, uint32_t nextInstr, uint32_t nextInstr2 = 0x90909090>
 void __declspec(naked) movReg16WordPtrReg()
 {
     __asm {
@@ -2121,34 +2080,34 @@ void __declspec(naked) movsxReg32WordPtrReg()
 
 }
 
-void hookASM(uint32_t address1, uint32_t address1Bytes, uint8_t address2Size, uint32_t address2, uint32_t address2Bytes, injector::memory_pointer_raw hookDest, std::string funcName)
+void hookASM(uint32_t address1, std::string originalData, injector::memory_pointer_raw hookDest, std::string funcName)
 {
-    bool check = *(uint32_t*)address1 == address1Bytes;
-    if (address2 > 0)
+    char* tkString = originalData.data();
+    int i = 0;
+    int numBytes = static_cast<int>(originalData.size()/2-1);
+
+    for (char* token = strtok(tkString, " "); token != NULL; token = strtok(NULL, " "))
     {
-        if (address2Size == 1) check &= *(uint8_t*)address2 == address2Bytes;
-        else if (address2Size == 2) check &= *(uint16_t*)address2 == address2Bytes;
-        else if (address2Size == 4) check &= *(uint32_t*)address2 == address2Bytes;
+        if (std::stoi(token, nullptr, 16) != *(reinterpret_cast<uint8_t*>(address1) + i))
+        {
+            std::string moduleName;
+            std::string bytes = bytesToString(address1, numBytes);
+            const auto dest = injector::GetBranchDestination(address1);
+            if (dest != nullptr)
+                moduleName = getAddressBaseModule(dest.as_int()).second;
+
+            if (funcName.find("::") != std::string::npos)
+                logModified(address1, printToString("Modified method detected: %s - 0x%X is %s %s", funcName.c_str(), address1, bytes.c_str(), PathFindFileName(moduleName.c_str())));
+            else if (strncmp(funcName.c_str(), "sub_", 4) == 0)
+                logModified(address1, printToString("Modified function detected: %s - 0x%X is %s %s", funcName.c_str(), address1, bytes.c_str(), PathFindFileName(moduleName.c_str())));
+            else
+                logModified(address1, printToString("Modified address detected: %s - 0x%X is %s %s", funcName.c_str(), address1, bytes.c_str(), PathFindFileName(moduleName.c_str())));
+        }
+
+        i++;
     }
 
-    if (check)
-    {
-        injector::MakeJMP(address1, hookDest);
-    }
-    else
-    {
-        std::string moduleName;
-        const auto dest = injector::GetBranchDestination(address1);
-        if (dest != nullptr)
-            moduleName = getAddressBaseModule(dest.as_int()).second;
-
-        if (funcName.find("::") != std::string::npos)
-          logModified(address1, printToString("Modified method detected: %s - 0x%X is %s %s", funcName.c_str(), address1, bytesToString(address1, 4 + address2Size).c_str(), PathFindFileName(moduleName.c_str())));
-        else if (strncmp(funcName.c_str(), "sub_", 4) == 0)
-            logModified(address1, printToString("Modified function detected: %s - 0x%X is %s %s", funcName.c_str(), address1, bytesToString(address1, 4 + address2Size).c_str(), PathFindFileName(moduleName.c_str())));
-        else
-            logModified(address1, printToString("Modified address detected: %s - 0x%X is %s %s", funcName.c_str(), address1, bytesToString(address1, 4 + address2Size).c_str(), PathFindFileName(moduleName.c_str())));
-    }
+    injector::MakeJMP(address1, hookDest);
 }
 
 void installVehicleHooks()
@@ -2186,11 +2145,11 @@ void installVehicleHooks()
     //patch::RedirectCall(0x5D2B15, CTrainHooked); //CPools::LoadVehiclePool
     hookCall(0x6F7634, CTrainHooked<0x6F7634>, "CTrain"); //CTrain::CreateMissionTrain 
 
-    hookASM(0x64475D, 0x22788166, 2, 0x644761, 0x023A, cmpWordPtrRegModel<REG_EAX, 0x644763, 0x23A>, "CTaskSimpleCarDrive::ProcessPed");
-    hookASM(0x6F60D9, 0x227E8166, 2, 0x6F60DD, 0x023A, cmpWordPtrRegModel<REG_ESI, 0x6F60DF, 0x23A>, "CTrain::CTrain");
-    hookASM(0x6F6576, 0x227F8166, 2, 0x6F657A, 0x023A, cmpWordPtrRegModel<REG_EDI, 0x6F657C, 0x23A>, "CTrain::OpenDoor");
-    hookASM(0x6F8E8A, 0x227E8166, 2, 0x6F8E8E, 0x023A, cmpWordPtrRegModel<REG_ESI, 0x6F8E90, 0x23A>, "CTrain::ProcessControl");
-    hookASM(0x613A68, 0x2247BF0F, 1, 0x613A6C, 0x05, movsxReg32WordPtrReg<REG_EAX, REG_EDI, 0x613A71, 5, 0xFFFE6905, 0x909090FF>, "CPopulation::AddPedInCar");
+    hookASM(0x64475D, "66 81 78 22 3A 02", cmpWordPtrRegModel<REG_EAX, 0x644763, 0x23A>, "CTaskSimpleCarDrive::ProcessPed");
+    hookASM(0x6F60D9, "66 81 7E 22 3A 02", cmpWordPtrRegModel<REG_ESI, 0x6F60DF, 0x23A>, "CTrain::CTrain");
+    hookASM(0x6F6576, "66 81 7F 22 3A 02", cmpWordPtrRegModel<REG_EDI, 0x6F657C, 0x23A>, "CTrain::OpenDoor");
+    hookASM(0x6F8E8A, "66 81 7E 22 3A 02", cmpWordPtrRegModel<REG_ESI, 0x6F8E90, 0x23A>, "CTrain::ProcessControl");
+    hookASM(0x613A68, "0F BF 47 22 05",    movsxReg32WordPtrReg<REG_EAX, REG_EDI, 0x613A71, 5, 0xFFFE6905, 0x909090FF>, "CPopulation::AddPedInCar");
 
     //Boats
     hookCall(0x42149E, CBoatHooked<0x42149E>, "CBoat"); //CCarCtrl::GetNewVehicleDependingOnCarModel
@@ -2228,10 +2187,10 @@ void installVehicleHooks()
     hookCall(0x60C4E8, PossiblyRemoveVehicleHooked<0x60C4E8>, "PossiblyRemoveVehicle"); //CPlayerPed::KeepAreaAroundPlayerClear
     hookCall(0x42CD55, PossiblyRemoveVehicleHooked<0x42CD55>, "PossiblyRemoveVehicle"); //CCarCtrl::RemoveDistantCars
 
-    if ((changeScriptedCars = iniVeh.ReadBoolean("Settings", "ChangeScriptedCars", false)) == true)
+    if (changeScriptedCars)
         hookCall(0x467B01, CreateCarForScriptHooked<0x467B01>, "CreateCarForScript");
 
-    if ((enableSpecialFeatures = iniVeh.ReadBoolean("Settings", "EnableSpecialFeatures", false)) == true)
+    if (enableSpecialFeatures)
     {
         hookCall(0x871148, ProcessControlHooked<0x871148>, "ProcessControl", true);
         hookCall(0x6C7059, ProcessControlHooked<0x6C7059>, "ProcessControl"); //CHeli::ProcessControl
@@ -2257,57 +2216,54 @@ void installVehicleHooks()
         hookCall(0x871B94, SetUpWheelColModelHooked<0x871B94>, "SetUpWheelColModel", true);
         hookCall(0x871CD4, SetUpWheelColModelHooked<0x871CD4>, "SetUpWheelColModel", true);
      
-        hookASM(0x525462, 0x22478B66, 4, 0x525466, 0x01BB3D66, movReg16WordPtrReg<REG_AX, REG_EDI, 0x52546A, 4, 0x01BB3D66, 0x90909090>, "sub_525252");
-        hookASM(0x431BEB, 0x22468B66, 4, 0x431BEF, 0x6604C483, movReg16WordPtrReg<REG_AX, REG_ESI, 0x431BF2, 3, 0x9004C483, 0x90909090>, "CCarCtrl::GenerateOneRandomCar");
-        hookASM(0x64467D, 0x22788166, 2, 0x644681, 0x0213, cmpWordPtrRegModel<REG_EAX, 0x644683, 0x213>, "CTaskSimpleCarDrive::ProcessPed");
-        hookASM(0x51E5B8, 0x227E8166, 2, 0x51E5BC, 0x01B0, cmpWordPtrRegModel<REG_ESI, 0x51E5BE, 0x1B0>, "CCamera::TryToStartNewCamMode");
-        hookASM(0x6B4CE8, 0x224E8B66, 4, 0x6B4CEC, 0x1BF98166, movReg16WordPtrReg<REG_CX, REG_ESI, 0x6B4CF1, 5, 0x1BF98166, 0x90909002>, "CAutomobile::ProcessAI");
+        hookASM(0x525462, "66 8B 47 22 66 3D BB 01",    movReg16WordPtrReg<REG_AX, REG_EDI, 0x52546A, 4, 0x01BB3D66>, "sub_525252");
+        hookASM(0x431BEB, "66 8B 46 22 83 C4 04",       movReg16WordPtrReg<REG_AX, REG_ESI, 0x431BF2, 3, 0x9004C483>, "CCarCtrl::GenerateOneRandomCar");
+        hookASM(0x64467D, "66 81 78 22 13 02",          cmpWordPtrRegModel<REG_EAX, 0x644683, 0x213>, "CTaskSimpleCarDrive::ProcessPed");
+        hookASM(0x51E5B8, "66 81 7E 22 B0 01",          cmpWordPtrRegModel<REG_ESI, 0x51E5BE, 0x1B0>, "CCamera::TryToStartNewCamMode");
+        hookASM(0x6B4CE8, "66 8B 4E 22 66 81 F9 1B 02", movReg16WordPtrReg<REG_CX, REG_ESI, 0x6B4CF1, 5, 0x1BF98166, 0x90909002>, "CAutomobile::ProcessAI");
 
-        if (GetGameVersion() != GAME_10US_COMPACT)
-            hookASM(0x407293, 0x000259BB, 1, 0x407297, 0x00, patch407293, "CAutomobile::FireTruckControl");
-        else
-            hookASM(0x729B76, 0x000259BB, 1, 0x729B7A, 0x00, patch407293, "CAutomobile::FireTruckControl");
+        hookASM((GetGameVersion() != GAME_10US_COMPACT) ? 0x407293 : 0x729B76U, "BB 59 02 00 00", patch407293, "CAutomobile::FireTruckControl");
 
-        hookASM(0x5A0EAF, 0x22788166, 2, 0x5A0EB3, 0x0259, cmpWordPtrRegModel<REG_EAX, 0x5A0EB5, 0x259>, "CObject::ObjectDamage");
-        hookASM(0x4308A1, 0x227E8166, 2, 0x4308A5, 0x01A7, cmpWordPtrRegModel<REG_ESI, 0x4308A7, 0x1A7>, "CCarCtrl::GenerateOneRandomCar");
-        hookASM(0x4F62E4, 0x22788166, 2, 0x4F62E8, 0x01A7, cmpWordPtrRegModel<REG_EAX, 0x4F62EA, 0x1A7>, "CAEVehicleAudioEntity::GetSirenState");
-        hookASM(0x4F9CBC, 0x22798166, 2, 0x4F9CC0, 0x01A7, cmpWordPtrRegModel<REG_ECX, 0x4F9CC2, 0x1A7>, "CAEVehicleAudioEntity::PlayHornOrSiren");
-        hookASM(0x44AB2A, 0x227F8166, 2, 0x44AB2E, 0x01A7, cmpWordPtrRegModel<REG_EDI, 0x44AB30, 0x1A7>, "CGarage::Update");
-        hookASM(0x52AE34, 0x22788166, 2, 0x52AE38, 0x01A7, cmpWordPtrRegModel<REG_EAX, 0x52AE3A, 0x1A7>, "0x52AE34");
-        hookASM(0x4FB26B, 0x22418B66, 4, 0x4FB26F, 0x01BB3D66, movReg16WordPtrReg<REG_AX, REG_ECX, 0x4FB273, 4, 0x01BB3D66, 0x90909090>, "CAEVehicleAudioEntity::ProcessMovingParts");
-        hookASM(0x54742F, 0x224F8B66, 4, 0x547433, 0x96F98166, movReg16WordPtrReg<REG_CX, REG_EDI, 0x547438, 5, 0x96F98166, 0x90909001>, "CPhysical::PositionAttachedEntity");
-        hookASM(0x5A0052, 0x22468B66, 4, 0x5A0056, 0x01963D66, movReg16WordPtrReg<REG_AX, REG_ESI, 0x5A005A, 4, 0x01963D66, 0x90909090>, "CObject::SpecialEntityPreCollisionStuff");
-        hookASM(0x5A21C9, 0x22488B66, 4, 0x5A21CD, 0x96F98166, movReg16WordPtrReg<REG_CX, REG_EAX, 0x5A21D2, 5, 0x96F98166, 0x90909001>, "CObject::ProcessControl");
-        hookASM(0x6A1480, 0x224F8B66, 4, 0x6A1484, 0x8166F633, movReg16WordPtrReg<REG_CX, REG_EDI, 0x6A1486, 2, 0x9090F633, 0x90909090>, "CAutomobile::UpdateMovingCollision");
-        hookASM(0x6A173B, 0x22478B66, 4, 0x6A173F, 0x01E63D66, movReg16WordPtrReg<REG_AX, REG_EDI, 0x6A1743, 4, 0x01E63D66, 0x90909090>, "CAutomobile::UpdateMovingCollision");
-        hookASM(0x6A1F69, 0x224E8B66, 4, 0x6A1F6D, 0x96F98166, movReg16WordPtrReg<REG_CX, REG_ESI, 0x6A1F72, 5, 0x96F98166, 0x90909001>, "CAutomobile::AddMovingCollisionSpeed");
-        hookASM(0x6A2162, 0x22418B66, 4, 0x6A2166, 0x01963D66, movReg16WordPtrReg<REG_AX, REG_ECX, 0x6A216A, 4, 0x01963D66, 0x90909090>, "CAutomobile::GetMovingCollisionOffset");
-        hookASM(0x6C7F30, 0x227E8166, 2, 0x6C7F34, 0x0196, cmpWordPtrRegModel<REG_ESI, 0x6C7F36, 0x196>, "CMonsterTruck::PreRender");
-        hookASM(0x5470BF, 0x22798166, 2, 0x5470C3, 0x0212, cmpWordPtrRegModel<REG_ECX, 0x5470C5, 0x212>, "CPhysical::PositionAttachedEntity");
-        hookASM(0x54D70D, 0x227F8166, 2, 0x54D711, 0x0212, cmpWordPtrRegModel<REG_EDI, 0x54D713, 0x212>, "CPhysical::AttachEntityToEntity");
-        hookASM(0x5A0EBF, 0x227F8166, 2, 0x5A0EC3, 0x0212, cmpWordPtrRegModel<REG_EDI, 0x5A0EC5, 0x212>, "CObject::ObjectDamage");
-        hookASM(0x6A1648, 0x227F8166, 2, 0x6A164C, 0x0212, cmpWordPtrRegModel<REG_EDI, 0x6A164E, 0x212>, "CAutomobile::UpdateMovingCollision");
-        hookASM(0x6AD378, 0x227E8166, 2, 0x6AD37C, 0x0212, cmpWordPtrRegModel<REG_ESI, 0x6AD37E, 0x212>, "CAutomobile::ProcessEntityCollision");
-        hookASM(0x6E0FF8, 0x227F8166, 2, 0x6E0FFC, 0x0212, cmpWordPtrRegModel<REG_EDI, 0x6E0FFE, 0x212>, "CVehicle::DoHeadLightBeam");
-        hookASM(0x6AC730, 0xA9B910A1, 1, 0x6AC734, 0x00,   patch6AC730, "CAutomobile::PreRender");
-        hookASM(0x43064C, 0x01AFFF81, 2, 0x430650, 0x0000, cmpReg32Model<REG_EDI, 0x430652, 0x1AF>, "CCarCtrl::GenerateOneRandomCar");
-        hookASM(0x64BCB3, 0x22788166, 2, 0x64BCB7, 0x01AF, cmpWordPtrRegModel<REG_EAX, 0x64BCB9, 0x1AF>, "CTaskSimpleCarSetPedInAsDriver::ProcessPed");
-        hookASM(0x430640, 0x01B5FF81, 2, 0x430644, 0x0000, cmpReg32Model<REG_EDI, 0x430646, 0x1B5>, "CCarCtrl::GenerateOneRandomCar");
-        hookASM(0x6A155C, 0x22478B66, 4, 0x6A1560, 0x020C3D66, movReg16WordPtrReg<REG_AX, REG_EDI, 0x6A1564, 4, 0x020C3D66, 0x90909090>, "CAutomobile::UpdateMovingCollision");
-        hookASM(0x502222, 0x22788166, 2, 0x502226, 0x0214,     cmpWordPtrRegModel<REG_EAX, 0x502228, 0x214>, "CAEVehicleAudioEntity::ProcessVehicle");
-        hookASM(0x6AA515, 0x224E8B66, 4, 0x6AA519, 0x14F98166, movReg16WordPtrReg<REG_CX, REG_ESI, 0x6AA51E, 5, 0x14F98166, 0x90909002>, "CAutomobile::UpdateWheelMatrix");
-        hookASM(0x6D1ABA, 0x22478B66, 2, 0x6D1ABE, 0xD232,     movReg16WordPtrReg<REG_AX, REG_EDI, 0x6D1AC0, 2, 0x9090D232, 0x90909090 >, "CVehicle::SetupPassenger");
-        hookASM(0x6C8FFA, 0x0201FF81, 2, 0x6C8FFE, 0x0000,     cmpReg32Model<REG_EDI, 0x6C9000, 0x201>, "CPlane::CPlane");
-        hookASM(0x6C926D, 0x22468B66, 4, 0x6C9271, 0x02003D66, movReg16WordPtrReg<REG_AX, REG_ESI, 0x6C9275, 4, 0x02003D66, 0x90909090>, "CPlane::ProcessControl");
-        hookASM(0x6CA945, 0x22468B66, 4, 0x6CA949, 0x02003D66, movReg16WordPtrReg<REG_AX, REG_ESI, 0x6CA94D, 4, 0x02003D66, 0x90909090>, "CPlane::PreRender");
-        hookASM(0x6CACF0, 0x227E8166, 2, 0x6CACF4, 0x0201,     cmpWordPtrRegModel<REG_ESI, 0x6CACF6, 0x201>, "CPlane::OpenDoor");
-        hookASM(0x6C8F3D, 0x0200FF81, 2, 0x6C8F41, 0x0000,     cmpReg32Model<REG_EDI, 0x6C8F43, 0x200>, "CPlane::CPlane");
-        hookASM(0x6D67B7, 0x22468B66, 4, 0x6D67BB, 0x01963D66, movReg16WordPtrReg<REG_AX, REG_ESI, 0x6D67BF, 4, 0x01963D66, 0x90909090>, "CVehicle::SpecialEntityPreCollisionStuff");
-        hookASM(0x6B0F47, 0x22468B66, 4, 0x6B0F4B, 0x8B3805D9, movReg16WordPtrReg<REG_AX, REG_ESI, 0x6B0F51, 6, 0x8B3805D9, 0x90900085>, "CAutomobile::CAutomobile");
-        hookASM(0x6B0CF0, 0x227E8166, 2, 0x6B0CF4, 0x01B0,     cmpWordPtrRegModel<REG_ESI, 0x6B0CF6, 0x1B0>, "CAutomobile::CAutomobile");
-        hookASM(0x6B0EE2, 0x22468B66, 4, 0x6B0EE6, 0x020D3D66, movReg16WordPtrReg<REG_AX, REG_ESI, 0x6B0EEA, 4, 0x020D3D66, 0x90909090>, "CAutomobile::CAutomobile");
-        hookASM(0x6B11D5, 0x22468B66, 4, 0x6B11D9, 0xFFFE3D66, movReg16WordPtrReg<REG_AX, REG_ESI, 0x6B11DD, 4, 0xFFFE3D66, 0x90909090>, "CAutomobile::CAutomobile");
-
+        hookASM(0x5A0EAF, "66 81 78 22 59 02", cmpWordPtrRegModel<REG_EAX, 0x5A0EB5, 0x259>, "CObject::ObjectDamage");
+        hookASM(0x4308A1, "66 81 7E 22 A7 01", cmpWordPtrRegModel<REG_ESI, 0x4308A7, 0x1A7>, "CCarCtrl::GenerateOneRandomCar");
+        hookASM(0x4F62E4, "66 81 78 22 A7 01", cmpWordPtrRegModel<REG_EAX, 0x4F62EA, 0x1A7>, "CAEVehicleAudioEntity::GetSirenState");
+        hookASM(0x4F9CBC, "66 81 79 22 A7 01", cmpWordPtrRegModel<REG_ECX, 0x4F9CC2, 0x1A7>, "CAEVehicleAudioEntity::PlayHornOrSiren");
+        hookASM(0x44AB2A, "66 81 7F 22 A7 01", cmpWordPtrRegModel<REG_EDI, 0x44AB30, 0x1A7>, "CGarage::Update");
+        hookASM(0x52AE34, "66 81 78 22 A7 01", cmpWordPtrRegModel<REG_EAX, 0x52AE3A, 0x1A7>, "0x52AE34");
+        hookASM(0x4FB26B, "66 8B 41 22 66 3D BB 01",    movReg16WordPtrReg<REG_AX, REG_ECX, 0x4FB273, 4, 0x01BB3D66>, "CAEVehicleAudioEntity::ProcessMovingParts");
+        hookASM(0x54742F, "66 8B 4F 22 66 81 F9 96 01", movReg16WordPtrReg<REG_CX, REG_EDI, 0x547438, 5, 0x96F98166, 0x90909001>, "CPhysical::PositionAttachedEntity");
+        hookASM(0x5A0052, "66 8B 46 22 66 3D 96 01",    movReg16WordPtrReg<REG_AX, REG_ESI, 0x5A005A, 4, 0x01963D66>, "CObject::SpecialEntityPreCollisionStuff");
+        hookASM(0x5A21C9, "66 8B 48 22 66 81 F9 96 01", movReg16WordPtrReg<REG_CX, REG_EAX, 0x5A21D2, 5, 0x96F98166, 0x90909001>, "CObject::ProcessControl");
+        hookASM(0x6A1480, "66 8B 4F 22 33 F6",          movReg16WordPtrReg<REG_CX, REG_EDI, 0x6A1486, 2, 0x9090F633>, "CAutomobile::UpdateMovingCollision");
+        hookASM(0x6A173B, "66 8B 47 22 66 3D E6 01",    movReg16WordPtrReg<REG_AX, REG_EDI, 0x6A1743, 4, 0x01E63D66>, "CAutomobile::UpdateMovingCollision");
+        hookASM(0x6A1F69, "66 8B 4E 22 66 81 F9 96 01", movReg16WordPtrReg<REG_CX, REG_ESI, 0x6A1F72, 5, 0x96F98166, 0x90909001>, "CAutomobile::AddMovingCollisionSpeed");
+        hookASM(0x6A2162, "66 8B 41 22 66 3D 96 01",    movReg16WordPtrReg<REG_AX, REG_ECX, 0x6A216A, 4, 0x01963D66>, "CAutomobile::GetMovingCollisionOffset");
+        hookASM(0x6C7F30, "66 81 7E 22 96 01", cmpWordPtrRegModel<REG_ESI, 0x6C7F36, 0x196>, "CMonsterTruck::PreRender");
+        hookASM(0x5470BF, "66 81 79 22 12 02", cmpWordPtrRegModel<REG_ECX, 0x5470C5, 0x212>, "CPhysical::PositionAttachedEntity");
+        hookASM(0x54D70D, "66 81 7F 22 12 02", cmpWordPtrRegModel<REG_EDI, 0x54D713, 0x212>, "CPhysical::AttachEntityToEntity");
+        hookASM(0x5A0EBF, "66 81 7F 22 12 02", cmpWordPtrRegModel<REG_EDI, 0x5A0EC5, 0x212>, "CObject::ObjectDamage");
+        hookASM(0x6A1648, "66 81 7F 22 12 02", cmpWordPtrRegModel<REG_EDI, 0x6A164E, 0x212>, "CAutomobile::UpdateMovingCollision");
+        hookASM(0x6AD378, "66 81 7E 22 12 02", cmpWordPtrRegModel<REG_ESI, 0x6AD37E, 0x212>, "CAutomobile::ProcessEntityCollision");
+        hookASM(0x6E0FF8, "66 81 7F 22 12 02", cmpWordPtrRegModel<REG_EDI, 0x6E0FFE, 0x212>, "CVehicle::DoHeadLightBeam");
+        hookASM(0x6AC730, "A1 10 B9 A9 00",                patch6AC730, "CAutomobile::PreRender");
+        hookASM(0x43064C, "81 FF AF 01 00 00",             cmpReg32Model<REG_EDI, 0x430652, 0x1AF>, "CCarCtrl::GenerateOneRandomCar");
+        hookASM(0x64BCB3, "66 81 78 22 AF 01",             cmpWordPtrRegModel<REG_EAX, 0x64BCB9, 0x1AF>, "CTaskSimpleCarSetPedInAsDriver::ProcessPed");
+        hookASM(0x430640, "81 FF B5 01 00 00",             cmpReg32Model<REG_EDI, 0x430646, 0x1B5>, "CCarCtrl::GenerateOneRandomCar");
+        hookASM(0x6A155C, "66 8B 47 22 66 3D 0C 02",       movReg16WordPtrReg<REG_AX, REG_EDI, 0x6A1564, 4, 0x020C3D66>, "CAutomobile::UpdateMovingCollision");
+        hookASM(0x502222, "66 81 78 22 14 02",             cmpWordPtrRegModel<REG_EAX, 0x502228, 0x214>, "CAEVehicleAudioEntity::ProcessVehicle");
+        hookASM(0x6AA515, "66 8B 4E 22 66 81 F9 14 02",    movReg16WordPtrReg<REG_CX, REG_ESI, 0x6AA51E, 5, 0x14F98166, 0x90909002>, "CAutomobile::UpdateWheelMatrix");
+        hookASM(0x6D1ABA, "66 8B 47 22 32 D2",             movReg16WordPtrReg<REG_AX, REG_EDI, 0x6D1AC0, 2, 0x9090D232 >, "CVehicle::SetupPassenger");
+        hookASM(0x6C8FFA, "81 FF 01 02 00 00",             cmpReg32Model<REG_EDI, 0x6C9000, 0x201>, "CPlane::CPlane");
+        hookASM(0x6C926D, "66 8B 46 22 66 3D 00 02",       movReg16WordPtrReg<REG_AX, REG_ESI, 0x6C9275, 4, 0x02003D66>, "CPlane::ProcessControl");
+        hookASM(0x6CA945, "66 8B 46 22 66 3D 00 02",       movReg16WordPtrReg<REG_AX, REG_ESI, 0x6CA94D, 4, 0x02003D66>, "CPlane::PreRender");
+        hookASM(0x6CACF0, "66 81 7E 22 01 02",             cmpWordPtrRegModel<REG_ESI, 0x6CACF6, 0x201>, "CPlane::OpenDoor");
+        hookASM(0x6C8F3D, "81 FF 00 02 00 00",             cmpReg32Model<REG_EDI, 0x6C8F43, 0x200>, "CPlane::CPlane");
+        hookASM(0x6D67B7, "66 8B 46 22 66 3D 96 01",       movReg16WordPtrReg<REG_AX, REG_ESI, 0x6D67BF, 4, 0x01963D66>, "CVehicle::SpecialEntityPreCollisionStuff");
+        hookASM(0x6B0F47, "66 8B 46 22 D9 05 38 8B 85 00", movReg16WordPtrReg<REG_AX, REG_ESI, 0x6B0F51, 6, 0x8B3805D9, 0x90900085>, "CAutomobile::CAutomobile");
+        hookASM(0x6B0CF0, "66 81 7E 22 B0 01",             cmpWordPtrRegModel<REG_ESI, 0x6B0CF6, 0x1B0>, "CAutomobile::CAutomobile");
+        hookASM(0x6B0EE2, "66 8B 46 22 66 3D 0D 02",       movReg16WordPtrReg<REG_AX, REG_ESI, 0x6B0EEA, 4, 0x020D3D66>, "CAutomobile::CAutomobile");
+        hookASM(0x6B11D5, "66 8B 46 22 66 3D FE FF",       movReg16WordPtrReg<REG_AX, REG_ESI, 0x6B11DD, 4, 0xFFFE3D66>, "CAutomobile::CAutomobile");
+        
 
         hookCall(0x871238, ProcessSuspensionHooked<0x871238>, "ProcessSuspension", true);
         hookCall(0x871200, VehicleDamageHooked<0x871200>, "VehicleDamage", true);
@@ -2333,7 +2289,7 @@ void installVehicleHooks()
         hookCall(0x6E2730, DoHeadLightReflectionHooked<0x6E2730>, "DoHeadLightReflection"); //CVehicle::DoVehicleLights
     }
 
-    if ((enableSiren = iniVeh.ReadBoolean("Settings", "EnableSiren", false)) == true)
+    if (enableSiren)
         hookCall(0x6D8492, HasCarSiren<0x6D8492>, "HasCarSiren"); //CVehicle::UsesSiren
 
     if (enableLights && enableSpecialFeatures && enableSiren)
@@ -2350,10 +2306,10 @@ void installVehicleHooks()
         hookCall(0x6ABBA6, AddLightHooked<0x6ABBA6>, "AddLight"); //CAutomobile::PreRender
     }
 
-    if ((disablePayAndSpray = iniVeh.ReadBoolean("Settings", "DisablePayAndSpray", false)) == true)
+    if (disablePayAndSpray)
         hookCall(0x44AC75, IsCarSprayableHooked<0x44AC75>, "IsCarSprayable"); //CGarage::Update
 
-    if ((enableSideMissions = iniVeh.ReadBoolean("Settings", "EnableSideMissions", false)) == true)
+    if (enableSideMissions)
     {
         hookCall(0x48DA81, IsLawEnforcementVehicleHooked<0x48DA81>, "IsLawEnforcementVehicle");
         hookCall(0x469612, CollectParametersHooked<0x469612>, "CollectParameters"); //00DD: IS_CHAR_IN_MODEL

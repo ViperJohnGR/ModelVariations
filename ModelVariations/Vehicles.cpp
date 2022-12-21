@@ -64,6 +64,7 @@ unsigned short currentOccupantsModel = 0;
 
 int passengerModelIndex = -1;
 constexpr unsigned int jmp613B7E = 0x613B7E;
+constexpr unsigned int jmp6A1564 = 0x6A1564;
 constexpr unsigned int jmp6AB35A = 0x6AB35A;
 constexpr unsigned int jmp6ABA65 = 0x6ABA65;
 constexpr unsigned int jmp6AC735 = 0x6AC735;
@@ -1906,6 +1907,32 @@ void __declspec(naked) patch6AC730()
     }
 }
 
+void __declspec(naked) patch6A155C()
+{
+    __asm {
+        push ecx
+        push eax
+        movsx eax, word ptr[edi + 0x22]
+        push edx
+        push eax
+        call getVariationOriginalModel
+        pop edx
+        mov cx, ax
+        pop eax
+        mov ax, cx
+        pop ecx
+        cmp ax, 0x20C
+        je isCement
+        cmp ax, 0x220
+        mov ax, [edi + 0x22]
+        jmp jmp6A1564
+
+        isCement :
+        mov ax, [edi + 0x22]
+            jmp jmp6A1564
+    }
+}
+
 void __declspec(naked) patchCoronas()
 {
     __asm {
@@ -2224,32 +2251,32 @@ void installVehicleHooks()
 
         hookASM((GetGameVersion() != GAME_10US_COMPACT) ? 0x407293 : 0x729B76U, "BB 59 02 00 00", patch407293, "CAutomobile::FireTruckControl");
 
-        hookASM(0x5A0EAF, "66 81 78 22 59 02", cmpWordPtrRegModel<REG_EAX, 0x5A0EB5, 0x259>, "CObject::ObjectDamage");
-        hookASM(0x4308A1, "66 81 7E 22 A7 01", cmpWordPtrRegModel<REG_ESI, 0x4308A7, 0x1A7>, "CCarCtrl::GenerateOneRandomCar");
-        hookASM(0x4F62E4, "66 81 78 22 A7 01", cmpWordPtrRegModel<REG_EAX, 0x4F62EA, 0x1A7>, "CAEVehicleAudioEntity::GetSirenState");
-        hookASM(0x4F9CBC, "66 81 79 22 A7 01", cmpWordPtrRegModel<REG_ECX, 0x4F9CC2, 0x1A7>, "CAEVehicleAudioEntity::PlayHornOrSiren");
-        hookASM(0x44AB2A, "66 81 7F 22 A7 01", cmpWordPtrRegModel<REG_EDI, 0x44AB30, 0x1A7>, "CGarage::Update");
-        hookASM(0x52AE34, "66 81 78 22 A7 01", cmpWordPtrRegModel<REG_EAX, 0x52AE3A, 0x1A7>, "0x52AE34");
-        hookASM(0x4FB26B, "66 8B 41 22 66 3D BB 01",    movReg16WordPtrReg<REG_AX, REG_ECX, 0x4FB273, 4, 0x01BB3D66>, "CAEVehicleAudioEntity::ProcessMovingParts");
-        hookASM(0x54742F, "66 8B 4F 22 66 81 F9 96 01", movReg16WordPtrReg<REG_CX, REG_EDI, 0x547438, 5, 0x96F98166, 0x90909001>, "CPhysical::PositionAttachedEntity");
-        hookASM(0x5A0052, "66 8B 46 22 66 3D 96 01",    movReg16WordPtrReg<REG_AX, REG_ESI, 0x5A005A, 4, 0x01963D66>, "CObject::SpecialEntityPreCollisionStuff");
-        hookASM(0x5A21C9, "66 8B 48 22 66 81 F9 96 01", movReg16WordPtrReg<REG_CX, REG_EAX, 0x5A21D2, 5, 0x96F98166, 0x90909001>, "CObject::ProcessControl");
-        hookASM(0x6A1480, "66 8B 4F 22 33 F6",          movReg16WordPtrReg<REG_CX, REG_EDI, 0x6A1486, 2, 0x9090F633>, "CAutomobile::UpdateMovingCollision");
-        hookASM(0x6A173B, "66 8B 47 22 66 3D E6 01",    movReg16WordPtrReg<REG_AX, REG_EDI, 0x6A1743, 4, 0x01E63D66>, "CAutomobile::UpdateMovingCollision");
-        hookASM(0x6A1F69, "66 8B 4E 22 66 81 F9 96 01", movReg16WordPtrReg<REG_CX, REG_ESI, 0x6A1F72, 5, 0x96F98166, 0x90909001>, "CAutomobile::AddMovingCollisionSpeed");
-        hookASM(0x6A2162, "66 8B 41 22 66 3D 96 01",    movReg16WordPtrReg<REG_AX, REG_ECX, 0x6A216A, 4, 0x01963D66>, "CAutomobile::GetMovingCollisionOffset");
-        hookASM(0x6C7F30, "66 81 7E 22 96 01", cmpWordPtrRegModel<REG_ESI, 0x6C7F36, 0x196>, "CMonsterTruck::PreRender");
-        hookASM(0x5470BF, "66 81 79 22 12 02", cmpWordPtrRegModel<REG_ECX, 0x5470C5, 0x212>, "CPhysical::PositionAttachedEntity");
-        hookASM(0x54D70D, "66 81 7F 22 12 02", cmpWordPtrRegModel<REG_EDI, 0x54D713, 0x212>, "CPhysical::AttachEntityToEntity");
-        hookASM(0x5A0EBF, "66 81 7F 22 12 02", cmpWordPtrRegModel<REG_EDI, 0x5A0EC5, 0x212>, "CObject::ObjectDamage");
-        hookASM(0x6A1648, "66 81 7F 22 12 02", cmpWordPtrRegModel<REG_EDI, 0x6A164E, 0x212>, "CAutomobile::UpdateMovingCollision");
-        hookASM(0x6AD378, "66 81 7E 22 12 02", cmpWordPtrRegModel<REG_ESI, 0x6AD37E, 0x212>, "CAutomobile::ProcessEntityCollision");
-        hookASM(0x6E0FF8, "66 81 7F 22 12 02", cmpWordPtrRegModel<REG_EDI, 0x6E0FFE, 0x212>, "CVehicle::DoHeadLightBeam");
+        hookASM(0x5A0EAF, "66 81 78 22 59 02",             cmpWordPtrRegModel<REG_EAX, 0x5A0EB5, 0x259>, "CObject::ObjectDamage");
+        hookASM(0x4308A1, "66 81 7E 22 A7 01",             cmpWordPtrRegModel<REG_ESI, 0x4308A7, 0x1A7>, "CCarCtrl::GenerateOneRandomCar");
+        hookASM(0x4F62E4, "66 81 78 22 A7 01",             cmpWordPtrRegModel<REG_EAX, 0x4F62EA, 0x1A7>, "CAEVehicleAudioEntity::GetSirenState");
+        hookASM(0x4F9CBC, "66 81 79 22 A7 01",             cmpWordPtrRegModel<REG_ECX, 0x4F9CC2, 0x1A7>, "CAEVehicleAudioEntity::PlayHornOrSiren");
+        hookASM(0x44AB2A, "66 81 7F 22 A7 01",             cmpWordPtrRegModel<REG_EDI, 0x44AB30, 0x1A7>, "CGarage::Update");
+        hookASM(0x52AE34, "66 81 78 22 A7 01",             cmpWordPtrRegModel<REG_EAX, 0x52AE3A, 0x1A7>, "0x52AE34");
+        hookASM(0x4FB26B, "66 8B 41 22 66 3D BB 01",       movReg16WordPtrReg<REG_AX, REG_ECX, 0x4FB273, 4, 0x01BB3D66>, "CAEVehicleAudioEntity::ProcessMovingParts");
+        hookASM(0x54742F, "66 8B 4F 22 66 81 F9 96 01",    movReg16WordPtrReg<REG_CX, REG_EDI, 0x547438, 5, 0x96F98166, 0x90909001>, "CPhysical::PositionAttachedEntity");
+        hookASM(0x5A0052, "66 8B 46 22 66 3D 96 01",       movReg16WordPtrReg<REG_AX, REG_ESI, 0x5A005A, 4, 0x01963D66>, "CObject::SpecialEntityPreCollisionStuff");
+        hookASM(0x5A21C9, "66 8B 48 22 66 81 F9 96 01",    movReg16WordPtrReg<REG_CX, REG_EAX, 0x5A21D2, 5, 0x96F98166, 0x90909001>, "CObject::ProcessControl");
+        hookASM(0x6A1480, "66 8B 4F 22 33 F6",             movReg16WordPtrReg<REG_CX, REG_EDI, 0x6A1486, 2, 0x9090F633>, "CAutomobile::UpdateMovingCollision");
+        hookASM(0x6A173B, "66 8B 47 22 66 3D E6 01",       movReg16WordPtrReg<REG_AX, REG_EDI, 0x6A1743, 4, 0x01E63D66>, "CAutomobile::UpdateMovingCollision");
+        hookASM(0x6A1F69, "66 8B 4E 22 66 81 F9 96 01",    movReg16WordPtrReg<REG_CX, REG_ESI, 0x6A1F72, 5, 0x96F98166, 0x90909001>, "CAutomobile::AddMovingCollisionSpeed");
+        hookASM(0x6A2162, "66 8B 41 22 66 3D 96 01",       movReg16WordPtrReg<REG_AX, REG_ECX, 0x6A216A, 4, 0x01963D66>, "CAutomobile::GetMovingCollisionOffset");
+        hookASM(0x6C7F30, "66 81 7E 22 96 01",             cmpWordPtrRegModel<REG_ESI, 0x6C7F36, 0x196>, "CMonsterTruck::PreRender");
+        hookASM(0x5470BF, "66 81 79 22 12 02",             cmpWordPtrRegModel<REG_ECX, 0x5470C5, 0x212>, "CPhysical::PositionAttachedEntity");
+        hookASM(0x54D70D, "66 81 7F 22 12 02",             cmpWordPtrRegModel<REG_EDI, 0x54D713, 0x212>, "CPhysical::AttachEntityToEntity");
+        hookASM(0x5A0EBF, "66 81 7F 22 12 02",             cmpWordPtrRegModel<REG_EDI, 0x5A0EC5, 0x212>, "CObject::ObjectDamage");
+        hookASM(0x6A1648, "66 81 7F 22 12 02",             cmpWordPtrRegModel<REG_EDI, 0x6A164E, 0x212>, "CAutomobile::UpdateMovingCollision");
+        hookASM(0x6AD378, "66 81 7E 22 12 02",             cmpWordPtrRegModel<REG_ESI, 0x6AD37E, 0x212>, "CAutomobile::ProcessEntityCollision");
+        hookASM(0x6E0FF8, "66 81 7F 22 12 02",             cmpWordPtrRegModel<REG_EDI, 0x6E0FFE, 0x212>, "CVehicle::DoHeadLightBeam");
         hookASM(0x6AC730, "A1 10 B9 A9 00",                patch6AC730, "CAutomobile::PreRender");
         hookASM(0x43064C, "81 FF AF 01 00 00",             cmpReg32Model<REG_EDI, 0x430652, 0x1AF>, "CCarCtrl::GenerateOneRandomCar");
         hookASM(0x64BCB3, "66 81 78 22 AF 01",             cmpWordPtrRegModel<REG_EAX, 0x64BCB9, 0x1AF>, "CTaskSimpleCarSetPedInAsDriver::ProcessPed");
         hookASM(0x430640, "81 FF B5 01 00 00",             cmpReg32Model<REG_EDI, 0x430646, 0x1B5>, "CCarCtrl::GenerateOneRandomCar");
-        hookASM(0x6A155C, "66 8B 47 22 66 3D 0C 02",       movReg16WordPtrReg<REG_AX, REG_EDI, 0x6A1564, 4, 0x020C3D66>, "CAutomobile::UpdateMovingCollision");
+        hookASM(0x6A155C, "66 8B 47 22 66 3D 0C 02",       patch6A155C, "CAutomobile::UpdateMovingCollision");
         hookASM(0x502222, "66 81 78 22 14 02",             cmpWordPtrRegModel<REG_EAX, 0x502228, 0x214>, "CAEVehicleAudioEntity::ProcessVehicle");
         hookASM(0x6AA515, "66 8B 4E 22 66 81 F9 14 02",    movReg16WordPtrReg<REG_CX, REG_ESI, 0x6AA51E, 5, 0x14F98166, 0x90909002>, "CAutomobile::UpdateWheelMatrix");
         hookASM(0x6D1ABA, "66 8B 47 22 32 D2",             movReg16WordPtrReg<REG_AX, REG_EDI, 0x6D1AC0, 2, 0x9090D232 >, "CVehicle::SetupPassenger");

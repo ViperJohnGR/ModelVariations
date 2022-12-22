@@ -519,7 +519,7 @@ void clearVehicles()
     iniVeh.data.clear();
 }
 
-void updateVehicleVariations(CZone* zInfo)
+void updateVehicleVariations()
 {
     for (auto& i : vehTuning)
     {
@@ -532,7 +532,7 @@ void updateVehicleVariations(CZone* zInfo)
         else
             section = std::to_string(i.first);
 
-        std::vector<unsigned short> vec = iniVeh.ReadLine(section, ((lastZone[0] == 0) ? zInfo->m_szLabel : lastZone), READ_TUNING);
+        std::vector<unsigned short> vec = iniVeh.ReadLine(section, currentZone, READ_TUNING);
         if (!vec.empty())
         {
             if (vehMergeZones.find(i.first) != vehMergeZones.end())
@@ -553,7 +553,7 @@ void updateVehicleVariations(CZone* zInfo)
         else
             section = std::to_string(modelid + 400);
 
-        std::vector<unsigned short> vec = iniVeh.ReadLine(section, ((lastZone[0] == 0) ? zInfo->m_szLabel : lastZone), READ_VEHICLES);
+        std::vector<unsigned short> vec = iniVeh.ReadLine(section, currentZone, READ_VEHICLES);
         if (!vec.empty())
         {
             if (vehMergeZones.find((unsigned short)(modelid + 400)) != vehMergeZones.end())
@@ -624,7 +624,7 @@ void processVehicleStacks()
     }
 }
 
-void printCurrentVehicleVariations()
+void logCurrentVehicleVariations()
 {
     logfile << std::dec << "vehCurrentVariations\n";
     for (int i = 0; i < 212; i++)
@@ -637,7 +637,7 @@ void printCurrentVehicleVariations()
         }
 }
 
-void printVehicleVariations()
+void logVehicleVariations()
 {
     logfile << "Vehicle Variations:\n";
     for (unsigned int i = 0; i < 212; i++)
@@ -846,7 +846,7 @@ signed int __fastcall PickRandomCarHooked(CLoadedCarGroup* cargrp, void*, char a
             carGenModel = 531;
         }
         else
-            logModified((unsigned int)0x6F3B9A, "Modified method detected : CCarGenerator::DoInternalProcessing - 0x6F3B9A is " + std::to_string(*(uint16_t*)0x6F3B9A));
+            logModified(0x6F3B9A, "Modified method detected : CCarGenerator::DoInternalProcessing - 0x6F3B9A is " + std::to_string(*(uint16_t*)0x6F3B9A));
     }
     else if (originalModel == 532) //Combine Harvester
     {
@@ -856,7 +856,7 @@ signed int __fastcall PickRandomCarHooked(CLoadedCarGroup* cargrp, void*, char a
             carGenModel = 532;
         }
         else
-            logModified((unsigned int)0x6F3BA0, "Modified method detected : CCarGenerator::DoInternalProcessing - 0x6F3BA0 is " + std::to_string(*(uint16_t*)0x6F3BA0));
+            logModified(0x6F3BA0, "Modified method detected : CCarGenerator::DoInternalProcessing - 0x6F3BA0 is " + std::to_string(*(uint16_t*)0x6F3BA0));
     }
 
     return variation;
@@ -903,7 +903,7 @@ void __fastcall DoInternalProcessingHooked(CCarGenerator* park) //for non-random
                 else
                 {
                     callMethodOriginal<address>(park);
-                    logModified((unsigned int)0x6F3B9A, "Modified method detected : CCarGenerator::DoInternalProcessing - 0x6F3B9A is " + std::to_string(*(uint16_t*)0x6F3B9A));
+                    logModified(0x6F3B9A, "Modified method detected : CCarGenerator::DoInternalProcessing - 0x6F3B9A is " + std::to_string(*(uint16_t*)0x6F3B9A));
                     return;
                 }
             }
@@ -920,7 +920,7 @@ void __fastcall DoInternalProcessingHooked(CCarGenerator* park) //for non-random
                 else
                 {
                     callMethodOriginal<address>(park);
-                    logModified((unsigned int)0x6F3BA0, "Modified method detected : CCarGenerator::DoInternalProcessing - 0x6F3BA0 is " + std::to_string(*(uint16_t*)0x6F3BA0));
+                    logModified(0x6F3BA0, "Modified method detected : CCarGenerator::DoInternalProcessing - 0x6F3BA0 is " + std::to_string(*(uint16_t*)0x6F3BA0));
                     return;
                 }
             }
@@ -1807,7 +1807,7 @@ signed int __cdecl SetupEntityVisibilityHooked(CEntity* a1, float* a2)
         }
         else
         {
-            logModified((unsigned int)0x554336, printToString("Modified method detected : CRenderer::SetupEntityVisibility - 0x554336 is %u", *(uint16_t*)0x554336));
+            logModified(0x554336, printToString("Modified method detected : CRenderer::SetupEntityVisibility - 0x554336 is %u", *(uint16_t*)0x554336));
             return callOriginalAndReturn<signed int, address>(a1, a2);
         }
     }
@@ -1829,7 +1829,7 @@ int __cdecl GetMaximumNumberOfPassengersFromNumberOfDoorsHooked(__int16 modelInd
         }
         else
         {
-            logModified((unsigned int)0x4C8AD3, printToString("Modified method detected : CVehicleModelInfo::GetMaximumNumberOfPassengersFromNumberOfDoors - 0x4C8AD3 is %u", *(uint16_t*)0x4C8AD3));
+            logModified(0x4C8AD3, printToString("Modified method detected : CVehicleModelInfo::GetMaximumNumberOfPassengersFromNumberOfDoors - 0x4C8AD3 is %u", *(uint16_t*)0x4C8AD3));
             return callOriginalAndReturn<int, address>(modelIndex);
         }
     }
@@ -1844,7 +1844,7 @@ int __cdecl GetMaximumNumberOfPassengersFromNumberOfDoorsHooked(__int16 modelInd
         }
         else
         {
-            logModified((unsigned int)0x4C8ADB, printToString("Modified method detected : CVehicleModelInfo::GetMaximumNumberOfPassengersFromNumberOfDoors - 0x4C8ADB is %u", *(uint16_t*)0x4C8ADB));
+            logModified(0x4C8ADB, printToString("Modified method detected : CVehicleModelInfo::GetMaximumNumberOfPassengersFromNumberOfDoors - 0x4C8ADB is %u", *(uint16_t*)0x4C8ADB));
             return callOriginalAndReturn<int, address>(modelIndex);
         }
     }
@@ -2327,7 +2327,7 @@ void installVehicleHooks()
         if (*(uint32_t *)0x6ABA56 == 0x0000FF68 && *(uint8_t*)0x6ABA5A == 0)
             injector::MakeJMP(0x6ABA56, patchCoronas);
         else
-            logModified((uint32_t)0x6ABA56, printToString("Modified method detected : CAutomobile::PreRender - 0x6ABA56 is %s", bytesToString(0x6ABA56, 5).c_str()));
+            logModified(0x6ABA56, printToString("Modified method detected : CAutomobile::PreRender - 0x6ABA56 is %s", bytesToString(0x6ABA56, 5).c_str()));
 
         hookCall(0x6AB80F, AddLightHooked<0x6AB80F>, "AddLight"); //CAutomobile::PreRender
         hookCall(0x6ABBA6, AddLightHooked<0x6ABBA6>, "AddLight"); //CAutomobile::PreRender

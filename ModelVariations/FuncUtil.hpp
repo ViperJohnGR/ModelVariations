@@ -4,7 +4,14 @@
 #include <algorithm>
 
 #include <CGeneral.h>
+#include <CMessages.h>
 #include <CStreaming.h>
+
+
+inline void printMessage(const char* message, unsigned int time)
+{
+    CMessages::AddMessageJumpQ(const_cast<char*>(message), time, 0, false);
+}
 
 
 /////////////

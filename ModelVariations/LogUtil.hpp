@@ -18,8 +18,6 @@ extern std::set<std::pair<unsigned int, std::string>> modulesSet;
 extern std::set<std::pair<unsigned int, std::string>> callChecks;
 extern std::set<unsigned int> modifiedAddresses;
 
-extern bool enableLog;
-
 std::string hashFile(const char* filename);
 std::pair<unsigned int, std::string> getAddressBaseModule(uint32_t functionAddress);
 std::string getWindowsVersion();

@@ -7,7 +7,6 @@
 
 #include <extensions/ScriptCommands.h>
 
-#include <CMessages.h>
 #include <CModelInfo.h>
 #include <CPedModelInfo.h>
 #include <CPopulation.h>
@@ -89,9 +88,8 @@ unsigned short modelIndex = 0;
 char lastInterior[8] = {};
 const char* currentInterior = lastInterior;
 char currentZone[8] = {};
-char lastZone[8] = {};
 unsigned int currentTown = 0;
-int currentWanted = 0;
+unsigned int currentWanted = 0;
 
 //INI Options
 //General
@@ -283,12 +281,9 @@ void drugDealerFix()
     }
 }
 
-void updateVariations(CZone* zInfo)
+void updateVariations()
 {
     //zInfo->m_szTextKey = BLUEB | zInfo->m_szLabel = BLUEB1
-
-    if (zInfo == NULL)
-        return;
 
     auto isPlayerInZone = [](const char* zoneName)
     {
@@ -342,7 +337,7 @@ void updateVariations(CZone* zInfo)
             else
                 section = std::to_string(modelid);
 
-            std::vector<unsigned short> vec = iniPed.ReadLine(section, ((lastZone[0] == 0) ? zInfo->m_szLabel : lastZone), READ_PEDS);
+            std::vector<unsigned short> vec = iniPed.ReadLine(section, currentZone, READ_PEDS);
             if (!vec.empty())
             {
                 if (pedMergeZones.find(modelid) != pedMergeZones.end())
@@ -364,10 +359,10 @@ void updateVariations(CZone* zInfo)
         }
 
     if (enableVehicles)
-        updateVehicleVariations(zInfo);
+        updateVehicleVariations();
 }
 
-void printCurrentVariations()
+void logCurrentVariations()
 {
     if (enablePeds)
     {
@@ -390,13 +385,13 @@ void printCurrentVariations()
     if (enableVehicles)
     {
         logfile << "\n";
-        printCurrentVehicleVariations();
+        logCurrentVehicleVariations();
     }
 
     logfile << "\n" << std::endl;
 }
 
-void printVariations()
+void logVariations()
 {
     logfile << std::dec << "\nPed Variations:\n";
     for (unsigned int i = 0; i < MAX_PED_ID; i++)
@@ -419,7 +414,7 @@ void printVariations()
     if (enableVehicles)
     {
         logfile << "\n";
-        printVehicleVariations();
+        logVehicleVariations();
     }
 
     logfile << "\n" << std::endl;
@@ -586,7 +581,7 @@ void loadIniData(bool firstTime)
                 i = std::stoi(iniData.first);
             else
             {
-                CModelInfo::GetModelInfo((char*)section.c_str(), &i);
+                CModelInfo::GetModelInfo(const_cast<char*>(section.c_str()), &i);
                 pedModels.insert({ i, section });
             }
 
@@ -649,14 +644,14 @@ void loadIniData(bool firstTime)
             std::string section = iniData.first;
 
             if (!(section[0] >= '0' && section[0] <= '9'))
-                CModelInfo::GetModelInfo((char*)section.c_str(), &modelid);
+                CModelInfo::GetModelInfo(const_cast<char*>(section.c_str()), &modelid);
             if (modelid > 0)
                 wepPedModels.insert({ modelid, section });
 
             for (auto& keys : iniData.second)
             {
                 std::string name = keys.first.substr(0, keys.first.find("_"));
-                if (CModelInfo::GetModelInfo((char*)name.c_str(), &modelid))
+                if (CModelInfo::GetModelInfo(const_cast<char*>(name.c_str()), &modelid))
                     wepVehModels.insert({ modelid, name });
             }
         }
@@ -846,7 +841,7 @@ public:
             }
 
             loadIniData(false);
-            printVariations();
+            logVariations();
 
             if (loadAllVehicles)
                 loadModels(400, 611, KEEP_IN_MEMORY, false);
@@ -916,14 +911,14 @@ public:
             const CWanted* wanted = FindPlayerWanted(-1);
             const CPlayerPed* player = FindPlayerPed();
 
-            const auto printVariationChange = [zInfo, wanted](const char* msg)
+            const auto logVariationChange = [zInfo, wanted](const char* msg)
             {
                 if (logfile.is_open())
                 {
                     logfile << "\n";
                     logfile << msg << " (" << getDatetime(false, true, true) << "). Updating variations...\n";
                     logfile << "currentWanted = " << currentWanted << " wanted->m_nWantedLevel = " << wanted->m_nWantedLevel << "\n";
-                    logfile << "currentZone = " << currentZone << " zInfo->m_szLabel = " << zInfo->m_szLabel << " lastZone = " << lastZone << "\n";
+                    logfile << "currentZone = " << currentZone << " zInfo->m_szLabel = " << zInfo->m_szLabel << "\n";
                     if (currentInterior[0] != 0 || lastInterior[0] != 0)
                         logfile << "currentInterior = " << currentInterior << " lastInterior = " << lastInterior << "\n";
 
@@ -933,7 +928,7 @@ public:
 
             if (timeUpdate > -1 && ((clock() - timeUpdate) / CLOCKS_PER_SEC > 6))
             {
-                CMessages::AddMessageJumpQ((char*)"~y~Model Variations~s~: Update available.", 4000, 0, false);
+                printMessage("~y~Model Variations~s~: Update available.", 4000);
                 timeUpdate = -1;
             }
 
@@ -942,7 +937,7 @@ public:
                 if (!keyDown)
                 {
                     keyDown = true;
-                    CMessages::AddMessageJumpQ((char*)"~y~Model Variations~s~: Mod disabled.", 2000, 0, false);
+                    printMessage("~y~Model Variations~s~: Mod disabled.", 2000);
                     if (logfile.is_open())
                         logfile << "Disabling mod... ";
                     clearEverything();
@@ -959,9 +954,9 @@ public:
                         logfile << "Reloading settings..." << std::endl;
                     clearEverything();
                     loadIniData(false);
-                    updateVariations(zInfo);
-                    printVariationChange("Settings reloaded.");
-                    CMessages::AddMessageJumpQ((char*)"~y~Model Variations~s~: Settings reloaded.", 2000, 0, false);
+                    updateVariations();
+                    logVariationChange("Settings reloaded.");
+                    printMessage("~y~Model Variations~s~: Settings reloaded.", 2000);
                 }
             }
             else
@@ -970,10 +965,15 @@ public:
             if (framesSinceCallsChecked < 1000)
                 framesSinceCallsChecked++;
 
-            if (framesSinceCallsChecked == 1000 && logfile.is_open())
+            if (framesSinceCallsChecked == 1000)
             {
-                checkAllCalls();
-                framesSinceCallsChecked = 0;
+                if (logfile.is_open())
+                {
+                    checkAllCalls();
+                    framesSinceCallsChecked = 0;
+                }
+                else
+                    framesSinceCallsChecked = 1001;
             }
 
             if (enableCloneRemover)
@@ -987,46 +987,41 @@ public:
             }
 
             if (player && player->m_pEnex)
-                currentInterior = (const char*)player->m_pEnex;
+                currentInterior = reinterpret_cast<const char*>(player->m_pEnex);
             else 
                 currentInterior = "";
 
             if (strncmp(currentInterior, lastInterior, 7) != 0)
             {
-                printVariationChange("Interior changed");
+                logVariationChange("Interior changed");
 
                 strncpy(lastInterior, currentInterior, 7);
-                updateVariations(zInfo);
+                updateVariations();
 
                 if (logfile.is_open())
-                    printCurrentVariations();
+                    logCurrentVariations();
             }
 
-            if (wanted && (int)(wanted->m_nWantedLevel) != currentWanted)
+            if (wanted && wanted->m_nWantedLevel != currentWanted)
             {
-                printVariationChange("Wanted level changed");
+                logVariationChange("Wanted level changed");
 
-                currentWanted = (int)wanted->m_nWantedLevel;
-                updateVariations(zInfo);
+                currentWanted = wanted->m_nWantedLevel;
+                updateVariations();
 
                 if (logfile.is_open())
-                    printCurrentVariations();
+                    logCurrentVariations();
             }
 
-            if (zInfo && strncmp(zInfo->m_szLabel, currentZone, 7) != 0)
+            if (zInfo && strncmp(zInfo->m_szLabel, currentZone, 7) != 0 && strncmp(zInfo->m_szLabel, "SAN_AND", 7) != 0)
             {
-                if (lastZone[0] == 0 && strncmp(zInfo->m_szLabel, "SAN_AND", 7) == 0)
-                    strncpy(lastZone, currentZone, 7);
-                else if (strncmp(zInfo->m_szLabel, "SAN_AND", 7) != 0)
-                    lastZone[0] = 0;
-
-                printVariationChange("Zone changed");
+                logVariationChange("Zone changed");
 
                 strncpy(currentZone, zInfo->m_szLabel, 7);
-                updateVariations(zInfo);
+                updateVariations();
 
                 if (logfile.is_open())
-                    printCurrentVariations();
+                    logCurrentVariations();
             }
 
             if (enableVehicles)

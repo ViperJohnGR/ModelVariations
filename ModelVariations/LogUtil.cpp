@@ -11,7 +11,7 @@
 
 std::ofstream logfile;
 
-bool compareLower(const char* a, const char* b)
+bool compareUpper(const char* a, const char* b)
 {
     for (int i = 0; a[i] || b[i]; i++)
         if (toupper(a[i]) != toupper(b[i]))
@@ -124,13 +124,13 @@ std::pair<unsigned int, std::string> getAddressBaseModule(uint32_t functionAddre
 
 void checkCallModified(const std::string &callName, unsigned int callAddress, bool isDirectAddress)
 {
-    const unsigned int functionAddress = (isDirectAddress == false) ? injector::GetBranchDestination(callAddress).as_int() : *(unsigned int*)callAddress;
+    const unsigned int functionAddress = (isDirectAddress == false) ? injector::GetBranchDestination(callAddress).as_int() : *reinterpret_cast<unsigned int*>(callAddress);
     std::string modulePath = getParentModuleName(functionAddress);
     unsigned int baseAddress = 0;
 
     std::string moduleName = modulePath.substr(modulePath.find_last_of("/\\") + 1);
 
-    if (compareLower(moduleName.c_str(), MOD_NAME))
+    if (compareUpper(moduleName.c_str(), MOD_NAME))
         return;
     if (callChecks.find({ callAddress , moduleName}) != callChecks.end())
         return;
@@ -174,11 +174,9 @@ std::string getWindowsVersion()
 
 void checkAllCalls()
 {
-    if (enableLog == 0)
-        return;
-
-    for (auto it : hookedCalls)
-        checkCallModified(it.second.name, it.first, (it.second.isVTableAddress == true) ? true : false);
+    if (logfile.is_open())
+        for (auto it : hookedCalls)
+            checkCallModified(it.second.name, it.first, it.second.isVTableAddress);
 }
 
 void logModified(unsigned int address, const std::string &message)

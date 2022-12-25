@@ -107,6 +107,8 @@
     <ClCompile Include="DataReader.cpp" />
     <ClCompile Include="LogUtil.cpp" />
     <ClCompile Include="ModelVariations.cpp" />
+    <ClCompile Include="Peds.cpp" />
+    <ClCompile Include="PedWeapons.cpp" />
     <ClCompile Include="Vehicles.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -114,6 +116,8 @@
     <ClInclude Include="FuncUtil.hpp" />
     <ClInclude Include="LogUtil.hpp" />
     <ClInclude Include="Hooks.hpp" />
+    <ClInclude Include="Peds.hpp" />
+    <ClInclude Include="PedWeapons.hpp" />
     <ClInclude Include="Vehicles.hpp" />
   </ItemGroup>
   <ItemGroup>

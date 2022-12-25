@@ -7,6 +7,8 @@
     <ClCompile Include="LogUtil.cpp">
       <Filter>Utils</Filter>
     </ClCompile>
+    <ClCompile Include="Peds.cpp" />
+    <ClCompile Include="PedWeapons.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Vehicles.hpp" />
@@ -18,6 +20,8 @@
     <ClInclude Include="LogUtil.hpp">
       <Filter>Utils</Filter>
     </ClInclude>
+    <ClInclude Include="Peds.hpp" />
+    <ClInclude Include="PedWeapons.hpp" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Utils">

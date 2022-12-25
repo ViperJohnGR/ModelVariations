@@ -228,7 +228,7 @@ std::string getDatetime(bool printDate, bool printTime, bool printMs)
         ss << systime.wDay << "/" << systime.wMonth << "/" << systime.wYear;
 
         if (!printTime)
-            return ss.str() + "\n";
+            return ss.str();
 
         ss << " ";
     }    
@@ -259,7 +259,7 @@ std::string bytesToString(unsigned int address, int nBytes)
     const unsigned char* c = reinterpret_cast<unsigned char*>(address);
 
     for (int i = 0; i < nBytes; i++, ss << " ")
-        ss << std::setfill('0') << std::setw(2) << std::hex << static_cast<unsigned int>(c[i]);
+        ss << std::setfill('0') << std::setw(2) << std::uppercase << std::hex << static_cast<unsigned int>(c[i]);
 
     return ss.str();
 }

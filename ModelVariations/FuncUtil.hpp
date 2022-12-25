@@ -58,6 +58,25 @@ inline T rand()
 // Vectors //
 /////////////
 
+inline void vectorfilterVector(std::vector<unsigned short>& vec, std::vector<unsigned short>& filterVec)
+{
+    bool matchFound = false;
+    std::vector<unsigned short> vec2 = vec;
+
+    auto it = vec.begin();
+    while (it != vec.end())
+        if (std::find(filterVec.begin(), filterVec.end(), *it) != filterVec.end())
+        {
+            matchFound = true;
+            ++it;
+        }
+        else
+            it = vec.erase(it);
+
+    if (matchFound == false)
+        vec = vec2;
+}
+
 inline unsigned short vectorGetRandom(std::vector<unsigned short>& vec)
 {
     return vec[CGeneral::GetRandomNumberInRange(0, (int)vec.size())];

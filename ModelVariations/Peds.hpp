@@ -1,25 +1,23 @@
 #pragma once
 #include "DataReader.hpp"
+#include "LogUtil.hpp"
 
-#include <CAutomobile.h>
 #include <CPed.h>
-#include <CVector.h>
-#include <CZone.h>
-
-#include <set>
-#include <stack>
-#include <vector>
 
 extern char currentZone[8];
 extern unsigned int currentTown;
+extern const char* currentInterior;
 
-class VehicleVariations
+
+
+class PedVariations
 {
 public:
-	static void AddToStack(CVehicle * veh);
+	static void AddToStack(CPed* veh);
 	static void ClearData();
-	static void LoadData(bool firstTime, std::string gamePath);
+	static void LoadData();
 	static void Process();
+	static void ProcessDrugDealers(bool reset = false);
 	static void UpdateVariations();
 
 	//Logging
@@ -28,6 +26,5 @@ public:
 	static void LogVariations();
 
 	//Call hooks
-	static void hookTaxi();
-	static void InstallHooks();
+	static void InstallHooks(bool enableSpecialPeds, bool isFLA);
 };

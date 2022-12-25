@@ -56,6 +56,8 @@ enum eRegs32
     REG_EDI,
 };
 
+static DataReader dataFile("ModelVariations_Vehicles.ini");
+
 unsigned short roadblockModel = 0;
 int sirenModel = -1;
 unsigned short lightsModel = 0;
@@ -202,8 +204,7 @@ int getRandomVariation(const int modelid, bool parked = false)
             return modelid;
     }
 
-    const uint32_t random = rand<uint32_t>(0, vehCurrentVariations[modelid - 400].size());
-    const unsigned short variationModel = vehCurrentVariations[modelid - 400][random];
+    const unsigned short variationModel = vectorGetRandom(vehCurrentVariations[modelid - 400]);
     if (variationModel > 0)
     {
         loadModels({ variationModel }, GAME_REQUIRED, true);
@@ -212,261 +213,17 @@ int getRandomVariation(const int modelid, bool parked = false)
     return modelid;
 }
 
-void readVehicleIni(bool firstTime, const char *iniPath, std::string gamePath)
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+void VehicleVariations::AddToStack(CVehicle* veh)
 {
-    iniVeh.SetIniPath(iniPath);
-
-    if (firstTime)
-    {
-        changeCarGenerators   = iniVeh.ReadBoolean("Settings", "ChangeCarGenerators", false);
-        changeScriptedCars    = iniVeh.ReadBoolean("Settings", "ChangeScriptedCars", false);
-        disablePayAndSpray    = iniVeh.ReadBoolean("Settings", "DisablePayAndSpray", false);
-        enableLights          = iniVeh.ReadBoolean("Settings", "EnableLights", false);
-        enableSideMissions    = iniVeh.ReadBoolean("Settings", "EnableSideMissions", false);
-        enableAllSideMissions = iniVeh.ReadBoolean("Settings", "EnableSideMissionsForAllScripts", false);
-        enableSiren           = iniVeh.ReadBoolean("Settings", "EnableSiren", false);
-        enableSpecialFeatures = iniVeh.ReadBoolean("Settings", "EnableSpecialFeatures", false);
-        loadAllVehicles       = iniVeh.ReadBoolean("Settings", "LoadAllVehicles", false);
-        vehCarGenExclude      = iniVeh.ReadLine("Settings", "ExcludeCarGeneratorModels", READ_VEHICLES);
-        vehInheritExclude     = iniVeh.ReadLine("Settings", "ExcludeModelsFromInheritance", READ_VEHICLES);
-    }
-
-    std::string str;
-    std::vector<std::string> result;
-    std::ifstream zoneFile(gamePath + "\\data\\info.zon");        
-
-    if (logfile.is_open())
-    {
-        if (zoneFile.is_open())
-            logfile << "Zone file 'info.zon' found." << std::endl;
-        else
-            logfile << "Zone file 'info.zon' NOT found!" << std::endl;
-    }
-
-    while (std::getline(zoneFile, str))
-    {
-        std::stringstream ss(str);
-        if (ss.good())
-        {
-            std::string substr;
-            std::getline(ss, substr, ','); // Grab first names till first comma
-            if (substr != "zone" && substr != "end")
-            {
-                std::for_each(substr.begin(), substr.end(), [](char& c) {
-                    c = (char)::toupper(c);
-                });
-                result.push_back(substr);
-            }
-        }
-    }
-
-    for (auto& i : result) //for every zone name
-        for (auto& j : iniVeh.data)
-        {
-            int modelid = 0;
-            if (j.first[0] >= '0' && j.first[0] <= '9')
-                modelid = std::stoi(j.first);
-            else
-                CModelInfo::GetModelInfo((char*)j.first.c_str(), &modelid);
-
-            if (modelid > 0)
-                for (auto& k : iniVeh.ReadLine(j.first, i, READ_VEHICLES)) //for every variation 'k' of veh id 'j' in zone 'i'
-                    if (modelid != k && !(vectorHasId(vehInheritExclude, k)))
-                        vehOriginalModels.insert({ k, modelid });           
-        }
-
-    if (zoneFile.is_open())
-        zoneFile.close();
-
-    for (auto& inidata : iniVeh.data)
-    {
-        std::string section = inidata.first;
-        int modelid = 0;
-        if (section[0] >= '0' && section[0] <= '9')
-            modelid = std::stoi(section);
-        else
-        {
-            CModelInfo::GetModelInfo((char*)section.c_str(), &modelid);
-            if (modelid > 400)
-                vehModels.insert({ modelid, section });
-        }
-
-        unsigned short i = (unsigned short)modelid;
-        if (i >= 400)
-        {
-            if (i < 612)
-            {
-                vehHasVariations.insert((unsigned short)(i - 400));
-
-                if (iniVeh.ReadBoolean(section, "ChangeOnlyParked", false))
-                    parkedCars.insert(i);
-
-                vehVariations[i - 400][0] = iniVeh.ReadLine(section, "Countryside", READ_VEHICLES);
-                vehVariations[i - 400][1] = iniVeh.ReadLine(section, "LosSantos", READ_VEHICLES);
-                vehVariations[i - 400][2] = iniVeh.ReadLine(section, "SanFierro", READ_VEHICLES);
-                vehVariations[i - 400][3] = iniVeh.ReadLine(section, "LasVenturas", READ_VEHICLES);
-                vehVariations[i - 400][4] = iniVeh.ReadLine(section, "Global", READ_VEHICLES);
-                vehVariations[i - 400][5] = iniVeh.ReadLine(section, "Desert", READ_VEHICLES);
-
-                vehVariations[i - 400][6] = vectorUnion(iniVeh.ReadLine(section, "TierraRobada", READ_VEHICLES), vehVariations[i - 400][5]);
-                vehVariations[i - 400][7] = vectorUnion(iniVeh.ReadLine(section, "BoneCounty", READ_VEHICLES), vehVariations[i - 400][5]);
-                vehVariations[i - 400][8] = vectorUnion(iniVeh.ReadLine(section, "RedCounty", READ_VEHICLES), vehVariations[i - 400][0]);
-                vehVariations[i - 400][9] = vectorUnion(iniVeh.ReadLine(section, "Blueberry", READ_VEHICLES), vehVariations[i - 400][8]);
-                vehVariations[i - 400][10] = vectorUnion(iniVeh.ReadLine(section, "Montgomery", READ_VEHICLES), vehVariations[i - 400][8]);
-                vehVariations[i - 400][11] = vectorUnion(iniVeh.ReadLine(section, "Dillimore", READ_VEHICLES), vehVariations[i - 400][8]);
-                vehVariations[i - 400][12] = vectorUnion(iniVeh.ReadLine(section, "PalominoCreek", READ_VEHICLES), vehVariations[i - 400][8]);
-                vehVariations[i - 400][13] = vectorUnion(iniVeh.ReadLine(section, "FlintCounty", READ_VEHICLES), vehVariations[i - 400][0]);
-                vehVariations[i - 400][14] = vectorUnion(iniVeh.ReadLine(section, "Whetstone", READ_VEHICLES), vehVariations[i - 400][0]);
-                vehVariations[i - 400][15] = vectorUnion(iniVeh.ReadLine(section, "AngelPine", READ_VEHICLES), vehVariations[i - 400][14]);
-
-                vehWantedVariations[i - 400][0] = iniVeh.ReadLine(section, "Wanted1", READ_VEHICLES);
-                vehWantedVariations[i - 400][1] = iniVeh.ReadLine(section, "Wanted2", READ_VEHICLES);
-                vehWantedVariations[i - 400][2] = iniVeh.ReadLine(section, "Wanted3", READ_VEHICLES);
-                vehWantedVariations[i - 400][3] = iniVeh.ReadLine(section, "Wanted4", READ_VEHICLES);
-                vehWantedVariations[i - 400][4] = iniVeh.ReadLine(section, "Wanted5", READ_VEHICLES);
-                vehWantedVariations[i - 400][5] = iniVeh.ReadLine(section, "Wanted6", READ_VEHICLES);
-
-
-                for (unsigned int j = 0; j < 16; j++)
-                    for (auto& k : vehVariations[i - 400][j])
-                        if (k != i && !(vectorHasId(vehInheritExclude, k)))
-                            vehOriginalModels.insert({ k, i });
-            }
-
-            
-            vehGroups[i][0] = iniVeh.ReadLine(section, "Countryside", READ_GROUPS);
-            vehGroups[i][1] = iniVeh.ReadLine(section, "LosSantos", READ_GROUPS);
-            vehGroups[i][2] = iniVeh.ReadLine(section, "SanFierro", READ_GROUPS);
-            vehGroups[i][3] = iniVeh.ReadLine(section, "LasVenturas", READ_GROUPS);
-            vehGroups[i][4] = iniVeh.ReadLine(section, "Global", READ_GROUPS);
-            vehGroups[i][5] = iniVeh.ReadLine(section, "Desert", READ_GROUPS);
-
-            vehGroups[i][6] = vectorUnion(iniVeh.ReadLine(section, "TierraRobada", READ_GROUPS), vehGroups[i][5]);
-            vehGroups[i][7] = vectorUnion(iniVeh.ReadLine(section, "BoneCounty", READ_GROUPS), vehGroups[i][5]);
-            vehGroups[i][8] = vectorUnion(iniVeh.ReadLine(section, "RedCounty", READ_GROUPS), vehGroups[i][0]);
-            vehGroups[i][9] = vectorUnion(iniVeh.ReadLine(section, "Blueberry", READ_GROUPS), vehGroups[i][8]);
-            vehGroups[i][10] = vectorUnion(iniVeh.ReadLine(section, "Montgomery", READ_GROUPS), vehGroups[i][8]);
-            vehGroups[i][11] = vectorUnion(iniVeh.ReadLine(section, "Dillimore", READ_GROUPS), vehGroups[i][8]);
-            vehGroups[i][12] = vectorUnion(iniVeh.ReadLine(section, "PalominoCreek", READ_GROUPS), vehGroups[i][8]);
-            vehGroups[i][13] = vectorUnion(iniVeh.ReadLine(section, "FlintCounty", READ_GROUPS), vehGroups[i][0]);
-            vehGroups[i][14] = vectorUnion(iniVeh.ReadLine(section, "Whetstone", READ_GROUPS), vehGroups[i][0]);
-            vehGroups[i][15] = vectorUnion(iniVeh.ReadLine(section, "AngelPine", READ_GROUPS), vehGroups[i][14]);
-
-            //Veh Tuning
-            vehTuning[i][0] = iniVeh.ReadLine(section, "Countryside", READ_TUNING);
-            vehTuning[i][1] = iniVeh.ReadLine(section, "LosSantos", READ_TUNING);
-            vehTuning[i][2] = iniVeh.ReadLine(section, "SanFierro", READ_TUNING);
-            vehTuning[i][3] = iniVeh.ReadLine(section, "LasVenturas", READ_TUNING);
-            vehTuning[i][4] = iniVeh.ReadLine(section, "Global", READ_TUNING);
-            vehTuning[i][5] = iniVeh.ReadLine(section, "Desert", READ_TUNING);
-
-            vehTuning[i][6] = vectorUnion(iniVeh.ReadLine(section, "TierraRobada", READ_TUNING), vehTuning[i][5]);
-            vehTuning[i][7] = vectorUnion(iniVeh.ReadLine(section, "BoneCounty", READ_TUNING), vehTuning[i][5]);
-            vehTuning[i][8] = vectorUnion(iniVeh.ReadLine(section, "RedCounty", READ_TUNING), vehTuning[i][0]);
-            vehTuning[i][9] = vectorUnion(iniVeh.ReadLine(section, "Blueberry", READ_TUNING), vehTuning[i][8]);
-            vehTuning[i][10] = vectorUnion(iniVeh.ReadLine(section, "Montgomery", READ_TUNING), vehTuning[i][8]);
-            vehTuning[i][11] = vectorUnion(iniVeh.ReadLine(section, "Dillimore", READ_TUNING), vehTuning[i][8]);
-            vehTuning[i][12] = vectorUnion(iniVeh.ReadLine(section, "PalominoCreek", READ_TUNING), vehTuning[i][8]);
-            vehTuning[i][13] = vectorUnion(iniVeh.ReadLine(section, "FlintCounty", READ_TUNING), vehTuning[i][0]);
-            vehTuning[i][14] = vectorUnion(iniVeh.ReadLine(section, "Whetstone", READ_TUNING), vehTuning[i][0]);
-            vehTuning[i][15] = vectorUnion(iniVeh.ReadLine(section, "AngelPine", READ_TUNING), vehTuning[i][14]);
-
-            const int tuningRarity = iniVeh.ReadInteger(section, "TuningRarity", -1);
-            if (tuningRarity > -1)
-                tuningRarities.insert({ i, (BYTE)tuningRarity });
-
-            if (iniVeh.ReadBoolean(section, "UseOnlyGroups", false))
-                vehUseOnlyGroups.insert(i);
-
-            if (enableLights)
-            {
-                const float lightWidth = iniVeh.ReadFloat(section, "LightWidth", -999.0);
-                const float lightX = iniVeh.ReadFloat(section, "LightX", 0.0);
-                const float lightY = iniVeh.ReadFloat(section, "LightY", 0.0);
-                const float lightZ = iniVeh.ReadFloat(section, "LightZ", 0.0);
-
-                int r = iniVeh.ReadInteger(section, "LightR", -1);
-                int g = iniVeh.ReadInteger(section, "LightG", -1);
-                int b = iniVeh.ReadInteger(section, "LightB", -1);
-                int a = iniVeh.ReadInteger(section, "LightA", -1);
-
-                if (r >= 0 && r <= 255 && g >= 0 && g <= 255 && b >= 0 && b <= 255 && a >= 0 && a <= 255)
-                {
-                    rgba colors = { (uint8_t)r, (uint8_t)g, (uint8_t)b, (uint8_t)a };
-                    LightColors.insert({ i, colors });
-                }
-
-                if (lightX != 0.0 || lightY != 0.0 || lightZ != 0.0 || lightWidth > -900.0)
-                    LightPositions.insert({ i, {{ lightX, lightY, lightZ }, lightWidth} });
-
-                r = iniVeh.ReadInteger(section, "LightR2", -1);
-                g = iniVeh.ReadInteger(section, "LightG2", -1);
-                b = iniVeh.ReadInteger(section, "LightB2", -1);
-                a = iniVeh.ReadInteger(section, "LightA2", -1);
-
-                if (r >= 0 && r <= 255 && g >= 0 && g <= 255 && b >= 0 && b <= 255 && a >= 0 && a <= 255)
-                {
-                    rgba colors = { (uint8_t)r, (uint8_t)g, (uint8_t)b, (uint8_t)a };
-                    LightColors2.insert({ i, colors });
-                }
-            }
-
-            if (iniVeh.ReadBoolean(section, "MergeZonesWithCities", false))
-                vehMergeZones.insert(i);
-
-            uint8_t numGroups = 0;
-            std::vector<unsigned short> vec;
-            for (int j = 0; j < 9; j++)
-            {
-                str = "DriverGroup" + std::to_string(j + 1);
-                vec = iniVeh.ReadLine(section, str, READ_PEDS);
-                if (!vec.empty())
-                {
-                    vehDriverGroups[j].insert({ i, vec });
-                    numGroups++;
-                }
-                if (numGroups > 0)
-                    modelNumGroups[i] = numGroups;
-                else
-                    continue;
-
-                str = "PassengerGroup" + std::to_string(j + 1);
-                vec = iniVeh.ReadLine(section, str, READ_PEDS);
-                if (!vec.empty())
-                    vehPassengerGroups[j].insert({ i, vec });
-            }
-
-            for (unsigned short j = 0; j < 6; j++)
-            {
-                vec = iniVeh.ReadLineUnique(section, "Wanted" + std::to_string(j + 1), READ_GROUPS);
-                if (!vec.empty())
-                {
-                    checkNumGroups(vec, modelNumGroups[i]);
-                    vehGroupWantedVariations[i][j] = vec;
-                }
-            }
-
-            if (vehGroups.find(i) != vehGroups.end())
-                for (unsigned int j = 0; j < 16; j++)
-                    checkNumGroups(vehGroups[i][j], modelNumGroups[i]);
-
-
-            vec = iniVeh.ReadLine(section, "Drivers", READ_PEDS);
-            if (!vec.empty())
-                vehDrivers.insert({ i, vec });
-
-            vec = iniVeh.ReadLine(section, "Passengers", READ_PEDS);
-            if (!vec.empty())
-                vehPassengers.insert({ i, vec });
-
-            vec = iniVeh.ReadLine(section, "ParentModel", READ_VEHICLES);
-            if (!vec.empty() && vec[0] >= 400)
-                vehOriginalModels[i] = vec[0];
-        }
-    }
+    vehStack.push(veh);
 }
 
-void clearVehicles()
+void VehicleVariations::ClearData()
 {
     for (int i = 0; i < 212; i++)
         for (unsigned short j = 0; j < 16; j++)
@@ -516,69 +273,274 @@ void clearVehicles()
     vehCarGenExclude.clear();
     vehInheritExclude.clear();
 
-    iniVeh.data.clear();
+    dataFile.data.clear();
 }
 
-void updateVehicleVariations()
+void VehicleVariations::LoadData(bool firstTime, std::string gamePath)
 {
-    for (auto& i : vehTuning)
+    dataFile.SetIniPath(dataFile.GetIniPath());
+
+    if (firstTime)
     {
-        vehCurrentTuning[i.first] = vectorUnion(i.second[4], i.second[currentTown]);
+        changeCarGenerators   = dataFile.ReadBoolean("Settings", "ChangeCarGenerators", false);
+        changeScriptedCars    = dataFile.ReadBoolean("Settings", "ChangeScriptedCars", false);
+        disablePayAndSpray    = dataFile.ReadBoolean("Settings", "DisablePayAndSpray", false);
+        enableLights          = dataFile.ReadBoolean("Settings", "EnableLights", false);
+        enableSideMissions    = dataFile.ReadBoolean("Settings", "EnableSideMissions", false);
+        enableAllSideMissions = dataFile.ReadBoolean("Settings", "EnableSideMissionsForAllScripts", false);
+        enableSiren           = dataFile.ReadBoolean("Settings", "EnableSiren", false);
+        enableSpecialFeatures = dataFile.ReadBoolean("Settings", "EnableSpecialFeatures", false);
+        loadAllVehicles       = dataFile.ReadBoolean("Settings", "LoadAllVehicles", false);
+        vehCarGenExclude      = dataFile.ReadLine("Settings", "ExcludeCarGeneratorModels", READ_VEHICLES);
+        vehInheritExclude     = dataFile.ReadLine("Settings", "ExcludeModelsFromInheritance", READ_VEHICLES);
+    }
 
-        std::string section;
-        auto it = vehModels.find(i.first);
-        if (it != vehModels.end())
-            section = it->second;
-        else
-            section = std::to_string(i.first);
+    std::string str;
+    std::vector<std::string> result;
+    std::ifstream zoneFile(gamePath + "\\data\\info.zon");     
 
-        std::vector<unsigned short> vec = iniVeh.ReadLine(section, currentZone, READ_TUNING);
-        if (!vec.empty())
+    while (std::getline(zoneFile, str))
+    {
+        std::stringstream ss(str);
+        if (ss.good())
         {
-            if (vehMergeZones.find(i.first) != vehMergeZones.end())
-                vehCurrentTuning[i.first] = vectorUnion(vehCurrentTuning[i.first], vec);
-            else
-                vehCurrentTuning[i.first] = vec;
+            std::string substr;
+            std::getline(ss, substr, ','); // Grab first names till first comma
+            if (substr != "zone" && substr != "end")
+            {
+                std::for_each(substr.begin(), substr.end(), [](char& c) {
+                    c = (char)::toupper(c);
+                });
+                result.push_back(substr);
+            }
         }
     }
 
-    for (auto& modelid : vehHasVariations)
-    {
-        vehCurrentVariations[modelid] = vectorUnion(vehVariations[modelid][4], vehVariations[modelid][currentTown]);
-
-        std::string section;
-        auto it = vehModels.find(modelid + 400U);
-        if (it != vehModels.end())
-            section = it->second;
-        else
-            section = std::to_string(modelid + 400);
-
-        std::vector<unsigned short> vec = iniVeh.ReadLine(section, currentZone, READ_VEHICLES);
-        if (!vec.empty())
+    for (auto& i : result) //for every zone name
+        for (auto& j : dataFile.data)
         {
-            if (vehMergeZones.find((unsigned short)(modelid + 400)) != vehMergeZones.end())
-                vehCurrentVariations[modelid] = vectorUnion(vehCurrentVariations[modelid], vec);
+            int modelid = 0;
+            if (j.first[0] >= '0' && j.first[0] <= '9')
+                modelid = std::stoi(j.first);
             else
-                vehCurrentVariations[modelid] = vec;
+                CModelInfo::GetModelInfo((char*)j.first.c_str(), &modelid);
+
+            if (modelid > 0)
+                for (auto& k : dataFile.ReadLine(j.first, i, READ_VEHICLES)) //for every variation 'k' of veh id 'j' in zone 'i'
+                    if (modelid != k && !(vectorHasId(vehInheritExclude, k)))
+                        vehOriginalModels.insert({ k, modelid });           
         }
 
-        const CWanted* wanted = FindPlayerWanted(-1);
-        if (wanted)
+    if (logfile.is_open())
+        logfile << "\nVehicle sections detected:\n";
+
+    for (auto& inidata : dataFile.data)
+    {
+        if (logfile.is_open())
+            logfile << std::dec << inidata.first << "\n";
+
+        std::string section = inidata.first;
+        int modelid = 0;
+        if (section[0] >= '0' && section[0] <= '9')
+            modelid = std::stoi(section);
+        else
         {
-            const unsigned int wantedLevel = (wanted->m_nWantedLevel > 0) ? (wanted->m_nWantedLevel - 1) : (wanted->m_nWantedLevel);
-            if (!vehWantedVariations[modelid][wantedLevel].empty() && !vehCurrentVariations[modelid].empty())
-                filterWantedVariations(vehCurrentVariations[modelid], vehWantedVariations[modelid][wantedLevel]);
+            CModelInfo::GetModelInfo((char*)section.c_str(), &modelid);
+            if (modelid > 400)
+                vehModels.insert({ modelid, section });
         }
+
+        unsigned short i = (unsigned short)modelid;
+        if (i >= 400)
+        {
+            if (i < 612)
+            {
+                vehHasVariations.insert((unsigned short)(i - 400));
+
+                if (dataFile.ReadBoolean(section, "ChangeOnlyParked", false))
+                    parkedCars.insert(i);
+
+                vehVariations[i - 400][0] = dataFile.ReadLine(section, "Countryside", READ_VEHICLES);
+                vehVariations[i - 400][1] = dataFile.ReadLine(section, "LosSantos", READ_VEHICLES);
+                vehVariations[i - 400][2] = dataFile.ReadLine(section, "SanFierro", READ_VEHICLES);
+                vehVariations[i - 400][3] = dataFile.ReadLine(section, "LasVenturas", READ_VEHICLES);
+                vehVariations[i - 400][4] = dataFile.ReadLine(section, "Global", READ_VEHICLES);
+                vehVariations[i - 400][5] = dataFile.ReadLine(section, "Desert", READ_VEHICLES);
+
+                vehVariations[i - 400][6] = vectorUnion(dataFile.ReadLine(section, "TierraRobada", READ_VEHICLES), vehVariations[i - 400][5]);
+                vehVariations[i - 400][7] = vectorUnion(dataFile.ReadLine(section, "BoneCounty", READ_VEHICLES), vehVariations[i - 400][5]);
+                vehVariations[i - 400][8] = vectorUnion(dataFile.ReadLine(section, "RedCounty", READ_VEHICLES), vehVariations[i - 400][0]);
+                vehVariations[i - 400][9] = vectorUnion(dataFile.ReadLine(section, "Blueberry", READ_VEHICLES), vehVariations[i - 400][8]);
+                vehVariations[i - 400][10] = vectorUnion(dataFile.ReadLine(section, "Montgomery", READ_VEHICLES), vehVariations[i - 400][8]);
+                vehVariations[i - 400][11] = vectorUnion(dataFile.ReadLine(section, "Dillimore", READ_VEHICLES), vehVariations[i - 400][8]);
+                vehVariations[i - 400][12] = vectorUnion(dataFile.ReadLine(section, "PalominoCreek", READ_VEHICLES), vehVariations[i - 400][8]);
+                vehVariations[i - 400][13] = vectorUnion(dataFile.ReadLine(section, "FlintCounty", READ_VEHICLES), vehVariations[i - 400][0]);
+                vehVariations[i - 400][14] = vectorUnion(dataFile.ReadLine(section, "Whetstone", READ_VEHICLES), vehVariations[i - 400][0]);
+                vehVariations[i - 400][15] = vectorUnion(dataFile.ReadLine(section, "AngelPine", READ_VEHICLES), vehVariations[i - 400][14]);
+
+                vehWantedVariations[i - 400][0] = dataFile.ReadLine(section, "Wanted1", READ_VEHICLES);
+                vehWantedVariations[i - 400][1] = dataFile.ReadLine(section, "Wanted2", READ_VEHICLES);
+                vehWantedVariations[i - 400][2] = dataFile.ReadLine(section, "Wanted3", READ_VEHICLES);
+                vehWantedVariations[i - 400][3] = dataFile.ReadLine(section, "Wanted4", READ_VEHICLES);
+                vehWantedVariations[i - 400][4] = dataFile.ReadLine(section, "Wanted5", READ_VEHICLES);
+                vehWantedVariations[i - 400][5] = dataFile.ReadLine(section, "Wanted6", READ_VEHICLES);
+
+
+                for (unsigned int j = 0; j < 16; j++)
+                    for (auto& k : vehVariations[i - 400][j])
+                        if (k != i && !(vectorHasId(vehInheritExclude, k)))
+                            vehOriginalModels.insert({ k, i });
+            }
+
+            
+            vehGroups[i][0] = dataFile.ReadLine(section, "Countryside", READ_GROUPS);
+            vehGroups[i][1] = dataFile.ReadLine(section, "LosSantos", READ_GROUPS);
+            vehGroups[i][2] = dataFile.ReadLine(section, "SanFierro", READ_GROUPS);
+            vehGroups[i][3] = dataFile.ReadLine(section, "LasVenturas", READ_GROUPS);
+            vehGroups[i][4] = dataFile.ReadLine(section, "Global", READ_GROUPS);
+            vehGroups[i][5] = dataFile.ReadLine(section, "Desert", READ_GROUPS);
+
+            vehGroups[i][6] = vectorUnion(dataFile.ReadLine(section, "TierraRobada", READ_GROUPS), vehGroups[i][5]);
+            vehGroups[i][7] = vectorUnion(dataFile.ReadLine(section, "BoneCounty", READ_GROUPS), vehGroups[i][5]);
+            vehGroups[i][8] = vectorUnion(dataFile.ReadLine(section, "RedCounty", READ_GROUPS), vehGroups[i][0]);
+            vehGroups[i][9] = vectorUnion(dataFile.ReadLine(section, "Blueberry", READ_GROUPS), vehGroups[i][8]);
+            vehGroups[i][10] = vectorUnion(dataFile.ReadLine(section, "Montgomery", READ_GROUPS), vehGroups[i][8]);
+            vehGroups[i][11] = vectorUnion(dataFile.ReadLine(section, "Dillimore", READ_GROUPS), vehGroups[i][8]);
+            vehGroups[i][12] = vectorUnion(dataFile.ReadLine(section, "PalominoCreek", READ_GROUPS), vehGroups[i][8]);
+            vehGroups[i][13] = vectorUnion(dataFile.ReadLine(section, "FlintCounty", READ_GROUPS), vehGroups[i][0]);
+            vehGroups[i][14] = vectorUnion(dataFile.ReadLine(section, "Whetstone", READ_GROUPS), vehGroups[i][0]);
+            vehGroups[i][15] = vectorUnion(dataFile.ReadLine(section, "AngelPine", READ_GROUPS), vehGroups[i][14]);
+
+            //Veh Tuning
+            vehTuning[i][0] = dataFile.ReadLine(section, "Countryside", READ_TUNING);
+            vehTuning[i][1] = dataFile.ReadLine(section, "LosSantos", READ_TUNING);
+            vehTuning[i][2] = dataFile.ReadLine(section, "SanFierro", READ_TUNING);
+            vehTuning[i][3] = dataFile.ReadLine(section, "LasVenturas", READ_TUNING);
+            vehTuning[i][4] = dataFile.ReadLine(section, "Global", READ_TUNING);
+            vehTuning[i][5] = dataFile.ReadLine(section, "Desert", READ_TUNING);
+
+            vehTuning[i][6] = vectorUnion(dataFile.ReadLine(section, "TierraRobada", READ_TUNING), vehTuning[i][5]);
+            vehTuning[i][7] = vectorUnion(dataFile.ReadLine(section, "BoneCounty", READ_TUNING), vehTuning[i][5]);
+            vehTuning[i][8] = vectorUnion(dataFile.ReadLine(section, "RedCounty", READ_TUNING), vehTuning[i][0]);
+            vehTuning[i][9] = vectorUnion(dataFile.ReadLine(section, "Blueberry", READ_TUNING), vehTuning[i][8]);
+            vehTuning[i][10] = vectorUnion(dataFile.ReadLine(section, "Montgomery", READ_TUNING), vehTuning[i][8]);
+            vehTuning[i][11] = vectorUnion(dataFile.ReadLine(section, "Dillimore", READ_TUNING), vehTuning[i][8]);
+            vehTuning[i][12] = vectorUnion(dataFile.ReadLine(section, "PalominoCreek", READ_TUNING), vehTuning[i][8]);
+            vehTuning[i][13] = vectorUnion(dataFile.ReadLine(section, "FlintCounty", READ_TUNING), vehTuning[i][0]);
+            vehTuning[i][14] = vectorUnion(dataFile.ReadLine(section, "Whetstone", READ_TUNING), vehTuning[i][0]);
+            vehTuning[i][15] = vectorUnion(dataFile.ReadLine(section, "AngelPine", READ_TUNING), vehTuning[i][14]);
+
+            const int tuningRarity = dataFile.ReadInteger(section, "TuningRarity", -1);
+            if (tuningRarity > -1)
+                tuningRarities.insert({ i, (BYTE)tuningRarity });
+
+            if (dataFile.ReadBoolean(section, "UseOnlyGroups", false))
+                vehUseOnlyGroups.insert(i);
+
+            if (enableLights)
+            {
+                const float lightWidth = dataFile.ReadFloat(section, "LightWidth", -999.0);
+                const float lightX = dataFile.ReadFloat(section, "LightX", 0.0);
+                const float lightY = dataFile.ReadFloat(section, "LightY", 0.0);
+                const float lightZ = dataFile.ReadFloat(section, "LightZ", 0.0);
+
+                int r = dataFile.ReadInteger(section, "LightR", -1);
+                int g = dataFile.ReadInteger(section, "LightG", -1);
+                int b = dataFile.ReadInteger(section, "LightB", -1);
+                int a = dataFile.ReadInteger(section, "LightA", -1);
+
+                if (r >= 0 && r <= 255 && g >= 0 && g <= 255 && b >= 0 && b <= 255 && a >= 0 && a <= 255)
+                {
+                    rgba colors = { (uint8_t)r, (uint8_t)g, (uint8_t)b, (uint8_t)a };
+                    LightColors.insert({ i, colors });
+                }
+
+                if (lightX != 0.0 || lightY != 0.0 || lightZ != 0.0 || lightWidth > -900.0)
+                    LightPositions.insert({ i, {{ lightX, lightY, lightZ }, lightWidth} });
+
+                r = dataFile.ReadInteger(section, "LightR2", -1);
+                g = dataFile.ReadInteger(section, "LightG2", -1);
+                b = dataFile.ReadInteger(section, "LightB2", -1);
+                a = dataFile.ReadInteger(section, "LightA2", -1);
+
+                if (r >= 0 && r <= 255 && g >= 0 && g <= 255 && b >= 0 && b <= 255 && a >= 0 && a <= 255)
+                {
+                    rgba colors = { (uint8_t)r, (uint8_t)g, (uint8_t)b, (uint8_t)a };
+                    LightColors2.insert({ i, colors });
+                }
+            }
+
+            if (dataFile.ReadBoolean(section, "MergeZonesWithCities", false))
+                vehMergeZones.insert(i);
+
+            uint8_t numGroups = 0;
+            std::vector<unsigned short> vec;
+            for (int j = 0; j < 9; j++)
+            {
+                str = "DriverGroup" + std::to_string(j + 1);
+                vec = dataFile.ReadLine(section, str, READ_PEDS);
+                if (!vec.empty())
+                {
+                    vehDriverGroups[j].insert({ i, vec });
+                    numGroups++;
+                }
+                if (numGroups > 0)
+                    modelNumGroups[i] = numGroups;
+                else
+                    continue;
+
+                str = "PassengerGroup" + std::to_string(j + 1);
+                vec = dataFile.ReadLine(section, str, READ_PEDS);
+                if (!vec.empty())
+                    vehPassengerGroups[j].insert({ i, vec });
+            }
+
+            for (unsigned short j = 0; j < 6; j++)
+            {
+                vec = dataFile.ReadLineUnique(section, "Wanted" + std::to_string(j + 1), READ_GROUPS);
+                if (!vec.empty())
+                {
+                    checkNumGroups(vec, modelNumGroups[i]);
+                    vehGroupWantedVariations[i][j] = vec;
+                }
+            }
+
+            if (vehGroups.find(i) != vehGroups.end())
+                for (unsigned int j = 0; j < 16; j++)
+                    checkNumGroups(vehGroups[i][j], modelNumGroups[i]);
+
+
+            vec = dataFile.ReadLine(section, "Drivers", READ_PEDS);
+            if (!vec.empty())
+                vehDrivers.insert({ i, vec });
+
+            vec = dataFile.ReadLine(section, "Passengers", READ_PEDS);
+            if (!vec.empty())
+                vehPassengers.insert({ i, vec });
+
+            vec = dataFile.ReadLine(section, "ParentModel", READ_VEHICLES);
+            if (!vec.empty() && vec[0] >= 400)
+                vehOriginalModels[i] = vec[0];
+        }
+    }
+    if (logfile.is_open())
+    {
+        logfile << "\n";
+
+        if (zoneFile.is_open())
+        {
+            zoneFile.close();
+            logfile << "Zone file 'info.zon' found." << std::endl;
+        }
+        else
+            logfile << "Zone file 'info.zon' NOT found!" << std::endl;
     }
 }
 
-void addToVehicleStack(CVehicle* veh)
+void VehicleVariations::Process()
 {
-    vehStack.push(veh);
-}
+    hookTaxi();
 
-void processVehicleStacks()
-{
     while (!tuningStack.empty())
     {
         auto it = tuningStack.top();
@@ -603,6 +565,9 @@ void processVehicleStacks()
         CVehicle* veh = vehStack.top();
         vehStack.pop();
 
+        if (!IsVehiclePointerValid(veh))
+            continue;
+
         if (veh->m_nModelIndex >= 400 && veh->m_nModelIndex < 612 && !vehCurrentVariations[veh->m_nModelIndex - 400].empty() &&
             vehCurrentVariations[veh->m_nModelIndex - 400][0] == 0 && veh->m_nCreatedBy != eVehicleCreatedBy::MISSION_VEHICLE)
         {
@@ -624,7 +589,64 @@ void processVehicleStacks()
     }
 }
 
-void logCurrentVehicleVariations()
+void VehicleVariations::UpdateVariations()
+{
+    for (auto& i : vehTuning)
+    {
+        vehCurrentTuning[i.first] = vectorUnion(i.second[4], i.second[currentTown]);
+
+        std::string section;
+        auto it = vehModels.find(i.first);
+        if (it != vehModels.end())
+            section = it->second;
+        else
+            section = std::to_string(i.first);
+
+        std::vector<unsigned short> vec = dataFile.ReadLine(section, currentZone, READ_TUNING);
+        if (!vec.empty())
+        {
+            if (vehMergeZones.find(i.first) != vehMergeZones.end())
+                vehCurrentTuning[i.first] = vectorUnion(vehCurrentTuning[i.first], vec);
+            else
+                vehCurrentTuning[i.first] = vec;
+        }
+    }
+
+    for (auto& modelid : vehHasVariations)
+    {
+        vehCurrentVariations[modelid] = vectorUnion(vehVariations[modelid][4], vehVariations[modelid][currentTown]);
+
+        std::string section;
+        auto it = vehModels.find(modelid + 400U);
+        if (it != vehModels.end())
+            section = it->second;
+        else
+            section = std::to_string(modelid + 400);
+
+        std::vector<unsigned short> vec = dataFile.ReadLine(section, currentZone, READ_VEHICLES);
+        if (!vec.empty())
+        {
+            if (vehMergeZones.find((unsigned short)(modelid + 400)) != vehMergeZones.end())
+                vehCurrentVariations[modelid] = vectorUnion(vehCurrentVariations[modelid], vec);
+            else
+                vehCurrentVariations[modelid] = vec;
+        }
+
+        const CWanted* wanted = FindPlayerWanted(-1);
+        if (wanted)
+        {
+            const unsigned int wantedLevel = (wanted->m_nWantedLevel > 0) ? (wanted->m_nWantedLevel - 1) : (wanted->m_nWantedLevel);
+            if (!vehWantedVariations[modelid][wantedLevel].empty() && !vehCurrentVariations[modelid].empty())
+                vectorfilterVector(vehCurrentVariations[modelid], vehWantedVariations[modelid][wantedLevel]);
+        }
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////  LOGGING   /////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void VehicleVariations::LogCurrentVariations()
 {
     logfile << std::dec << "vehCurrentVariations\n";
     for (int i = 0; i < 212; i++)
@@ -637,7 +659,17 @@ void logCurrentVehicleVariations()
         }
 }
 
-void logVehicleVariations()
+void VehicleVariations::LogDataFile()
+{
+    const std::string &filePath = dataFile.GetIniPath();
+
+    if (GetFileAttributes(filePath.c_str()) == INVALID_FILE_ATTRIBUTES && GetLastError() == ERROR_FILE_NOT_FOUND)
+        logfile << "\n" << PathFindFileName(filePath.c_str()) << " not found!\n" << std::endl;
+    else
+        dataFile.Log();
+}
+
+void VehicleVariations::LogVariations()
 {
     logfile << "Vehicle Variations:\n";
     for (unsigned int i = 0; i < 212; i++)
@@ -658,8 +690,12 @@ void logVehicleVariations()
             }
 }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////  CALL HOOKS    ////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+
 template <unsigned int address, typename... Args>
-void changeModel(const char *funcName, unsigned short oldModel, int newModel, std::vector<unsigned int> addresses, Args... args)
+void changeModel(const char* funcName, unsigned short oldModel, int newModel, std::vector<unsigned int> addresses, Args... args)
 {
     if (newModel < 400 || newModel > 65535)
     {
@@ -704,11 +740,7 @@ T changeModelAndReturn(const char* funcName, unsigned short oldModel, int newMod
     return retValue;
 }
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////  CALL HOOKS    ////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////////////
-
-void hookTaxi()
+void VehicleVariations::hookTaxi()
 {
     static bool isPlayerInTaxi = false;
     if (enableSideMissions == false)
@@ -720,7 +752,7 @@ void hookTaxi()
     if (vehicle == NULL)
         return;
 
-    if (isPlayerInTaxi == false && (isModelTaxi(vehicle->m_nModelIndex) || vehicle->m_nModelIndex == 420 || vehicle->m_nModelIndex == 438))
+    if (isPlayerInTaxi == false && isModelTaxi(vehicle->m_nModelIndex))
     {
         injector::MakeJMP(0x4912D4, 0x4912DC);
         isPlayerInTaxi = true;
@@ -788,7 +820,7 @@ void __cdecl AddPoliceCarOccupantsHooked(CVehicle* a2, char a3)
             else
                 section = std::to_string(a2->m_nModelIndex);
 
-            std::vector<unsigned short> zoneGroups = iniVeh.ReadLine(section, currentZone, READ_GROUPS);
+            std::vector<unsigned short> zoneGroups = dataFile.ReadLine(section, currentZone, READ_GROUPS);
             checkNumGroups(zoneGroups, it->second);
             if (vehGroups.find(a2->m_nModelIndex) != vehGroups.end())
             {
@@ -803,7 +835,7 @@ void __cdecl AddPoliceCarOccupantsHooked(CVehicle* a2, char a3)
             else
             {
                 if (!vehGroupWantedVariations[a2->m_nModelIndex][wantedLevel].empty())
-                    filterWantedVariations(zoneGroups, vehGroupWantedVariations[a2->m_nModelIndex][wantedLevel]);
+                    vectorfilterVector(zoneGroups, vehGroupWantedVariations[a2->m_nModelIndex][wantedLevel]);
                 if (!zoneGroups.empty())
                     currentOccupantsGroup = vectorGetRandom(zoneGroups) - 1;
                 else
@@ -1071,7 +1103,7 @@ DWORD __cdecl FindSpecificDriverModelForCar_ToUseHooked(int carModel)
     else
         section = std::to_string(carModel);
 
-    const auto replaceDriver = iniVeh.ReadBoolean(section, "ReplaceDriver", false);
+    const auto replaceDriver = dataFile.ReadBoolean(section, "ReplaceDriver", false);
     if (currentOccupantsGroup > -1 && currentOccupantsGroup < 9 && currentOccupantsModel > 0)
     {
         auto itGroup = vehDriverGroups[currentOccupantsGroup].find(currentOccupantsModel);
@@ -1170,7 +1202,7 @@ void __cdecl SetUpDriverAndPassengersForVehicleHooked(CVehicle* car, int a3, int
             else
                 section = std::to_string(car->m_nModelIndex);
 
-            std::vector<unsigned short> zoneGroups = iniVeh.ReadLine(section, currentZone, READ_GROUPS);
+            std::vector<unsigned short> zoneGroups = dataFile.ReadLine(section, currentZone, READ_GROUPS);
             checkNumGroups(zoneGroups, it->second);
             if (vehGroups.find(car->m_nModelIndex) != vehGroups.end())
             {
@@ -1185,7 +1217,7 @@ void __cdecl SetUpDriverAndPassengersForVehicleHooked(CVehicle* car, int a3, int
             else
             {
                 if (!vehGroupWantedVariations[car->m_nModelIndex][wantedLevel].empty())
-                    filterWantedVariations(zoneGroups, vehGroupWantedVariations[car->m_nModelIndex][wantedLevel]);
+                    vectorfilterVector(zoneGroups, vehGroupWantedVariations[car->m_nModelIndex][wantedLevel]);
                 if (!zoneGroups.empty())
                     currentOccupantsGroup = zoneGroups[rand<uint32_t>(0, zoneGroups.size())] - 1;
                 else
@@ -1271,7 +1303,7 @@ CPed* __cdecl AddPedInCarHooked(CVehicle* a1, char driver, int a3, signed int a4
         else
             section = std::to_string(a1->m_nModelIndex);
 
-        const auto replacePassenger = iniVeh.ReadBoolean(section, "ReplacePassengers", false);
+        const auto replacePassenger = dataFile.ReadBoolean(section, "ReplacePassengers", false);
         auto it = vehPassengers.find(a1->m_nModelIndex);
         if (currentOccupantsGroup > -1 && currentOccupantsGroup < 9 && currentOccupantsModel > 0)
         {
@@ -1474,7 +1506,7 @@ void* __cdecl GetNewVehicleDependingOnCarModelHooked(int modelIndex, int created
             else
                 section = std::to_string(veh->m_nModelIndex);
 
-            if (iniVeh.ReadBoolean(section, "TuningFullBodykit", false))
+            if (dataFile.ReadBoolean(section, "TuningFullBodykit", false))
                 if (slotsToInstall[14] == true || slotsToInstall[15] == true || slotsToInstall[3] == true)
                     slotsToInstall[14] = slotsToInstall[15] = slotsToInstall[3] = true;
 
@@ -1492,9 +1524,9 @@ void* __cdecl GetNewVehicleDependingOnCarModelHooked(int modelIndex, int created
     return veh;
 }
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////  Vehicle Special Features //////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////  SPECIAL FEATURES  //////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
 
 template <unsigned int address>
 void __fastcall ProcessControlHooked(CAutomobile* veh)
@@ -2137,8 +2169,14 @@ void hookASM(uint32_t address1, std::string originalData, injector::memory_point
     injector::MakeJMP(address1, hookDest);
 }
 
-void installVehicleHooks()
+void VehicleVariations::InstallHooks()
 {
+    Events::initScriptsEvent.after += []
+    {
+        if (loadAllVehicles)
+            loadModels(400, 611, KEEP_IN_MEMORY, false);
+    };
+
     hookCall(0x43022A, ChooseModelHooked<0x43022A>, "ChooseModel"); //CCarCtrl::GenerateOneRandomCar
    //patch::RedirectJump(0x424E20, ChoosePoliceCarModelHooked);
 
@@ -2256,7 +2294,7 @@ void installVehicleHooks()
         hookASM(0x4F62E4, "66 81 78 22 A7 01",             cmpWordPtrRegModel<REG_EAX, 0x4F62EA, 0x1A7>, "CAEVehicleAudioEntity::GetSirenState");
         hookASM(0x4F9CBC, "66 81 79 22 A7 01",             cmpWordPtrRegModel<REG_ECX, 0x4F9CC2, 0x1A7>, "CAEVehicleAudioEntity::PlayHornOrSiren");
         hookASM(0x44AB2A, "66 81 7F 22 A7 01",             cmpWordPtrRegModel<REG_EDI, 0x44AB30, 0x1A7>, "CGarage::Update");
-        hookASM(0x52AE34, "66 81 78 22 A7 01",             cmpWordPtrRegModel<REG_EAX, 0x52AE3A, 0x1A7>, "0x52AE34");
+        hookASM(0x52AE34, "66 81 78 22 A7 01",             cmpWordPtrRegModel<REG_EAX, 0x52AE3A, 0x1A7>, "CCamera::CamControl");
         hookASM(0x4FB26B, "66 8B 41 22 66 3D BB 01",       movReg16WordPtrReg<REG_AX, REG_ECX, 0x4FB273, 4, 0x01BB3D66>, "CAEVehicleAudioEntity::ProcessMovingParts");
         hookASM(0x54742F, "66 8B 4F 22 66 81 F9 96 01",    movReg16WordPtrReg<REG_CX, REG_EDI, 0x547438, 5, 0x96F98166, 0x90909001>, "CPhysical::PositionAttachedEntity");
         hookASM(0x5A0052, "66 8B 46 22 66 3D 96 01",       movReg16WordPtrReg<REG_AX, REG_ESI, 0x5A005A, 4, 0x01963D66>, "CObject::SpecialEntityPreCollisionStuff");

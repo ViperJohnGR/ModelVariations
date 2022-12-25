@@ -1,14 +1,8 @@
 #pragma once
-#include "DataReader.hpp"
 
-#include <CAutomobile.h>
-#include <CPed.h>
-#include <CVector.h>
-#include <CZone.h>
+#include <CVehicle.h>
 
-#include <set>
-#include <stack>
-#include <vector>
+#include <string>
 
 extern char currentZone[8];
 extern unsigned int currentTown;

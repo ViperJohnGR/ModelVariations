@@ -65,11 +65,8 @@ std::vector<unsigned short> DataReader::ReadLine(std::string section, std::strin
 
 	if (iniString.empty())
 		return retVector;
-	
-	char* tkString = new char[iniString.size() + 1]();
-	strcpy(tkString, iniString.c_str());
 
-	for (char* token = strtok(tkString, ","); token != NULL; token = strtok(NULL, ","))
+	for (char* token = strtok(iniString.data(), ","); token != NULL; token = strtok(NULL, ","))
 	{
 		int modelid = 0;
 		while (token[0] == ' ')
@@ -145,8 +142,6 @@ std::vector<unsigned short> DataReader::ReadLine(std::string section, std::strin
 					}
 		}
 	}
-
-	delete[] tkString;
 	
 	std::sort(retVector.begin(), retVector.end());
 	return retVector;
@@ -157,19 +152,4 @@ std::vector<unsigned short> DataReader::ReadLineUnique(std::string section, std:
 	auto vec = ReadLine(section, key, parseType);
 	vec.erase(unique(vec.begin(), vec.end()), vec.end());
 	return vec;
-}
-
-void DataReader::Log()
-{
-	std::string filename = PathFindFileName(GetIniPath().c_str());
-
-	for (int i = 0; i < (int)filename.size() + 6; i++)
-		logfile << "#";
-
-	logfile << "\n## " << filename << " ##\n";
-
-	for (int i = 0; i < (int)filename.size() + 6; i++)
-		logfile << "#";
-
-	logfile << "\n" << fileToString(filename) << std::endl;
 }

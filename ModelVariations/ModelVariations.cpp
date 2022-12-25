@@ -262,6 +262,10 @@ void __cdecl CGame__ShutdownHooked()
         logfile << "Shutdown ok." << std::endl;
 }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////  MAIN   ///////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+
 class ModelVariations {
 public:
     ModelVariations() {
@@ -277,16 +281,10 @@ public:
 
             if (logfile.is_open())
             {
-                const char *debugString = "";
-#ifdef _DEBUG
-                debugString = " DEBUG";
-#endif
-
-                logfile << "Model Variations " MOD_VERSION << debugString << "\n" << getWindowsVersion() << "\n"
-                        << getDatetime(true, true, false) << "\n\n";
-
                 detectExe();
-                logfile << exePath << std::endl;
+
+                logfile << "Model Variations " MOD_VERSION << DEBUG_STRING << "\n" << getWindowsVersion() << "\n"
+                        << getDatetime(true, true, false) << "\n\n" << exePath << std::endl;
 
                 if (GetGameVersion() == GAME_10US_HOODLUM)
                     logfile << "Supported exe detected: 1.0 US HOODLUM" << std::endl;
@@ -294,17 +292,14 @@ public:
                     logfile << "Supported exe detected: 1.0 US Compact" << std::endl;
                 else
                     logfile << "Unsupported exe detected: " << exeName << " " << exeFilesize << " bytes " << exeHash << std::endl;
+            
+                PedVariations::LogDataFile();
+                PedWeaponVariations::LogDataFile();
+                VehicleVariations::LogDataFile();
+                logfile << std::endl;
             }
             else
                 enableLog = false;
-        }
-
-        if (logfile.is_open())
-        {
-            PedVariations::LogDataFile();
-            PedWeaponVariations::LogDataFile();
-            VehicleVariations::LogDataFile();
-            logfile << std::endl;
         }
 
         Events::initRwEvent += []
@@ -515,7 +510,7 @@ public:
             }
 
             if (enablePeds) PedVariations::Process();
-            if (enablePedWeapons) PedWeaponVariations::Process(currentZone);
+            if (enablePedWeapons) PedWeaponVariations::Process();
             if (enableVehicles) VehicleVariations::Process();
         };
 

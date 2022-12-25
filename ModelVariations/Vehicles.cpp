@@ -1,4 +1,5 @@
 #include "Vehicles.hpp"
+#include "DataReader.hpp"
 #include "FuncUtil.hpp"
 #include "Hooks.hpp"
 #include "LogUtil.hpp"
@@ -20,6 +21,7 @@
 #include <CVector.h>
 
 #include <array>
+#include <stack>
 #include <shlwapi.h>
 
 using namespace plugin;
@@ -56,7 +58,8 @@ enum eRegs32
     REG_EDI,
 };
 
-static DataReader dataFile("ModelVariations_Vehicles.ini");
+static const char* dataFileName = "ModelVariations_Vehicles.ini";
+static DataReader dataFile(dataFileName);
 
 unsigned short roadblockModel = 0;
 int sirenModel = -1;
@@ -661,12 +664,12 @@ void VehicleVariations::LogCurrentVariations()
 
 void VehicleVariations::LogDataFile()
 {
-    const std::string &filePath = dataFile.GetIniPath();
-
-    if (GetFileAttributes(filePath.c_str()) == INVALID_FILE_ATTRIBUTES && GetLastError() == ERROR_FILE_NOT_FOUND)
-        logfile << "\n" << PathFindFileName(filePath.c_str()) << " not found!\n" << std::endl;
+    if (GetFileAttributes(dataFileName) == INVALID_FILE_ATTRIBUTES && GetLastError() == ERROR_FILE_NOT_FOUND)
+        logfile << "\n" << dataFileName << " not found!\n" << std::endl;
     else
-        dataFile.Log();
+        logfile << "##################################\n"
+                   "## ModelVariations_Vehicles.ini ##\n"
+                   "##################################\n" << fileToString(dataFileName) << std::endl;
 }
 
 void VehicleVariations::LogVariations()

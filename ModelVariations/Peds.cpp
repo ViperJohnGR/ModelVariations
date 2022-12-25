@@ -1,5 +1,7 @@
 #include "Peds.hpp"
+#include "DataReader.hpp"
 #include "FuncUtil.hpp"
+#include "LogUtil.hpp"
 
 #include <plugin.h>
 #include <CModelInfo.h>
@@ -13,7 +15,8 @@
 
 constexpr int MAX_PED_ID = 300;
 
-static DataReader dataFile("ModelVariations_Peds.ini");
+static const char* dataFileName = "ModelVariations_Peds.ini";
+static DataReader dataFile(dataFileName);
 int16_t destroyedModelCounters[20000];
 
 std::array<std::vector<unsigned short>, 16> pedVariations[MAX_PED_ID];
@@ -444,12 +447,12 @@ void PedVariations::LogCurrentVariations()
 
 void PedVariations::LogDataFile()
 {
-    const std::string &filePath = dataFile.GetIniPath();
-
-    if (GetFileAttributes(filePath.c_str()) == INVALID_FILE_ATTRIBUTES && GetLastError() == ERROR_FILE_NOT_FOUND)
-        logfile << "\n" << PathFindFileName(filePath.c_str()) << " not found!\n" << std::endl;
+    if (GetFileAttributes(dataFileName) == INVALID_FILE_ATTRIBUTES && GetLastError() == ERROR_FILE_NOT_FOUND)
+        logfile << "\n" << PathFindFileName(dataFileName) << " not found!\n" << std::endl;
     else
-        dataFile.Log();
+        logfile << "##############################\n"
+                   "## ModelVariations_Peds.ini ##\n"
+                   "##############################\n" << fileToString(dataFileName) << std::endl;
 }
 
 void PedVariations::LogVariations()

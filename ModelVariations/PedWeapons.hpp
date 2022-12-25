@@ -1,8 +1,8 @@
 #pragma once
 
-#include "DataReader.hpp"
-
 #include <CPed.h>
+
+extern char currentZone[8];
 
 class PedWeaponVariations
 {
@@ -10,7 +10,7 @@ public:
 	static void AddToStack(CPed* ped);
 	static void ClearData();
 	static void LoadData();
-	static void Process(const char* currentZone);
+	static void Process();
 
 	//Logging
 	static void LogDataFile();

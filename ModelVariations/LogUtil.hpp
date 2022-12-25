@@ -4,13 +4,14 @@
 
 #include <set>
 #include <string>
-#include <iostream>
 
 #define MOD_VERSION "8.5"
 #ifdef _DEBUG
 #define MOD_NAME "ModelVariations_d.asi"
+#define DEBUG_STRING " DEBUG"
 #else
 #define MOD_NAME "ModelVariations.asi"
+#define DEBUG_STRING ""
 #endif
 
 extern std::ofstream logfile;

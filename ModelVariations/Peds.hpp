@@ -1,14 +1,10 @@
 #pragma once
-#include "DataReader.hpp"
-#include "LogUtil.hpp"
 
 #include <CPed.h>
 
 extern char currentZone[8];
 extern unsigned int currentTown;
 extern const char* currentInterior;
-
-
 
 class PedVariations
 {

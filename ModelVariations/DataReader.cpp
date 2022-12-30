@@ -88,7 +88,11 @@ std::vector<unsigned short> DataReader::ReadLine(std::string section, std::strin
 		}
 		else if (parseType == READ_TUNING)
 		{
-			if (token[0] != 'G')
+			if (_strnicmp(token, "paintjob", 8) == 0)
+			{
+				retVector.push_back((unsigned short)atoi(token+8)-1U);
+			}
+			else if (token[0] != 'G')
 			{
 				auto mInfo = CModelInfo::GetModelInfo(token, &modelid);
 				if (mInfo != NULL)

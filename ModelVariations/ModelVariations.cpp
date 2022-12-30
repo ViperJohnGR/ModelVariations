@@ -8,8 +8,6 @@
 #include "PedWeapons.hpp"
 #include "Vehicles.hpp"
 
-#include <extensions/ScriptCommands.h>
-
 #include <CModelInfo.h>
 #include <CPedModelInfo.h>
 #include <CPopulation.h>
@@ -77,9 +75,9 @@ unsigned int reloadKey = 0;
 
 bool checkForUpdate()
 {
-    const auto funcFail = []() {
+    const auto funcFail = [](const char *msg) {
         if (logfile.is_open())
-            logfile << "Check for updates failed." << std::endl;
+            logfile << msg << std::endl;
 
         return false;
     };
@@ -87,23 +85,18 @@ bool checkForUpdate()
     IStream* stream;
 
     if (URLOpenBlockingStream(0, "http://api.github.com/repos/ViperJohnGR/ModelVariations/tags", &stream, 0, 0) != S_OK)
-        return funcFail();
+        return funcFail("Check for updates failed.");
 
     std::string str(51, 0);
     if (stream->Read(&str[0], 50, NULL) != S_OK)
-        return funcFail();
+        return funcFail("Check for updates failed.");
 
     stream->Release();
     str = str.substr(str.find("\"name\":\"v")+9, 10);
     str.erase(str.find('"'));
     for (auto ch : str)
         if ( !((ch >= '0' && ch <= '9') || (ch == '.')) )
-        {
-            if (logfile.is_open())
-                logfile << "Check for updates failed. Invalid version string." << std::endl;
-
-            return false;
-        }
+            funcFail("Check for updates failed. Invalid version string.");
 
     const char *newV = str.c_str();
     const char *oldV = MOD_VERSION;
@@ -259,7 +252,10 @@ void __cdecl CGame__ShutdownHooked()
     callOriginal<address>();
 
     if (logfile.is_open())
+    {
         logfile << "Shutdown ok." << std::endl;
+        logfile.close();
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////

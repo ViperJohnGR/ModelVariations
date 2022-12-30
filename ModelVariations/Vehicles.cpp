@@ -5,8 +5,6 @@
 #include "LogUtil.hpp"
 #include <plugin.h>
 
-#include <extensions/ScriptCommands.h>
-
 #include <CBoat.h>
 #include <CCarCtrl.h>
 #include <CCarGenerator.h>
@@ -109,7 +107,7 @@ std::set<unsigned short> vehHasVariations;
 std::set<unsigned short> vehMergeZones;
 std::set<unsigned short> vehUseOnlyGroups;
 
-std::stack<std::pair<CVehicle*, std::array<std::vector<unsigned short>, 17>>> tuningStack;
+std::stack<std::pair<CVehicle*, std::array<std::vector<unsigned short>, 18>>> tuningStack;
 std::stack<CVehicle*> vehStack;
 
 //INI Options
@@ -125,6 +123,74 @@ bool loadAllVehicles = false;
 std::vector<unsigned short> vehCarGenExclude;
 std::vector<unsigned short> vehInheritExclude;
 
+
+int getTuningPartSlot(int model)
+{
+    auto mInfo = CModelInfo::GetModelInfo(model);
+
+    if (mInfo != NULL)
+    {
+        unsigned short flags = mInfo->m_nFlags;
+        int v87 = (flags >> 10) & 0x1F;
+
+        if ((flags & 0x100) != 0)
+        {
+            switch (v87)
+            {
+                case 1:
+                    return 11;
+                case 2:
+                    return 12;
+                case 12:
+                    return 14;
+                case 13:
+                    return 15;
+                case 19:
+                    return 13;
+                case 20:
+                case 21:
+                case 22:
+                    return 16;
+                default:
+                    return -1;
+            }
+        }
+        else
+        {
+            switch (v87)
+            {
+                case 0:
+                    return 0;
+                case 1:
+                case 2:
+                    return 1;
+                case 6:
+                    return 2;
+                case 8:
+                case 9:
+                    return 3;
+                case 10:
+                    return 4;
+                case 11:
+                    return 5;
+                case 12:
+                    return 6;
+                case 14:
+                    return 7;
+                case 15:
+                    return 8;
+                case 16:
+                    return 9;
+                case 17:
+                    return 10;
+                default:
+                    return -1;
+            }
+        }
+    }
+
+    return -1;
+}
 
 void checkNumGroups(std::vector<unsigned short>& vec, uint8_t numGroups)
 {
@@ -526,6 +592,7 @@ void VehicleVariations::LoadData(bool firstTime, std::string gamePath)
                 vehOriginalModels[i] = vec[0];
         }
     }
+
     if (logfile.is_open())
     {
         logfile << "\n";
@@ -555,11 +622,21 @@ void VehicleVariations::Process()
                 {
                     const uint32_t i = rand<uint32_t>(0, slot.size());
 
-                    CStreaming::RequestVehicleUpgrade(slot[i], 2);
-                    CStreaming::LoadAllRequestedModels(false);
+                    if (slot[i] <= 20)
+                    {
+                        it.first->SetRemap(slot[i]);
+                    }
+                    else
+                    {
+                        CStreaming::RequestVehicleUpgrade(slot[i], 2);
+                        CStreaming::LoadAllRequestedModels(false);
 
-                    it.first->AddVehicleUpgrade(slot[i]);
-                    Command<COMMAND_MARK_VEHICLE_MOD_AS_NO_LONGER_NEEDED>(slot[i]);
+                        it.first->AddVehicleUpgrade(slot[i]);
+                        CStreaming::SetMissionDoesntRequireModel(slot[i]);
+                        short otherUpgrade = reinterpret_cast<short(__thiscall*)(uint32_t, uint16_t)>(0x4C74D0)(0xB4E6D8, slot[i]);
+                        if (otherUpgrade > -1)
+                            CStreaming::SetMissionDoesntRequireModel(otherUpgrade);
+                    }
                 }
     }
 
@@ -1485,18 +1562,22 @@ void* __cdecl GetNewVehicleDependingOnCarModelHooked(int modelIndex, int created
         auto it = vehCurrentTuning.find(veh->m_nModelIndex);
         if (it != vehCurrentTuning.end() && !it->second.empty())
         {
-            std::array<std::vector<unsigned short>, 17> partsToInstall;
+            std::array<std::vector<unsigned short>, 18> partsToInstall;
             for (auto& part : it->second)
-            {
-                unsigned modSlot;
-                Command<COMMAND_GET_VEHICLE_MOD_TYPE>(part, &modSlot);
-                if (modSlot < 17)
-                    partsToInstall[modSlot].push_back(part);
-            }
+                if (part < static_cast<CVehicleModelInfo*>(CModelInfo::GetModelInfo(veh->m_nModelIndex))->GetNumRemaps())
+                    partsToInstall[17].push_back(part);
+                else
+                {
+                    unsigned modSlot = (unsigned)getTuningPartSlot(part);
+                    if (modSlot < 17)
+                        partsToInstall[modSlot].push_back(part);
+                }
+
+
             auto tuningRarity = tuningRarities.find(veh->m_nModelIndex);
 
-            std::array<bool, 17> slotsToInstall = {};
-            for (unsigned int i = 0; i < 17; i++)
+            std::array<bool, 18> slotsToInstall = {};
+            for (unsigned int i = 0; i < 18; i++)
                 if (tuningRarity != tuningRarities.end())
                     slotsToInstall[i] = (tuningRarity->second == 0) ? false : ((rand<uint32_t>(0, tuningRarity->second)) == 0 ? true : false);
                 else
@@ -1513,7 +1594,7 @@ void* __cdecl GetNewVehicleDependingOnCarModelHooked(int modelIndex, int created
                 if (slotsToInstall[14] == true || slotsToInstall[15] == true || slotsToInstall[3] == true)
                     slotsToInstall[14] = slotsToInstall[15] = slotsToInstall[3] = true;
 
-            for (unsigned int i = 0; i < 17; i++)
+            for (unsigned int i = 0; i < 18; i++)
                 if (slotsToInstall[i] == false)
                     partsToInstall[i].clear();
 

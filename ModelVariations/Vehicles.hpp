@@ -12,7 +12,7 @@ class VehicleVariations
 public:
 	static void AddToStack(CVehicle * veh);
 	static void ClearData();
-	static void LoadData(bool firstTime, std::string gamePath);
+	static void LoadData(std::string gamePath);
 	static void Process();
 	static void UpdateVariations();
 

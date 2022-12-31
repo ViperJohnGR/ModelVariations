@@ -1,7 +1,8 @@
 #pragma once
 
-#include <vector>
 #include <algorithm>
+#include <iterator>
+#include <vector>
 
 #include <CGeneral.h>
 #include <CMessages.h>
@@ -95,7 +96,7 @@ inline bool vectorHasId(std::vector<unsigned short>& vec, int id)
 
 inline std::vector<unsigned short> vectorUnion(std::vector<unsigned short> vec1, std::vector<unsigned short>& vec2)
 {
-    std::vector<unsigned short> vec;
-    std::set_union(vec1.begin(), vec1.end(), vec2.begin(), vec2.end(), std::back_inserter(vec));
-    return vec;
+    std::vector<unsigned short> vecOut;
+    std::set_union(vec1.begin(), vec1.end(), vec2.begin(), vec2.end(), std::back_inserter(vecOut));
+    return vecOut;
 }

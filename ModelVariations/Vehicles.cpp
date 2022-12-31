@@ -345,32 +345,29 @@ void VehicleVariations::ClearData()
     dataFile.data.clear();
 }
 
-void VehicleVariations::LoadData(bool firstTime, std::string gamePath)
+void VehicleVariations::LoadData(std::string gamePath)
 {
     dataFile.SetIniPath(dataFile.GetIniPath());
 
-    if (firstTime)
-    {
-        changeCarGenerators   = dataFile.ReadBoolean("Settings", "ChangeCarGenerators", false);
-        changeScriptedCars    = dataFile.ReadBoolean("Settings", "ChangeScriptedCars", false);
-        disablePayAndSpray    = dataFile.ReadBoolean("Settings", "DisablePayAndSpray", false);
-        enableLights          = dataFile.ReadBoolean("Settings", "EnableLights", false);
-        enableSideMissions    = dataFile.ReadBoolean("Settings", "EnableSideMissions", false);
-        enableAllSideMissions = dataFile.ReadBoolean("Settings", "EnableSideMissionsForAllScripts", false);
-        enableSiren           = dataFile.ReadBoolean("Settings", "EnableSiren", false);
-        enableSpecialFeatures = dataFile.ReadBoolean("Settings", "EnableSpecialFeatures", false);
-        loadAllVehicles       = dataFile.ReadBoolean("Settings", "LoadAllVehicles", false);
-        vehCarGenExclude      = dataFile.ReadLine("Settings", "ExcludeCarGeneratorModels", READ_VEHICLES);
-        vehInheritExclude     = dataFile.ReadLine("Settings", "ExcludeModelsFromInheritance", READ_VEHICLES);
-    }
+    changeCarGenerators   = dataFile.ReadBoolean("Settings", "ChangeCarGenerators", false);
+    changeScriptedCars    = dataFile.ReadBoolean("Settings", "ChangeScriptedCars", false);
+    disablePayAndSpray    = dataFile.ReadBoolean("Settings", "DisablePayAndSpray", false);
+    enableLights          = dataFile.ReadBoolean("Settings", "EnableLights", false);
+    enableSideMissions    = dataFile.ReadBoolean("Settings", "EnableSideMissions", false);
+    enableAllSideMissions = dataFile.ReadBoolean("Settings", "EnableSideMissionsForAllScripts", false);
+    enableSiren           = dataFile.ReadBoolean("Settings", "EnableSiren", false);
+    enableSpecialFeatures = dataFile.ReadBoolean("Settings", "EnableSpecialFeatures", false);
+    loadAllVehicles       = dataFile.ReadBoolean("Settings", "LoadAllVehicles", false);
+    vehCarGenExclude      = dataFile.ReadLine("Settings", "ExcludeCarGeneratorModels", READ_VEHICLES);
+    vehInheritExclude     = dataFile.ReadLine("Settings", "ExcludeModelsFromInheritance", READ_VEHICLES);
 
-    std::string str;
+    std::string line;
     std::vector<std::string> result;
     std::ifstream zoneFile(gamePath + "\\data\\info.zon");     
 
-    while (std::getline(zoneFile, str))
+    while (std::getline(zoneFile, line))
     {
-        std::stringstream ss(str);
+        std::stringstream ss(line);
         if (ss.good())
         {
             std::string substr;
@@ -392,12 +389,12 @@ void VehicleVariations::LoadData(bool firstTime, std::string gamePath)
             if (j.first[0] >= '0' && j.first[0] <= '9')
                 modelid = std::stoi(j.first);
             else
-                CModelInfo::GetModelInfo((char*)j.first.c_str(), &modelid);
+                CModelInfo::GetModelInfo((char*)j.first.data(), &modelid);
 
             if (modelid > 0)
                 for (auto& k : dataFile.ReadLine(j.first, i, READ_VEHICLES)) //for every variation 'k' of veh id 'j' in zone 'i'
                     if (modelid != k && !(vectorHasId(vehInheritExclude, k)))
-                        vehOriginalModels.insert({ k, modelid });           
+                        vehOriginalModels.insert({ k, (unsigned short)modelid });           
         }
 
     if (logfile.is_open())
@@ -414,9 +411,9 @@ void VehicleVariations::LoadData(bool firstTime, std::string gamePath)
             modelid = std::stoi(section);
         else
         {
-            CModelInfo::GetModelInfo((char*)section.c_str(), &modelid);
+            CModelInfo::GetModelInfo(section.data(), &modelid);
             if (modelid > 400)
-                vehModels.insert({ modelid, section });
+                vehModels.insert({ (unsigned short)modelid, section });
         }
 
         unsigned short i = (unsigned short)modelid;
@@ -546,8 +543,8 @@ void VehicleVariations::LoadData(bool firstTime, std::string gamePath)
             std::vector<unsigned short> vec;
             for (int j = 0; j < 9; j++)
             {
-                str = "DriverGroup" + std::to_string(j + 1);
-                vec = dataFile.ReadLine(section, str, READ_PEDS);
+                std::string key = "DriverGroup" + std::to_string(j + 1);
+                vec = dataFile.ReadLine(section, key, READ_PEDS);
                 if (!vec.empty())
                 {
                     vehDriverGroups[j].insert({ i, vec });
@@ -558,8 +555,8 @@ void VehicleVariations::LoadData(bool firstTime, std::string gamePath)
                 else
                     continue;
 
-                str = "PassengerGroup" + std::to_string(j + 1);
-                vec = dataFile.ReadLine(section, str, READ_PEDS);
+                key = "PassengerGroup" + std::to_string(j + 1);
+                vec = dataFile.ReadLine(section, key, READ_PEDS);
                 if (!vec.empty())
                     vehPassengerGroups[j].insert({ i, vec });
             }
@@ -598,13 +595,13 @@ void VehicleVariations::LoadData(bool firstTime, std::string gamePath)
         logfile << "\n";
 
         if (zoneFile.is_open())
-        {
-            zoneFile.close();
             logfile << "Zone file 'info.zon' found." << std::endl;
-        }
         else
             logfile << "Zone file 'info.zon' NOT found!" << std::endl;
     }
+
+    if (zoneFile.is_open())
+        zoneFile.close();
 }
 
 void VehicleVariations::Process()
@@ -890,7 +887,6 @@ void __cdecl AddPoliceCarOccupantsHooked(CVehicle* a2, char a3)
         {
             const CWanted* wanted = FindPlayerWanted(-1);
             const unsigned int wantedLevel = (wanted->m_nWantedLevel > 0) ? (wanted->m_nWantedLevel - 1) : (wanted->m_nWantedLevel);
-            const uint32_t i = rand<uint32_t>(0, vehGroupWantedVariations[a2->m_nModelIndex][wantedLevel].size());
             currentOccupantsModel = a2->m_nModelIndex;
 
             std::string section;
@@ -911,7 +907,7 @@ void __cdecl AddPoliceCarOccupantsHooked(CVehicle* a2, char a3)
             }
 
             if (zoneGroups.empty() && !vehGroupWantedVariations[a2->m_nModelIndex][wantedLevel].empty())
-                currentOccupantsGroup = vehGroupWantedVariations[a2->m_nModelIndex][wantedLevel][i] - 1;
+                currentOccupantsGroup = vectorGetRandom(vehGroupWantedVariations[a2->m_nModelIndex][wantedLevel]) - 1;
             else
             {
                 if (!vehGroupWantedVariations[a2->m_nModelIndex][wantedLevel].empty())
@@ -1272,7 +1268,6 @@ void __cdecl SetUpDriverAndPassengersForVehicleHooked(CVehicle* car, int a3, int
         {
             const CWanted* wanted = FindPlayerWanted(-1);
             const unsigned int wantedLevel = (wanted->m_nWantedLevel > 0) ? (wanted->m_nWantedLevel - 1) : (wanted->m_nWantedLevel);
-            const uint32_t i = rand<uint32_t>(0, vehGroupWantedVariations[car->m_nModelIndex][wantedLevel].size());
             currentOccupantsModel = car->m_nModelIndex;
 
             std::string section;
@@ -1293,7 +1288,7 @@ void __cdecl SetUpDriverAndPassengersForVehicleHooked(CVehicle* car, int a3, int
             }
 
             if (zoneGroups.empty() && !vehGroupWantedVariations[car->m_nModelIndex][wantedLevel].empty())
-                currentOccupantsGroup = vehGroupWantedVariations[car->m_nModelIndex][wantedLevel][i] - 1;
+                currentOccupantsGroup = vectorGetRandom(vehGroupWantedVariations[car->m_nModelIndex][wantedLevel]) - 1;
             else
             {
                 if (!vehGroupWantedVariations[car->m_nModelIndex][wantedLevel].empty())
@@ -1364,8 +1359,7 @@ CPed* __cdecl AddPedInCarHooked(CVehicle* a1, char driver, int a3, signed int a4
 {
     auto modelChoosen = [&]()
     {
-        unsigned char originalData[5] = {};
-        memcpy(originalData, (void*)0x613B78, 5);
+        const unsigned char originalData[5] = {*((uint8_t*)0x613B78), *((uint8_t*)0x613B79), *((uint8_t*)0x613B7A), *((uint8_t*)0x613B7B), *((uint8_t*)0x613B7C) };
         loadModels({ passengerModelIndex }, GAME_REQUIRED, true);
         injector::MakeJMP(0x613B78, patchPassengerModel);
         CPed* ped = callOriginalAndReturn<CPed*, address>(a1, driver, a3, a4, a5, a6);
@@ -1663,15 +1657,6 @@ void __fastcall PreRenderHooked(CAutomobile* veh)
 
     const uint8_t sirenOriginal[5] = { *(uint8_t*)0x6AB350, *(uint8_t*)0x6AB351, *(uint8_t*)0x6AB352, *(uint8_t*)0x6AB353, *(uint8_t*)0x6AB354 };
 
-    const auto sirenRestore = [sirenOriginal]()
-    {
-        ((uint8_t*)0x6AB350)[0] = sirenOriginal[0];
-        ((uint8_t*)0x6AB350)[1] = sirenOriginal[1];
-        ((uint8_t*)0x6AB350)[2] = sirenOriginal[2];
-        ((uint8_t*)0x6AB350)[3] = sirenOriginal[3];
-        ((uint8_t*)0x6AB350)[4] = sirenOriginal[4];
-    };
-
     sirenModel = -1;
     lightsModel = 0;
     bool hasSiren = false;
@@ -1714,7 +1699,13 @@ void __fastcall PreRenderHooked(CAutomobile* veh)
         callMethodOriginal<address>(veh);
 
     if (hasSiren)
-        sirenRestore();
+    {
+        ((uint8_t*)0x6AB350)[0] = sirenOriginal[0];
+        ((uint8_t*)0x6AB350)[1] = sirenOriginal[1];
+        ((uint8_t*)0x6AB350)[2] = sirenOriginal[2];
+        ((uint8_t*)0x6AB350)[3] = sirenOriginal[3];
+        ((uint8_t*)0x6AB350)[4] = sirenOriginal[4];
+    }
 }
 
 template <unsigned int address>
@@ -2131,8 +2122,8 @@ void __declspec(naked) movReg16WordPtrReg()
     jmpDest = asmNextinstr;
     asmJmpAddress = jmpAddress;
     ((uint8_t*)asmNextinstr)[nextInstrSize] = 0xFF;
-    ((uint8_t*)asmNextinstr)[nextInstrSize+1] = 0x25;
-    *((uint32_t**)((uint8_t*)asmNextinstr+nextInstrSize+2)) = &asmJmpAddress;
+    ((uint8_t*)asmNextinstr)[nextInstrSize + 1] = 0x25;
+    *((uint32_t**)((uint8_t*)asmNextinstr + nextInstrSize + 2)) = &asmJmpAddress;
 
     __asm {
         popad
@@ -2227,7 +2218,7 @@ void hookASM(uint32_t address1, std::string originalData, injector::memory_point
 {
     char* tkString = originalData.data();
     int i = 0;
-    int numBytes = static_cast<int>(originalData.size()/2-1);
+    int numBytes = (int)originalData.size()/2-1;
 
     for (char* token = strtok(tkString, " "); token != NULL; token = strtok(NULL, " "))
     {
@@ -2446,7 +2437,7 @@ void VehicleVariations::InstallHooks()
         hookCall(0x6ABA60, RegisterCoronaHooked<0x6ABA60>, "RegisterCorona"); //CAutomobile::PreRender
         hookCall(0x6ABB35, RegisterCoronaHooked<0x6ABB35>, "RegisterCorona"); //CAutomobile::PreRender
         hookCall(0x6ABC69, RegisterCoronaHooked<0x6ABC69>, "RegisterCorona"); //CAutomobile::PreRender
-        if (*(uint32_t *)0x6ABA56 == 0x0000FF68 && *(uint8_t*)0x6ABA5A == 0)
+        if (*(uint32_t*)0x6ABA56 == 0x0000FF68 && *(uint8_t*)0x6ABA5A == 0)
             injector::MakeJMP(0x6ABA56, patchCoronas);
         else
             logModified(0x6ABA56, printToString("Modified method detected : CAutomobile::PreRender - 0x6ABA56 is %s", bytesToString(0x6ABA56, 5).c_str()));

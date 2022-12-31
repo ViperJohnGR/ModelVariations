@@ -166,7 +166,7 @@ void loadIniData(bool firstTime)
         PedWeaponVariations::LoadData();
 
     if (enableVehicles)
-        VehicleVariations::LoadData(firstTime, exePath.substr(0, exePath.find_last_of("/\\")));
+        VehicleVariations::LoadData(exePath.substr(0, exePath.find_last_of("/\\")));
 }
 
 void updateVariations()

@@ -172,8 +172,8 @@ void PedVariations::LoadData()
             i = std::stoi(iniData.first);
         else
         {
-            CModelInfo::GetModelInfo(const_cast<char*>(section.c_str()), &i);
-            pedModels.insert({ i, section });
+            CModelInfo::GetModelInfo(section.data(), &i);
+            pedModels.insert({ (unsigned short)i, section });
         }
 
         if (isValidPedId(i))
@@ -541,10 +541,10 @@ void PedVariations::InstallHooks(bool enableSpecialPeds, bool isFLA)
         bool gameHOODLUM = plugin::GetGameVersion() != GAME_10US_COMPACT;
         bool notModified = true;
 
-        if ((*(uint32_t*)0x43DE6C != 0x4504FF66 || *(uint32_t*)0x43DE70 != 0x00969A50 ||
-             *(uint32_t*)0x43DF5B != 0x4504FF66 || *(uint32_t*)0x43DF5F != 0x00969A50) &&
-            (*(uint32_t*)(gameHOODLUM ? 0x1561634U : 0x43D6A4) != 0x5045048D || *(uint32_t*)(gameHOODLUM ? 0x1561638U : 0x43D6A8) != 0xB900969A ||
-             *(uint32_t*)(gameHOODLUM ? 0x1564C2BU : 0x43D6CB) != 0x55048B66 || *(uint32_t*)(gameHOODLUM ? 0x1564C2FU : 0x43D6CF) != 0x00969A50))
+        if (*(uint32_t*)0x43DE6C != 0x4504FF66 || *(uint32_t*)0x43DE70 != 0x00969A50 ||
+            *(uint32_t*)0x43DF5B != 0x4504FF66 || *(uint32_t*)0x43DF5F != 0x00969A50 ||
+            *(uint32_t*)(gameHOODLUM ? 0x1561634U : 0x43D6A4) != 0x5045048D || *(uint32_t*)(gameHOODLUM ? 0x1561638U : 0x43D6A8) != 0xB900969A ||
+            *(uint32_t*)(gameHOODLUM ? 0x1564C2BU : 0x43D6CB) != 0x55048B66 || *(uint32_t*)(gameHOODLUM ? 0x1564C2FU : 0x43D6CF) != 0x00969A50)
         {
             notModified = false;
         }

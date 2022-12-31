@@ -59,9 +59,9 @@ void PedWeaponVariations::LoadData()
         std::string section = iniData.first;
 
         if (!(section[0] >= '0' && section[0] <= '9'))
-            CModelInfo::GetModelInfo(const_cast<char*>(section.c_str()), &modelid);
+            CModelInfo::GetModelInfo(section.data(), &modelid);
         if (modelid > 0)
-            wepPedModels.insert({ modelid, section });
+            wepPedModels.insert({ (unsigned short)modelid, section });
 
         for (auto& keys : iniData.second)
         {
@@ -73,8 +73,8 @@ void PedWeaponVariations::LoadData()
             }
             else
                 name = keys.first.substr(0, keys.first.find("_"));
-            if (CModelInfo::GetModelInfo(const_cast<char*>(name.c_str()), &modelid))
-                wepVehModels.insert({ modelid, name });
+            if (CModelInfo::GetModelInfo(name.data(), &modelid))
+                wepVehModels.insert({ (unsigned short)modelid, name });
         }
     }
 

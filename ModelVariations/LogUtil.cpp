@@ -4,6 +4,7 @@
 #include <iomanip>
 #include <fstream>
 #include <sstream>
+#include <vector>
 #include <ntstatus.h>
 #include <Psapi.h>
 
@@ -46,29 +47,27 @@ std::string hashFile(const char* filename)
         const auto filesize = GetFileSize(hFile, NULL);
         if (filesize != INVALID_FILE_SIZE)
         {
-            DWORD lpNumberOfBytesRead;
+            DWORD lpNumberOfBytesRead = 0;
             BCRYPT_ALG_HANDLE hProvider = NULL;
             BCRYPT_HASH_HANDLE ctx = NULL;
-            BYTE* filebuf = new BYTE[filesize + 1]();
+            auto filebuf = std::vector<BYTE>(filesize + 1);
 
-            if (ReadFile(hFile, filebuf, filesize, &lpNumberOfBytesRead, NULL))
+            if (ReadFile(hFile, filebuf.data(), filesize, &lpNumberOfBytesRead, NULL))
                 if (BCryptOpenAlgorithmProvider(&hProvider, BCRYPT_SHA256_ALGORITHM, NULL, 0) == STATUS_SUCCESS)
                     if (BCryptCreateHash(hProvider, &ctx, NULL, 0, NULL, 0, 0) == STATUS_SUCCESS && ctx != NULL)
                     {
-                        BYTE* hash = new BYTE[50]();
+                        auto hash = std::vector<BYTE>(32);
                         std::stringstream stream;
-                        BCryptHashData(ctx, filebuf, filesize, 0);
-                        BCryptFinishHash(ctx, hash, 32, 0);
+                        BCryptHashData(ctx, filebuf.data(), filesize, 0);
+                        BCryptFinishHash(ctx, hash.data(), 32, 0);
                         BCryptDestroyHash(ctx);
                         BCryptCloseAlgorithmProvider(hProvider, 0);
 
-                        for (int i = 0; i < 32; i++)
-                            stream << std::setfill('0') << std::setw(2) << std::hex << static_cast<int>(hash[i]);
+                        for (auto &i : hash)
+                            stream << std::setfill('0') << std::setw(2) << std::hex << static_cast<int>(i);
 
                         hashString = stream.str();
-                        delete[] hash;
                     }
-            delete[] filebuf;
         }
         CloseHandle(hFile);
     }
@@ -76,48 +75,18 @@ std::string hashFile(const char* filename)
     return hashString;
 }
 
-std::string getParentModuleName(unsigned int address)
-{
-    std::string emptyString;
-    std::pair<unsigned int, std::string> prev;
-    if (address == 0)
-        return emptyString;
-
-    for (auto it = modulesSet.begin(); it != modulesSet.end(); it++)
-        if (it->first > address)
-            return prev.second;
-        else if (std::next(it) == modulesSet.end())
-            return it->second;
-        else
-        {
-            prev.first = it->first;
-            prev.second = it->second;
-        }
-    
-    return emptyString;
-}
-
 std::pair<unsigned int, std::string> getAddressBaseModule(uint32_t functionAddress)
 {
     std::pair<unsigned int, std::string> moduleInfo = {0, ""};
 
-    std::pair<unsigned int, std::string> prev;
     for (auto it = modulesSet.begin(); it != modulesSet.end(); it++)
+    {
         if (it->first > functionAddress)
-        {
-            moduleInfo = prev;
-            break;
-        }
-        else if (std::next(it) == modulesSet.end())
-        {
-            moduleInfo.first = it->first;
-            moduleInfo.second = it->second;
-        }
-        else
-        {
-            prev.first = it->first;
-            prev.second = it->second;
-        }
+            return moduleInfo;
+
+        moduleInfo.first = it->first;
+        moduleInfo.second = it->second;
+    }
 
     return moduleInfo;
 }
@@ -125,9 +94,7 @@ std::pair<unsigned int, std::string> getAddressBaseModule(uint32_t functionAddre
 void checkCallModified(const std::string &callName, unsigned int callAddress, bool isDirectAddress)
 {
     const unsigned int functionAddress = (isDirectAddress == false) ? injector::GetBranchDestination(callAddress).as_int() : *reinterpret_cast<unsigned int*>(callAddress);
-    std::string modulePath = getParentModuleName(functionAddress);
-    unsigned int baseAddress = 0;
-
+    std::string modulePath = getAddressBaseModule(functionAddress).second;
     std::string moduleName = modulePath.substr(modulePath.find_last_of("/\\") + 1);
 
     if (compareUpper(moduleName.c_str(), MOD_NAME))
@@ -137,11 +104,8 @@ void checkCallModified(const std::string &callName, unsigned int callAddress, bo
 
     callChecks.insert({ callAddress, moduleName});
 
-    if (functionAddress > 0)
-        baseAddress = getAddressBaseModule(functionAddress).first;
-
     logfile << "Modified call found: " << callName << " 0x" << std::uppercase << std::hex << callAddress << " 0x" << functionAddress << " ";
-    logfile << moduleName << " 0x" << baseAddress << std::endl;
+    logfile << moduleName << " 0x" << getAddressBaseModule(functionAddress).first << std::endl;
 }
 
 std::string getWindowsVersion()

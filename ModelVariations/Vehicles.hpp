@@ -2,10 +2,12 @@
 
 #include <CVehicle.h>
 
+#include <set>
 #include <string>
 
 extern char currentZone[8];
 extern unsigned int currentTown;
+extern std::set<std::pair<unsigned int, std::string>> modulesSet;
 
 class VehicleVariations
 {
@@ -22,6 +24,6 @@ public:
 	static void LogVariations();
 
 	//Call hooks
-	static void hookTaxi();
+	static void HookTaxi();
 	static void InstallHooks();
 };

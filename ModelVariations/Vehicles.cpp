@@ -2,9 +2,9 @@
 #include "DataReader.hpp"
 #include "FuncUtil.hpp"
 #include "Hooks.hpp"
-#include "LogUtil.hpp"
-#include <plugin.h>
+#include "Log.hpp"
 
+#include <plugin.h>
 #include <CBoat.h>
 #include <CCarCtrl.h>
 #include <CCarGenerator.h>
@@ -19,6 +19,7 @@
 #include <CVector.h>
 
 #include <array>
+#include <iomanip>
 #include <stack>
 #include <shlwapi.h>
 
@@ -397,13 +398,11 @@ void VehicleVariations::LoadData(std::string gamePath)
                         vehOriginalModels.insert({ k, (unsigned short)modelid });           
         }
 
-    if (logfile.is_open())
-        logfile << "\nVehicle sections detected:\n";
+    Log::Write("\nVehicle sections detected:\n");
 
     for (auto& inidata : dataFile.data)
     {
-        if (logfile.is_open())
-            logfile << std::dec << inidata.first << "\n";
+        Log::Write("%s\n", inidata.first.c_str());
 
         std::string section = inidata.first;
         int modelid = 0;
@@ -590,23 +589,17 @@ void VehicleVariations::LoadData(std::string gamePath)
         }
     }
 
-    if (logfile.is_open())
-    {
-        logfile << "\n";
-
-        if (zoneFile.is_open())
-            logfile << "Zone file 'info.zon' found." << std::endl;
-        else
-            logfile << "Zone file 'info.zon' NOT found!" << std::endl;
-    }
+    Log::Write("\n");
 
     if (zoneFile.is_open())
-        zoneFile.close();
+        Log::Write("Zone file 'info.zon' found.\n");
+    else
+        Log::Write("Zone file 'info.zon' NOT found!\n");
 }
 
 void VehicleVariations::Process()
 {
-    hookTaxi();
+    HookTaxi();
 
     while (!tuningStack.empty())
     {
@@ -725,44 +718,44 @@ void VehicleVariations::UpdateVariations()
 
 void VehicleVariations::LogCurrentVariations()
 {
-    logfile << std::dec << "vehCurrentVariations\n";
+    Log::Write("vehCurrentVariations\n");
     for (int i = 0; i < 212; i++)
         if (!vehCurrentVariations[i].empty())
         {
-            logfile << i + 400 << ": ";
+            Log::Write("%d: ", i+400);
             for (auto j : vehCurrentVariations[i])
-                logfile << j << " ";
-            logfile << "\n";
+                Log::Write("%u ", j);
+            Log::Write("\n");
         }
 }
 
 void VehicleVariations::LogDataFile()
 {
     if (GetFileAttributes(dataFileName) == INVALID_FILE_ATTRIBUTES && GetLastError() == ERROR_FILE_NOT_FOUND)
-        logfile << "\n" << dataFileName << " not found!\n" << std::endl;
+        Log::Write("\n%s not found!\n\n", PathFindFileName(dataFileName));
     else
-        logfile << "##################################\n"
+        Log::Write("##################################\n"
                    "## ModelVariations_Vehicles.ini ##\n"
-                   "##################################\n" << fileToString(dataFileName) << std::endl;
+                   "##################################\n%s\n", Log::FileToString(dataFileName).c_str());
 }
 
 void VehicleVariations::LogVariations()
 {
-    logfile << "Vehicle Variations:\n";
+    Log::Write("Vehicle Variations:\n");
     for (unsigned int i = 0; i < 212; i++)
         for (unsigned int j = 0; j < 16; j++)
             if (!vehVariations[i][j].empty())
             {
-                logfile << i + 400 << ": ";
+                Log::Write("%d: ", i+400);
                 for (unsigned int k = 0; k < 16; k++)
                     if (!vehVariations[i][k].empty())
                     {
-                        logfile << "(" << k << ") ";
+                        Log::Write("(%u) ", k);
                         for (const auto& l : vehVariations[i][k])
-                            logfile << l << " ";
+                            Log::Write("%u ", l);
                     }
 
-                logfile << "\n";
+                Log::Write("\n");
                 break;
             }
 }
@@ -783,7 +776,7 @@ void changeModel(const char* funcName, unsigned short oldModel, int newModel, st
     for (auto& i : addresses)
         if (*((uint16_t*)i) != oldModel)
         {
-            logModified(i, printToString("Modified method detected : %s - 0x%X is %u", funcName, i, *(uint16_t*)i));
+            Log::LogModifiedAddress(i, "Modified method detected : %s - 0x%08X is %u\n", funcName, i, *(uint16_t*)i);
             return callMethodOriginal<address>(args...);
         }
 
@@ -805,7 +798,7 @@ T changeModelAndReturn(const char* funcName, unsigned short oldModel, int newMod
     for (auto& i : addresses)
         if (*((uint16_t*)i) != oldModel)
         {
-            logModified(i, printToString("Modified method detected : %s - 0x%X is %u", funcName, i, *(uint16_t*)i));
+            Log::LogModifiedAddress(i, "Modified method detected : %s - 0x%08X is %u\n", funcName, i, *(uint16_t*)i);
             return callMethodOriginalAndReturn<T, address>(args...);
         }
 
@@ -817,7 +810,7 @@ T changeModelAndReturn(const char* funcName, unsigned short oldModel, int newMod
     return retValue;
 }
 
-void VehicleVariations::hookTaxi()
+void VehicleVariations::HookTaxi()
 {
     static bool isPlayerInTaxi = false;
     if (enableSideMissions == false)
@@ -954,7 +947,7 @@ signed int __fastcall PickRandomCarHooked(CLoadedCarGroup* cargrp, void*, char a
             carGenModel = 531;
         }
         else
-            logModified(0x6F3B9A, "Modified method detected : CCarGenerator::DoInternalProcessing - 0x6F3B9A is " + std::to_string(*(uint16_t*)0x6F3B9A));
+            Log::LogModifiedAddress(0x6F3B9A, "Modified method detected : CCarGenerator::DoInternalProcessing - 0x6F3B9A is %u\n", *(uint16_t*)0x6F3B9A);
     }
     else if (originalModel == 532) //Combine Harvester
     {
@@ -964,7 +957,7 @@ signed int __fastcall PickRandomCarHooked(CLoadedCarGroup* cargrp, void*, char a
             carGenModel = 532;
         }
         else
-            logModified(0x6F3BA0, "Modified method detected : CCarGenerator::DoInternalProcessing - 0x6F3BA0 is " + std::to_string(*(uint16_t*)0x6F3BA0));
+            Log::LogModifiedAddress(0x6F3BA0, "Modified method detected : CCarGenerator::DoInternalProcessing - 0x6F3BA0 is %u\n", *(uint16_t*)0x6F3BA0);
     }
 
     return variation;
@@ -1011,7 +1004,7 @@ void __fastcall DoInternalProcessingHooked(CCarGenerator* park) //for non-random
                 else
                 {
                     callMethodOriginal<address>(park);
-                    logModified(0x6F3B9A, "Modified method detected : CCarGenerator::DoInternalProcessing - 0x6F3B9A is " + std::to_string(*(uint16_t*)0x6F3B9A));
+                    Log::LogModifiedAddress(0x6F3B9A, "Modified method detected : CCarGenerator::DoInternalProcessing - 0x6F3B9A is %u\n", *(uint16_t*)0x6F3B9A);
                     return;
                 }
             }
@@ -1028,7 +1021,7 @@ void __fastcall DoInternalProcessingHooked(CCarGenerator* park) //for non-random
                 else
                 {
                     callMethodOriginal<address>(park);
-                    logModified(0x6F3BA0, "Modified method detected : CCarGenerator::DoInternalProcessing - 0x6F3BA0 is " + std::to_string(*(uint16_t*)0x6F3BA0));
+                    Log::LogModifiedAddress(0x6F3BA0, "Modified method detected : CCarGenerator::DoInternalProcessing - 0x6F3BA0 is %u\n", *(uint16_t*)0x6F3BA0);
                     return;
                 }
             }
@@ -1515,7 +1508,7 @@ void __cdecl PossiblyRemoveVehicleHooked(CVehicle* car)
     }
     else
     {
-        logModified(0x4250AC, "Modified method detected: CCarCtrl::PossiblyRemoveVehicle - 0x4250AC is " + std::to_string(*((uint16_t*)0x4250AC)));
+        Log::LogModifiedAddress(0x4250AC, "Modified method detected: CCarCtrl::PossiblyRemoveVehicle - 0x4250AC is %u\n", *(uint16_t*)0x4250AC);
         callOriginal<address>(car);
     }
 }
@@ -1914,7 +1907,7 @@ signed int __cdecl SetupEntityVisibilityHooked(CEntity* a1, float* a2)
         }
         else
         {
-            logModified(0x554336, printToString("Modified method detected : CRenderer::SetupEntityVisibility - 0x554336 is %u", *(uint16_t*)0x554336));
+            Log::LogModifiedAddress(0x554336, "Modified method detected : CRenderer::SetupEntityVisibility - 0x554336 is %u\n", *(uint16_t*)0x554336);
             return callOriginalAndReturn<signed int, address>(a1, a2);
         }
     }
@@ -1936,7 +1929,7 @@ int __cdecl GetMaximumNumberOfPassengersFromNumberOfDoorsHooked(__int16 modelInd
         }
         else
         {
-            logModified(0x4C8AD3, printToString("Modified method detected : CVehicleModelInfo::GetMaximumNumberOfPassengersFromNumberOfDoors - 0x4C8AD3 is %u", *(uint16_t*)0x4C8AD3));
+            Log::LogModifiedAddress(0x4C8AD3, "Modified method detected : CVehicleModelInfo::GetMaximumNumberOfPassengersFromNumberOfDoors - 0x4C8AD3 is %u\n", *(uint16_t*)0x4C8AD3);
             return callOriginalAndReturn<int, address>(modelIndex);
         }
     }
@@ -1951,7 +1944,7 @@ int __cdecl GetMaximumNumberOfPassengersFromNumberOfDoorsHooked(__int16 modelInd
         }
         else
         {
-            logModified(0x4C8ADB, printToString("Modified method detected : CVehicleModelInfo::GetMaximumNumberOfPassengersFromNumberOfDoors - 0x4C8ADB is %u", *(uint16_t*)0x4C8ADB));
+            Log::LogModifiedAddress(0x4C8ADB, "Modified method detected : CVehicleModelInfo::GetMaximumNumberOfPassengersFromNumberOfDoors - 0x4C8ADB is %u\n", *(uint16_t*)0x4C8ADB);
             return callOriginalAndReturn<int, address>(modelIndex);
         }
     }
@@ -2225,17 +2218,30 @@ void hookASM(uint32_t address1, std::string originalData, injector::memory_point
         if (std::stoi(token, nullptr, 16) != *(reinterpret_cast<uint8_t*>(address1) + i))
         {
             std::string moduleName;
-            std::string bytes = bytesToString(address1, numBytes);
+
+            std::stringstream ss;
+            const unsigned char* c = reinterpret_cast<unsigned char*>(address1);
+
+            for (int j = 0; j < numBytes; j++)
+                ss << std::setfill('0') << std::setw(2) << std::uppercase << std::hex << static_cast<unsigned int>(c[j]) << " ";
+
+            std::string bytes = ss.str();
             const auto dest = injector::GetBranchDestination(address1);
             if (dest != nullptr)
-                moduleName = getAddressBaseModule(dest.as_int()).second;
+            {
+                for (auto it = modulesSet.begin(); it != modulesSet.end(); it++)
+                    if (it->first > dest.as_int())
+                        break;
+                    else
+                        moduleName = it->second;
+            }
 
             if (funcName.find("::") != std::string::npos)
-                logModified(address1, printToString("Modified method detected: %s - 0x%X is %s %s", funcName.c_str(), address1, bytes.c_str(), PathFindFileName(moduleName.c_str())));
+                Log::LogModifiedAddress(address1, "Modified method detected: %s - 0x%08X is %s %s\n", funcName.c_str(), address1, bytes.c_str(), PathFindFileName(moduleName.c_str()));
             else if (strncmp(funcName.c_str(), "sub_", 4) == 0)
-                logModified(address1, printToString("Modified function detected: %s - 0x%X is %s %s", funcName.c_str(), address1, bytes.c_str(), PathFindFileName(moduleName.c_str())));
+                Log::LogModifiedAddress(address1, "Modified function detected: %s - 0x%08X is %s %s\n", funcName.c_str(), address1, bytes.c_str(), PathFindFileName(moduleName.c_str()));
             else
-                logModified(address1, printToString("Modified address detected: %s - 0x%X is %s %s", funcName.c_str(), address1, bytes.c_str(), PathFindFileName(moduleName.c_str())));
+                Log::LogModifiedAddress(address1, "Modified address detected: %s - 0x%08X is %s %s\n", funcName.c_str(), address1, bytes.c_str(), PathFindFileName(moduleName.c_str()));
         }
 
         i++;
@@ -2440,7 +2446,11 @@ void VehicleVariations::InstallHooks()
         if (*(uint32_t*)0x6ABA56 == 0x0000FF68 && *(uint8_t*)0x6ABA5A == 0)
             injector::MakeJMP(0x6ABA56, patchCoronas);
         else
-            logModified(0x6ABA56, printToString("Modified method detected : CAutomobile::PreRender - 0x6ABA56 is %s", bytesToString(0x6ABA56, 5).c_str()));
+            Log::LogModifiedAddress(0x6ABA56, "Modified method detected : CAutomobile::PreRender - 0x6ABA56 is %02X %02X %02X %02X %02X\n", *(uint8_t*)0x6ABA56, 
+                                                                                                                                            *(uint8_t*)0x6ABA57, 
+                                                                                                                                            *(uint8_t*)0x6ABA58, 
+                                                                                                                                            *(uint8_t*)0x6ABA59, 
+                                                                                                                                            *(uint8_t*)0x6ABA5A);
 
         hookCall(0x6AB80F, AddLightHooked<0x6AB80F>, "AddLight"); //CAutomobile::PreRender
         hookCall(0x6ABBA6, AddLightHooked<0x6ABBA6>, "AddLight"); //CAutomobile::PreRender

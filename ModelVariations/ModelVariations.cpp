@@ -1,13 +1,13 @@
-#include <plugin.h>
 #include "DataReader.hpp"
 #include "FuncUtil.hpp"
 #include "Hooks.hpp"
-#include "LogUtil.hpp"
+#include "Log.hpp"
 
 #include "Peds.hpp"
 #include "PedWeapons.hpp"
 #include "Vehicles.hpp"
 
+#include <plugin.h>
 #include <CModelInfo.h>
 #include <CPedModelInfo.h>
 #include <CPopulation.h>
@@ -21,12 +21,26 @@
 #include <map>
 #include <set>
 #include <stack>
+
+#include <ntstatus.h>
+#include <Psapi.h>
+#include <shlwapi.h>
 #include <urlmon.h>
 
-#include <shlwapi.h>
-
-#pragma comment(lib, "urlmon.lib")
+#pragma comment (lib, "bcrypt.lib")
 #pragma comment (lib, "shlwapi.lib")
+#pragma comment (lib, "urlmon.lib")
+
+
+#define MOD_VERSION "8.5"
+#ifdef _DEBUG
+#define MOD_NAME "ModelVariations_d.asi"
+#define DEBUG_STRING " DEBUG"
+#else
+#define MOD_NAME "ModelVariations.asi"
+#define DEBUG_STRING ""
+#endif
+
 
 using namespace plugin;
 
@@ -37,7 +51,7 @@ std::string exeName;
 
 std::map<unsigned int, hookinfo> hookedCalls;
 
-std::set<unsigned int> modifiedAddresses;
+
 std::set<std::pair<unsigned int, std::string>> callChecks;
 std::set<std::pair<unsigned int, std::string>> modulesSet;
 
@@ -73,30 +87,59 @@ unsigned int disableKey = 0;
 unsigned int reloadKey = 0;
 
 
+void checkCallModified(const std::string& callName, unsigned int callAddress, bool isDirectAddress)
+{
+    const unsigned int functionAddress = (isDirectAddress == false) ? injector::GetBranchDestination(callAddress).as_int() : *reinterpret_cast<unsigned int*>(callAddress);
+    std::pair<unsigned int, std::string> moduleInfo = { modulesSet.begin()->first, modulesSet.begin()->second };
+
+    for (auto it = modulesSet.begin(); it != modulesSet.end(); it++)
+    {
+        if (it->first > functionAddress)
+            break;
+
+        moduleInfo.first = it->first;
+        moduleInfo.second = it->second;
+    }
+    
+    std::string modulePath = moduleInfo.second;
+    std::string moduleName = modulePath.substr(modulePath.find_last_of("/\\") + 1);
+
+    if (compareUpper(moduleName.c_str(), MOD_NAME))
+        return;
+    if (callChecks.find({ callAddress , moduleName }) != callChecks.end())
+        return;
+
+    callChecks.insert({ callAddress, moduleName });
+
+    Log::Write("Modified call found: %s 0x%08X 0x%08X %s 0x%08X", callName.c_str(), callAddress, functionAddress, moduleName.c_str(), moduleInfo.first);
+}
+
 bool checkForUpdate()
 {
-    const auto funcFail = [](const char *msg) {
-        if (logfile.is_open())
-            logfile << msg << std::endl;
-
-        return false;
-    };
-
     IStream* stream;
 
     if (URLOpenBlockingStream(0, "http://api.github.com/repos/ViperJohnGR/ModelVariations/tags", &stream, 0, 0) != S_OK)
-        return funcFail("Check for updates failed.");
+    {
+        Log::Write("Check for updates failed.\n");
+        return false;
+    }
 
     std::string str(51, 0);
     if (stream->Read(&str[0], 50, NULL) != S_OK)
-        return funcFail("Check for updates failed.");
+    {
+        Log::Write("Check for updates failed.\n");
+        return false;
+    }
 
     stream->Release();
     str = str.substr(str.find("\"name\":\"v")+9, 10);
     str.erase(str.find('"'));
     for (auto ch : str)
-        if ( !((ch >= '0' && ch <= '9') || (ch == '.')) )
-            funcFail("Check for updates failed. Invalid version string.");
+        if (!((ch >= '0' && ch <= '9') || (ch == '.')))
+        {
+            Log::Write("Check for updates failed. Invalid version string.\n");
+            return false;
+        }
 
     const char *newV = str.c_str();
     const char *oldV = MOD_VERSION;
@@ -123,7 +166,92 @@ void detectExe()
         return;
 
     if (exeHash.empty())
-        exeHash = hashFile(path);
+    {
+        std::string hashString = "";
+        hFile = CreateFile(path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+
+        if (hFile != INVALID_HANDLE_VALUE)
+        {
+            const auto filesize = GetFileSize(hFile, NULL);
+            if (filesize != INVALID_FILE_SIZE)
+            {
+                DWORD lpNumberOfBytesRead = 0;
+                BCRYPT_ALG_HANDLE hProvider = NULL;
+                BCRYPT_HASH_HANDLE ctx = NULL;
+                auto filebuf = std::vector<BYTE>(filesize + 1);
+
+                if (ReadFile(hFile, filebuf.data(), filesize, &lpNumberOfBytesRead, NULL))
+                    if (BCryptOpenAlgorithmProvider(&hProvider, BCRYPT_SHA256_ALGORITHM, NULL, 0) == STATUS_SUCCESS)
+                        if (BCryptCreateHash(hProvider, &ctx, NULL, 0, NULL, 0, 0) == STATUS_SUCCESS && ctx != NULL)
+                        {
+                            auto hash = std::vector<BYTE>(32);
+                            std::stringstream stream;
+                            BCryptHashData(ctx, filebuf.data(), filesize, 0);
+                            BCryptFinishHash(ctx, hash.data(), 32, 0);
+                            BCryptDestroyHash(ctx);
+                            BCryptCloseAlgorithmProvider(hProvider, 0);
+
+                            for (auto& i : hash)
+                                stream << std::setfill('0') << std::setw(2) << std::hex << static_cast<int>(i);
+
+                            hashString = stream.str();
+                        }
+            }
+            CloseHandle(hFile);
+        }
+
+        exeHash = hashString;
+    }
+}
+
+std::string getDatetime(bool printDate, bool printTime, bool printMs)
+{
+    SYSTEMTIME systime;
+    GetSystemTime(&systime);
+    std::stringstream ss;
+    std::string ms;
+
+    if (printMs)
+        ms += "." + std::to_string(systime.wMilliseconds);
+
+    if (printDate)
+    {
+        ss << systime.wDay << "/" << systime.wMonth << "/" << systime.wYear;
+
+        if (!printTime)
+            return ss.str();
+
+        ss << " ";
+    }
+
+    ss << std::setfill('0') << std::setw(2) << systime.wHour << ":"
+        << std::setfill('0') << std::setw(2) << systime.wMinute << ":"
+        << std::setfill('0') << std::setw(2) << systime.wSecond << ms;
+
+    return ss.str();
+}
+
+void getLoadedModules()
+{
+    modulesSet.clear();
+
+    HMODULE modules[500] = {};
+    HANDLE hProcess = GetCurrentProcess();
+    DWORD cbNeeded = 0;
+
+    if (EnumProcessModules(hProcess, modules, sizeof(modules), &cbNeeded))
+        for (unsigned int i = 0; i < (cbNeeded / sizeof(HMODULE)); i++)
+        {
+            char szModName[MAX_PATH] = {};
+            if (GetModuleFileNameEx(hProcess, modules[i], szModName, sizeof(szModName) / sizeof(TCHAR)))
+            {
+                if (strcasestr(szModName, "III.VC.SA.LimitAdjuster"))
+                    loadedMods.openLimitAdjuster = true;
+                else if (strcasestr(szModName, "fastman92limitAdjuster"))
+                    loadedMods.fastman92LimitAdjuster = true;
+                modulesSet.insert(std::make_pair((unsigned int)modules[i], szModName));
+            }
+        }
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -217,19 +345,18 @@ void updateVariations()
     if (enableVehicles)
         VehicleVariations::UpdateVariations();
 
-    if (logfile.is_open())
+
+    if (enablePeds)
+        PedVariations::LogCurrentVariations();
+
+    if (enableVehicles)
     {
-        if (enablePeds)
-            PedVariations::LogCurrentVariations();
-
-        if (enableVehicles)
-        {
-            logfile << "\n";
-            VehicleVariations::LogCurrentVariations();
-        }
-
-        logfile << "\n" << std::endl;
+        Log::Write("\n");
+        VehicleVariations::LogCurrentVariations();
     }
+
+    Log::Write("\n\n");
+    
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -239,8 +366,7 @@ void updateVariations()
 template <unsigned int address>
 void __cdecl CGame__ShutdownHooked()
 {
-    if (logfile.is_open())
-        logfile << "Game shutting down..." << std::endl;
+    Log::Write("Game shutting down...\n");
 
     if (enableSpecialPeds)
     {
@@ -251,11 +377,8 @@ void __cdecl CGame__ShutdownHooked()
 
     callOriginal<address>();
 
-    if (logfile.is_open())
-    {
-        logfile << "Shutdown ok." << std::endl;
-        logfile.close();
-    }
+    Log::Write("Shutdown ok.\n");
+    Log::Close();
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -273,75 +396,81 @@ public:
 
         if ((enableLog = iniSettings.ReadBoolean("Settings", "EnableLog", false)) == true)
         {
-            logfile.open("ModelVariations.log");
+            Log::Open("ModelVariations.log");
 
-            if (logfile.is_open())
+            detectExe();
+
+            std::string windowsVersion;
+            char str[255] = {};
+            DWORD cbData = 254;
+            HKEY hkey;
+
+            if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", 0, KEY_QUERY_VALUE, &hkey) == ERROR_SUCCESS)
             {
-                detectExe();
-
-                logfile << "Model Variations " MOD_VERSION << DEBUG_STRING << "\n" << getWindowsVersion() << "\n"
-                        << getDatetime(true, true, false) << "\n\n" << exePath << std::endl;
-
-                if (GetGameVersion() == GAME_10US_HOODLUM)
-                    logfile << "Supported exe detected: 1.0 US HOODLUM" << std::endl;
-                else if (GetGameVersion() == GAME_10US_COMPACT)
-                    logfile << "Supported exe detected: 1.0 US Compact" << std::endl;
-                else
-                    logfile << "Unsupported exe detected: " << exeName << " " << exeFilesize << " bytes " << exeHash << std::endl;
-            
-                PedVariations::LogDataFile();
-                PedWeaponVariations::LogDataFile();
-                VehicleVariations::LogDataFile();
-                logfile << std::endl;
+                if (RegQueryValueEx(hkey, "CurrentBuild", NULL, NULL, (LPBYTE)str, &cbData) == ERROR_SUCCESS)
+                {
+                    windowsVersion += "OS build ";
+                    windowsVersion += str;
+                    windowsVersion += " ";
+                }
+                RegCloseKey(hkey);
             }
+
+            if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, "SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Environment", 0, KEY_QUERY_VALUE, &hkey) == ERROR_SUCCESS)
+            {
+                if (RegQueryValueEx(hkey, "PROCESSOR_ARCHITECTURE", NULL, NULL, (LPBYTE)str, &cbData) == ERROR_SUCCESS)
+                    windowsVersion += str;
+                RegCloseKey(hkey);
+            }
+
+            Log::Write("Model Variations %s\n%s\n%s\n\n%s\n", MOD_VERSION DEBUG_STRING, windowsVersion.c_str(), getDatetime(true, true, false).c_str(), exePath.c_str());
+
+            if (GetGameVersion() == GAME_10US_HOODLUM)
+                Log::Write("Supported exe detected: 1.0 US HOODLUM\n");
+            else if (GetGameVersion() == GAME_10US_COMPACT)
+                Log::Write("Supported exe detected: 1.0 US Compact\n");
             else
-                enableLog = false;
+                Log::Write("Unsupported exe detected: %s %u bytes %s\n", exeName.c_str(), exeFilesize, exeHash.c_str());
+            
+            PedVariations::LogDataFile();
+            PedWeaponVariations::LogDataFile();
+            VehicleVariations::LogDataFile();
+            Log::Write("\n");
         }
 
         Events::initRwEvent += []
         {
-            getLoadedModules(loadedMods.openLimitAdjuster, loadedMods.fastman92LimitAdjuster);
+            getLoadedModules();
 
             loadIniData(true);
 
             if (enablePeds)
             {
-                if (logfile.is_open())
-                    logfile << "Installing ped hooks..." << std::endl;
-
+                Log::Write("Installing ped hooks...\n");
                 PedVariations::InstallHooks(enableSpecialPeds, loadedMods.fastman92LimitAdjuster);
-
-                if (logfile.is_open())
-                    logfile << "Ped hooks installed." << std::endl;
+                Log::Write("Ped hooks installed.\n");
             }
 
             if (enableVehicles)
             {
-                if (logfile.is_open())
-                    logfile << "Installing vehicle hooks..." << std::endl;
-
+                Log::Write("Installing vehicle hooks...\n");
                 VehicleVariations::InstallHooks();
-
-                if (logfile.is_open())
-                    logfile << "Vehicle hooks installed." << std::endl;
+                Log::Write("Vehicle hooks installed.\n");
             }
 
             hookCall(0x748E6B, CGame__ShutdownHooked<0x748E6B>, "CGame::Shutdown");
 
-            if (logfile.is_open())
-            {
-                logfile << "\nLoaded modules:" << std::endl;
+            Log::Write("\nLoaded modules:\n");
 
-                for (const auto& i : modulesSet)
-                    logfile << "0x" << std::setfill('0') << std::setw(8) << std::hex << std::uppercase << i.first << " " << i.second << "\n";
-                logfile << std::endl;
-            }
+            for (const auto& i : modulesSet)
+                Log::Write("0x%08X %s\n", i.first, i.second.c_str());
+
+            Log::Write("\n");
         };
 
         Events::initScriptsEvent.after += []
         {
-            if (logfile.is_open())
-                logfile << "-- initScriptsEvent --" << std::endl;
+            Log::Write("-- initScriptsEvent --\n");
 
             clearEverything();
 
@@ -349,8 +478,7 @@ public:
             {
                 int numUnused = 0;
 
-                if (logfile.is_open())
-                    logfile << "Checking unused IDs...\n";
+                Log::Write("Checking unused IDs...\n");
 
                 for (uint16_t i = 1326; i < 20000; i++)
                     if (CModelInfo::GetModelInfo(i) == NULL)
@@ -359,32 +487,27 @@ public:
                         numUnused++;
                     }
 
-                if (logfile.is_open())
-                    logfile << "Unused IDs found: " << std::dec << numUnused << std::endl;
-
+                Log::Write("Unused IDs found: %d\n", numUnused);
                 unusedIDsChecked = true;
             }
 
             loadIniData(false);
-            if (logfile.is_open())
+
+            if (enablePeds)
+                PedVariations::LogVariations();
+
+            if (enableVehicles)
             {
-                if (enablePeds)
-                    PedVariations::LogVariations();
-
-                if (enableVehicles)
-                {
-                    logfile << "\n";
-                    VehicleVariations::LogVariations();
-                }
-
-                logfile << "\n" << std::endl;
+                Log::Write("\n");
+                VehicleVariations::LogVariations();
             }
+
+            Log::Write("\n\n");
 
             PedVariations::ProcessDrugDealers(true);
             framesSinceCallsChecked = 900;
 
-            if (logfile.is_open())
-                getLoadedModules(loadedMods.openLimitAdjuster, loadedMods.fastman92LimitAdjuster);
+            getLoadedModules();
 
             if (checkForUpdate())
                 timeUpdate = clock();
@@ -413,17 +536,15 @@ public:
 
             const auto logVariationChange = [zInfo, wanted](const char* msg)
             {
-                if (logfile.is_open())
-                {
-                    logfile << "\n";
-                    logfile << msg << " (" << getDatetime(false, true, true) << "). Updating variations...\n";
-                    logfile << "currentWanted = " << currentWanted << " wanted->m_nWantedLevel = " << wanted->m_nWantedLevel << "\n";
-                    logfile << "currentZone = " << currentZone << " zInfo->m_szLabel = " << zInfo->m_szLabel << "\n";
-                    if (currentInterior[0] != 0 || lastInterior[0] != 0)
-                        logfile << "currentInterior = " << currentInterior << " lastInterior = " << lastInterior << "\n";
+                Log::Write("\n");
+                Log::Write("%s (%s). Updating variations...\n", msg, getDatetime(false, true, true).c_str());
+                Log::Write("currentWanted = %u wanted->m_nWantedLevel = %u\n", currentWanted, wanted->m_nWantedLevel);
+                Log::Write("currentZone = %s zInfo->m_szLabel = %s\n", currentZone, zInfo->m_szLabel);
 
-                    logfile << std::endl;                    
-                }
+                if (currentInterior[0] != 0 || lastInterior[0] != 0)
+                    Log::Write("currentInterior = %s lastInterior = %s\n", currentInterior, lastInterior);
+
+                Log::Write("\n");
             };
 
             if (timeUpdate > -1 && ((clock() - timeUpdate) / CLOCKS_PER_SEC > 6))
@@ -438,11 +559,9 @@ public:
                 {
                     keyDown = true;
                     printMessage("~y~Model Variations~s~: Mod disabled.", 2000);
-                    if (logfile.is_open())
-                        logfile << "Disabling mod... ";
+                    Log::Write("Disabling mod... ");
                     clearEverything();
-                    if (logfile.is_open())
-                        logfile << "OK" << std::endl;
+                    Log::Write("OK\n");
                 }
             }
             else if (reloadKey > 0 && KeyPressed(reloadKey))
@@ -450,8 +569,7 @@ public:
                 if (!keyDown)
                 {
                     keyDown = true;
-                    if (logfile.is_open())
-                        logfile << "Reloading settings..." << std::endl;
+                    Log::Write("Reloading settings...\n");
                     clearEverything();
                     loadIniData(false);
                     updateVariations();
@@ -467,9 +585,11 @@ public:
 
             if (framesSinceCallsChecked == 1000)
             {
-                if (logfile.is_open())
+                if (enableLog)
                 {
-                    checkAllCalls();
+                    for (auto it : hookedCalls)
+                        checkCallModified(it.second.name, it.first, it.second.isVTableAddress);
+
                     framesSinceCallsChecked = 0;
                 }
                 else

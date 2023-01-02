@@ -56,6 +56,36 @@ inline T rand()
 
 
 /////////////
+// Strings //
+/////////////
+
+inline bool compareUpper(const char* a, const char* b)
+{
+    for (int i = 0; a[i] || b[i]; i++)
+        if (toupper(a[i]) != toupper(b[i]))
+            return false;
+
+    return true;
+}
+
+inline bool strcasestr(std::string src, std::string sub)
+{
+    std::for_each(src.begin(), src.end(), [](char& c) {
+        c = (char)::toupper(c);
+        });
+
+    std::for_each(sub.begin(), sub.end(), [](char& c) {
+        c = (char)::toupper(c);
+        });
+
+    if (src.find(sub) != std::string::npos)
+        return true;
+
+    return false;
+}
+
+
+/////////////
 // Vectors //
 /////////////
 

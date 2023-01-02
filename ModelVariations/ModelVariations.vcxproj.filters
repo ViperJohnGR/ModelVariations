@@ -4,29 +4,18 @@
     <ClCompile Include="ModelVariations.cpp" />
     <ClCompile Include="Vehicles.cpp" />
     <ClCompile Include="DataReader.cpp" />
-    <ClCompile Include="LogUtil.cpp">
-      <Filter>Utils</Filter>
-    </ClCompile>
     <ClCompile Include="Peds.cpp" />
     <ClCompile Include="PedWeapons.cpp" />
+    <ClCompile Include="Log.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Vehicles.hpp" />
     <ClInclude Include="Hooks.hpp" />
     <ClInclude Include="DataReader.hpp" />
-    <ClInclude Include="FuncUtil.hpp">
-      <Filter>Utils</Filter>
-    </ClInclude>
-    <ClInclude Include="LogUtil.hpp">
-      <Filter>Utils</Filter>
-    </ClInclude>
     <ClInclude Include="Peds.hpp" />
     <ClInclude Include="PedWeapons.hpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <Filter Include="Utils">
-      <UniqueIdentifier>{4bbeee3d-3aaf-456b-b5c5-1abcc68c6588}</UniqueIdentifier>
-    </Filter>
+    <ClInclude Include="Log.hpp" />
+    <ClInclude Include="FuncUtil.hpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="ModelVariations.ruleset" />

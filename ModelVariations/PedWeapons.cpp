@@ -1,7 +1,7 @@
 #include "PedWeapons.hpp"
 #include "DataReader.hpp"
 #include "FuncUtil.hpp"
-#include "LogUtil.hpp"
+#include "Log.hpp"
 
 #include <plugin.h>
 #include <CModelInfo.h>
@@ -47,13 +47,11 @@ void PedWeaponVariations::LoadData()
 {
     dataFile.SetIniPath(dataFile.GetIniPath());
 
-    if (logfile.is_open())
-        logfile << "\nPed weapon sections detected:\n";
+    Log::Write("\nPed weapon sections detected:\n");
 
     for (auto& iniData : dataFile.data)
     {
-        if (logfile.is_open())
-            logfile << std::dec << iniData.first << "\n";
+        Log::Write("%s\n", iniData.first.c_str());
 
         int modelid = 0;
         std::string section = iniData.first;
@@ -78,8 +76,7 @@ void PedWeaponVariations::LoadData()
         }
     }
 
-    if (logfile.is_open())
-        logfile << std::endl;
+    Log::Write("\n");
 }
 
 void PedWeaponVariations::Process()
@@ -205,9 +202,9 @@ void PedWeaponVariations::Process()
 void PedWeaponVariations::LogDataFile()
 {
     if (GetFileAttributes(dataFileName) == INVALID_FILE_ATTRIBUTES && GetLastError() == ERROR_FILE_NOT_FOUND)
-        logfile << "\n" << PathFindFileName(dataFileName) << " not found!\n" << std::endl;
+        Log::Write("\n%s not found!\n\n", PathFindFileName(dataFileName));
     else
-        logfile << "####################################\n"
+        Log::Write("####################################\n"
                    "## ModelVariations_PedWeapons.ini ##\n"
-                   "####################################\n" << fileToString(dataFileName) << std::endl;
+                   "####################################\n%s\n", Log::FileToString(dataFileName).c_str());
 }

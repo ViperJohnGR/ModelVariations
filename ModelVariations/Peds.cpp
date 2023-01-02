@@ -1,7 +1,8 @@
 #include "Peds.hpp"
 #include "DataReader.hpp"
 #include "FuncUtil.hpp"
-#include "LogUtil.hpp"
+#include "Hooks.hpp"
+#include "Log.hpp"
 
 #include <plugin.h>
 #include <CModelInfo.h>
@@ -157,13 +158,11 @@ void PedVariations::LoadData()
 {
     dataFile.SetIniPath(dataFile.GetIniPath());
 
-    if (logfile.is_open())
-        logfile << "\nPed sections detected:\n";
+    Log::Write("\nPed sections detected:\n");
 
     for (auto& iniData : dataFile.data)
     {
-        if (logfile.is_open())
-            logfile << std::dec << iniData.first << "\n";
+        Log::Write("%s\n", iniData.first.c_str());
 
         int i = 0;
         std::string section = iniData.first;
@@ -235,8 +234,7 @@ void PedVariations::LoadData()
     cloneRemoverIncludeVariations = dataFile.ReadLine("Settings", "CloneRemoverIncludeVariations", READ_PEDS);
     cloneRemoverExclusions = dataFile.ReadLine("Settings", "CloneRemoverExcludeModels", READ_PEDS);
 
-    if (logfile.is_open())
-        logfile << std::endl;
+    Log::Write("\n");
 }
 
 void PedVariations::Process()
@@ -357,8 +355,7 @@ void PedVariations::ProcessDrugDealers(bool reset)
 
         if (dealersFrames == 10)
         {
-            if (logfile.is_open())
-                logfile << "Applying drug dealer fix...\n";
+            Log::Write("Applying drug dealer fix...\n");
          
             int id = 28;
 
@@ -369,8 +366,7 @@ void PedVariations::ProcessDrugDealers(bool reset)
                         for (auto& j : pedVariations[id][i])
                             if (j > MAX_PED_ID)
                             {
-                                if (logfile.is_open())
-                                    logfile << j << "\n";
+                                Log::Write("%u\n", j);
                                 CTheScripts::ScriptsForBrains.AddNewScriptBrain(CTheScripts::StreamedScripts.GetProperIndexFromIndexUsedByScript(19), (short)j, 100, 0, -1, -1.0);
                             }
 
@@ -379,8 +375,7 @@ void PedVariations::ProcessDrugDealers(bool reset)
                 else id = 255;
             }
 
-            if (logfile.is_open())
-                logfile << std::endl;
+            Log::Write("\n");
             dealersFrames = 11;
         }
     }
@@ -429,49 +424,49 @@ void PedVariations::UpdateVariations()
 
 void PedVariations::LogCurrentVariations()
 {
-    logfile << std::dec << "pedCurrentVariations\n";
+    Log::Write("pedCurrentVariations\n");
     for (int i = 0; i < MAX_PED_ID; i++)
         if (!pedCurrentVariations[i].empty())
         {
-            logfile << i << ": ";
+            Log::Write("%d: ", i);
             for (auto j : pedCurrentVariations[i])
             {
                 const char* suffix = " ";
                 if (std::find(addedIDs.begin(), addedIDs.end(), j) != addedIDs.end())
                     suffix = "SP ";
-                logfile << j << suffix;
+                Log::Write("%u%s", j, suffix);
             }
-            logfile << "\n";
+            Log::Write("\n");
         }
 }
 
 void PedVariations::LogDataFile()
 {
     if (GetFileAttributes(dataFileName) == INVALID_FILE_ATTRIBUTES && GetLastError() == ERROR_FILE_NOT_FOUND)
-        logfile << "\n" << PathFindFileName(dataFileName) << " not found!\n" << std::endl;
+        Log::Write("\n%s not found!\n\n", PathFindFileName(dataFileName));
     else
-        logfile << "##############################\n"
+        Log::Write("##############################\n"
                    "## ModelVariations_Peds.ini ##\n"
-                   "##############################\n" << fileToString(dataFileName) << std::endl;
+                   "##############################\n%s\n", Log::FileToString(dataFileName).c_str());
 }
 
 void PedVariations::LogVariations()
 {
-    logfile << std::dec << "\nPed Variations:\n";
+    Log::Write("\nPed Variations:\n");
     for (unsigned int i = 0; i < MAX_PED_ID; i++)
         for (unsigned int j = 0; j < 16; j++)
             if (!pedVariations[i][j].empty())
             {
-                logfile << i << ": ";
+                Log::Write("%u: ", i);
                 for (unsigned int k = 0; k < 16; k++)
                     if (!pedVariations[i][k].empty())
                     {
-                        logfile << "(" << k << ") ";
+                        Log::Write("(%u) ", k);
                         for (const auto& l : pedVariations[i][k])
-                            logfile << l << " ";
+                            Log::Write("%u ", l);
                     }
 
-                logfile << "\n";
+                Log::Write("\n", i);
                 break;
             }
 }
@@ -552,14 +547,14 @@ void PedVariations::InstallHooks(bool enableSpecialPeds, bool isFLA)
         if (notModified)
         {
             injector::MakeInline<0x43DE6C, 0x43DE6C + 8>([](injector::reg_pack& regs)
-            {
-                destroyedModelCounters[regs.eax * 2]++;
-            });
+                {
+                    destroyedModelCounters[regs.eax * 2]++;
+                });
 
             injector::MakeInline<0x43DF5B, 0x43DF5B + 8>([](injector::reg_pack& regs)
-            {
-                destroyedModelCounters[regs.eax * 2]++;
-            });
+                {
+                    destroyedModelCounters[regs.eax * 2]++;
+                });
 
             auto leaEAX = [](injector::reg_pack& regs)
             {
@@ -582,8 +577,8 @@ void PedVariations::InstallHooks(bool enableSpecialPeds, bool isFLA)
                 injector::MakeInline<0x43D6CB, 0x43D6CB + 8>(movAX);
             }
         }
-        else if (logfile.is_open())
-            logfile << "Count of killable model IDs not increased." << (isFLA ? " FLA is loaded." : " FLA is NOT loaded.") << std::endl;
+        else
+            Log::Write("Count of killable model IDs not increased. %s\n", (isFLA ? "FLA is loaded." : "FLA is NOT loaded."));
     }
 
 

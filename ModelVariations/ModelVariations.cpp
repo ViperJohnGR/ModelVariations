@@ -32,7 +32,7 @@
 #pragma comment (lib, "urlmon.lib")
 
 
-#define MOD_VERSION "8.5"
+#define MOD_VERSION "8.6"
 #ifdef _DEBUG
 #define MOD_NAME "ModelVariations_d.asi"
 #define DEBUG_STRING " DEBUG"
@@ -49,11 +49,11 @@ unsigned int exeFilesize = 0;
 std::string exePath;
 std::string exeName;
 
-std::map<unsigned int, hookinfo> hookedCalls;
+std::map<std::uintptr_t, hookinfo> hookedCalls;
 
 
-std::set<std::pair<unsigned int, std::string>> callChecks;
-std::set<std::pair<unsigned int, std::string>> modulesSet;
+std::set<std::pair<std::uintptr_t, std::string>> callChecks;
+std::set<std::pair<std::uintptr_t, std::string>> modulesSet;
 
 std::vector<unsigned short> addedIDs;
 std::vector<unsigned short> unusedIDs;
@@ -87,10 +87,10 @@ unsigned int disableKey = 0;
 unsigned int reloadKey = 0;
 
 
-void checkCallModified(const std::string& callName, unsigned int callAddress, bool isDirectAddress)
+void checkCallModified(std::string_view callName, std::uintptr_t callAddress, bool isDirectAddress)
 {
-    const unsigned int functionAddress = (isDirectAddress == false) ? injector::GetBranchDestination(callAddress).as_int() : *reinterpret_cast<unsigned int*>(callAddress);
-    std::pair<unsigned int, std::string> moduleInfo = { modulesSet.begin()->first, modulesSet.begin()->second };
+    const std::uintptr_t functionAddress = (isDirectAddress == false) ? injector::GetBranchDestination(callAddress).as_int() : *reinterpret_cast<unsigned int*>(callAddress);
+    std::pair<std::uintptr_t, std::string> moduleInfo = { modulesSet.begin()->first, modulesSet.begin()->second };
 
     for (auto it = modulesSet.begin(); it != modulesSet.end(); it++)
     {
@@ -111,7 +111,7 @@ void checkCallModified(const std::string& callName, unsigned int callAddress, bo
 
     callChecks.insert({ callAddress, moduleName });
 
-    Log::Write("Modified call found: %s 0x%08X 0x%08X %s 0x%08X", callName.c_str(), callAddress, functionAddress, moduleName.c_str(), moduleInfo.first);
+    Log::Write("Modified call found: %s 0x%08X 0x%08X %s 0x%08X", callName.data(), callAddress, functionAddress, moduleName.c_str(), moduleInfo.first);
 }
 
 bool checkForUpdate()
@@ -167,7 +167,6 @@ void detectExe()
 
     if (exeHash.empty())
     {
-        std::string hashString = "";
         hFile = CreateFile(path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 
         if (hFile != INVALID_HANDLE_VALUE)
@@ -194,13 +193,11 @@ void detectExe()
                             for (auto& i : hash)
                                 stream << std::setfill('0') << std::setw(2) << std::hex << static_cast<int>(i);
 
-                            hashString = stream.str();
+                            exeHash = stream.str();
                         }
             }
             CloseHandle(hFile);
         }
-
-        exeHash = hashString;
     }
 }
 
@@ -249,7 +246,7 @@ void getLoadedModules()
                     loadedMods.openLimitAdjuster = true;
                 else if (strcasestr(szModName, "fastman92limitAdjuster"))
                     loadedMods.fastman92LimitAdjuster = true;
-                modulesSet.insert(std::make_pair((unsigned int)modules[i], szModName));
+                modulesSet.insert(std::make_pair((std::uintptr_t)modules[i], szModName));
             }
         }
 }
@@ -363,7 +360,7 @@ void updateVariations()
 ///////////////////////////////////////////  CALL HOOKS    ////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
-template <unsigned int address>
+template <std::uintptr_t address>
 void __cdecl CGame__ShutdownHooked()
 {
     Log::Write("Game shutting down...\n");

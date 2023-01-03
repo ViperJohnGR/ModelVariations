@@ -7,7 +7,7 @@
 
 extern char currentZone[8];
 extern unsigned int currentTown;
-extern std::set<std::pair<unsigned int, std::string>> modulesSet;
+extern std::set<std::pair<std::uintptr_t, std::string>> modulesSet;
 
 class VehicleVariations
 {

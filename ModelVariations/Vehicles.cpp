@@ -67,19 +67,19 @@ int currentOccupantsGroup = -1;
 unsigned short currentOccupantsModel = 0;
 
 int passengerModelIndex = -1;
-constexpr unsigned int jmp613B7E = 0x613B7E;
-constexpr unsigned int jmp6A1564 = 0x6A1564;
-constexpr unsigned int jmp6AB35A = 0x6AB35A;
-constexpr unsigned int jmp6ABA65 = 0x6ABA65;
-constexpr unsigned int jmp6AC735 = 0x6AC735;
-constexpr unsigned int jmp729B7B = 0x729B7B;
+constexpr std::uintptr_t jmp613B7E = 0x613B7E;
+constexpr std::uintptr_t jmp6A1564 = 0x6A1564;
+constexpr std::uintptr_t jmp6AB35A = 0x6AB35A;
+constexpr std::uintptr_t jmp6ABA65 = 0x6ABA65;
+constexpr std::uintptr_t jmp6AC735 = 0x6AC735;
+constexpr std::uintptr_t jmp729B7B = 0x729B7B;
 int carGenModel = -1;
 
 uint32_t asmNextinstr[4] = {};
 uint16_t asmModel16 = 0;
 uint32_t asmModel32 = 0;
 uint32_t asmModel = 0;
-uint32_t asmJmpAddress = 0;
+std::uintptr_t asmJmpAddress = 0;
 uint32_t* jmpDest = NULL;
 
 std::array<std::vector<unsigned short>, 16> vehVariations[212];
@@ -386,11 +386,13 @@ void VehicleVariations::LoadData(std::string gamePath)
     for (auto& i : result) //for every zone name
         for (auto& j : dataFile.data)
         {
+            std::string section = j.first;
+
             int modelid = 0;
             if (j.first[0] >= '0' && j.first[0] <= '9')
                 modelid = std::stoi(j.first);
             else
-                CModelInfo::GetModelInfo((char*)j.first.data(), &modelid);
+                CModelInfo::GetModelInfo(section.data(), &modelid);
 
             if (modelid > 0)
                 for (auto& k : dataFile.ReadLine(j.first, i, READ_VEHICLES)) //for every variation 'k' of veh id 'j' in zone 'i'
@@ -764,8 +766,8 @@ void VehicleVariations::LogVariations()
 ///////////////////////////////////////////  CALL HOOKS    ////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
-template <unsigned int address, typename... Args>
-void changeModel(const char* funcName, unsigned short oldModel, int newModel, std::vector<unsigned int> addresses, Args... args)
+template <std::uintptr_t address, typename... Args>
+void changeModel(const char* funcName, unsigned short oldModel, int newModel, std::vector<std::uintptr_t> addresses, Args... args)
 {
     if (newModel < 400 || newModel > 65535)
     {
@@ -787,8 +789,8 @@ void changeModel(const char* funcName, unsigned short oldModel, int newModel, st
         *(uint16_t*)i = oldModel;
 }
 
-template <typename T, unsigned int address, typename... Args>
-T changeModelAndReturn(const char* funcName, unsigned short oldModel, int newModel, std::vector<unsigned int> addresses, Args... args)
+template <typename T, std::uintptr_t address, typename... Args>
+T changeModelAndReturn(const char* funcName, unsigned short oldModel, int newModel, std::vector<std::uintptr_t> addresses, Args... args)
 {
     if (newModel < 400 || newModel > 65535)
     {
@@ -837,7 +839,7 @@ void VehicleVariations::HookTaxi()
     }
 }
 
-template <unsigned int address>
+template <std::uintptr_t address>
 int __cdecl ChooseModelHooked(int* a1)
 {
     const int model = callOriginalAndReturn<int, address>(a1);
@@ -852,7 +854,7 @@ int __cdecl ChooseModelHooked(int* a1)
     return getRandomVariation((unsigned short)model);
 }
 
-template <unsigned int address>
+template <std::uintptr_t address>
 int __cdecl ChoosePoliceCarModelHooked(int a1)
 {
     const int model = callOriginalAndReturn<int, address>(a1);
@@ -867,7 +869,7 @@ int __cdecl ChoosePoliceCarModelHooked(int a1)
     return getRandomVariation((unsigned short)model);
 }
 
-template <unsigned int address>
+template <std::uintptr_t address>
 void __cdecl AddPoliceCarOccupantsHooked(CVehicle* a2, char a3)
 {
     if (a2 == NULL)
@@ -924,13 +926,13 @@ void __cdecl AddPoliceCarOccupantsHooked(CVehicle* a2, char a3)
     currentOccupantsModel = 0;
 }
 
-template <unsigned int address>
+template <std::uintptr_t address>
 CAutomobile* __fastcall CAutomobileHooked(CAutomobile* automobile, void*, int modelIndex, char usageType, char bSetupSuspensionLines)
 {
     return callMethodOriginalAndReturn<CAutomobile*, address>(automobile, getRandomVariation(modelIndex), usageType, bSetupSuspensionLines);
 }
 
-template <unsigned int address>
+template <std::uintptr_t address>
 signed int __fastcall PickRandomCarHooked(CLoadedCarGroup* cargrp, void*, char a2, char a3) //for random parked cars
 {
     if (cargrp == NULL)
@@ -963,7 +965,7 @@ signed int __fastcall PickRandomCarHooked(CLoadedCarGroup* cargrp, void*, char a
     return variation;
 }
 
-template <unsigned int address>
+template <std::uintptr_t address>
 void __fastcall DoInternalProcessingHooked(CCarGenerator* park) //for non-random parked cars
 {
     if (park != NULL)
@@ -1062,25 +1064,25 @@ void __fastcall DoInternalProcessingHooked(CCarGenerator* park) //for non-random
     }
 }
 
-template <unsigned int address>
+template <std::uintptr_t address>
 CTrain* __fastcall CTrainHooked(CTrain* train, void*, int modelIndex, int createdBy)
 {
     return callMethodOriginalAndReturn<CTrain*, address>(train, getRandomVariation(modelIndex), createdBy);
 }
 
-template <unsigned int address>
+template <std::uintptr_t address>
 CVehicle* __fastcall CBoatHooked(CBoat* boat, void*, int modelId, char a3)
 {
     return callMethodOriginalAndReturn<CVehicle*, address>(boat, getRandomVariation(modelId), a3);
 }
 
-template <unsigned int address>
+template <std::uintptr_t address>
 CAutomobile* __fastcall CHeliHooked(CHeli* heli, void*, int a2, char usageType)
 {
     return callMethodOriginalAndReturn<CAutomobile*, address>(heli, getRandomVariation(a2), usageType);
 }
 
-template <unsigned int address>
+template <std::uintptr_t address>
 char __fastcall IsLawEnforcementVehicleHooked(CVehicle* vehicle)
 {
     if (vehicle == NULL)
@@ -1099,7 +1101,7 @@ char __fastcall IsLawEnforcementVehicleHooked(CVehicle* vehicle)
     return isLawEnforcement;
 }
 
-template <unsigned int address>
+template <std::uintptr_t address>
 char __cdecl IsCarSprayableHooked(CVehicle* a1)
 {
     if (a1 == NULL)
@@ -1113,7 +1115,7 @@ char __cdecl IsCarSprayableHooked(CVehicle* a1)
     //return CallAndReturn<char, 0x4479A0>(a1);
 }
 
-template <unsigned int address>
+template <std::uintptr_t address>
 char __fastcall HasCarSiren(CVehicle* vehicle)
 {
     if (vehicle == NULL)
@@ -1129,7 +1131,7 @@ char __fastcall HasCarSiren(CVehicle* vehicle)
     return 0;
 }
 
-template <unsigned int address>
+template <std::uintptr_t address>
 void __cdecl AddAmbulanceOccupantsHooked(CVehicle* pVehicle)
 {
     if (pVehicle == NULL)
@@ -1143,7 +1145,7 @@ void __cdecl AddAmbulanceOccupantsHooked(CVehicle* pVehicle)
     pVehicle->m_nModelIndex = model;
 }
 
-template <unsigned int address>
+template <std::uintptr_t address>
 void __cdecl AddFiretruckOccupantsHooked(CVehicle* pVehicle)
 {
     if (pVehicle == NULL)
@@ -1157,7 +1159,7 @@ void __cdecl AddFiretruckOccupantsHooked(CVehicle* pVehicle)
     pVehicle->m_nModelIndex = model;
 }
 
-template <unsigned int address>
+template <std::uintptr_t address>
 DWORD __cdecl FindSpecificDriverModelForCar_ToUseHooked(int carModel)
 {
     if (carModel < 400)
@@ -1193,7 +1195,7 @@ DWORD __cdecl FindSpecificDriverModelForCar_ToUseHooked(int carModel)
     return callOriginalAndReturn<DWORD, address>(getVariationOriginalModel(carModel));
 }
 
-template <unsigned int address>
+template <std::uintptr_t address>
 void __fastcall CollectParametersHooked(CRunningScript* script, void*, unsigned __int16 a2)
 {
     callMethodOriginal<address>(script, a2);
@@ -1224,7 +1226,7 @@ void __fastcall CollectParametersHooked(CRunningScript* script, void*, unsigned 
     }
 }
 
-template <unsigned int address>
+template <std::uintptr_t address>
 char __cdecl GenerateRoadBlockCopsForCarHooked(CVehicle* a1, int pedsPositionsType, int type)
 {
     if (a1 == NULL)
@@ -1240,7 +1242,7 @@ char __cdecl GenerateRoadBlockCopsForCarHooked(CVehicle* a1, int pedsPositionsTy
     return 1;
 }
 
-template <unsigned int address>
+template <std::uintptr_t address>
 CColModel* __fastcall GetColModelHooked(CVehicle* entity)
 {
     if (roadblockModel >= 400)
@@ -1248,7 +1250,7 @@ CColModel* __fastcall GetColModelHooked(CVehicle* entity)
     return callMethodOriginalAndReturn<CColModel*, address>(entity);
 }
 
-template <unsigned int address>
+template <std::uintptr_t address>
 void __cdecl SetUpDriverAndPassengersForVehicleHooked(CVehicle* car, int a3, int a4, char a5, char a6, int a7)
 {
     if (car == NULL)
@@ -1309,7 +1311,7 @@ void __cdecl SetUpDriverAndPassengersForVehicleHooked(CVehicle* car, int a3, int
     currentOccupantsModel = 0;
 }
 
-template <unsigned int address>
+template <std::uintptr_t address>
 CHeli* __cdecl GenerateHeliHooked(CPed* ped, char newsHeli)
 {
     if (FindPlayerWanted(-1)->m_nWantedLevel < 4)
@@ -1331,7 +1333,7 @@ CHeli* __cdecl GenerateHeliHooked(CPed* ped, char newsHeli)
     //return CHeli::GenerateHeli(ped, newsHeli);
 }
 
-template <unsigned int address>
+template <std::uintptr_t address>
 CPlane* __fastcall CPlaneHooked(CPlane* plane, void*, int a2, char a3)
 {
     return callMethodOriginalAndReturn<CPlane*, address>(plane, getRandomVariation(a2), a3);
@@ -1347,7 +1349,7 @@ void __declspec(naked) patchPassengerModel()
     }
 }
 
-template <unsigned int address>
+template <std::uintptr_t address>
 CPed* __cdecl AddPedInCarHooked(CVehicle* a1, char driver, int a3, signed int a4, int a5, char a6)
 {
     auto modelChoosen = [&]()
@@ -1392,7 +1394,7 @@ CPed* __cdecl AddPedInCarHooked(CVehicle* a1, char driver, int a3, signed int a4
     //return CPopulation::AddPedInCar(a1, a2, a3, a4, a5, a6);
 }
 
-template <unsigned int address>
+template <std::uintptr_t address>
 void __cdecl RegisterCoronaHooked(CCoronas* _this, unsigned int a2, unsigned __int8 a3, unsigned __int8 a4, unsigned __int8 a5, unsigned __int8 a6, CVector* a7, const CVector* a8,
                                   float a9, void* texture, unsigned __int8 a11, unsigned __int8 a12, unsigned __int8 a13, int a14, float a15, float a16, float a17, float a18,
                                   float a19, float a20, bool a21)
@@ -1463,7 +1465,7 @@ void __cdecl RegisterCoronaHooked2(CCoronas* _this, unsigned int a2, unsigned __
     callOriginal<0x6ABA60>(_this, a2, a3, a4, a5, a6, a7, a8, a9, texture, a11, a12, a13, a14, a15, a16, a17, a18, a19, a20, a21);
 }
 
-template <unsigned int address>
+template <std::uintptr_t address>
 void __cdecl AddLightHooked(char type, float x, float y, float z, float dir_x, float dir_y, float dir_z, float radius, float r, float g, float b, 
                             char fogType, char generateExtraShadows, int attachedTo)
 {
@@ -1486,7 +1488,7 @@ void __cdecl AddLightHooked(char type, float x, float y, float z, float dir_x, f
     callOriginal<address>(type, x, y, z, dir_x, dir_y, dir_z, radius, r, g, b, fogType, generateExtraShadows, attachedTo);
 }
 
-template <unsigned int address>
+template <std::uintptr_t address>
 void __cdecl PossiblyRemoveVehicleHooked(CVehicle* car) 
 {
     if (car == NULL)
@@ -1513,13 +1515,13 @@ void __cdecl PossiblyRemoveVehicleHooked(CVehicle* car)
     }
 }
 
-template <unsigned int address>
+template <std::uintptr_t address>
 CVehicle* __cdecl CreateCarForScriptHooked(int modelId, float posX, float posY, float posZ, char doMissionCleanup)
 {
     return callOriginalAndReturn<CVehicle*, address>(getRandomVariation(modelId), posX, posY, posZ, doMissionCleanup);
 }
 
-template <unsigned int address>
+template <std::uintptr_t address>
 void* __cdecl GetNewVehicleDependingOnCarModelHooked(int modelIndex, int createdBy)
 {
     CVehicle *veh = reinterpret_cast<CVehicle*>(callOriginalAndReturn<void*, address>(modelIndex, createdBy));
@@ -1599,7 +1601,7 @@ void* __cdecl GetNewVehicleDependingOnCarModelHooked(int modelIndex, int created
 //////////////////////////////////////  SPECIAL FEATURES  //////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
-template <unsigned int address>
+template <std::uintptr_t address>
 void __fastcall ProcessControlHooked(CAutomobile* veh)
 {
     switch (getVariationOriginalModel(veh->m_nModelIndex))
@@ -1642,7 +1644,7 @@ void __declspec(naked) enableSirenLights()
     }
 }
 
-template <unsigned int address>
+template <std::uintptr_t address>
 void __fastcall PreRenderHooked(CAutomobile* veh)
 {
     if (veh == NULL)
@@ -1701,7 +1703,7 @@ void __fastcall PreRenderHooked(CAutomobile* veh)
     }
 }
 
-template <unsigned int address>
+template <std::uintptr_t address>
 char __fastcall GetTowBarPosHooked(CAutomobile* automobile, void*, CVector* outPos, char ignoreModelType, CVehicle* attachTo)
 {
     switch (getVariationOriginalModel(automobile->m_nModelIndex))
@@ -1739,7 +1741,7 @@ char __fastcall GetTowBarPosHooked(CAutomobile* automobile, void*, CVector* outP
     return callMethodOriginalAndReturn<char, address>(automobile, outPos, ignoreModelType, attachTo);
 }
 
-template <unsigned int address>
+template <std::uintptr_t address>
 char __fastcall SetTowLinkHooked(CAutomobile* automobile, void*, CVehicle* vehicle, char a3)
 {
     if (vehicle != NULL)
@@ -1753,7 +1755,7 @@ char __fastcall SetTowLinkHooked(CAutomobile* automobile, void*, CVehicle* vehic
     return callMethodOriginalAndReturn<char, address>(automobile, vehicle, a3);
 }
 
-template <unsigned int address>
+template <std::uintptr_t address>
 char __fastcall GetTowHitchPosHooked(CTrailer* trailer, void*, CVector* point, char a3, CVehicle* a4)
 {
     if (a4 != NULL)
@@ -1763,7 +1765,7 @@ char __fastcall GetTowHitchPosHooked(CTrailer* trailer, void*, CVector* point, c
     return callMethodOriginalAndReturn<char, address>(trailer, point, a3, a4);
 }
 
-template <unsigned int address>
+template <std::uintptr_t address>
 void __fastcall UpdateTrailerLinkHooked(CVehicle* veh, void*, char a2, char a3)
 {
     if (veh != NULL && veh->m_pTractor != NULL)
@@ -1777,7 +1779,7 @@ void __fastcall UpdateTrailerLinkHooked(CVehicle* veh, void*, char a2, char a3)
     callMethodOriginal<address>(veh, a2, a3);
 }
 
-template <unsigned int address>
+template <std::uintptr_t address>
 void __fastcall UpdateTractorLinkHooked(CVehicle* veh, void*, bool a3, bool a4)
 {
     if (veh != NULL)
@@ -1791,7 +1793,7 @@ void __fastcall UpdateTractorLinkHooked(CVehicle* veh, void*, bool a3, bool a4)
     callMethodOriginal<address>(veh, a3, a4);
 }
 
-template <unsigned int address>
+template <std::uintptr_t address>
 char __fastcall SetUpWheelColModelHooked(CAutomobile* automobile, void*, CColModel* colModel)
 {
     if (automobile && (getVariationOriginalModel(automobile->m_nModelIndex) == 531 || getVariationOriginalModel(automobile->m_nModelIndex) == 532))
@@ -1800,7 +1802,7 @@ char __fastcall SetUpWheelColModelHooked(CAutomobile* automobile, void*, CColMod
     return callMethodOriginalAndReturn<char, address>(automobile, colModel);
 }
 
-template <unsigned int address>
+template <std::uintptr_t address>
 void __fastcall ProcessSuspensionHooked(CAutomobile* veh)
 {
     if (getVariationOriginalModel(veh->m_nModelIndex) == 432) //Rhino
@@ -1809,7 +1811,7 @@ void __fastcall ProcessSuspensionHooked(CAutomobile* veh)
     callMethodOriginal<address>(veh);
 }
 
-template <unsigned int address>
+template <std::uintptr_t address>
 void __fastcall VehicleDamageHooked(CAutomobile* veh, void*, float fDamageIntensity, __int16 tCollisionComponent, int Damager, RwV3d* vecCollisionCoors,  RwV3d* vecCollisionDirection, signed int a7)
 {
     if (veh->m_pDamageEntity && getVariationOriginalModel(veh->m_pDamageEntity->m_nModelIndex) == 432) //Rhino
@@ -1818,7 +1820,7 @@ void __fastcall VehicleDamageHooked(CAutomobile* veh, void*, float fDamageIntens
     callMethodOriginal<address>(veh, fDamageIntensity, tCollisionComponent, Damager, vecCollisionCoors, vecCollisionDirection, a7);
 }
 
-template <unsigned int address>
+template <std::uintptr_t address>
 void __fastcall SetupSuspensionLinesHooked(CAutomobile* veh)
 {
     if (getVariationOriginalModel(veh->m_nModelIndex) == 432) //Rhino
@@ -1827,7 +1829,7 @@ void __fastcall SetupSuspensionLinesHooked(CAutomobile* veh)
     callMethodOriginal<address>(veh);
 }
 
-template <unsigned int address>
+template <std::uintptr_t address>
 void __fastcall DoBurstAndSoftGroundRatiosHooked(CAutomobile* a1)
 {
     if (getVariationOriginalModel(a1->m_nModelIndex) == 432) //Rhino
@@ -1836,7 +1838,7 @@ void __fastcall DoBurstAndSoftGroundRatiosHooked(CAutomobile* a1)
     callMethodOriginal<address>(a1);
 }
 
-template <unsigned int address>
+template <std::uintptr_t address>
 char __fastcall BurstTyreHooked(CAutomobile* veh, void*, char componentId, char a3)
 {
     if (getVariationOriginalModel(veh->m_nModelIndex) == 432) //Rhino
@@ -1845,7 +1847,7 @@ char __fastcall BurstTyreHooked(CAutomobile* veh, void*, char componentId, char 
     return callMethodOriginalAndReturn<char, address>(veh, componentId, a3);
 }
 
-template <unsigned int address>
+template <std::uintptr_t address>
 void __fastcall CAutomobileRenderHooked(CAutomobile* veh)
 {
     if (getVariationOriginalModel(veh->m_nModelIndex) == 432) //Rhino
@@ -1854,7 +1856,7 @@ void __fastcall CAutomobileRenderHooked(CAutomobile* veh)
     callMethodOriginal<address>(veh);
 }
 
-template <unsigned int address>
+template <std::uintptr_t address>
 int __fastcall ProcessEntityCollisionHooked(CAutomobile* _this, void*, CVehicle* collEntity, CColPoint* colPoint)
 {
     if (_this && getVariationOriginalModel(_this->m_nModelIndex) == 432) //Rhino
@@ -1863,7 +1865,7 @@ int __fastcall ProcessEntityCollisionHooked(CAutomobile* _this, void*, CVehicle*
     return callMethodOriginalAndReturn<int, address>(_this, collEntity, colPoint);
 }
 
-template <unsigned int address>
+template <std::uintptr_t address>
 void __cdecl RegisterCarBlownUpByPlayerHooked(CVehicle* vehicle, int a2)
 {
     if (vehicle != NULL)
@@ -1875,7 +1877,7 @@ void __cdecl RegisterCarBlownUpByPlayerHooked(CVehicle* vehicle, int a2)
     }
 }
 
-template <unsigned int address>
+template <std::uintptr_t address>
 void __fastcall TankControlHooked(CAutomobile* veh)
 {
     if (getVariationOriginalModel(veh->m_nModelIndex) == 432) //Rhino
@@ -1884,7 +1886,7 @@ void __fastcall TankControlHooked(CAutomobile* veh)
     callMethodOriginal<address>(veh);
 }
 
-template <unsigned int address>
+template <std::uintptr_t address>
 void __fastcall DoSoftGroundResistanceHooked(CAutomobile* veh, void*, unsigned int *a3)
 {
     if (getVariationOriginalModel(veh->m_nModelIndex) == 432) //Rhino
@@ -1893,7 +1895,7 @@ void __fastcall DoSoftGroundResistanceHooked(CAutomobile* veh, void*, unsigned i
     callMethodOriginal<address>(veh, a3);
 }
 
-template <unsigned int address>
+template <std::uintptr_t address>
 signed int __cdecl SetupEntityVisibilityHooked(CEntity* a1, float* a2)
 {
     if (a1 != NULL && getVariationOriginalModel(a1->m_nModelIndex) == 437)
@@ -1915,7 +1917,7 @@ signed int __cdecl SetupEntityVisibilityHooked(CEntity* a1, float* a2)
     return callOriginalAndReturn<signed int, address>(a1, a2);
 }
 
-template <unsigned int address>
+template <std::uintptr_t address>
 int __cdecl GetMaximumNumberOfPassengersFromNumberOfDoorsHooked(__int16 modelIndex)
 {
     if (getVariationOriginalModel(modelIndex) == 437) //Coach
@@ -1952,7 +1954,7 @@ int __cdecl GetMaximumNumberOfPassengersFromNumberOfDoorsHooked(__int16 modelInd
     return callOriginalAndReturn<int, address>(modelIndex);
 }
 
-template <unsigned int address>
+template <std::uintptr_t address>
 void __fastcall DoHeadLightReflectionHooked(CVehicle* veh, void*, RwMatrixTag* matrix, char twin, char left, char right)
 {
     if (veh != NULL && getVariationOriginalModel(veh->m_nModelIndex) == 532) //Combine Harvester
@@ -2047,7 +2049,7 @@ void __declspec(naked) patchCoronas()
     }
 }
 
-template <eRegs32 reg, unsigned int jmpAddress, unsigned int model>
+template <eRegs32 reg, std::uintptr_t jmpAddress, unsigned int model>
 void __declspec(naked) cmpWordPtrRegModel()
 {
     __asm {
@@ -2075,7 +2077,7 @@ void __declspec(naked) cmpWordPtrRegModel()
     }
 }
 
-template <eRegs32 reg, unsigned int jmpAddress, unsigned int model>
+template <eRegs32 reg, std::uintptr_t jmpAddress, unsigned int model>
 void __declspec(naked) cmpReg32Model()
 {
     __asm {
@@ -2102,7 +2104,7 @@ void __declspec(naked) cmpReg32Model()
     }
 }
 
-template <eRegs16 target, eRegs32 source, unsigned int jmpAddress, uint8_t nextInstrSize, uint32_t nextInstr, uint32_t nextInstr2 = 0x90909090>
+template <eRegs16 target, eRegs32 source, std::uintptr_t jmpAddress, uint8_t nextInstrSize, uint32_t nextInstr, uint32_t nextInstr2 = 0x90909090>
 void __declspec(naked) movReg16WordPtrReg()
 {
     __asm {
@@ -2154,7 +2156,7 @@ void __declspec(naked) movReg16WordPtrReg()
     }
 }
 
-template <eRegs32 target, eRegs32 source, unsigned int jmpAddress, uint8_t nextInstrSize, uint32_t nextInstr, uint32_t nextInstr2>
+template <eRegs32 target, eRegs32 source, std::uintptr_t jmpAddress, uint8_t nextInstrSize, uint32_t nextInstr, uint32_t nextInstr2>
 void __declspec(naked) movsxReg32WordPtrReg()
 {
     __asm {
@@ -2207,7 +2209,7 @@ void __declspec(naked) movsxReg32WordPtrReg()
 
 }
 
-void hookASM(uint32_t address1, std::string originalData, injector::memory_pointer_raw hookDest, std::string funcName)
+void hookASM(std::uintptr_t address1, std::string originalData, injector::memory_pointer_raw hookDest, std::string funcName)
 {
     char* tkString = originalData.data();
     int i = 0;

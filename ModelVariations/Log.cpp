@@ -4,7 +4,7 @@
 #include <sstream>
 
 std::ofstream Log::logfile;
-std::set<unsigned int> Log::modifiedAddresses;
+std::set<std::uintptr_t> Log::modifiedAddresses;
 std::vector<char> Log::buffer;
 
 void Log::Open(std::string_view filename)
@@ -50,7 +50,7 @@ std::string Log::FileToString(std::string_view filename)
 	return ss.str();
 }
 
-void Log::LogModifiedAddress(unsigned int address, const char* format, ...)
+void Log::LogModifiedAddress(std::uintptr_t address, const char* format, ...)
 {
 	if (logfile.is_open() && modifiedAddresses.find(address) == modifiedAddresses.end())
 	{

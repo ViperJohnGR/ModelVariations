@@ -14,9 +14,9 @@ struct hookinfo {
     bool isVTableAddress;
 };
 
-extern std::map<unsigned int, hookinfo> hookedCalls;
+extern std::map<std::uintptr_t, hookinfo> hookedCalls;
 
-inline void hookCall(unsigned int address, void* pFunction, std::string name, bool isVTableAddress = false)
+inline void hookCall(std::uintptr_t address, void* pFunction, std::string name, bool isVTableAddress = false)
 {
     void* originalAddress;
     if (isVTableAddress)
@@ -30,7 +30,7 @@ inline void hookCall(unsigned int address, void* pFunction, std::string name, bo
     hookedCalls.insert({ address, {name, originalAddress, pFunction, isVTableAddress} });
 }
 
-template <unsigned int address, typename... Args>
+template <std::uintptr_t address, typename... Args>
 inline void callOriginal(Args... args)
 {
     auto it = hookedCalls.find(address);
@@ -38,7 +38,7 @@ inline void callOriginal(Args... args)
         reinterpret_cast<void(__cdecl*)(Args...)>(it->second.originalFunction)(args...);
 }
 
-template <typename Ret, unsigned int address, typename... Args>
+template <typename Ret, std::uintptr_t address, typename... Args>
 inline Ret callOriginalAndReturn(Args... args)
 {
     auto it = hookedCalls.find(address);
@@ -49,7 +49,7 @@ inline Ret callOriginalAndReturn(Args... args)
 }
 
 
-template <unsigned int address, typename C, typename... Args>
+template <std::uintptr_t address, typename C, typename... Args>
 inline void callMethodOriginal(C _this, Args... args)
 {
     auto it = hookedCalls.find(address);
@@ -57,7 +57,7 @@ inline void callMethodOriginal(C _this, Args... args)
         reinterpret_cast<void(__thiscall*)(C, Args...)>(it->second.originalFunction)(_this, args...);
 }
 
-template <typename Ret, unsigned int address, typename C, typename... Args>
+template <typename Ret, std::uintptr_t address, typename C, typename... Args>
 inline Ret callMethodOriginalAndReturn(C _this, Args... args)
 {
     auto it = hookedCalls.find(address);

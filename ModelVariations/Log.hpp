@@ -9,7 +9,7 @@
 class Log
 {
 	static std::ofstream logfile;
-	static std::set<unsigned int> modifiedAddresses;
+	static std::set<std::uintptr_t> modifiedAddresses;
 	static std::vector<char> buffer;
 
 public:
@@ -18,6 +18,6 @@ public:
 	static void Write(const char* format, ...);
 
 	static std::string FileToString(std::string_view filename);
-	static void LogModifiedAddress(unsigned int address, const char* format, ...);
+	static void LogModifiedAddress(std::uintptr_t address, const char* format, ...);
 
 };

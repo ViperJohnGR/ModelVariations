@@ -475,7 +475,7 @@ void PedVariations::LogVariations()
 ///////////////////////////////////////////  CALL HOOKS    ////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
-template<unsigned int address>
+template<std::uintptr_t address>
 int __fastcall SetModelIndexHooked(CEntity* _this, void*, int index)
 {
     int retVal = callMethodOriginalAndReturn<int, address>(_this, index);
@@ -498,7 +498,7 @@ int __fastcall SetModelIndexHooked(CEntity* _this, void*, int index)
     return retVal;
 }
 
-template <unsigned int address>
+template <std::uintptr_t address>
 void __fastcall UpdateRpHAnimHooked(CEntity* entity)
 {
     callMethodOriginal<address>(entity);
@@ -508,7 +508,7 @@ void __fastcall UpdateRpHAnimHooked(CEntity* entity)
     modelIndex = 0;
 }
 
-template <unsigned int address>
+template <std::uintptr_t address>
 char __fastcall CAEPedSpeechAudioEntity__InitialiseHooked(CAEPedSpeechAudioEntity* _this, void*, CPed* ped)
 {
     if (ped != NULL)

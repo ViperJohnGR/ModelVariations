@@ -56,7 +56,7 @@ std::string DataReader::ReadString(std::string_view szSection, std::string_view 
 	}
 }
 
-std::vector<unsigned short> DataReader::ReadLine(std::string section, std::string key, modelTypeToRead parseType)
+std::vector<unsigned short> DataReader::ReadLine(std::string_view section, std::string_view key, modelTypeToRead parseType)
 {
 	std::vector<unsigned short> retVector;
 
@@ -150,7 +150,7 @@ std::vector<unsigned short> DataReader::ReadLine(std::string section, std::strin
 	return retVector;
 }
 
-std::vector<unsigned short> DataReader::ReadLineUnique(std::string section, std::string key, modelTypeToRead parseType)
+std::vector<unsigned short> DataReader::ReadLineUnique(std::string_view section, std::string_view key, modelTypeToRead parseType)
 {
 	auto vec = ReadLine(section, key, parseType);
 	vec.erase(unique(vec.begin(), vec.end()), vec.end());

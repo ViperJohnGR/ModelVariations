@@ -1848,7 +1848,7 @@ char __fastcall BurstTyreHooked(CAutomobile* veh, void*, char componentId, char 
 }
 
 template <std::uintptr_t address>
-void __fastcall CAutomobileRenderHooked(CAutomobile* veh)
+void __fastcall CAutomobile__RenderHooked(CAutomobile* veh)
 {
     if (getVariationOriginalModel(veh->m_nModelIndex) == 432) //Rhino
         return changeModel<address>("CAutomobile::Render", 432, veh->m_nModelIndex, { 0x6A2C2D, 0x6A2EAD }, veh);
@@ -2209,7 +2209,7 @@ void __declspec(naked) movsxReg32WordPtrReg()
 
 }
 
-void hookASM(std::uintptr_t address1, std::string originalData, injector::memory_pointer_raw hookDest, std::string funcName)
+void hookASM(std::uintptr_t address, std::string originalData, injector::memory_pointer_raw hookDest, std::string funcName)
 {
     char* tkString = originalData.data();
     int i = 0;
@@ -2217,18 +2217,18 @@ void hookASM(std::uintptr_t address1, std::string originalData, injector::memory
 
     for (char* token = strtok(tkString, " "); token != NULL; token = strtok(NULL, " "))
     {
-        if (std::stoi(token, nullptr, 16) != *(reinterpret_cast<uint8_t*>(address1) + i))
+        if (std::stoi(token, nullptr, 16) != *(reinterpret_cast<uint8_t*>(address) + i))
         {
             std::string moduleName;
 
             std::stringstream ss;
-            const unsigned char* c = reinterpret_cast<unsigned char*>(address1);
+            const unsigned char* c = reinterpret_cast<unsigned char*>(address);
 
             for (int j = 0; j < numBytes; j++)
                 ss << std::setfill('0') << std::setw(2) << std::uppercase << std::hex << static_cast<unsigned int>(c[j]) << " ";
 
             std::string bytes = ss.str();
-            const auto dest = injector::GetBranchDestination(address1);
+            const auto dest = injector::GetBranchDestination(address);
             if (dest != nullptr)
             {
                 for (auto it = modulesSet.begin(); it != modulesSet.end(); it++)
@@ -2239,17 +2239,17 @@ void hookASM(std::uintptr_t address1, std::string originalData, injector::memory
             }
 
             if (funcName.find("::") != std::string::npos)
-                Log::LogModifiedAddress(address1, "Modified method detected: %s - 0x%08X is %s %s\n", funcName.c_str(), address1, bytes.c_str(), PathFindFileName(moduleName.c_str()));
+                Log::LogModifiedAddress(address, "Modified method detected: %s - 0x%08X is %s %s\n", funcName.c_str(), address, bytes.c_str(), PathFindFileName(moduleName.c_str()));
             else if (strncmp(funcName.c_str(), "sub_", 4) == 0)
-                Log::LogModifiedAddress(address1, "Modified function detected: %s - 0x%08X is %s %s\n", funcName.c_str(), address1, bytes.c_str(), PathFindFileName(moduleName.c_str()));
+                Log::LogModifiedAddress(address, "Modified function detected: %s - 0x%08X is %s %s\n", funcName.c_str(), address, bytes.c_str(), PathFindFileName(moduleName.c_str()));
             else
-                Log::LogModifiedAddress(address1, "Modified address detected: %s - 0x%08X is %s %s\n", funcName.c_str(), address1, bytes.c_str(), PathFindFileName(moduleName.c_str()));
+                Log::LogModifiedAddress(address, "Modified address detected: %s - 0x%08X is %s %s\n", funcName.c_str(), address, bytes.c_str(), PathFindFileName(moduleName.c_str()));
         }
 
         i++;
     }
 
-    injector::MakeJMP(address1, hookDest);
+    injector::MakeJMP(address, hookDest);
 }
 
 void VehicleVariations::InstallHooks()
@@ -2260,38 +2260,37 @@ void VehicleVariations::InstallHooks()
             loadModels(400, 611, KEEP_IN_MEMORY, false);
     };
 
-    hookCall(0x43022A, ChooseModelHooked<0x43022A>, "ChooseModel"); //CCarCtrl::GenerateOneRandomCar
-   //patch::RedirectJump(0x424E20, ChoosePoliceCarModelHooked);
+    hookCall(0x43022A, ChooseModelHooked<0x43022A>, "CCarCtrl::ChooseModel"); //CCarCtrl::GenerateOneRandomCar
 
-    hookCall(0x42C320, ChoosePoliceCarModelHooked<0x42C320>, "ChoosePoliceCarModel"); //CCarCtrl::CreatePoliceChase
-    hookCall(0x43020E, ChoosePoliceCarModelHooked<0x43020E>, "ChoosePoliceCarModel"); //CCarCtrl::GenerateOneRandomCar
-    hookCall(0x430283, ChoosePoliceCarModelHooked<0x430283>, "ChoosePoliceCarModel"); //CCarCtrl::GenerateOneRandomCar
+    hookCall(0x42C320, ChoosePoliceCarModelHooked<0x42C320>, "CCarCtrl::ChoosePoliceCarModel"); //CCarCtrl::CreatePoliceChase
+    hookCall(0x43020E, ChoosePoliceCarModelHooked<0x43020E>, "CCarCtrl::ChoosePoliceCarModel"); //CCarCtrl::GenerateOneRandomCar
+    hookCall(0x430283, ChoosePoliceCarModelHooked<0x430283>, "CCarCtrl::ChoosePoliceCarModel"); //CCarCtrl::GenerateOneRandomCar
 
 /*****************************************************************************************************/
 
-    hookCall(0x42BC26, AddPoliceCarOccupantsHooked<0x42BC26>, "AddPoliceCarOccupants"); //CCarCtrl::GenerateOneEmergencyServicesCar
-    hookCall(0x42C620, AddPoliceCarOccupantsHooked<0x42C620>, "AddPoliceCarOccupants"); //CCarCtrl::CreatePoliceChase
-    hookCall(0x431EE5, AddPoliceCarOccupantsHooked<0x431EE5>, "AddPoliceCarOccupants"); //CCarCtrl::GenerateOneRandomCar
-    hookCall(0x499CBB, AddPoliceCarOccupantsHooked<0x499CBB>, "AddPoliceCarOccupants"); //CSetPiece::Update
-    hookCall(0x499D6A, AddPoliceCarOccupantsHooked<0x499D6A>, "AddPoliceCarOccupants"); //CSetPiece::Update
-    hookCall(0x49A5EB, AddPoliceCarOccupantsHooked<0x49A5EB>, "AddPoliceCarOccupants"); //CSetPiece::Update
-    hookCall(0x49A85E, AddPoliceCarOccupantsHooked<0x49A85E>, "AddPoliceCarOccupants"); //CSetPiece::Update
-    hookCall(0x49A9AF, AddPoliceCarOccupantsHooked<0x49A9AF>, "AddPoliceCarOccupants"); //CSetPiece::Update
+    hookCall(0x42BC26, AddPoliceCarOccupantsHooked<0x42BC26>, "CCarAI::AddPoliceCarOccupants"); //CCarCtrl::GenerateOneEmergencyServicesCar
+    hookCall(0x42C620, AddPoliceCarOccupantsHooked<0x42C620>, "CCarAI::AddPoliceCarOccupants"); //CCarCtrl::CreatePoliceChase
+    hookCall(0x431EE5, AddPoliceCarOccupantsHooked<0x431EE5>, "CCarAI::AddPoliceCarOccupants"); //CCarCtrl::GenerateOneRandomCar
+    hookCall(0x499CBB, AddPoliceCarOccupantsHooked<0x499CBB>, "CCarAI::AddPoliceCarOccupants"); //CSetPiece::Update
+    hookCall(0x499D6A, AddPoliceCarOccupantsHooked<0x499D6A>, "CCarAI::AddPoliceCarOccupants"); //CSetPiece::Update
+    hookCall(0x49A5EB, AddPoliceCarOccupantsHooked<0x49A5EB>, "CCarAI::AddPoliceCarOccupants"); //CSetPiece::Update
+    hookCall(0x49A85E, AddPoliceCarOccupantsHooked<0x49A85E>, "CCarAI::AddPoliceCarOccupants"); //CSetPiece::Update
+    hookCall(0x49A9AF, AddPoliceCarOccupantsHooked<0x49A9AF>, "CCarAI::AddPoliceCarOccupants"); //CSetPiece::Update
 
 /*****************************************************************************************************/
     
-    hookCall(0x42B909, CAutomobileHooked<0x42B909>, "CAutomobile"); //CCarCtrl::GenerateOneEmergencyServicesCar
-    hookCall(0x462217, CAutomobileHooked<0x462217>, "CAutomobile"); //CRoadBlocks::CreateRoadBlockBetween2Points
-    hookCall(0x4998F0, CAutomobileHooked<0x4998F0>, "CAutomobile"); //CSetPiece::TryToGenerateCopCar
-    hookCall(0x61354A, CAutomobileHooked<0x61354A>, "CAutomobile"); //CPopulation::CreateWaitingCoppers
+    hookCall(0x42B909, CAutomobileHooked<0x42B909>, "CAutomobile::CAutomobile"); //CCarCtrl::GenerateOneEmergencyServicesCar
+    hookCall(0x462217, CAutomobileHooked<0x462217>, "CAutomobile::CAutomobile"); //CRoadBlocks::CreateRoadBlockBetween2Points
+    hookCall(0x4998F0, CAutomobileHooked<0x4998F0>, "CAutomobile::CAutomobile"); //CSetPiece::TryToGenerateCopCar
+    hookCall(0x61354A, CAutomobileHooked<0x61354A>, "CAutomobile::CAutomobile"); //CPopulation::CreateWaitingCoppers
 
-    hookCall(0x6F3583, PickRandomCarHooked<0x6F3583>, "PickRandomCar"); //CCarGenerator::DoInternalProcessing
-    hookCall(0x6F3EC1, DoInternalProcessingHooked<0x6F3EC1>, "DoInternalProcessing"); //CCarGenerator::Process 
+    hookCall(0x6F3583, PickRandomCarHooked<0x6F3583>, "CLoadedCarGroup::PickRandomCar"); //CCarGenerator::DoInternalProcessing
+    hookCall(0x6F3EC1, DoInternalProcessingHooked<0x6F3EC1>, "CCarGenerator::DoInternalProcessing"); //CCarGenerator::Process 
 
     //Trains
     //patch::RedirectCall(0x4214DC, CTrainHooked); //CCarCtrl::GetNewVehicleDependingOnCarModel
     //patch::RedirectCall(0x5D2B15, CTrainHooked); //CPools::LoadVehiclePool
-    hookCall(0x6F7634, CTrainHooked<0x6F7634>, "CTrain"); //CTrain::CreateMissionTrain 
+    hookCall(0x6F7634, CTrainHooked<0x6F7634>, "CTrain::CTrain"); //CTrain::CreateMissionTrain 
 
     hookASM(0x64475D, "66 81 78 22 3A 02", cmpWordPtrRegModel<REG_EAX, 0x644763, 0x23A>, "CTaskSimpleCarDrive::ProcessPed");
     hookASM(0x6F60D9, "66 81 7E 22 3A 02", cmpWordPtrRegModel<REG_ESI, 0x6F60DF, 0x23A>, "CTrain::CTrain");
@@ -2300,69 +2299,69 @@ void VehicleVariations::InstallHooks()
     hookASM(0x613A68, "0F BF 47 22 05",    movsxReg32WordPtrReg<REG_EAX, REG_EDI, 0x613A71, 5, 0xFFFE6905, 0x909090FF>, "CPopulation::AddPedInCar");
 
     //Boats
-    hookCall(0x42149E, CBoatHooked<0x42149E>, "CBoat"); //CCarCtrl::GetNewVehicleDependingOnCarModel
-    hookCall(0x431FD0, CBoatHooked<0x431FD0>, "CBoat"); //CCarCtrl::CreateCarForScript
-    hookCall(0x5D2ADC, CBoatHooked<0x5D2ADC>, "CBoat"); //CPools::LoadVehiclePool
+    hookCall(0x42149E, CBoatHooked<0x42149E>, "CBoat::CBoat"); //CCarCtrl::GetNewVehicleDependingOnCarModel
+    hookCall(0x431FD0, CBoatHooked<0x431FD0>, "CBoat::CBoat"); //CCarCtrl::CreateCarForScript
+    hookCall(0x5D2ADC, CBoatHooked<0x5D2ADC>, "CBoat::CBoat"); //CPools::LoadVehiclePool
 
     //Helis
-    hookCall(0x6CD3C3, CHeliHooked<0x6CD3C3>, "CHeli"); //CPlane::DoPlaneGenerationAndRemoval
-    hookCall(0x6C6590, CHeliHooked<0x6C6590>, "CHeli"); //CHeli::GenerateHeli
-    hookCall(0x6C6568, CHeliHooked<0x6C6568>, "CHeli"); //CHeli::GenerateHeli
-    hookCall(0x5D2C46, CHeliHooked<0x5D2C46>, "CHeli"); //CPools::LoadVehiclePool
-    hookCall(0x6C7ACA, GenerateHeliHooked<0x6C7ACA>, "GenerateHeli"); //CHeli::UpdateHelis
+    hookCall(0x6CD3C3, CHeliHooked<0x6CD3C3>, "CHeli::CHeli"); //CPlane::DoPlaneGenerationAndRemoval
+    hookCall(0x6C6590, CHeliHooked<0x6C6590>, "CHeli::CHeli"); //CHeli::GenerateHeli
+    hookCall(0x6C6568, CHeliHooked<0x6C6568>, "CHeli::CHeli"); //CHeli::GenerateHeli
+    hookCall(0x5D2C46, CHeliHooked<0x5D2C46>, "CHeli::CHeli"); //CPools::LoadVehiclePool
+    hookCall(0x6C7ACA, GenerateHeliHooked<0x6C7ACA>, "CHeli::GenerateHeli"); //CHeli::UpdateHelis
 
-    hookCall(0x6CD6D6, CPlaneHooked<0x6CD6D6>, "CPlane"); //CPlane::DoPlaneGenerationAndRemoval
-    hookCall(0x42166F, CPlaneHooked<0x42166F>, "CPlane"); //CCarCtrl::GetNewVehicleDependingOnCarModel
+    hookCall(0x6CD6D6, CPlaneHooked<0x6CD6D6>, "CPlane::CPlane"); //CPlane::DoPlaneGenerationAndRemoval
+    hookCall(0x42166F, CPlaneHooked<0x42166F>, "CPlane::CPlane"); //CCarCtrl::GetNewVehicleDependingOnCarModel
 
     //Roadblocks
-    hookCall(0x42CDDD, IsLawEnforcementVehicleHooked<0x42CDDD>, "IsLawEnforcementVehicle"); //CCarCtrl::RemoveDistantCars
-    hookCall(0x42CE07, GenerateRoadBlockCopsForCarHooked<0x42CE07>, "GenerateRoadBlockCopsForCar"); //CCarCtrl::RemoveDistantCars
-    hookCall(0x4613EB, GetColModelHooked<0x4613EB>, "GetColModel"); //CCarCtrl::RemoveDistantCars
+    hookCall(0x42CDDD, IsLawEnforcementVehicleHooked<0x42CDDD>, "CVehicle::IsLawEnforcementVehicle"); //CCarCtrl::RemoveDistantCars
+    hookCall(0x42CE07, GenerateRoadBlockCopsForCarHooked<0x42CE07>, "CRoadBlocks::GenerateRoadBlockCopsForCar"); //CCarCtrl::RemoveDistantCars
+    hookCall(0x4613EB, GetColModelHooked<0x4613EB>, "CEntity::GetColModel"); //CCarCtrl::RemoveDistantCars
 
-    hookCall(0x42BBFB, AddAmbulanceOccupantsHooked<0x42BBFB>, "AddAmbulanceOccupants"); //CCarCtrl::GenerateOneEmergencyServicesCar
-    hookCall(0x42BC1A, AddFiretruckOccupantsHooked<0x42BC1A>, "AddFiretruckOccupants"); //CCarCtrl::GenerateOneEmergencyServicesCar
+    hookCall(0x42BBFB, AddAmbulanceOccupantsHooked<0x42BBFB>, "CCarAI::AddAmbulanceOccupants"); //CCarCtrl::GenerateOneEmergencyServicesCar
+    hookCall(0x42BC1A, AddFiretruckOccupantsHooked<0x42BC1A>, "CCarAI::AddFiretruckOccupants"); //CCarCtrl::GenerateOneEmergencyServicesCar
 
-    hookCall(0x613A43, FindSpecificDriverModelForCar_ToUseHooked<0x613A43>, "FindSpecificDriverModelForCar_ToUse"); //CPopulation::AddPedInCar
-    hookCall(0x6D1B0E, AddPedInCarHooked<0x6D1B0E>, "AddPedInCar"); //CVehicle::SetupPassenger 
-    hookCall(0x6F6986, AddPedInCarHooked<0x6F6986>, "AddPedInCar"); //CTrain::RemoveRandomPassenger
+    hookCall(0x613A43, FindSpecificDriverModelForCar_ToUseHooked<0x613A43>, "CPopulation::FindSpecificDriverModelForCar_ToUse"); //CPopulation::AddPedInCar
+    hookCall(0x6D1B0E, AddPedInCarHooked<0x6D1B0E>, "CPopulation::AddPedInCar"); //CVehicle::SetupPassenger 
+    hookCall(0x6F6986, AddPedInCarHooked<0x6F6986>, "CPopulation::AddPedInCar"); //CTrain::RemoveRandomPassenger
 
-    hookCall(0x431DE2, SetUpDriverAndPassengersForVehicleHooked<0x431DE2>, "SetUpDriverAndPassengersForVehicle"); //CCarCtrl::GenerateOneRandomCar
-    hookCall(0x431DF9, SetUpDriverAndPassengersForVehicleHooked<0x431DF9>, "SetUpDriverAndPassengersForVehicle"); //CCarCtrl::GenerateOneRandomCar
-    hookCall(0x431ED1, SetUpDriverAndPassengersForVehicleHooked<0x431ED1>, "SetUpDriverAndPassengersForVehicle"); //CCarCtrl::GenerateOneRandomCar
+    hookCall(0x431DE2, SetUpDriverAndPassengersForVehicleHooked<0x431DE2>, "CCarCtrl::SetUpDriverAndPassengersForVehicle"); //CCarCtrl::GenerateOneRandomCar
+    hookCall(0x431DF9, SetUpDriverAndPassengersForVehicleHooked<0x431DF9>, "CCarCtrl::SetUpDriverAndPassengersForVehicle"); //CCarCtrl::GenerateOneRandomCar
+    hookCall(0x431ED1, SetUpDriverAndPassengersForVehicleHooked<0x431ED1>, "CCarCtrl::SetUpDriverAndPassengersForVehicle"); //CCarCtrl::GenerateOneRandomCar
 
-    hookCall(0x6B11C2, IsLawEnforcementVehicleHooked<0x6B11C2>, "IsLawEnforcementVehicle"); //CAutomobile::CAutomobile
+    hookCall(0x6B11C2, IsLawEnforcementVehicleHooked<0x6B11C2>, "CVehicle::IsLawEnforcementVehicle"); //CAutomobile::CAutomobile
 
-    hookCall(0x60C4E8, PossiblyRemoveVehicleHooked<0x60C4E8>, "PossiblyRemoveVehicle"); //CPlayerPed::KeepAreaAroundPlayerClear
-    hookCall(0x42CD55, PossiblyRemoveVehicleHooked<0x42CD55>, "PossiblyRemoveVehicle"); //CCarCtrl::RemoveDistantCars
+    hookCall(0x60C4E8, PossiblyRemoveVehicleHooked<0x60C4E8>, "CCarCtrl::PossiblyRemoveVehicle"); //CPlayerPed::KeepAreaAroundPlayerClear
+    hookCall(0x42CD55, PossiblyRemoveVehicleHooked<0x42CD55>, "CCarCtrl::PossiblyRemoveVehicle"); //CCarCtrl::RemoveDistantCars
 
     if (changeScriptedCars)
-        hookCall(0x467B01, CreateCarForScriptHooked<0x467B01>, "CreateCarForScript");
+        hookCall(0x467B01, CreateCarForScriptHooked<0x467B01>, "CCarCtrl::CreateCarForScript");
 
     if (enableSpecialFeatures)
     {
-        hookCall(0x871148, ProcessControlHooked<0x871148>, "ProcessControl", true);
-        hookCall(0x6C7059, ProcessControlHooked<0x6C7059>, "ProcessControl"); //CHeli::ProcessControl
-        hookCall(0x6C82B4, ProcessControlHooked<0x6C82B4>, "ProcessControl"); //CMonsterTruck::ProcessControl
-        hookCall(0x6C9313, ProcessControlHooked<0x6C9313>, "ProcessControl"); //CPlane::ProcessControl
-        hookCall(0x6CE005, ProcessControlHooked<0x6CE005>, "ProcessControl"); //CQuadBike::ProcessControl
-        hookCall(0x6CED23, ProcessControlHooked<0x6CED23>, "ProcessControl"); //CTrailer::ProcessControl
-        hookCall(0x871164, PreRenderHooked<0x871164>, "PreRender", true);
-        hookCall(0x6CFADC, PreRenderHooked<0x6CFADC>, "PreRender");
-        hookCall(0x871210, GetTowBarPosHooked<0x871210>, "GetTowBarPos", true);
-        hookCall(0x871214, SetTowLinkHooked<0x871214>, "SetTowLink", true);
-        hookCall(0x871D14, GetTowHitchPosHooked<0x871D14>, "GetTowHitchPos", true);
+        hookCall(0x871148, ProcessControlHooked<0x871148>, "CAutomobile::ProcessControl", true);
+        hookCall(0x6C7059, ProcessControlHooked<0x6C7059>, "CAutomobile::ProcessControl"); //CHeli::ProcessControl
+        hookCall(0x6C82B4, ProcessControlHooked<0x6C82B4>, "CAutomobile::ProcessControl"); //CMonsterTruck::ProcessControl
+        hookCall(0x6C9313, ProcessControlHooked<0x6C9313>, "CAutomobile::ProcessControl"); //CPlane::ProcessControl
+        hookCall(0x6CE005, ProcessControlHooked<0x6CE005>, "CAutomobile::ProcessControl"); //CQuadBike::ProcessControl
+        hookCall(0x6CED23, ProcessControlHooked<0x6CED23>, "CAutomobile::ProcessControl"); //CTrailer::ProcessControl
+        hookCall(0x871164, PreRenderHooked<0x871164>, "CAutomobile::PreRender", true);
+        hookCall(0x6CFADC, PreRenderHooked<0x6CFADC>, "CAutomobile::PreRender");
+        hookCall(0x871210, GetTowBarPosHooked<0x871210>, "CAutomobile::GetTowBarPos", true);
+        hookCall(0x871214, SetTowLinkHooked<0x871214>, "CAutomobile::SetTowLink", true);
+        hookCall(0x871D14, GetTowHitchPosHooked<0x871D14>, "CTrailer::GetTowHitchPos", true);
 
-        hookCall(0x6B3271, UpdateTrailerLinkHooked<0x6B3271>, "UpdateTrailerLink");
-        hookCall(0x6B329C, UpdateTrailerLinkHooked<0x6B329C>, "UpdateTrailerLink");
-        hookCall(0x6B45C7, UpdateTrailerLinkHooked<0x6B45C7>, "UpdateTrailerLink");
+        hookCall(0x6B3271, UpdateTrailerLinkHooked<0x6B3271>, "CVehicle::UpdateTrailerLink");
+        hookCall(0x6B329C, UpdateTrailerLinkHooked<0x6B329C>, "CVehicle::UpdateTrailerLink");
+        hookCall(0x6B45C7, UpdateTrailerLinkHooked<0x6B45C7>, "CVehicle::UpdateTrailerLink");
 
-        hookCall(0x6B3266, UpdateTractorLinkHooked<0x6B3266>, "UpdateTractorLink");
-        hookCall(0x6B3291, UpdateTractorLinkHooked<0x6B3291>, "UpdateTractorLink");
-        hookCall(0x6CFFAC, UpdateTractorLinkHooked<0x6CFFAC>, "UpdateTractorLink");
+        hookCall(0x6B3266, UpdateTractorLinkHooked<0x6B3266>, "CVehicle::UpdateTractorLink");
+        hookCall(0x6B3291, UpdateTractorLinkHooked<0x6B3291>, "CVehicle::UpdateTractorLink");
+        hookCall(0x6CFFAC, UpdateTractorLinkHooked<0x6CFFAC>, "CVehicle::UpdateTractorLink");
 
-        hookCall(0x8711CC, SetUpWheelColModelHooked<0x8711CC>, "SetUpWheelColModel", true);
-        hookCall(0x871B94, SetUpWheelColModelHooked<0x871B94>, "SetUpWheelColModel", true);
-        hookCall(0x871CD4, SetUpWheelColModelHooked<0x871CD4>, "SetUpWheelColModel", true);
+        hookCall(0x8711CC, SetUpWheelColModelHooked<0x8711CC>, "CAutomobile::SetUpWheelColModel", true);
+        hookCall(0x871B94, SetUpWheelColModelHooked<0x871B94>, "CAutomobile::SetUpWheelColModel", true);
+        hookCall(0x871CD4, SetUpWheelColModelHooked<0x871CD4>, "CAutomobile::SetUpWheelColModel", true);
      
         hookASM(0x525462, "66 8B 47 22 66 3D BB 01",    movReg16WordPtrReg<REG_AX, REG_EDI, 0x52546A, 4, 0x01BB3D66>, "sub_525252");
         hookASM(0x431BEB, "66 8B 46 22 83 C4 04",       movReg16WordPtrReg<REG_AX, REG_ESI, 0x431BF2, 3, 0x9004C483>, "CCarCtrl::GenerateOneRandomCar");
@@ -2413,28 +2412,28 @@ void VehicleVariations::InstallHooks()
         hookASM(0x6B11D5, "66 8B 46 22 66 3D FE FF",       movReg16WordPtrReg<REG_AX, REG_ESI, 0x6B11DD, 4, 0xFFFE3D66>, "CAutomobile::CAutomobile");
         
 
-        hookCall(0x871238, ProcessSuspensionHooked<0x871238>, "ProcessSuspension", true);
-        hookCall(0x871200, VehicleDamageHooked<0x871200>, "VehicleDamage", true);
-        hookCall(0x8711E0, SetupSuspensionLinesHooked<0x8711E0>, "SetupSuspensionLines", true);
-        hookCall(0x6B119E, SetupSuspensionLinesHooked<0x6B119E>, "SetupSuspensionLines");
-        hookCall(0x8711F0, DoBurstAndSoftGroundRatiosHooked<0x8711F0>, "DoBurstAndSoftGroundRatios", true);
-        hookCall(0x8711D0, BurstTyreHooked<0x8711D0>, "BurstTyre", true);
-        hookCall(0x871168, CAutomobileRenderHooked<0x871168>, "CAutomobileRender", true);
-        hookCall(0x871178, ProcessEntityCollisionHooked<0x871178>, "ProcessEntityCollision", true);
+        hookCall(0x871238, ProcessSuspensionHooked<0x871238>, "CAutomobile::ProcessSuspension", true);
+        hookCall(0x871200, VehicleDamageHooked<0x871200>, "CAutomobile::VehicleDamage", true);
+        hookCall(0x8711E0, SetupSuspensionLinesHooked<0x8711E0>, "CAutomobile::SetupSuspensionLines", true);
+        hookCall(0x6B119E, SetupSuspensionLinesHooked<0x6B119E>, "CAutomobile::SetupSuspensionLines");
+        hookCall(0x8711F0, DoBurstAndSoftGroundRatiosHooked<0x8711F0>, "CAutomobile::DoBurstAndSoftGroundRatios", true);
+        hookCall(0x8711D0, BurstTyreHooked<0x8711D0>, "CAutomobile::BurstTyre", true);
+        hookCall(0x871168, CAutomobile__RenderHooked<0x871168>, "CAutomobile::Render", true);
+        hookCall(0x871178, ProcessEntityCollisionHooked<0x871178>, "CAutomobile::ProcessEntityCollision", true);
 
 
-        hookCall(0x6B39E6, RegisterCarBlownUpByPlayerHooked<0x6B39E6>, "RegisterCarBlownUpByPlayer"); //CAutomobile::BlowUpCar
-        hookCall(0x6B3DEA, RegisterCarBlownUpByPlayerHooked<0x6B3DEA>, "RegisterCarBlownUpByPlayer"); //CAutomobile::BlowUpCarCutSceneNoExtras
-        hookCall(0x6E2D14, RegisterCarBlownUpByPlayerHooked<0x6E2D14>, "RegisterCarBlownUpByPlayer"); //CVehicle::~CVehicle
+        hookCall(0x6B39E6, RegisterCarBlownUpByPlayerHooked<0x6B39E6>, "CDarkel::RegisterCarBlownUpByPlayer"); //CAutomobile::BlowUpCar
+        hookCall(0x6B3DEA, RegisterCarBlownUpByPlayerHooked<0x6B3DEA>, "CDarkel::RegisterCarBlownUpByPlayer"); //CAutomobile::BlowUpCarCutSceneNoExtras
+        hookCall(0x6E2D14, RegisterCarBlownUpByPlayerHooked<0x6E2D14>, "CDarkel::RegisterCarBlownUpByPlayer"); //CVehicle::~CVehicle
 
-        hookCall(0x6B2028, TankControlHooked<0x6B2028>, "TankControl"); //CAutomobile::ProcessControl
-        hookCall(0x6B51B8, DoSoftGroundResistanceHooked<0x6B51B8>, "DoSoftGroundResistance"); //CAutomobile::ProcessAI
+        hookCall(0x6B2028, TankControlHooked<0x6B2028>, "CAutomobile::TankControl"); //CAutomobile::ProcessControl
+        hookCall(0x6B51B8, DoSoftGroundResistanceHooked<0x6B51B8>, "CAutomobile::DoSoftGroundResistance"); //CAutomobile::ProcessAI
 
-        hookCall(0x554937, SetupEntityVisibilityHooked<0x554937>, "SetupEntityVisibility"); //CRenderer::ScanSectorList
+        hookCall(0x554937, SetupEntityVisibilityHooked<0x554937>, "CRenderer::SetupEntityVisibility"); //CRenderer::ScanSectorList
 
-        hookCall(0x6D6A76, GetMaximumNumberOfPassengersFromNumberOfDoorsHooked<0x6D6A76>, "GetMaximumNumberOfPassengersFromNumberOfDoors"); //CVehicle::SetModelIndex
+        hookCall(0x6D6A76, GetMaximumNumberOfPassengersFromNumberOfDoorsHooked<0x6D6A76>, "CVehicleModelInfo::GetMaximumNumberOfPassengersFromNumberOfDoors"); //CVehicle::SetModelIndex
 
-        hookCall(0x6E2730, DoHeadLightReflectionHooked<0x6E2730>, "DoHeadLightReflection"); //CVehicle::DoVehicleLights
+        hookCall(0x6E2730, DoHeadLightReflectionHooked<0x6E2730>, "CVehicle::DoHeadLightReflection"); //CVehicle::DoVehicleLights
     }
 
     if (enableSiren)
@@ -2442,9 +2441,9 @@ void VehicleVariations::InstallHooks()
 
     if (enableLights && enableSpecialFeatures && enableSiren)
     {
-        hookCall(0x6ABA60, RegisterCoronaHooked<0x6ABA60>, "RegisterCorona"); //CAutomobile::PreRender
-        hookCall(0x6ABB35, RegisterCoronaHooked<0x6ABB35>, "RegisterCorona"); //CAutomobile::PreRender
-        hookCall(0x6ABC69, RegisterCoronaHooked<0x6ABC69>, "RegisterCorona"); //CAutomobile::PreRender
+        hookCall(0x6ABA60, RegisterCoronaHooked<0x6ABA60>, "CCoronas::RegisterCorona"); //CAutomobile::PreRender
+        hookCall(0x6ABB35, RegisterCoronaHooked<0x6ABB35>, "CCoronas::RegisterCorona"); //CAutomobile::PreRender
+        hookCall(0x6ABC69, RegisterCoronaHooked<0x6ABC69>, "CCoronas::RegisterCorona"); //CAutomobile::PreRender
         if (*(uint32_t*)0x6ABA56 == 0x0000FF68 && *(uint8_t*)0x6ABA5A == 0)
             injector::MakeJMP(0x6ABA56, patchCoronas);
         else
@@ -2454,18 +2453,18 @@ void VehicleVariations::InstallHooks()
                                                                                                                                             *(uint8_t*)0x6ABA59, 
                                                                                                                                             *(uint8_t*)0x6ABA5A);
 
-        hookCall(0x6AB80F, AddLightHooked<0x6AB80F>, "AddLight"); //CAutomobile::PreRender
-        hookCall(0x6ABBA6, AddLightHooked<0x6ABBA6>, "AddLight"); //CAutomobile::PreRender
+        hookCall(0x6AB80F, AddLightHooked<0x6AB80F>, "CPointLights::AddLight"); //CAutomobile::PreRender
+        hookCall(0x6ABBA6, AddLightHooked<0x6ABBA6>, "CPointLights::AddLight"); //CAutomobile::PreRender
     }
 
     if (disablePayAndSpray)
-        hookCall(0x44AC75, IsCarSprayableHooked<0x44AC75>, "IsCarSprayable"); //CGarage::Update
+        hookCall(0x44AC75, IsCarSprayableHooked<0x44AC75>, "CGarages::IsCarSprayable"); //CGarage::Update
 
     if (enableSideMissions)
     {
-        hookCall(0x48DA81, IsLawEnforcementVehicleHooked<0x48DA81>, "IsLawEnforcementVehicle");
-        hookCall(0x469612, CollectParametersHooked<0x469612>, "CollectParameters"); //00DD: IS_CHAR_IN_MODEL
+        hookCall(0x48DA81, IsLawEnforcementVehicleHooked<0x48DA81>, "CVehicle::IsLawEnforcementVehicle");
+        hookCall(0x469612, CollectParametersHooked<0x469612>, "CRunningScript::CollectParameters"); //00DD: IS_CHAR_IN_MODEL
     }
 
-    hookCall(0x4306A1, GetNewVehicleDependingOnCarModelHooked<0x4306A1>, "GetNewVehicleDependingOnCarModel"); ///CCarCtrl::GenerateOneRandomCar
+    hookCall(0x4306A1, GetNewVehicleDependingOnCarModelHooked<0x4306A1>, "CCarCtrl::GetNewVehicleDependingOnCarModel"); ///CCarCtrl::GenerateOneRandomCar
 }

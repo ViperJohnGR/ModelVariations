@@ -547,14 +547,14 @@ void PedVariations::InstallHooks(bool enableSpecialPeds, bool isFLA)
         if (notModified)
         {
             injector::MakeInline<0x43DE6C, 0x43DE6C + 8>([](injector::reg_pack& regs)
-                {
-                    destroyedModelCounters[regs.eax * 2]++;
-                });
+            {
+                destroyedModelCounters[regs.eax * 2]++;
+            });
 
             injector::MakeInline<0x43DF5B, 0x43DF5B + 8>([](injector::reg_pack& regs)
-                {
-                    destroyedModelCounters[regs.eax * 2]++;
-                });
+            {
+                destroyedModelCounters[regs.eax * 2]++;
+            });
 
             auto leaEAX = [](injector::reg_pack& regs)
             {

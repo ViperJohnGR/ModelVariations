@@ -87,33 +87,6 @@ unsigned int disableKey = 0;
 unsigned int reloadKey = 0;
 
 
-void checkCallModified(std::string_view callName, std::uintptr_t callAddress, bool isDirectAddress)
-{
-    const std::uintptr_t functionAddress = (isDirectAddress == false) ? injector::GetBranchDestination(callAddress).as_int() : *reinterpret_cast<unsigned int*>(callAddress);
-    std::pair<std::uintptr_t, std::string> moduleInfo = { modulesSet.begin()->first, modulesSet.begin()->second };
-
-    for (auto it = modulesSet.begin(); it != modulesSet.end(); it++)
-    {
-        if (it->first > functionAddress)
-            break;
-
-        moduleInfo.first = it->first;
-        moduleInfo.second = it->second;
-    }
-    
-    std::string modulePath = moduleInfo.second;
-    std::string moduleName = modulePath.substr(modulePath.find_last_of("/\\") + 1);
-
-    if (compareUpper(moduleName.c_str(), MOD_NAME))
-        return;
-    if (callChecks.find({ callAddress , moduleName }) != callChecks.end())
-        return;
-
-    callChecks.insert({ callAddress, moduleName });
-
-    Log::Write("Modified call found: %s 0x%08X 0x%08X %s 0x%08X", callName.data(), callAddress, functionAddress, moduleName.c_str(), moduleInfo.first);
-}
-
 bool checkForUpdate()
 {
     IStream* stream;
@@ -585,7 +558,26 @@ public:
                 if (enableLog)
                 {
                     for (auto it : hookedCalls)
-                        checkCallModified(it.second.name, it.first, it.second.isVTableAddress);
+                    {
+                        const std::uintptr_t functionAddress = (it.second.isVTableAddress == false) ? injector::GetBranchDestination(it.first).as_int() : *reinterpret_cast<unsigned int*>(it.first);
+                        std::pair<std::uintptr_t, std::string> moduleInfo = { modulesSet.begin()->first, modulesSet.begin()->second };
+
+                        for (auto it2 = modulesSet.begin(); it2 != modulesSet.end(); it2++)
+                        {
+                            if (it2->first > functionAddress)
+                                break;
+
+                            moduleInfo.first = it2->first;
+                            moduleInfo.second = it2->second;
+                        }
+                        std::string moduleName = moduleInfo.second.substr(moduleInfo.second.find_last_of("/\\") + 1);
+
+                        if (compareUpper(moduleName.c_str(), MOD_NAME) == false && callChecks.find({ it.first , moduleName }) == callChecks.end())
+                        {
+                            callChecks.insert({ it.first, moduleName });
+                            Log::Write("Modified call found: %s 0x%08X 0x%08X %s 0x%08X\n", it.second.name.data(), it.first, functionAddress, moduleName.c_str(), moduleInfo.first);
+                        }
+                    }
 
                     framesSinceCallsChecked = 0;
                 }

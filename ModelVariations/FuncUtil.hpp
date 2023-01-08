@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <iterator>
+#include <type_traits>
 #include <vector>
 
 #include <CGeneral.h>
@@ -49,9 +50,11 @@ inline T rand(int min, unsigned int max)
 }
 
 template <typename T>
-inline T rand()
+inline bool rand()
 {
-    return (T)CGeneral::GetRandomNumberInRange(0, 2);
+    static_assert(std::is_same_v<T, bool>, "invalid type for template");
+
+    return (bool)CGeneral::GetRandomNumberInRange(0, 2);
 }
 
 

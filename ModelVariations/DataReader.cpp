@@ -126,19 +126,19 @@ std::vector<unsigned short> DataReader::ReadLine(std::string_view section, std::
 						retVector.push_back((unsigned short)modelid);
 				}
 			}
-			else if (parseType == READ_PEDS && !(token[0] >= '0' && token[0] <= '9') && !unusedIDs.empty())
-				for (auto it = unusedIDs.begin(); it != unusedIDs.end();it = unusedIDs.erase(it))
-					if (CModelInfo::GetModelInfo(*it) == NULL)
+			else if (parseType == READ_PEDS && !(token[0] >= '0' && token[0] <= '9') && CModelInfo::ms_modelInfoPtrs && *CModelInfo::ms_modelInfoPtrs) //TODO: test with FLA
+				for (uint16_t i = 1326; i < 20000; i++)
+					if (CModelInfo::GetModelInfo(i) == NULL)
 					{
 						if (CStreaming::ms_pExtraObjectsDir->FindItem(token))
 						{
-							auto pedInfo = ((CPedModelInfo * (__cdecl*)(int))injector::GetBranchDestination(0x5B74A7).as_int())(*it);
+							auto pedInfo = ((CPedModelInfo * (__cdecl*)(int))injector::GetBranchDestination(0x5B74A7).as_int())(i);
 							if (pedInfo)
 							{
 								pedInfo->SetColModel((CColModel*)0x968DF0, false);
-								CStreaming::RequestSpecialModel(*it, token, 0);
-								retVector.push_back(*it);
-								addedIDs.push_back(*it);
+								CStreaming::RequestSpecialModel(i, token, 0);
+								retVector.push_back(i);
+								addedIDs.push_back(i);
 							}
 						}
 						break;					

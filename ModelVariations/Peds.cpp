@@ -12,8 +12,6 @@
 #include <array>
 #include <stack>
 
-#include <shlwapi.h>
-
 constexpr int MAX_PED_ID = 300;
 
 static const char* dataFileName = "ModelVariations_Peds.ini";
@@ -443,7 +441,7 @@ void PedVariations::LogCurrentVariations()
 void PedVariations::LogDataFile()
 {
     if (GetFileAttributes(dataFileName) == INVALID_FILE_ATTRIBUTES && GetLastError() == ERROR_FILE_NOT_FOUND)
-        Log::Write("\n%s not found!\n\n", PathFindFileName(dataFileName));
+        Log::Write("\n%s not found!\n\n", dataFileName);
     else
         Log::Write("##############################\n"
                    "## ModelVariations_Peds.ini ##\n"

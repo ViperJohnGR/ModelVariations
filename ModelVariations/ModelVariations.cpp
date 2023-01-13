@@ -24,11 +24,9 @@
 
 #include <ntstatus.h>
 #include <Psapi.h>
-#include <shlwapi.h>
 #include <urlmon.h>
 
 #pragma comment (lib, "bcrypt.lib")
-#pragma comment (lib, "shlwapi.lib")
 #pragma comment (lib, "urlmon.lib")
 
 
@@ -56,9 +54,9 @@ std::set<std::pair<std::uintptr_t, std::string>> callChecks;
 std::set<std::pair<std::uintptr_t, std::string>> modulesSet;
 
 std::vector<unsigned short> addedIDs;
-std::vector<unsigned short> unusedIDs;
 
-DataReader iniSettings("ModelVariations.ini");
+static const char* dataFileName = "ModelVariations.ini";
+DataReader iniSettings(dataFileName);
 
 struct {
     bool fastman92LimitAdjuster = false;
@@ -73,7 +71,6 @@ unsigned int currentTown = 0;
 unsigned int currentWanted = 0;
 
 bool keyDown = false;
-bool unusedIDsChecked = false;
 
 int timeUpdate = -1;
 
@@ -125,8 +122,7 @@ void detectExe()
     char path[256] = {};
     GetModuleFileName(NULL, path, 255);
     exePath = path;
-    const char* name = PathFindFileName(path);
-    exeName = name;
+    exeName = getFilenameFromPath(path);
 
     HANDLE hFile = CreateFile(path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
     if (hFile != INVALID_HANDLE_VALUE)
@@ -195,8 +191,8 @@ std::string getDatetime(bool printDate, bool printTime, bool printMs)
     }
 
     ss << std::setfill('0') << std::setw(2) << systime.wHour << ":"
-        << std::setfill('0') << std::setw(2) << systime.wMinute << ":"
-        << std::setfill('0') << std::setw(2) << systime.wSecond << ms;
+       << std::setfill('0') << std::setw(2) << systime.wMinute << ":"
+       << std::setfill('0') << std::setw(2) << systime.wSecond << ms;
 
     return ss.str();
 }
@@ -218,7 +214,24 @@ void getLoadedModules()
                 if (strcasestr(szModName, "III.VC.SA.LimitAdjuster"))
                     loadedMods.openLimitAdjuster = true;
                 else if (strcasestr(szModName, "fastman92limitAdjuster"))
+                {
                     loadedMods.fastman92LimitAdjuster = true;
+                
+                    std::string flaIniPath = szModName;
+                    flaIniPath = flaIniPath.substr(0, flaIniPath.find_last_of("\\/")) + "\\" + "fastman92limitAdjuster_GTASA.ini";
+
+                    if (CModelInfo::ms_modelInfoPtrs && *CModelInfo::ms_modelInfoPtrs == NULL)
+                    {
+                        DataReader flaSettings(flaIniPath);
+                        Log::Write("Enable special features = %d\n"
+                                   "Apply ID limit patch = %d\n"
+                                   "Count of killable model IDs = %d\n"
+                                   "Enable model special feature loader = %d\n", flaSettings.ReadInteger("VEHICLE SPECIAL FEATURES", "Enable special features", -1),
+                                                                                 flaSettings.ReadInteger("ID LIMITS", "Apply ID limit patch", -1),
+                                                                                 flaSettings.ReadInteger("ID LIMITS", "Count of killable model IDs", -1),
+                                                                                 flaSettings.ReadInteger("ADDONS", "Enable model special feature loader", -1));
+                    }
+                }   
                 modulesSet.insert(std::make_pair((std::uintptr_t)modules[i], szModName));
             }
         }
@@ -338,7 +351,7 @@ void __cdecl CGame__ShutdownHooked()
 {
     Log::Write("Game shutting down...\n");
 
-    if (enableSpecialPeds)
+    if (!addedIDs.empty())
     {
         CPedModelInfo* start = reinterpret_cast<CPedModelInfo*>(0xB478FC);
         for (int i = 0; i < 278; i++)
@@ -402,6 +415,14 @@ public:
             else
                 Log::Write("Unsupported exe detected: %s %u bytes %s\n", exeName.c_str(), exeFilesize, exeHash.c_str());
             
+
+            if (GetFileAttributes(dataFileName) == INVALID_FILE_ATTRIBUTES && GetLastError() == ERROR_FILE_NOT_FOUND)
+                Log::Write("\n%s not found!\n\n", dataFileName);
+            else
+                Log::Write("#########################\n"
+                           "## ModelVariations.ini ##\n"
+                           "#########################\n%s\n", Log::FileToString(dataFileName).c_str());
+
             PedVariations::LogDataFile();
             PedWeaponVariations::LogDataFile();
             VehicleVariations::LogDataFile();
@@ -443,23 +464,6 @@ public:
             Log::Write("-- initScriptsEvent --\n");
 
             clearEverything();
-
-            if (!unusedIDsChecked && enableSpecialPeds)
-            {
-                int numUnused = 0;
-
-                Log::Write("Checking unused IDs...\n");
-
-                for (uint16_t i = 1326; i < 20000; i++)
-                    if (CModelInfo::GetModelInfo(i) == NULL)
-                    {
-                        unusedIDs.push_back(i);
-                        numUnused++;
-                    }
-
-                Log::Write("Unused IDs found: %d\n", numUnused);
-                unusedIDsChecked = true;
-            }
 
             loadIniData(false);
 

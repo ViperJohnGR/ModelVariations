@@ -11,7 +11,6 @@
 #include <map>
 #include <stack>
 #include <string>
-#include <shlwapi.h>
 
 static const char* dataFileName = "ModelVariations_PedWeapons.ini";
 static DataReader dataFile(dataFileName);
@@ -202,7 +201,7 @@ void PedWeaponVariations::Process()
 void PedWeaponVariations::LogDataFile()
 {
     if (GetFileAttributes(dataFileName) == INVALID_FILE_ATTRIBUTES && GetLastError() == ERROR_FILE_NOT_FOUND)
-        Log::Write("\n%s not found!\n\n", PathFindFileName(dataFileName));
+        Log::Write("\n%s not found!\n\n", dataFileName);
     else
         Log::Write("####################################\n"
                    "## ModelVariations_PedWeapons.ini ##\n"

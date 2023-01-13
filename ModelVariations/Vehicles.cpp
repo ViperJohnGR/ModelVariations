@@ -21,7 +21,6 @@
 #include <array>
 #include <iomanip>
 #include <stack>
-#include <shlwapi.h>
 
 using namespace plugin;
 
@@ -734,7 +733,7 @@ void VehicleVariations::LogCurrentVariations()
 void VehicleVariations::LogDataFile()
 {
     if (GetFileAttributes(dataFileName) == INVALID_FILE_ATTRIBUTES && GetLastError() == ERROR_FILE_NOT_FOUND)
-        Log::Write("\n%s not found!\n\n", PathFindFileName(dataFileName));
+        Log::Write("\n%s not found!\n\n", dataFileName);
     else
         Log::Write("##################################\n"
                    "## ModelVariations_Vehicles.ini ##\n"
@@ -2239,11 +2238,11 @@ void hookASM(std::uintptr_t address, std::string originalData, injector::memory_
             }
 
             if (funcName.find("::") != std::string::npos)
-                Log::LogModifiedAddress(address, "Modified method detected: %s - 0x%08X is %s %s\n", funcName.c_str(), address, bytes.c_str(), PathFindFileName(moduleName.c_str()));
+                Log::LogModifiedAddress(address, "Modified method detected: %s - 0x%08X is %s %s\n", funcName.c_str(), address, bytes.c_str(), getFilenameFromPath(moduleName).c_str());
             else if (strncmp(funcName.c_str(), "sub_", 4) == 0)
-                Log::LogModifiedAddress(address, "Modified function detected: %s - 0x%08X is %s %s\n", funcName.c_str(), address, bytes.c_str(), PathFindFileName(moduleName.c_str()));
+                Log::LogModifiedAddress(address, "Modified function detected: %s - 0x%08X is %s %s\n", funcName.c_str(), address, bytes.c_str(), getFilenameFromPath(moduleName).c_str());
             else
-                Log::LogModifiedAddress(address, "Modified address detected: %s - 0x%08X is %s %s\n", funcName.c_str(), address, bytes.c_str(), PathFindFileName(moduleName.c_str()));
+                Log::LogModifiedAddress(address, "Modified address detected: %s - 0x%08X is %s %s\n", funcName.c_str(), address, bytes.c_str(), getFilenameFromPath(moduleName).c_str());
         }
 
         i++;

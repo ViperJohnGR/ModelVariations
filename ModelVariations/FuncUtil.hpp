@@ -71,15 +71,21 @@ inline bool compareUpper(const char* a, const char* b)
     return true;
 }
 
+inline std::string getFilenameFromPath(std::string_view path)
+{
+    std::string filename = path.data();
+    return filename.substr(filename.find_last_of("/\\") + 1);
+}
+
 inline bool strcasestr(std::string src, std::string sub)
 {
     std::for_each(src.begin(), src.end(), [](char& c) {
         c = (char)::toupper(c);
-        });
+    });
 
     std::for_each(sub.begin(), sub.end(), [](char& c) {
         c = (char)::toupper(c);
-        });
+    });
 
     if (src.find(sub) != std::string::npos)
         return true;

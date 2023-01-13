@@ -3,7 +3,6 @@
 #include <IniReader.h>
 #include <vector>
 
-extern std::vector<unsigned short> unusedIDs;
 extern std::vector<unsigned short> addedIDs;
 
 enum modelTypeToRead

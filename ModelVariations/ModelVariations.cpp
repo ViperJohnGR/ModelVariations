@@ -216,12 +216,12 @@ void getLoadedModules()
                 else if (strcasestr(szModName, "fastman92limitAdjuster"))
                 {
                     loadedMods.fastman92LimitAdjuster = true;
-                
-                    std::string flaIniPath = szModName;
-                    flaIniPath = flaIniPath.substr(0, flaIniPath.find_last_of("\\/")) + "\\" + "fastman92limitAdjuster_GTASA.ini";
 
                     if (CModelInfo::ms_modelInfoPtrs && *CModelInfo::ms_modelInfoPtrs == NULL)
                     {
+                        std::string flaIniPath = szModName;
+                        flaIniPath = flaIniPath.substr(0, flaIniPath.find_last_of("\\/")) + "\\" + "fastman92limitAdjuster_GTASA.ini";
+
                         DataReader flaSettings(flaIniPath);
                         Log::Write("Enable special features = %d\n"
                                    "Apply ID limit patch = %d\n"

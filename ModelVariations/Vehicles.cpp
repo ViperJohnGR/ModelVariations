@@ -1962,6 +1962,20 @@ void __fastcall DoHeadLightReflectionHooked(CVehicle* veh, void*, RwMatrixTag* m
     callMethodOriginal<address>(veh, matrix, twin, left, right);
 }
 
+template <std::uintptr_t address>
+void* __fastcall SetDriverHooked(CVehicle* _this, void*, CPed* a2)
+{
+    if (_this == NULL)
+        return NULL;
+
+    unsigned short modelIndex = _this->m_nModelIndex;
+    _this->m_nModelIndex = (unsigned short)getVariationOriginalModel(_this->m_nModelIndex);
+    auto retVal = callMethodOriginalAndReturn<void*, address>(_this, a2);
+    _this->m_nModelIndex = modelIndex;
+
+    return retVal;
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////  ASM HOOKS  /////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -2332,6 +2346,8 @@ void VehicleVariations::InstallHooks()
 
     hookCall(0x60C4E8, PossiblyRemoveVehicleHooked<0x60C4E8>, "CCarCtrl::PossiblyRemoveVehicle"); //CPlayerPed::KeepAreaAroundPlayerClear
     hookCall(0x42CD55, PossiblyRemoveVehicleHooked<0x42CD55>, "CCarCtrl::PossiblyRemoveVehicle"); //CCarCtrl::RemoveDistantCars
+
+    hookCall(0x64BB57, SetDriverHooked<0x64BB57>, "CVehicle::SetDriver"); //CTaskSimpleCarSetPedInAsDriver::ProcessPed
 
     if (changeScriptedCars)
         hookCall(0x467B01, CreateCarForScriptHooked<0x467B01>, "CCarCtrl::CreateCarForScript");

@@ -232,6 +232,10 @@ void getLoadedModules()
                                                                                  flaSettings.ReadInteger("ADDONS", "Enable model special feature loader", -1));
                     }
                 }   
+#ifdef _DEBUG
+                assert(!compareUpper("ModelVariations.asi", getFilenameFromPath(szModName).c_str()));
+#endif
+
                 modulesSet.insert(std::make_pair((std::uintptr_t)modules[i], szModName));
             }
         }

@@ -66,6 +66,7 @@ int currentOccupantsGroup = -1;
 unsigned short currentOccupantsModel = 0;
 
 int passengerModelIndex = -1;
+constexpr std::uintptr_t jmp588577 = 0x588577;
 constexpr std::uintptr_t jmp613B7E = 0x613B7E;
 constexpr std::uintptr_t jmp6A1564 = 0x6A1564;
 constexpr std::uintptr_t jmp6AB35A = 0x6AB35A;
@@ -79,7 +80,6 @@ int carGenModel = -1;
 uint32_t asmNextinstr[4] = {};
 uint16_t asmModel16 = 0;
 uint32_t asmModel32 = 0;
-uint32_t asmModel = 0;
 std::uintptr_t asmJmpAddress = 0;
 uint32_t* jmpDest = NULL;
 
@@ -1643,6 +1643,8 @@ void __fastcall ProcessControlHooked(CAutomobile* veh)
             return changeModel<address>("CAutomobile::ProcessControl", 531, veh->m_nModelIndex, { 0x6B1FBB }, veh);
         case 532: //Combine Harverster
             return changeModel<address>("CAutomobile::ProcessControl", 532, veh->m_nModelIndex, { 0x6B36C9 }, veh);
+        case 539: //Vortex
+            return changeModel<address>("CAutomobile::ProcessControl", 539, veh->m_nModelIndex, { 0x6B1E5C, 0x6B284F, 0x6B356E }, veh);
         case 601: //Swat Tank
             return changeModel<address>("CAutomobile::ProcessControl", 601, veh->m_nModelIndex, { 0x6B1F57 }, veh);
     }
@@ -1660,7 +1662,7 @@ void __declspec(naked) enableSirenLights()
 }
 
 template <std::uintptr_t address>
-void __fastcall PreRenderHooked(CAutomobile* veh)
+void __fastcall CAutomobile__PreRenderHooked(CAutomobile* veh)
 {
     if (veh == NULL)
         return;
@@ -1682,10 +1684,10 @@ void __fastcall PreRenderHooked(CAutomobile* veh)
     if (getVariationOriginalModel(veh->m_nModelIndex) == 407) //Firetruck
         changeModel<address>("CAutomobile::PreRender", 407, veh->m_nModelIndex, { 0x6ACA59 }, veh);
     else if (getVariationOriginalModel(veh->m_nModelIndex) == 432) //Rhino
-        changeModel<address>("CAutomobile::PreRender", 432, veh->m_nModelIndex, { 0x6ABC83, 
-                                                                                  0x6ABD11, 
-                                                                                  0x6ABFCC, 
-                                                                                  0x6AC029, 
+        changeModel<address>("CAutomobile::PreRender", 432, veh->m_nModelIndex, { 0x6ABC83,
+                                                                                  0x6ABD11,
+                                                                                  0x6ABFCC,
+                                                                                  0x6AC029,
                                                                                   0x6ACA4D }, veh);
     else if (getVariationOriginalModel(veh->m_nModelIndex) == 434) //Hotknife
         changeModel<address>("CAutomobile::PreRender", 434, veh->m_nModelIndex, { 0x6ACA43 }, veh);
@@ -1703,6 +1705,8 @@ void __fastcall PreRenderHooked(CAutomobile* veh)
         changeModel<address>("CAutomobile::PreRender", 531, veh->m_nModelIndex, { 0x6AC6DB }, veh);
     else if (getVariationOriginalModel(veh->m_nModelIndex) == 532) //Combine Harverster
         changeModel<address>("CAutomobile::PreRender", 532, veh->m_nModelIndex, { 0x6ABCA3, 0x6AC7AD }, veh);
+    else if (getVariationOriginalModel(veh->m_nModelIndex) == 539) //Vortex
+        changeModel<address>("CAutomobile::PreRender", 539, veh->m_nModelIndex, { 0x6AAE27 }, veh);
     else if (getVariationOriginalModel(veh->m_nModelIndex) == 601) //SWAT Tank
         changeModel<address>("CAutomobile::PreRender", 601, veh->m_nModelIndex, { 0x6ACA53 }, veh); 
     else
@@ -1815,15 +1819,6 @@ char __fastcall SetUpWheelColModelHooked(CAutomobile* automobile, void*, CColMod
         return 0;
 
     return callMethodOriginalAndReturn<char, address>(automobile, colModel);
-}
-
-template <std::uintptr_t address>
-void __fastcall ProcessSuspensionHooked(CAutomobile* veh)
-{
-    if (getVariationOriginalModel(veh->m_nModelIndex) == 432) //Rhino
-        return changeModel<address>("CAutomobile::ProcessSuspension", 432, veh->m_nModelIndex, { 0x6B029C, 0x6AFB48 }, veh);
-
-    callMethodOriginal<address>(veh);
 }
 
 template <std::uintptr_t address>
@@ -2133,6 +2128,24 @@ void __declspec(naked) patch6D46E5()
     }
 }
 
+void __declspec(naked) patch588570()
+{
+    __asm {
+        add esp, 8
+        push eax
+        push ecx
+        push edx
+        movsx ecx, word ptr [eax+0x22]
+        push ecx
+        call getVariationOriginalModel
+        cmp ax, bx
+        pop edx
+        pop ecx
+        pop eax
+        jmp jmp588577
+    }
+}
+
 void __declspec(naked) patchCoronas()
 {
     __asm {
@@ -2154,7 +2167,7 @@ void __declspec(naked) cmpWordPtrRegModel()
         pushad
     }
 
-    asmModel = model;
+    asmModel32 = model;
     asmJmpAddress = jmpAddress;
 
     if constexpr (reg == REG_EAX) { __asm { movsx eax, word ptr[eax + 0x22] } }
@@ -2169,7 +2182,7 @@ void __declspec(naked) cmpWordPtrRegModel()
     __asm {
         push eax
         call getVariationOriginalModel
-        cmp eax, asmModel
+        cmp eax, asmModel32
         popad
         jmp asmJmpAddress
     }
@@ -2182,7 +2195,7 @@ void __declspec(naked) cmpReg32Model()
         pushad
     }
 
-    asmModel = model;
+    asmModel32 = model;
     asmJmpAddress = jmpAddress;
 
     if constexpr (reg == REG_EAX) { __asm { push eax } }
@@ -2196,7 +2209,7 @@ void __declspec(naked) cmpReg32Model()
 
     __asm {
         call getVariationOriginalModel
-        cmp eax, asmModel
+        cmp eax, asmModel32
         popad
         jmp asmJmpAddress
     }
@@ -2254,7 +2267,7 @@ void __declspec(naked) movReg16WordPtrReg()
     }
 }
 
-template <eRegs32 target, eRegs32 source, std::uintptr_t jmpAddress, uint8_t nextInstrSize, uint32_t nextInstr, uint32_t nextInstr2>
+template <eRegs32 target, eRegs32 source, std::uintptr_t jmpAddress, uint8_t nextInstrSize, uint32_t nextInstr, uint32_t nextInstr2 = 0x90909090>
 void __declspec(naked) movsxReg32WordPtrReg()
 {
     __asm {
@@ -2311,7 +2324,7 @@ void hookASM(std::uintptr_t address, std::string originalData, injector::memory_
 {
     char* tkString = originalData.data();
     int i = 0;
-    int numBytes = (int)originalData.size()/2-1;
+    int numBytes = (int)originalData.size()/3+1;
 
     for (char* token = strtok(tkString, " "); token != NULL; token = strtok(NULL, " "))
     {
@@ -2338,10 +2351,10 @@ void hookASM(std::uintptr_t address, std::string originalData, injector::memory_
 
             if (funcName.find("::") != std::string::npos)
                 Log::LogModifiedAddress(address, "Modified method detected: %s - 0x%08X is %s %s\n", funcName.c_str(), address, bytes.c_str(), getFilenameFromPath(moduleName).c_str());
-            else if (strncmp(funcName.c_str(), "sub_", 4) == 0)
-                Log::LogModifiedAddress(address, "Modified function detected: %s - 0x%08X is %s %s\n", funcName.c_str(), address, bytes.c_str(), getFilenameFromPath(moduleName).c_str());
             else
-                Log::LogModifiedAddress(address, "Modified address detected: %s - 0x%08X is %s %s\n", funcName.c_str(), address, bytes.c_str(), getFilenameFromPath(moduleName).c_str());
+                Log::LogModifiedAddress(address, "Modified function detected: %s - 0x%08X is %s %s\n", funcName.c_str(), address, bytes.c_str(), getFilenameFromPath(moduleName).c_str());
+           
+            return;
         }
 
         i++;
@@ -2445,8 +2458,8 @@ void VehicleVariations::InstallHooks()
         hookCall(0x6C9313, ProcessControlHooked<0x6C9313>, "CAutomobile::ProcessControl"); //CPlane::ProcessControl
         hookCall(0x6CE005, ProcessControlHooked<0x6CE005>, "CAutomobile::ProcessControl"); //CQuadBike::ProcessControl
         hookCall(0x6CED23, ProcessControlHooked<0x6CED23>, "CAutomobile::ProcessControl"); //CTrailer::ProcessControl
-        hookCall(0x871164, PreRenderHooked<0x871164>, "CAutomobile::PreRender", true);
-        hookCall(0x6CFADC, PreRenderHooked<0x6CFADC>, "CAutomobile::PreRender");
+        hookCall(0x871164, CAutomobile__PreRenderHooked<0x871164>, "CAutomobile::PreRender", true);
+        hookCall(0x6CFADC, CAutomobile__PreRenderHooked<0x6CFADC>, "CAutomobile::PreRender");
         hookCall(0x871210, GetTowBarPosHooked<0x871210>, "CAutomobile::GetTowBarPos", true);
         hookCall(0x871214, SetTowLinkHooked<0x871214>, "CAutomobile::SetTowLink", true);
         hookCall(0x871D14, GetTowHitchPosHooked<0x871D14>, "CTrailer::GetTowHitchPos", true);
@@ -2508,6 +2521,9 @@ void VehicleVariations::InstallHooks()
         hookASM(0x6B0CF0, "66 81 7E 22 B0 01",                cmpWordPtrRegModel<REG_ESI, 0x6B0CF6, 0x1B0>, "CAutomobile::CAutomobile");
         hookASM(0x6B0EE2, "66 8B 46 22 66 3D 0D 02",          movReg16WordPtrReg<REG_AX, REG_ESI, 0x6B0EEA, 4, 0x020D3D66>, "CAutomobile::CAutomobile");
         hookASM(0x6B11D5, "66 8B 46 22 66 3D FE FF",          movReg16WordPtrReg<REG_AX, REG_ESI, 0x6B11DD, 4, 0xFFFE3D66>, "CAutomobile::CAutomobile");
+        hookASM(0x6B0298, "66 81 7E 22 B0 01",                cmpWordPtrRegModel<REG_ESI, 0x6B029E, 0x1B0>, "CAutomobile::ProcessSuspension");
+        hookASM(0x6AFB44, "66 81 7E 22 B0 01",                cmpWordPtrRegModel<REG_ESI, 0x6AFB4A, 0x1B0>, "CAutomobile::ProcessSuspension");
+        hookASM(0x51D870, "66 81 78 22 B0 01",                cmpWordPtrRegModel<REG_EAX, 0x51D876, 0x1B0>, "sub_51D770");
         hookASM(0x527058, "66 81 78 22 08 02",                cmpWordPtrRegModel<REG_EAX, 0x52705E, 0x208>, "CCam::Process");
         hookASM(0x58E09F, "66 81 78 22 08 02",                cmpWordPtrRegModel<REG_EAX, 0x58E0A5, 0x208>, "CHud::DrawCrossHairs");
         hookASM(0x58E0B3, "66 81 78 22 A9 01",                cmpWordPtrRegModel<REG_EAX, 0x58E0B9, 0x1A9>, "CHud::DrawCrossHairs");
@@ -2533,6 +2549,45 @@ void VehicleVariations::InstallHooks()
         hookASM(0x524624, "66 8B 47 22 66 3D B9 01",          movReg16WordPtrReg<REG_AX, REG_EDI, 0x52462C, 4, 0x01B93D66>, "CCam::Process_FollowCar_SA");
         hookASM(0x4F7814, "0F BF 42 22 05 40 FE FF FF",       movsxReg32WordPtrReg<REG_EAX, REG_EDX, 0x4F781D, 5, 0xFFFE4005, 0x909090FF>, "CAEVehicleAudioEntity::Initialise");
         hookASM(0x4FB343, "0F BF 42 22 05 6A FE FF FF",       movsxReg32WordPtrReg<REG_EAX, REG_EDX, 0x4FB34C, 5, 0xFFFE6A05, 0x909090FF>, "CAEVehicleAudioEntity::ProcessMovingParts");
+        hookASM(0x426F94, "66 81 7E 22 1B 02",                cmpWordPtrRegModel<REG_ESI, 0x426F9A, 0x21B>, "CCarCtrl::PickNextNodeToChaseCar");
+        hookASM(0x427790, "66 81 7E 22 1B 02",                cmpWordPtrRegModel<REG_ESI, 0x427796, 0x21B>, "CCarCtrl::PickNextNodeToFollowPath");
+        hookASM(0x42DB2E, "66 81 7F 22 1B 02",                cmpWordPtrRegModel<REG_EDI, 0x42DB34, 0x21B>, "CCarCtrl::IsThisAnAppropriateNode");
+        
+        if (GetGameVersion() == GAME_10US_COMPACT)
+            hookASM(0x42F8A7, "66 81 7E 22 1B 02",            cmpWordPtrRegModel<REG_ESI, 0x42F8AD, 0x21B>, "CCarCtrl::JoinCarWithRoadSystem");
+        else
+            hookASM(0x156A4D7, "66 81 7E 22 1B 02",           cmpWordPtrRegModel<REG_ESI, 0x156A4DD, 0x21B>, "CCarCtrl::JoinCarWithRoadSystem");
+
+        hookASM(0x42FE50, "66 81 7E 22 1B 02",                cmpWordPtrRegModel<REG_ESI, 0x42FE56, 0x21B>, "CCarCtrl::ReconsiderRoute");
+        hookASM(0x42FF0B, "66 81 7E 22 1B 02",                cmpWordPtrRegModel<REG_ESI, 0x42FF11, 0x21B>, "CCarCtrl::ReconsiderRoute");
+        hookASM(0x435A81, "66 81 7E 22 1B 02",                cmpWordPtrRegModel<REG_ESI, 0x435A87, 0x21B>, "CCarCtrl::SteerAICarWithPhysicsFollowPath_Racing");
+        hookASM(0x4382A4, "66 81 7E 22 1B 02",                cmpWordPtrRegModel<REG_ESI, 0x4382AA, 0x21B>, "CCarCtrl::SteerAICarWithPhysics");
+        hookASM(0x5583B3, "66 8B 46 22 66 3D D9 01",          movReg16WordPtrReg<REG_AX, REG_ESI, 0x5583BB, 4, 0x01D93D66>, "CRope::Update");
+        hookASM(0x5707FD, "66 8B 43 22 66 3D CC 01",          movReg16WordPtrReg<REG_AX, REG_EBX, 0x570805, 4, 0x01CC3D66>, "CPlayerInfo::Process");
+        hookASM(0x5869FF, "66 81 78 22 1B 02",                cmpWordPtrRegModel<REG_EAX, 0x586A05, 0x21B>, "CRadar::DrawRadarMap");
+        hookASM(0x586B77, "66 81 78 22 1B 02",                cmpWordPtrRegModel<REG_EAX, 0x586B7D, 0x21B>, "CRadar::DrawMap");
+        hookASM(0x587D66, "66 81 78 22 1B 02",                cmpWordPtrRegModel<REG_EAX, 0x587D6C, 0x21B>, "CRadar::SetupAirstripBlips");
+        hookASM(0x588570, "83 C4 08 66 39 58 22",             patch588570, "CRadar::DrawBlips");
+        hookASM(0x58A3D7, "66 81 78 22 1B 02",                cmpWordPtrRegModel<REG_EAX, 0x58A3DD, 0x21B>, "CHud::DrawRadar");
+        hookASM(0x58A5A0, "66 81 78 22 1B 02",                cmpWordPtrRegModel<REG_EAX, 0x58A5A6, 0x21B>, "CHud::DrawRadar");
+        hookASM(0x643BE5, "66 8B 48 22 66 81 F9 CC 01",       movReg16WordPtrReg<REG_CX, REG_EAX, 0x643BEE, 5, 0xCCF98166, 0x90909001>, "CTaskComplexEnterCar::CreateFirstSubTask");
+        hookASM(0x6508ED, "66 8B 76 22 66 81 FE CC 01",       movReg16WordPtrReg<REG_SI, REG_ESI, 0x6508F6, 5, 0xCCFE8166, 0x90909001>, "IsRoomForPedToLeaveCar");
+        hookASM(0x6A8D4E, "66 81 7E 22 1B 02",                cmpWordPtrRegModel<REG_ESI, 0x6A8D54, 0x21B>, "CAutomobile::ProcessBuoyancy");
+        hookASM(0x6A8F18, "66 8B 4E 22 66 81 F9 BF 01",       movReg16WordPtrReg<REG_CX, REG_ESI, 0X6A8F21, 5, 0xBFF98166, 0x90909001>, "CAutomobile::ProcessBuoyancy");
+        hookASM(0x6AA72D, "66 81 7E 22 1B 02",                cmpWordPtrRegModel<REG_ESI, 0x6AA733, 0x21B>, "CAutomobile::UpdateWheelMatrix");
+        hookASM(0x6AFFEA, "66 81 7E 22 1B 02",                cmpWordPtrRegModel<REG_ESI, 0x6AFFF0, 0x21B>, "CAutomobile::ProcessSuspension");
+        hookASM(0x6B0017, "66 81 7E 22 1B 02",                cmpWordPtrRegModel<REG_ESI, 0x6B001D, 0x21B>, "CAutomobile::ProcessSuspension");
+        hookASM(0x6C8E54, "66 81 7E 22 1B 02",                cmpWordPtrRegModel<REG_ESI, 0x6C8E5A, 0x21B>, "CPlane::CPlane");
+        hookASM(0x6C934D, "66 81 7E 22 1B 02",                cmpWordPtrRegModel<REG_ESI, 0x6C9353, 0x21B>, "CPlane::ProcessControl");
+        hookASM(0x6C94FB, "66 81 7E 22 1B 02",                cmpWordPtrRegModel<REG_ESI, 0x6C9501, 0x21B>, "CPlane::PreRender");
+        hookASM(0x6C97E6, "66 81 7E 22 1B 02",                cmpWordPtrRegModel<REG_ESI, 0x6C97EC, 0x21B>, "CPlane::PreRender");
+        hookASM(0x6CA70E, "66 8B 46 22 D9 5C 24 34",          movReg16WordPtrReg<REG_AX, REG_ESI, 0x6CA716, 4, 0x34245CD9>, "CPlane::PreRender");
+        hookASM(0x6CA750, "66 8B 46 22 66 3D 1B 02",          movReg16WordPtrReg<REG_AX, REG_ESI, 0x6CA758, 4, 0x021B3D66>, "CPlane::PreRender");
+        hookASM(0x6CC4C4, "66 81 7E 22 1B 02",                cmpWordPtrRegModel<REG_ESI, 0x6CC4CA, 0x21B>, "CPlane::VehicleDamage");
+        hookASM(0x6D8E18, "66 8B 5E 22 66 81 FB 1B 02",       movReg16WordPtrReg<REG_BX, REG_ESI, 0x6D8E21, 5, 0x1BFB8166, 0x90909002>, "CVehicle::FlyingControl");
+        hookASM(0x6D9233, "66 81 7E 22 1B 02",                cmpWordPtrRegModel<REG_ESI, 0x6D9239, 0x21B>, "CVehicle::FlyingControl");
+        hookASM(0x70BF09, "0F BF 5F 22 DD D8",                movsxReg32WordPtrReg<REG_EBX, REG_EDI, 0x70BF0F, 2, 0x9090D8DD>, "CShadows::StoreShadowForVehicle");
+        hookASM(0x501AB9, "0F BF 40 22 05 4D FE FF FF",       movsxReg32WordPtrReg<REG_EAX, REG_EAX, 0x501AC2, 5, 0xFFFE4D05, 0x909090FF>, "CAEVehicleAudioEntity::ProcessSpecialVehicle");
 
 
         if (*(uint32_t*)0x6CD78B == 0x000208B8 && *(uint8_t*)0x6CD78F == 0)
@@ -2549,7 +2604,6 @@ void VehicleVariations::InstallHooks()
                                                                                                                                                          *(uint8_t*)0x6CD78F);
 
 
-        hookCall(0x871238, ProcessSuspensionHooked<0x871238>, "CAutomobile::ProcessSuspension", true);
         hookCall(0x871200, VehicleDamageHooked<0x871200>, "CAutomobile::VehicleDamage", true);
         hookCall(0x8711E0, SetupSuspensionLinesHooked<0x8711E0>, "CAutomobile::SetupSuspensionLines", true);
         hookCall(0x6B119E, SetupSuspensionLinesHooked<0x6B119E>, "CAutomobile::SetupSuspensionLines");

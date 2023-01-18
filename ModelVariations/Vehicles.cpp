@@ -73,6 +73,7 @@ constexpr std::uintptr_t jmp6AB35A = 0x6AB35A;
 constexpr std::uintptr_t jmp6ABA65 = 0x6ABA65;
 constexpr std::uintptr_t jmp6AC735 = 0x6AC735;
 constexpr std::uintptr_t jmp6C8F16 = 0x6C8F16;
+constexpr std::uintptr_t jmp6D4304 = 0x6D4304;
 constexpr std::uintptr_t jmp6D46F0 = 0x6D46F0;
 constexpr std::uintptr_t jmp729B7B = 0x729B7B;
 int carGenModel = -1;
@@ -1930,35 +1931,32 @@ signed int __cdecl SetupEntityVisibilityHooked(CEntity* a1, float* a2)
 template <std::uintptr_t address>
 int __cdecl GetMaximumNumberOfPassengersFromNumberOfDoorsHooked(__int16 modelIndex)
 {
-    if (getVariationOriginalModel(modelIndex) == 437) //Coach
+    auto changeModelAtAddress = [&](std::uintptr_t modelAddress, short oldModel)
     {
-        if (*(short*)0x4C8AD3 == 437)
+        if (*(short*)modelAddress == oldModel)
         {
-            *(short*)0x4C8AD3 = modelIndex;
+            *(short*)modelAddress = modelIndex;
             const signed int retValue = callOriginalAndReturn<int, address>(modelIndex);
-            *(short*)0x4C8AD3 = 437;
+            *(short*)modelAddress = oldModel;
             return retValue;
         }
         else
         {
-            Log::LogModifiedAddress(0x4C8AD3, "Modified method detected : CVehicleModelInfo::GetMaximumNumberOfPassengersFromNumberOfDoors - 0x4C8AD3 is %u\n", *(uint16_t*)0x4C8AD3);
+            Log::LogModifiedAddress(modelAddress, "Modified method detected : CVehicleModelInfo::GetMaximumNumberOfPassengersFromNumberOfDoors - 0x%X is %u\n", modelAddress, *(uint16_t*)modelAddress);
             return callOriginalAndReturn<int, address>(modelIndex);
         }
-    }
-    else if (getVariationOriginalModel(modelIndex) == 431) //Bus
+    };
+
+    switch (getVariationOriginalModel(modelIndex))
     {
-        if (*(short*)0x4C8ADB == 431)
-        {
-            *(short*)0x4C8ADB = modelIndex;
-            const signed int retValue = callOriginalAndReturn<int, address>(modelIndex);
-            *(short*)0x4C8ADB = 431;
-            return retValue;
-        }
-        else
-        {
-            Log::LogModifiedAddress(0x4C8ADB, "Modified method detected : CVehicleModelInfo::GetMaximumNumberOfPassengersFromNumberOfDoors - 0x4C8ADB is %u\n", *(uint16_t*)0x4C8ADB);
-            return callOriginalAndReturn<int, address>(modelIndex);
-        }
+        case 407: //Firetruck
+            return changeModelAtAddress(0x4C8A17, 407);
+        case 425: //Hunter
+            return changeModelAtAddress(0x4C8A27, 425);
+        case 431: //Bus
+            return changeModelAtAddress(0x4C8ADB, 431);
+        case 437: //Coach
+            return changeModelAtAddress(0x4C8AD3, 437);
     }
 
     return callOriginalAndReturn<int, address>(modelIndex);
@@ -2007,18 +2005,6 @@ void __fastcall ProcessWeaponsHooked(CEntity* _this)
         return changeModel<address>("CVehicle::ProcessWeapons", 520, _this->m_nModelIndex, { 0x6E39BC }, _this);
 
     callMethodOriginal<address>(_this);
-}
-
-template <std::uintptr_t address>
-void __fastcall SelectPlaneWeaponHooked(CAutomobile* _this, void*, char bChange, int gunMode)
-{
-    if (_this == NULL)
-        return;
-
-    unsigned short modelIndex = _this->m_nModelIndex;
-    _this->m_nModelIndex = (unsigned short)getVariationOriginalModel(_this->m_nModelIndex);
-    callMethodOriginal<address>(_this, bChange, gunMode);
-    _this->m_nModelIndex = modelIndex;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -2143,6 +2129,18 @@ void __declspec(naked) patch588570()
         pop ecx
         pop eax
         jmp jmp588577
+    }
+}
+
+void __declspec(naked) patch6D42FE()
+{
+    __asm {
+        push edx
+        push ecx
+        call getVariationOriginalModel
+        lea eax, [eax-0x1A9]
+        pop edx
+        jmp jmp6D4304
     }
 }
 
@@ -2317,7 +2315,6 @@ void __declspec(naked) movsxReg32WordPtrReg()
     __asm {
         jmp jmpDest
     }
-
 }
 
 void hookASM(std::uintptr_t address, std::string originalData, injector::memory_pointer_raw hookDest, std::string funcName)
@@ -2588,7 +2585,10 @@ void VehicleVariations::InstallHooks()
         hookASM(0x6D9233, "66 81 7E 22 1B 02",                cmpWordPtrRegModel<REG_ESI, 0x6D9239, 0x21B>, "CVehicle::FlyingControl");
         hookASM(0x70BF09, "0F BF 5F 22 DD D8",                movsxReg32WordPtrReg<REG_EBX, REG_EDI, 0x70BF0F, 2, 0x9090D8DD>, "CShadows::StoreShadowForVehicle");
         hookASM(0x501AB9, "0F BF 40 22 05 4D FE FF FF",       movsxReg32WordPtrReg<REG_EAX, REG_EAX, 0x501AC2, 5, 0xFFFE4D05, 0x909090FF>, "CAEVehicleAudioEntity::ProcessSpecialVehicle");
-
+        hookASM(0x6C41D9, "81 FF A9 01 00 00",                cmpReg32Model<REG_EDI, 0x6C41DF, 0x1A9>, "CHeli::CHeli");
+        hookASM(0x6C50B3, "66 8B 46 22 66 3D D1 01",          movReg16WordPtrReg<REG_AX, REG_ESI, 0x6C50BB, 4, 0x01D13D66>, "CHeli::ProcessFlyingCarStuff");
+        hookASM(0x6D42FE, "8D 81 57 FE FF FF",                patch6D42FE, "CVehicle::GetPlaneGunsPosition");
+        hookASM(0x6D4900, "0F BF 41 22 05 57 FE FF FF",       movsxReg32WordPtrReg<REG_EAX, REG_ECX, 0x6D4909, 5, 0xFFFE5705, 0x909090FF>, "CVehicle::SelectPlaneWeapon");
 
         if (*(uint32_t*)0x6CD78B == 0x000208B8 && *(uint8_t*)0x6CD78F == 0)
             injector::MakeInline<0x6CD78B, 0x6CD78B + 5>([](injector::reg_pack& regs)
@@ -2633,8 +2633,6 @@ void VehicleVariations::InstallHooks()
 
         hookCall(0x6C7917, ProcessWeaponsHooked<0x6C7917>, "CVehicle::ProcessWeapons"); //CHeli::ProcessControl
         hookCall(0x6C9348, ProcessWeaponsHooked<0x6C9348>, "CVehicle::ProcessWeapons"); //CPlane::ProcessControl
-
-        hookCall(0x6E39F6, SelectPlaneWeaponHooked<0x6E39F6>, "CVehicle::SelectPlaneWeapon"); //CVehicle::ProcessWeapons
     }
 
     if (enableSiren)

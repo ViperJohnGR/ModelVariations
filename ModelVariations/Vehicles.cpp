@@ -213,6 +213,7 @@ bool hasModelSideMission(int model)
     {
         case 407: //Fire Truck
         case 416: //Ambulance
+        case 425: //Hunter
         case 537: //Freight
         case 538: //Brown Streak
         case 570: //Streak Car
@@ -1207,7 +1208,8 @@ void __fastcall CollectParametersHooked(CRunningScript* script, void*, unsigned 
             return;
 
         if (strcmp(script->m_szName, "r3") != 0 && strcmp(script->m_szName, "ambulan") != 0 && strcmp(script->m_szName, "firetru") != 0 &&
-            strcmp(script->m_szName, "freight") != 0 && strcmp(script->m_szName, "trains") != 0 && strcmp(script->m_szName, "trainsl") != 0)
+            strcmp(script->m_szName, "freight") != 0 && strcmp(script->m_szName, "trains") != 0 && strcmp(script->m_szName, "trainsl") != 0 &&
+            strcmp(script->m_szName, "copcar") != 0)
             return;
     }
 

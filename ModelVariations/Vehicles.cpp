@@ -1696,6 +1696,8 @@ void __fastcall CAutomobile__PreRenderHooked(CAutomobile* veh)
         changeModel<address>("CAutomobile::PreRender", 434, veh->m_nModelIndex, { 0x6ACA43 }, veh);
     else if (getVariationOriginalModel(veh->m_nModelIndex) == 443) //Packer
         changeModel<address>("CAutomobile::PreRender", 443, veh->m_nModelIndex, { 0x6AC4DB }, veh);
+    else if (getVariationOriginalModel(veh->m_nModelIndex) == 477) //ZR-350
+        changeModel<address>("CAutomobile::PreRender", 477, veh->m_nModelIndex, { 0x6ACA8F }, veh);
     else if (getVariationOriginalModel(veh->m_nModelIndex) == 486) //Dozer
         changeModel<address>("CAutomobile::PreRender", 486, veh->m_nModelIndex, { 0x6AC40E }, veh);
     else if (getVariationOriginalModel(veh->m_nModelIndex) == 524) //Cement Truck
@@ -2591,6 +2593,7 @@ void VehicleVariations::InstallHooks()
         hookASM(0x6C50B3, "66 8B 46 22 66 3D D1 01",          movReg16WordPtrReg<REG_AX, REG_ESI, 0x6C50BB, 4, 0x01D13D66>, "CHeli::ProcessFlyingCarStuff");
         hookASM(0x6D42FE, "8D 81 57 FE FF FF",                patch6D42FE, "CVehicle::GetPlaneGunsPosition");
         hookASM(0x6D4900, "0F BF 41 22 05 57 FE FF FF",       movsxReg32WordPtrReg<REG_EAX, REG_ECX, 0x6D4909, 5, 0xFFFE5705, 0x909090FF>, "CVehicle::SelectPlaneWeapon");
+        hookASM(0x6E1C17, "66 81 7E 22 DD 01",                cmpWordPtrRegModel<REG_ESI, 0x6E1C1D, 0x1DD>, "CVehicle::DoVehicleLights");
 
         if (*(uint32_t*)0x6CD78B == 0x000208B8 && *(uint8_t*)0x6CD78F == 0)
             injector::MakeInline<0x6CD78B, 0x6CD78B + 5>([](injector::reg_pack& regs)

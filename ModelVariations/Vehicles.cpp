@@ -1634,6 +1634,8 @@ void __fastcall ProcessControlHooked(CAutomobile* veh)
             return changeModel<address>("CAutomobile::ProcessControl", 432, veh->m_nModelIndex, { 0x6B1F7D, 0x6B36D8 }, veh);
         case 443: //Packer
             return changeModel<address>("CAutomobile::ProcessControl", 443, veh->m_nModelIndex, { 0x6B1F91 }, veh);
+        case 447: //Sea Sparrow
+            return changeModel<address>("CAutomobile::ProcessControl", 447, veh->m_nModelIndex, { 0x6B1E2D }, veh);
         case 486: //Dozer
             return changeModel<address>("CAutomobile::ProcessControl", 486, veh->m_nModelIndex, { 0x6B1F97 }, veh);
         case 524: //Cement Truck
@@ -2594,6 +2596,12 @@ void VehicleVariations::InstallHooks()
         hookASM(0x6D42FE, "8D 81 57 FE FF FF",                patch6D42FE, "CVehicle::GetPlaneGunsPosition");
         hookASM(0x6D4900, "0F BF 41 22 05 57 FE FF FF",       movsxReg32WordPtrReg<REG_EAX, REG_ECX, 0x6D4909, 5, 0xFFFE5705, 0x909090FF>, "CVehicle::SelectPlaneWeapon");
         hookASM(0x6E1C17, "66 81 7E 22 DD 01",                cmpWordPtrRegModel<REG_ESI, 0x6E1C1D, 0x1DD>, "CVehicle::DoVehicleLights");
+        hookASM(0x6C4F66, "66 8B 46 22 66 3D BF 01",          movReg16WordPtrReg<REG_AX, REG_ESI, 0x6C4F6E, 4, 0x01BF3D66>, "CHeli::ProcessFlyingCarStuff");
+        hookASM(0x6C5605, "66 8B 4E 22 66 81 F9 D5 01",       movReg16WordPtrReg<REG_CX, REG_ESI, 0x6C560E, 5, 0xD5F98166, 0x90909001>, "CHeli::PreRender");
+        hookASM(0x7408E3, "66 8B 47 22 66 3D BF 01",          movReg16WordPtrReg<REG_AX, REG_EDI, 0x7408EB, 4, 0x01D53D66>, "CWeapon::FireInstantHit");
+        hookASM(0x6A8DE2, "66 8B 46 22 66 3D BF 01",          movReg16WordPtrReg<REG_AX, REG_ESI, 0x6A8DEA, 4, 0x01BF3D66>, "CAutomobile::ProcessBuoyancy");
+        hookASM(0x6F367E, "81 FD BF 01 00 00",                cmpReg32Model<REG_EBP, 0x6F3684, 0x1BF>, "CCarGenerator::DoInternalProcessing");
+
 
         if (*(uint32_t*)0x6CD78B == 0x000208B8 && *(uint8_t*)0x6CD78F == 0)
             injector::MakeInline<0x6CD78B, 0x6CD78B + 5>([](injector::reg_pack& regs)

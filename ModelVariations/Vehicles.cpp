@@ -2067,23 +2067,6 @@ void __declspec(naked) patch6A155C()
     }
 }
 
-void __declspec(naked) patch6C8F10()
-{
-    __asm {
-        push eax
-        push ecx
-        push edx
-        push edi
-        call getVariationOriginalModel
-        mov edi, eax
-        pop edx
-        pop ecx
-        pop eax
-        cmp edi, 0x208
-        jmp jmp6C8F16
-    }
-}
-
 void __declspec(naked) patch6D46E5()
 {
     __asm {
@@ -2164,6 +2147,34 @@ void __declspec(naked) cmpWordPtrRegModel()
     else if constexpr (reg == REG_EBP) { __asm { movsx eax, word ptr[ebp + 0x22] } }
     else if constexpr (reg == REG_ESI) { __asm { movsx eax, word ptr[esi + 0x22] } }
     else if constexpr (reg == REG_EDI) { __asm { movsx eax, word ptr[edi + 0x22] } }
+
+    __asm {
+        push eax
+        call getVariationOriginalModel
+        cmp eax, asmModel32
+        popad
+        jmp asmJmpAddress
+    }
+}
+
+template <eRegs16 reg, std::uintptr_t jmpAddress, unsigned int model>
+void __declspec(naked) cmpReg16Model()
+{
+    __asm {
+        pushad
+    }
+
+    asmModel32 = model;
+    asmJmpAddress = jmpAddress;
+
+    if constexpr (reg == REG_AX) { __asm { movsx eax, ax } }
+    else if constexpr (reg == REG_CX) { __asm { movsx eax, cx } }
+    else if constexpr (reg == REG_DX) { __asm { movsx eax, dx } }
+    else if constexpr (reg == REG_BX) { __asm { movsx eax, bx } }
+    else if constexpr (reg == REG_SP) { __asm { movsx eax, sp } }
+    else if constexpr (reg == REG_BP) { __asm { movsx eax, bp } }
+    else if constexpr (reg == REG_SI) { __asm { movsx eax, si } }
+    else if constexpr (reg == REG_DI) { __asm { movsx eax, di } }
 
     __asm {
         push eax
@@ -2513,7 +2524,7 @@ void VehicleVariations::InstallHooks()
         hookASM(0x58E09F, "66 81 78 22 08 02",                cmpWordPtrRegModel<REG_EAX, 0x58E0A5, 0x208>, "CHud::DrawCrossHairs");
         hookASM(0x58E0B3, "66 81 78 22 A9 01",                cmpWordPtrRegModel<REG_EAX, 0x58E0B9, 0x1A9>, "CHud::DrawCrossHairs");
         hookASM(0x6A53BA, "3D 08 02 00 00",                   cmpReg32Model<REG_EAX, 0x6A53BF, 0x208>, "CAutomobile::ProcessCarWheelPair");
-        hookASM(0x6C8F10, "81 FF 08 02 00 00",                patch6C8F10, "CPlane::CPlane");
+        hookASM(0x6C8F10, "81 FF 08 02 00 00",                cmpReg32Model<REG_EDI, 0x6C8F16, 0x208>, "CPlane::CPlane");
         hookASM(0x6C9101, "66 81 7E 22 08 02",                cmpWordPtrRegModel<REG_ESI, 0x6C9107, 0x208>, "CPlane::CPlane");
         hookASM(0x6C968E, "66 81 7E 22 08 02",                cmpWordPtrRegModel<REG_ESI, 0x6C9694, 0x208>, "CPlane::PreRender");
         hookASM(0x6C9D7E, "0F BF 46 22 05 24 FE FF FF",       movsxReg32WordPtrReg<REG_EAX, REG_ESI, 0x6C9D87, 5, 0xFFFE2405, 0x909090FF>, "CPlane::PreRender");
@@ -2612,6 +2623,16 @@ void VehicleVariations::InstallHooks()
         hookASM(0x6F368A, "81 FD A1 01 00 00",                cmpReg32Model<REG_EBP, 0x6F3690, 0x1A1>, "CCarGenerator::DoInternalProcessing");
         hookASM(0x5626D1, "66 81 7E 22 F1 01",                cmpWordPtrRegModel<REG_ESI, 0x5626D7, 0x1F1>, "CWanted::WorkOutPolicePresence");
         hookASM(0x6C7172, "66 81 7E 22 F1 01",                cmpWordPtrRegModel<REG_ESI, 0x6C7178, 0x1F1>, "CHeli::ProcessControl");
+        hookASM(0x6C8F31, "81 FF DC 01 00 00",                cmpReg32Model<REG_EDI, 0x6C8F37, 0x1DC>, "CPlane::CPlane");
+        hookASM(0x6C8F3D, "81 FF 00 02 00 00",                cmpReg32Model<REG_EDI, 0x6C8F43, 0x200>, "CPlane::CPlane");
+        hookASM(0x6C8F49, "81 FF 07 02 00 00",                cmpReg32Model<REG_EDI, 0x6C8F4F, 0x207>, "CPlane::CPlane");
+        hookASM(0x6C8F96, "81 FF 29 02 00 00",                cmpReg32Model<REG_EDI, 0x6C8F9C, 0x229>, "CPlane::CPlane");
+        hookASM(0x6C8FCB, "81 FF 1B 02 00 00",                cmpReg32Model<REG_EDI, 0x6C8FD1, 0x21B>, "CPlane::CPlane");
+        hookASM(0x6C8FFA, "81 FF 01 02 00 00",                cmpReg32Model<REG_EDI, 0x6C9000, 0x201>, "CPlane::CPlane");
+
+        hookASM((GetGameVersion() != GAME_10US_COMPACT) ? 0x407A15 : 0x6D444EU, "66 81 FA DC 01", cmpReg16Model<REG_DX, 0x6D4453, 0x1DC>, "CVehicle::GetPlaneGunsPosition");
+
+        hookASM(0x6D6A7B, "0F BF 4E 22 88 86 88 04 00 00",    movsxReg32WordPtrReg<REG_ECX, REG_ESI, 0x6D6A85, 6, 0x04888688, 0x90900000>, "CVehicle::SetModelIndex");
 
 
         if (*(uint32_t*)0x6DD218 == 0x0001CCBF && *(uint8_t*)0x6DD21C == 0)

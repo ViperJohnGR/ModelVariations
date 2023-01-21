@@ -1628,6 +1628,8 @@ void __fastcall ProcessControlHooked(CAutomobile* veh)
             return changeModel<address>("CAutomobile::ProcessControl", 406, veh->m_nModelIndex, { 0x6B1F9D }, veh);
         case 407: //Firetruck
             return changeModel<address>("CAutomobile::ProcessControl", 407, veh->m_nModelIndex, { 0x6B1F51 }, veh);
+        case 417: //Leviathan
+            return changeModel<address>("CAutomobile::ProcessControl", 417, veh->m_nModelIndex, { 0x6B1E34 }, veh);
         case 423: //Mr. Whoopie
             return changeModel<address>("CAutomobile::ProcessControl", 423, veh->m_nModelIndex, { 0x6B2BD8 }, veh);
         case 432: //Rhino
@@ -2607,6 +2609,7 @@ void VehicleVariations::InstallHooks()
         hookASM(0x6F1F5B, "66 81 7E 22 CC 01",                cmpWordPtrRegModel<REG_ESI, 0x6F1F61, 0x1CC>, "CBoat::ProcessControl");
         hookASM(0x6F3672, "81 FD CC 01 00 00",                cmpReg32Model<REG_EBP, 0x6F3678, 0x1CC>, "CCarGenerator::DoInternalProcessing");
         hookASM(0x528294, "66 81 79 22 CC 01",                cmpWordPtrRegModel<REG_ECX, 0x52829A, 0x1CC>, "CCamera::CamControl");
+        hookASM(0x6F368A, "81 FD A1 01 00 00",                cmpReg32Model<REG_EBP, 0x6F3690, 0x1A1>, "CCarGenerator::DoInternalProcessing");
 
 
         if (*(uint32_t*)0x6DD218 == 0x0001CCBF && *(uint8_t*)0x6DD21C == 0)

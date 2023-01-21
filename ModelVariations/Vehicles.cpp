@@ -2633,6 +2633,13 @@ void VehicleVariations::InstallHooks()
         hookASM((GetGameVersion() != GAME_10US_COMPACT) ? 0x407A15 : 0x6D444EU, "66 81 FA DC 01", cmpReg16Model<REG_DX, 0x6D4453, 0x1DC>, "CVehicle::GetPlaneGunsPosition");
 
         hookASM(0x6D6A7B, "0F BF 4E 22 88 86 88 04 00 00",    movsxReg32WordPtrReg<REG_ECX, REG_ESI, 0x6D6A85, 6, 0x04888688, 0x90900000>, "CVehicle::SetModelIndex");
+        hookASM(0x429051, "66 81 7E 22 AE 01",                cmpWordPtrRegModel<REG_ESI, 0x429057, 0x1AE>, "CCarCtrl::SteerAIBoatWithPhysicsAttackingPlayer");
+        hookASM(0x48DA90, "66 81 78 22 AE 01",                cmpWordPtrRegModel<REG_EAX, 0x48DA96, 0x1AE>, "CRunningScript::ProcessCommands1300To1399");
+        hookASM(0x512570, "66 81 79 22 AE 01",                cmpWordPtrRegModel<REG_ECX, 0x512576, 0x1AE>, "CCam::Process_WheelCam");
+        hookASM(0x6F028D, "0F BF 46 22 05 52 FE FF FF",       movsxReg32WordPtrReg<REG_EAX, REG_ESI, 0x6F0296, 5, 0xFFFE5205, 0x909090FF>, "CBoat::Render");
+        hookASM(0x6F1487, "66 8B 46 22 66 3D AE 01",          movReg16WordPtrReg<REG_AX, REG_ESI, 0x6F148F, 4, 0x01AE3D66>, "CBoat::PreRender");
+        hookASM(0x6F1801, "66 81 7E 22 AE 01",                cmpWordPtrRegModel<REG_ESI, 0x6F1807, 0x1AE>, "CBoat::ProcessControl");
+        hookASM(0x6F18AD, "66 81 7E 22 AE 01",                cmpWordPtrRegModel<REG_ESI, 0x6F18B3, 0x1AE>, "CBoat::ProcessControl");
 
 
         if (*(uint32_t*)0x6DD218 == 0x0001CCBF && *(uint8_t*)0x6DD21C == 0)

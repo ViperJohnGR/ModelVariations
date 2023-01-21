@@ -1636,6 +1636,8 @@ void __fastcall ProcessControlHooked(CAutomobile* veh)
             return changeModel<address>("CAutomobile::ProcessControl", 443, veh->m_nModelIndex, { 0x6B1F91 }, veh);
         case 447: //Sea Sparrow
             return changeModel<address>("CAutomobile::ProcessControl", 447, veh->m_nModelIndex, { 0x6B1E2D }, veh);
+        case 460: //Skimmer
+            return changeModel<address>("CAutomobile::ProcessControl", 460, veh->m_nModelIndex, { 0x6B2181 }, veh);
         case 486: //Dozer
             return changeModel<address>("CAutomobile::ProcessControl", 486, veh->m_nModelIndex, { 0x6B1F97 }, veh);
         case 524: //Cement Truck
@@ -1910,28 +1912,6 @@ void __fastcall DoSoftGroundResistanceHooked(CAutomobile* veh, void*, unsigned i
         return changeModel<address>("CAutomobile::DoSoftGroundResistance", 432, veh->m_nModelIndex, { 0x6A4BBA, 0x6A4E0E }, veh, a3);
 
     callMethodOriginal<address>(veh, a3);
-}
-
-template <std::uintptr_t address>
-signed int __cdecl SetupEntityVisibilityHooked(CEntity* a1, float* a2)
-{
-    if (a1 != NULL && getVariationOriginalModel(a1->m_nModelIndex) == 437)
-    {
-        if (*(uint16_t*)0x554336 == 437) //Coach
-        {
-            *(uint16_t*)0x554336 = a1->m_nModelIndex;
-            const signed int retValue = callOriginalAndReturn<signed int, address>(a1, a2);
-            *(uint16_t*)0x554336 = 437;
-            return retValue;
-        }
-        else
-        {
-            Log::LogModifiedAddress(0x554336, "Modified method detected : CRenderer::SetupEntityVisibility - 0x554336 is %u\n", *(uint16_t*)0x554336);
-            return callOriginalAndReturn<signed int, address>(a1, a2);
-        }
-    }
-
-    return callOriginalAndReturn<signed int, address>(a1, a2);
 }
 
 template <std::uintptr_t address>
@@ -2601,10 +2581,48 @@ void VehicleVariations::InstallHooks()
         hookASM(0x7408E3, "66 8B 47 22 66 3D BF 01",          movReg16WordPtrReg<REG_AX, REG_EDI, 0x7408EB, 4, 0x01D53D66>, "CWeapon::FireInstantHit");
         hookASM(0x6A8DE2, "66 8B 46 22 66 3D BF 01",          movReg16WordPtrReg<REG_AX, REG_ESI, 0x6A8DEA, 4, 0x01BF3D66>, "CAutomobile::ProcessBuoyancy");
         hookASM(0x6F367E, "81 FD BF 01 00 00",                cmpReg32Model<REG_EBP, 0x6F3684, 0x1BF>, "CCarGenerator::DoInternalProcessing");
+        hookASM(0x51D864, "66 81 7A 22 CC 01",                cmpWordPtrRegModel<REG_EDX, 0x51D86A, 0x1CC>, "CCamera::IsItTimeForNewcam");
+        hookASM(0x51D92B, "66 81 7A 22 CC 01",                cmpWordPtrRegModel<REG_EDX, 0x51D931, 0x1CC>, "CCamera::IsItTimeForNewcam");
+        hookASM(0x51DA60, "66 81 79 22 CC 01",                cmpWordPtrRegModel<REG_ECX, 0x51DA66, 0x1CC>, "CCamera::IsItTimeForNewcam");
+        hookASM(0x51DCFC, "66 81 78 22 CC 01",                cmpWordPtrRegModel<REG_EAX, 0x51DD02, 0x1CC>, "CCamera::IsItTimeForNewcam");
+        hookASM(0x51DE84, "66 81 78 22 CC 01",                cmpWordPtrRegModel<REG_EAX, 0x51DE8A, 0x1CC>, "CCamera::IsItTimeForNewcam");
+        hookASM(0x51E5AC, "66 81 78 22 CC 01",                cmpWordPtrRegModel<REG_EAX, 0x51E5B2, 0x1CC>, "CCamera::TryToStartNewCamMode");
+        hookASM(0x51E773, "66 81 79 22 CC 01",                cmpWordPtrRegModel<REG_ECX, 0x51E779, 0x1CC>, "CCamera::TryToStartNewCamMode");
+        hookASM(0x51E937, "66 81 78 22 CC 01",                cmpWordPtrRegModel<REG_EAX, 0x51E93D, 0x1CC>, "CCamera::TryToStartNewCamMode");
+        hookASM(0x51EF39, "66 81 7A 22 CC 01",                cmpWordPtrRegModel<REG_EDX, 0x51EF3F, 0x1CC>, "CCamera::TryToStartNewCamMode");
+        hookASM(0x51F15B, "66 81 79 22 CC 01",                cmpWordPtrRegModel<REG_ECX, 0x51F161, 0x1CC>, "CCamera::TryToStartNewCamMode");
+        hookASM(0x55432A, "66 8B 46 22 66 3D B0 01",          movReg16WordPtrReg<REG_AX, REG_ESI, 0x554332, 4, 0x01B03D66>, "CRenderer::SetupEntityVisibility");
+        hookASM(0x6C2D33, "66 8B 47 22 66 3D A1 01",          movReg16WordPtrReg<REG_AX, REG_EDI, 0x6C2D3B, 4, 0x01A13D66>, "cBuoyancy::PreCalcSetup");
+        hookASM(0x6C92EC, "66 81 7E 22 CC 01",                cmpWordPtrRegModel<REG_ESI, 0x6C92F2, 0x1CC>, "CPlane::ProcessControl");
+        hookASM(0x6CAA93, "66 81 7E 22 CC 01",                cmpWordPtrRegModel<REG_ESI, 0x6CAA99, 0x1CC>, "CPlane::PreRender");
+        hookASM(0x6D274C, "66 81 7E 22 CC 01",                cmpWordPtrRegModel<REG_ESI, 0x6D2752, 0x1CC>, "CVehicle::ApplyBoatWaterResistance");
+        hookASM(0x6DBF0A, "66 81 7E 22 CC 01",                cmpWordPtrRegModel<REG_ESI, 0x6DBF10, 0x1CC>, "CVehicle::ProcessBoatControl");
+        hookASM(0x6DC00B, "66 81 7E 22 CC 01",                cmpWordPtrRegModel<REG_ESI, 0x6DC011, 0x1CC>, "CVehicle::ProcessBoatControl");
+        hookASM(0x6DC21B, "66 81 7E 22 CC 01",                cmpWordPtrRegModel<REG_ESI, 0x6DC221, 0x1CC>, "CVehicle::ProcessBoatControl");
+        hookASM(0x6DC621, "66 81 7E 22 CC 01",                cmpWordPtrRegModel<REG_ESI, 0x6DC627, 0x1CC>, "CVehicle::ProcessBoatControl");
+        hookASM(0x6DCD63, "66 81 7E 22 CC 01",                cmpWordPtrRegModel<REG_ESI, 0x6DCD69, 0x1CC>, "CVehicle::ProcessBoatControl");
+        hookASM(0x6EDA0C, "66 81 7E 22 CC 01",                cmpWordPtrRegModel<REG_ESI, 0x6EDA12, 0x1CC>, "CWaterLevel::RenderBoatWakes");
+        hookASM(0x6F0234, "66 81 7E 22 CC 01",                cmpWordPtrRegModel<REG_ESI, 0x6F023A, 0x1CC>, "CBoat::Render");
+        hookASM(0x6F1A8A, "66 81 7E 22 CC 01",                cmpWordPtrRegModel<REG_ESI, 0x6F1A90, 0x1CC>, "CBoat::ProcessControl");
+        hookASM(0x6F1F5B, "66 81 7E 22 CC 01",                cmpWordPtrRegModel<REG_ESI, 0x6F1F61, 0x1CC>, "CBoat::ProcessControl");
+        hookASM(0x6F3672, "81 FD CC 01 00 00",                cmpReg32Model<REG_EBP, 0x6F3678, 0x1CC>, "CCarGenerator::DoInternalProcessing");
+        hookASM(0x528294, "66 81 79 22 CC 01",                cmpWordPtrRegModel<REG_ECX, 0x52829A, 0x1CC>, "CCamera::CamControl");
 
 
+        if (*(uint32_t*)0x6DD218 == 0x0001CCBF && *(uint8_t*)0x6DD21C == 0)
+            injector::MakeInline<0x6DD218>([](injector::reg_pack& regs)
+            {
+                if (getVariationOriginalModel(reinterpret_cast<CEntity*>(regs.esi)->m_nModelIndex) == 460)
+                    regs.edi = reinterpret_cast<CEntity*>(regs.esi)->m_nModelIndex;
+            });
+        else 
+            Log::LogModifiedAddress(0x6DD218, "Modified method detected : CVehicle::DoBoatSplashes - 0x6DD218 is %02X %02X %02X %02X %02X\n", *(uint8_t*)0x6DD218,
+                                                                                                                                              *(uint8_t*)0x6DD219,
+                                                                                                                                              *(uint8_t*)0x6DD21A,
+                                                                                                                                              *(uint8_t*)0x6DD21B,
+                                                                                                                                              *(uint8_t*)0x6DD21C);
         if (*(uint32_t*)0x6CD78B == 0x000208B8 && *(uint8_t*)0x6CD78F == 0)
-            injector::MakeInline<0x6CD78B, 0x6CD78B + 5>([](injector::reg_pack& regs)
+            injector::MakeInline<0x6CD78B>([](injector::reg_pack& regs)
             {
                 if (getVariationOriginalModel(CPlane::GenPlane_ModelIndex) == 520)
                     regs.eax = (uint32_t)CPlane::GenPlane_ModelIndex;
@@ -2632,8 +2650,6 @@ void VehicleVariations::InstallHooks()
 
         hookCall(0x6B2028, TankControlHooked<0x6B2028>, "CAutomobile::TankControl"); //CAutomobile::ProcessControl
         hookCall(0x6B51B8, DoSoftGroundResistanceHooked<0x6B51B8>, "CAutomobile::DoSoftGroundResistance"); //CAutomobile::ProcessAI
-
-        hookCall(0x554937, SetupEntityVisibilityHooked<0x554937>, "CRenderer::SetupEntityVisibility"); //CRenderer::ScanSectorList
 
         hookCall(0x6D6A76, GetMaximumNumberOfPassengersFromNumberOfDoorsHooked<0x6D6A76>, "CVehicleModelInfo::GetMaximumNumberOfPassengersFromNumberOfDoors"); //CVehicle::SetModelIndex
 

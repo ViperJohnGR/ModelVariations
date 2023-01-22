@@ -54,6 +54,7 @@ std::set<std::pair<std::uintptr_t, std::string>> callChecks;
 std::set<std::pair<std::uintptr_t, std::string>> modulesSet;
 
 std::vector<unsigned short> addedIDs;
+int maxPedID = 0;
 
 static const char* dataFileName = "ModelVariations.ini";
 DataReader iniSettings(dataFileName);
@@ -222,14 +223,18 @@ void getLoadedModules()
                         std::string flaIniPath = szModName;
                         flaIniPath = flaIniPath.substr(0, flaIniPath.find_last_of("\\/")) + "\\" + "fastman92limitAdjuster_GTASA.ini";
 
-                        DataReader flaSettings(flaIniPath);
+                        DataReader flaIni(flaIniPath);
+                        int flaMaxID = flaIni.ReadInteger("ID LIMITS", "Count of killable model IDs", -1);
+                        if (maxPedID == 0)
+                            maxPedID = flaMaxID;
+
                         Log::Write("Enable special features = %d\n"
                                    "Apply ID limit patch = %d\n"
                                    "Count of killable model IDs = %d\n"
-                                   "Enable model special feature loader = %d\n", flaSettings.ReadInteger("VEHICLE SPECIAL FEATURES", "Enable special features", -1),
-                                                                                 flaSettings.ReadInteger("ID LIMITS", "Apply ID limit patch", -1),
-                                                                                 flaSettings.ReadInteger("ID LIMITS", "Count of killable model IDs", -1),
-                                                                                 flaSettings.ReadInteger("ADDONS", "Enable model special feature loader", -1));
+                                   "Enable model special feature loader = %d\n", flaIni.ReadInteger("VEHICLE SPECIAL FEATURES", "Enable special features", -1),
+                                                                                 flaIni.ReadInteger("ID LIMITS", "Apply ID limit patch", -1),
+                                                                                 flaMaxID,
+                                                                                 flaIni.ReadInteger("ADDONS", "Enable model special feature loader", -1));
                     }
                 }   
 #ifdef _DEBUG
@@ -276,6 +281,9 @@ void loadIniData(bool firstTime)
 
         PedVariations::LoadData();
     }
+
+    if (!enablePeds || !enableSpecialPeds)
+        maxPedID = -1;
 
     if (enablePedWeapons)
         PedWeaponVariations::LoadData();

@@ -2,6 +2,7 @@
 
 #include <CPed.h>
 
+extern int maxPedID;
 extern char currentZone[8];
 extern unsigned int currentTown;
 extern const char* currentInterior;

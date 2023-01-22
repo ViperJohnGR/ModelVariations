@@ -4,6 +4,7 @@
 #include <vector>
 
 extern std::vector<unsigned short> addedIDs;
+extern int maxPedID;
 
 enum modelTypeToRead
 {

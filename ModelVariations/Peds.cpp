@@ -473,6 +473,16 @@ void PedVariations::LogVariations()
 ///////////////////////////////////////////  CALL HOOKS    ////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
+int __cdecl getKillsByPlayer(int a1)
+{
+    int sum = 0;
+
+    for (auto i : destroyedModelCounters)
+        sum += i;
+
+    return sum;
+}
+
 template<std::uintptr_t address>
 int __fastcall SetModelIndexHooked(CEntity* _this, void*, int index)
 {
@@ -542,6 +552,14 @@ void PedVariations::InstallHooks(bool enableSpecialPeds, bool isFLA)
             notModified = false;
         }
 
+        if (gameHOODLUM)
+        {
+            if (memcmp((void*)0x43D6E0, "\xE9\x1B\xC2\x12\x01", 5) != 0)
+                notModified = false;
+        }
+        else if (memcmp((void*)0x43D6E0, "\x8B\x4C\x24\x04\x56", 5) != 0)
+            notModified = false;
+
         if (notModified)
         {
             injector::MakeInline<0x43DE6C, 0x43DE6C + 8>([](injector::reg_pack& regs)
@@ -574,6 +592,10 @@ void PedVariations::InstallHooks(bool enableSpecialPeds, bool isFLA)
                 injector::MakeInline<0x43D6A4, 0x43D6A4 + 7>(leaEAX);
                 injector::MakeInline<0x43D6CB, 0x43D6CB + 8>(movAX);
             }
+
+            injector::MakeJMP(0x43D6E0, getKillsByPlayer);
+
+            maxPedID = 20000;
         }
         else
             Log::Write("Count of killable model IDs not increased. %s\n", (isFLA ? "FLA is loaded." : "FLA is NOT loaded."));

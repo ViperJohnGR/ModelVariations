@@ -127,7 +127,7 @@ std::vector<unsigned short> DataReader::ReadLine(std::string_view section, std::
 				}
 			}
 			else if (parseType == READ_PEDS && !(token[0] >= '0' && token[0] <= '9') && CModelInfo::ms_modelInfoPtrs && *CModelInfo::ms_modelInfoPtrs)
-				for (uint16_t i = 1326; i < 20000; i++)
+				for (uint16_t i = 1326; i < maxPedID; i++)
 					if (CModelInfo::GetModelInfo(i) == NULL)
 					{
 						if (CStreaming::ms_pExtraObjectsDir->FindItem(token))

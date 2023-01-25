@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <iterator>
+#include <charconv>
 #include <type_traits>
 #include <vector>
 
@@ -36,6 +37,29 @@ inline void loadModels(int rangeMin, int rangeMax, int Streamingflags, bool load
 
     if (loadImmediately)
         CStreaming::LoadAllRequestedModels(false);
+}
+
+
+////////////
+// Memory //
+////////////
+
+inline bool memcmp(std::uintptr_t address, const char* value)
+{
+    while (*value)
+    {
+        if (*value == ' ')
+            value++;
+        uint8_t iValue = 0;
+
+        std::from_chars(value, value + 2, iValue, 16);
+        if (*reinterpret_cast<uint8_t*>(address) != iValue)
+            return false;
+        value += 2;
+        address++;
+    }
+
+    return true;
 }
 
 

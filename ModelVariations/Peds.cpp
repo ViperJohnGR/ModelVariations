@@ -473,7 +473,7 @@ void PedVariations::LogVariations()
 ///////////////////////////////////////////  CALL HOOKS    ////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
-int __cdecl getKillsByPlayer(int a1)
+int __cdecl getKillsByPlayer(int)
 {
     int sum = 0;
 
@@ -510,7 +510,7 @@ template <std::uintptr_t address>
 void __fastcall UpdateRpHAnimHooked(CEntity* entity)
 {
     callMethodOriginal<address>(entity);
-    //entity->UpdateRpHAnim();
+
     if (modelIndex > 0)
         entity->m_nModelIndex = modelIndex;
     modelIndex = 0;
@@ -544,20 +544,20 @@ void PedVariations::InstallHooks(bool enableSpecialPeds, bool isFLA)
         bool gameHOODLUM = plugin::GetGameVersion() != GAME_10US_COMPACT;
         bool notModified = true;
 
-        if (*(uint32_t*)0x43DE6C != 0x4504FF66 || *(uint32_t*)0x43DE70 != 0x00969A50 ||
-            *(uint32_t*)0x43DF5B != 0x4504FF66 || *(uint32_t*)0x43DF5F != 0x00969A50 ||
-            *(uint32_t*)(gameHOODLUM ? 0x1561634U : 0x43D6A4) != 0x5045048D || *(uint32_t*)(gameHOODLUM ? 0x1561638U : 0x43D6A8) != 0xB900969A ||
-            *(uint32_t*)(gameHOODLUM ? 0x1564C2BU : 0x43D6CB) != 0x55048B66 || *(uint32_t*)(gameHOODLUM ? 0x1564C2FU : 0x43D6CF) != 0x00969A50)
+        if (!memcmp(0x43DE6C, "66 FF 04 45 50 9A 96 00") ||
+            !memcmp(0x43DF5B, "66 FF 04 45 50 9A 96 00") ||
+            !memcmp((gameHOODLUM ? 0x1561634U : 0x43D6A4), "8D 04 45 50 9A 96 00") ||
+            !memcmp((gameHOODLUM ? 0x1564C2BU : 0x43D6CB), "66 8B 04 55 50 9A 96 00"))
         {
             notModified = false;
         }
 
         if (gameHOODLUM)
         {
-            if (memcmp((void*)0x43D6E0, "\xE9\x1B\xC2\x12\x01", 5) != 0)
+            if (!memcmp(0x43D6E0, "E9 1B C2 12 01"))
                 notModified = false;
         }
-        else if (memcmp((void*)0x43D6E0, "\x8B\x4C\x24\x04\x56", 5) != 0)
+        else if (!memcmp(0x43D6E0, "8B 4C 24 04 56"))
             notModified = false;
 
         if (notModified)

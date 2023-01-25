@@ -2318,42 +2318,35 @@ void __declspec(naked) movsxReg32WordPtrReg()
 
 void hookASM(std::uintptr_t address, std::string originalData, injector::memory_pointer_raw hookDest, std::string funcName)
 {
-    char* tkString = originalData.data();
-    int i = 0;
     int numBytes = (int)originalData.size()/3+1;
 
-    for (char* token = strtok(tkString, " "); token != NULL; token = strtok(NULL, " "))
+    if (!memcmp(address, originalData.data()))
     {
-        if (std::stoi(token, nullptr, 16) != *(reinterpret_cast<uint8_t*>(address) + i))
+        std::string moduleName;
+
+        std::stringstream ss;
+        const unsigned char* c = reinterpret_cast<unsigned char*>(address);
+
+        for (int j = 0; j < numBytes; j++)
+            ss << std::setfill('0') << std::setw(2) << std::uppercase << std::hex << static_cast<unsigned int>(c[j]) << " ";
+
+        std::string bytes = ss.str();
+        const auto dest = injector::GetBranchDestination(address);
+        if (dest != nullptr)
         {
-            std::string moduleName;
-
-            std::stringstream ss;
-            const unsigned char* c = reinterpret_cast<unsigned char*>(address);
-
-            for (int j = 0; j < numBytes; j++)
-                ss << std::setfill('0') << std::setw(2) << std::uppercase << std::hex << static_cast<unsigned int>(c[j]) << " ";
-
-            std::string bytes = ss.str();
-            const auto dest = injector::GetBranchDestination(address);
-            if (dest != nullptr)
-            {
-                for (auto it = modulesSet.begin(); it != modulesSet.end(); it++)
-                    if (it->first > dest.as_int())
-                        break;
-                    else
-                        moduleName = it->second;
-            }
-
-            if (funcName.find("::") != std::string::npos)
-                Log::LogModifiedAddress(address, "Modified method detected: %s - 0x%08X is %s %s\n", funcName.c_str(), address, bytes.c_str(), getFilenameFromPath(moduleName).c_str());
-            else
-                Log::LogModifiedAddress(address, "Modified function detected: %s - 0x%08X is %s %s\n", funcName.c_str(), address, bytes.c_str(), getFilenameFromPath(moduleName).c_str());
-           
-            return;
+            for (auto it = modulesSet.begin(); it != modulesSet.end(); it++)
+                if (it->first > dest.as_int())
+                    break;
+                else
+                    moduleName = it->second;
         }
 
-        i++;
+        if (funcName.find("::") != std::string::npos)
+            Log::LogModifiedAddress(address, "Modified method detected: %s - 0x%08X is %s %s\n", funcName.c_str(), address, bytes.c_str(), getFilenameFromPath(moduleName).c_str());
+        else
+            Log::LogModifiedAddress(address, "Modified function detected: %s - 0x%08X is %s %s\n", funcName.c_str(), address, bytes.c_str(), getFilenameFromPath(moduleName).c_str());
+           
+        return;
     }
 
     injector::MakeJMP(address, hookDest);
@@ -2653,7 +2646,7 @@ void VehicleVariations::InstallHooks()
         hookASM(0x6F2B7E, "66 81 7E 22 E4 01",                cmpWordPtrRegModel<REG_ESI, 0x6F2B84, 0x1E4>, "CBoat::CBoat");
 
 
-        if (*(uint32_t*)0x6DD218 == 0x0001CCBF && *(uint8_t*)0x6DD21C == 0)
+        if (memcmp(0x6DD218, "BF CC 01 00 00"))
             injector::MakeInline<0x6DD218>([](injector::reg_pack& regs)
             {
                 if (getVariationOriginalModel(reinterpret_cast<CEntity*>(regs.esi)->m_nModelIndex) == 460)
@@ -2665,7 +2658,7 @@ void VehicleVariations::InstallHooks()
                                                                                                                                               *(uint8_t*)0x6DD21A,
                                                                                                                                               *(uint8_t*)0x6DD21B,
                                                                                                                                               *(uint8_t*)0x6DD21C);
-        if (*(uint32_t*)0x6CD78B == 0x000208B8 && *(uint8_t*)0x6CD78F == 0)
+        if (memcmp(0x6CD78B, "B8 08 02 00 00"))
             injector::MakeInline<0x6CD78B>([](injector::reg_pack& regs)
             {
                 if (getVariationOriginalModel(CPlane::GenPlane_ModelIndex) == 520)
@@ -2716,7 +2709,7 @@ void VehicleVariations::InstallHooks()
         hookCall(0x6ABA60, RegisterCoronaHooked<0x6ABA60>, "CCoronas::RegisterCorona"); //CAutomobile::PreRender
         hookCall(0x6ABB35, RegisterCoronaHooked<0x6ABB35>, "CCoronas::RegisterCorona"); //CAutomobile::PreRender
         hookCall(0x6ABC69, RegisterCoronaHooked<0x6ABC69>, "CCoronas::RegisterCorona"); //CAutomobile::PreRender
-        if (*(uint32_t*)0x6ABA56 == 0x0000FF68 && *(uint8_t*)0x6ABA5A == 0)
+        if (memcmp(0x6ABA56, "68 FF 00 00 00"))
             injector::MakeJMP(0x6ABA56, patchCoronas);
         else
             Log::LogModifiedAddress(0x6ABA56, "Modified method detected : CAutomobile::PreRender - 0x6ABA56 is %02X %02X %02X %02X %02X\n", *(uint8_t*)0x6ABA56, 

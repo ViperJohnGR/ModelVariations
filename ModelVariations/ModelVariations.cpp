@@ -126,49 +126,37 @@ void detectExe()
     exeName = getFilenameFromPath(path);
 
     HANDLE hFile = CreateFile(path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-    if (hFile != INVALID_HANDLE_VALUE)
-    {
-        exeFilesize = GetFileSize(hFile, NULL);
-        CloseHandle(hFile);
-    }
-
-    if (GetFileAttributes(path) == INVALID_FILE_ATTRIBUTES && GetLastError() == ERROR_FILE_NOT_FOUND)
+    if (hFile == INVALID_HANDLE_VALUE)
         return;
+    
+    exeFilesize = GetFileSize(hFile, NULL);
 
-    if (exeHash.empty())
+    if (exeFilesize != INVALID_FILE_SIZE && exeHash.empty())
     {
-        hFile = CreateFile(path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+        DWORD lpNumberOfBytesRead = 0;
+        BCRYPT_ALG_HANDLE hProvider = NULL;
+        BCRYPT_HASH_HANDLE ctx = NULL;
+        auto filebuf = std::vector<BYTE>(exeFilesize + 1);
 
-        if (hFile != INVALID_HANDLE_VALUE)
-        {
-            const auto filesize = GetFileSize(hFile, NULL);
-            if (filesize != INVALID_FILE_SIZE)
-            {
-                DWORD lpNumberOfBytesRead = 0;
-                BCRYPT_ALG_HANDLE hProvider = NULL;
-                BCRYPT_HASH_HANDLE ctx = NULL;
-                auto filebuf = std::vector<BYTE>(filesize + 1);
+        if (ReadFile(hFile, filebuf.data(), exeFilesize, &lpNumberOfBytesRead, NULL))
+            if (BCryptOpenAlgorithmProvider(&hProvider, BCRYPT_SHA256_ALGORITHM, NULL, 0) == STATUS_SUCCESS)
+                if (BCryptCreateHash(hProvider, &ctx, NULL, 0, NULL, 0, 0) == STATUS_SUCCESS && ctx != NULL)
+                {
+                    auto hash = std::vector<BYTE>(32);
+                    std::stringstream stream;
+                    BCryptHashData(ctx, filebuf.data(), exeFilesize, 0);
+                    BCryptFinishHash(ctx, hash.data(), 32, 0);
+                    BCryptDestroyHash(ctx);
+                    BCryptCloseAlgorithmProvider(hProvider, 0);
 
-                if (ReadFile(hFile, filebuf.data(), filesize, &lpNumberOfBytesRead, NULL))
-                    if (BCryptOpenAlgorithmProvider(&hProvider, BCRYPT_SHA256_ALGORITHM, NULL, 0) == STATUS_SUCCESS)
-                        if (BCryptCreateHash(hProvider, &ctx, NULL, 0, NULL, 0, 0) == STATUS_SUCCESS && ctx != NULL)
-                        {
-                            auto hash = std::vector<BYTE>(32);
-                            std::stringstream stream;
-                            BCryptHashData(ctx, filebuf.data(), filesize, 0);
-                            BCryptFinishHash(ctx, hash.data(), 32, 0);
-                            BCryptDestroyHash(ctx);
-                            BCryptCloseAlgorithmProvider(hProvider, 0);
+                    for (auto& i : hash)
+                        stream << std::setfill('0') << std::setw(2) << std::hex << static_cast<int>(i);
 
-                            for (auto& i : hash)
-                                stream << std::setfill('0') << std::setw(2) << std::hex << static_cast<int>(i);
-
-                            exeHash = stream.str();
-                        }
-            }
-            CloseHandle(hFile);
-        }
+                    exeHash = stream.str();
+                }
     }
+
+    CloseHandle(hFile);
 }
 
 std::string getDatetime(bool printDate, bool printTime, bool printMs)

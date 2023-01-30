@@ -361,7 +361,6 @@ void __cdecl CGame__ShutdownHooked()
     callOriginal<address>();
 
     Log::Write("Shutdown ok.\n");
-    Log::Close();
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -379,7 +378,7 @@ public:
 
         if ((enableLog = iniSettings.ReadBoolean("Settings", "EnableLog", false)) == true)
         {
-            Log::Open("ModelVariations.log");
+            enableLog = Log::Open("ModelVariations.log");
 
             detectExe();
 
@@ -457,6 +456,11 @@ public:
                 Log::Write("0x%08X %s\n", i.first, i.second.c_str());
 
             Log::Write("\n");
+        };
+
+        Events::shutdownRwEvent += []
+        {
+            Log::Close();
         };
 
         Events::initScriptsEvent.after += []

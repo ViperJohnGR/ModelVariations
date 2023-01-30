@@ -3,39 +3,48 @@
 #include <cstdarg>
 #include <sstream>
 
-std::ofstream Log::logfile;
+HANDLE Log::logfile = INVALID_HANDLE_VALUE;
 std::set<std::uintptr_t> Log::modifiedAddresses;
 std::vector<char> Log::buffer;
 
-void Log::Open(std::string_view filename)
+bool Log::Open(std::string_view filename)
 {
-	if (logfile.is_open())
-		logfile.close();
+	FindClose(logfile);
+	
+	logfile = CreateFile(filename.data(), GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_WRITE_THROUGH, NULL);
+	if (logfile == INVALID_HANDLE_VALUE)
+		return false;
 
-	logfile.open(filename.data());
-
-	if (logfile.is_open() && buffer.empty())
+	if (buffer.empty())
 		buffer = std::vector<char>(MAX_LOG_WRITE_SIZE);
+
+	return true;
 }
 
-void Log::Close()
+bool Log::Close()
 {
-	if (logfile.is_open())
-		logfile.close();
+	return CloseHandle(logfile);
 }
 
-void Log::Write(const char* format, ...)
+bool Log::Write(const char* format, ...)
 {
 	va_list argptr;
 	va_start(argptr, format);
-	if (logfile.is_open())
-	{
-		vsnprintf(buffer.data(), MAX_LOG_WRITE_SIZE, format, argptr);
+	if (logfile == INVALID_HANDLE_VALUE)
+		return false;
 
-		logfile << buffer.data();
-		logfile.flush();
-	}
+	vsnprintf(buffer.data(), MAX_LOG_WRITE_SIZE-1, format, argptr);
+
+	DWORD bytesWritten = 0;
+	if (WriteFile(logfile, buffer.data(), strlen(buffer.data()), &bytesWritten, NULL) == 0)
+		return false;
+
+	if (strlen(buffer.data()) != bytesWritten)
+		return false;
+
 	va_end(argptr);
+
+	return true;
 }
 
 
@@ -50,19 +59,25 @@ std::string Log::FileToString(std::string_view filename)
 	return ss.str();
 }
 
-void Log::LogModifiedAddress(std::uintptr_t address, const char* format, ...)
+bool Log::LogModifiedAddress(std::uintptr_t address, const char* format, ...)
 {
-	if (logfile.is_open() && modifiedAddresses.find(address) == modifiedAddresses.end())
-	{
-		va_list argptr;
-		va_start(argptr, format);
+	if (logfile == INVALID_HANDLE_VALUE || modifiedAddresses.find(address) != modifiedAddresses.end())
+		return false;
 
-		vsnprintf(buffer.data(), MAX_LOG_WRITE_SIZE, format, argptr);
+	va_list argptr;
+	va_start(argptr, format);
 
-		logfile << buffer.data();
-		logfile.flush();
+	vsnprintf(buffer.data(), MAX_LOG_WRITE_SIZE-1, format, argptr);
 
-		va_end(argptr);
-		modifiedAddresses.insert(address);
-	}
+	DWORD bytesWritten = 0;
+	if (WriteFile(logfile, buffer.data(), strlen(buffer.data()), &bytesWritten, NULL) == 0)
+		return false;
+
+	if (strlen(buffer.data()) != bytesWritten)
+		return false;
+
+	va_end(argptr);
+	modifiedAddresses.insert(address);		
+
+	return true;
 }

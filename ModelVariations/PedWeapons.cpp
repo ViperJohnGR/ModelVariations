@@ -46,7 +46,7 @@ void PedWeaponVariations::LoadData()
 {
     dataFile.SetIniPath(dataFile.GetIniPath());
 
-    Log::Write("\nPed weapon sections detected:\n");
+    Log::Write("\nReading ped weapon data...\n");
 
     for (auto& iniData : dataFile.data)
     {

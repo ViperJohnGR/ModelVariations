@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <iomanip>
 #include <iterator>
 #include <charconv>
 #include <type_traits>
@@ -85,6 +86,17 @@ inline bool rand()
 /////////////
 // Strings //
 /////////////
+
+inline std::string bytesToString(std::uintptr_t address, int nBytes)
+{
+    std::stringstream ss;
+    const unsigned char* c = reinterpret_cast<unsigned char*>(address);
+
+    for (int i = 0; i < nBytes; i++, ss << " ")
+        ss << std::setfill('0') << std::uppercase << std::setw(2) << std::hex << static_cast<unsigned int>(c[i]);
+
+    return ss.str();
+}
 
 inline bool compareUpper(const char* a, const char* b)
 {

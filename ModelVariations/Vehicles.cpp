@@ -403,7 +403,7 @@ void VehicleVariations::LoadData(std::string gamePath)
                         vehOriginalModels.insert({ k, (unsigned short)modelid });           
         }
 
-    Log::Write("\nVehicle sections detected:\n");
+    Log::Write("\nReading vehicle data...\n");
 
     for (auto& inidata : dataFile.data)
     {
@@ -2653,11 +2653,9 @@ void VehicleVariations::InstallHooks()
                     regs.edi = reinterpret_cast<CEntity*>(regs.esi)->m_nModelIndex;
             });
         else 
-            Log::LogModifiedAddress(0x6DD218, "Modified method detected : CVehicle::DoBoatSplashes - 0x6DD218 is %02X %02X %02X %02X %02X\n", *(uint8_t*)0x6DD218,
-                                                                                                                                              *(uint8_t*)0x6DD219,
-                                                                                                                                              *(uint8_t*)0x6DD21A,
-                                                                                                                                              *(uint8_t*)0x6DD21B,
-                                                                                                                                              *(uint8_t*)0x6DD21C);
+            Log::LogModifiedAddress(0x6DD218, "Modified method detected : CVehicle::DoBoatSplashes - 0x6DD218 is %s\n", bytesToString(0x6DD218, 5).c_str());
+
+
         if (memcmp(0x6CD78B, "B8 08 02 00 00"))
             injector::MakeInline<0x6CD78B>([](injector::reg_pack& regs)
             {
@@ -2665,11 +2663,7 @@ void VehicleVariations::InstallHooks()
                     regs.eax = (uint32_t)CPlane::GenPlane_ModelIndex;
             });
         else
-            Log::LogModifiedAddress(0x6CD78B, "Modified method detected : CPlane::DoPlaneGenerationAndRemoval - 0x6CD78B is %02X %02X %02X %02X %02X\n", *(uint8_t*)0x6CD78B,
-                                                                                                                                                         *(uint8_t*)0x6CD78C,
-                                                                                                                                                         *(uint8_t*)0x6CD78D,
-                                                                                                                                                         *(uint8_t*)0x6CD78E,
-                                                                                                                                                         *(uint8_t*)0x6CD78F);
+            Log::LogModifiedAddress(0x6CD78B, "Modified method detected : CPlane::DoPlaneGenerationAndRemoval - 0x6CD78B is %s\n", bytesToString(0x6CD78B, 5).c_str());
 
 
         hookCall(0x871200, VehicleDamageHooked<0x871200>, "CAutomobile::VehicleDamage", true);
@@ -2704,7 +2698,7 @@ void VehicleVariations::InstallHooks()
     if (enableSiren)
         hookCall(0x6D8492, HasCarSiren<0x6D8492>, "HasCarSiren"); //CVehicle::UsesSiren
 
-    if (enableLights && enableSpecialFeatures && enableSiren)
+    if (enableLights && enableSiren)
     {
         hookCall(0x6ABA60, RegisterCoronaHooked<0x6ABA60>, "CCoronas::RegisterCorona"); //CAutomobile::PreRender
         hookCall(0x6ABB35, RegisterCoronaHooked<0x6ABB35>, "CCoronas::RegisterCorona"); //CAutomobile::PreRender
@@ -2712,11 +2706,7 @@ void VehicleVariations::InstallHooks()
         if (memcmp(0x6ABA56, "68 FF 00 00 00"))
             injector::MakeJMP(0x6ABA56, patchCoronas);
         else
-            Log::LogModifiedAddress(0x6ABA56, "Modified method detected : CAutomobile::PreRender - 0x6ABA56 is %02X %02X %02X %02X %02X\n", *(uint8_t*)0x6ABA56, 
-                                                                                                                                            *(uint8_t*)0x6ABA57, 
-                                                                                                                                            *(uint8_t*)0x6ABA58, 
-                                                                                                                                            *(uint8_t*)0x6ABA59, 
-                                                                                                                                            *(uint8_t*)0x6ABA5A);
+            Log::LogModifiedAddress(0x6ABA56, "Modified method detected : CAutomobile::PreRender - 0x6ABA56 is %s\n", bytesToString(0x6ABA56, 5).c_str());
 
         hookCall(0x6AB80F, AddLightHooked<0x6AB80F>, "CPointLights::AddLight"); //CAutomobile::PreRender
         hookCall(0x6ABBA6, AddLightHooked<0x6ABBA6>, "CPointLights::AddLight"); //CAutomobile::PreRender

@@ -6,6 +6,7 @@
 
 #include <plugin.h>
 #include <CModelInfo.h>
+#include <CPedModelInfo.h>
 #include <CPed.h>
 #include <CTheScripts.h>
 
@@ -156,7 +157,7 @@ void PedVariations::LoadData()
 {
     dataFile.SetIniPath(dataFile.GetIniPath());
 
-    Log::Write("\nPed sections detected:\n");
+    Log::Write("\nReading ped data...\n");
 
     for (auto& iniData : dataFile.data)
     {
@@ -599,6 +600,18 @@ void PedVariations::InstallHooks(bool enableSpecialPeds, bool isFLA)
         }
         else
             Log::Write("Count of killable model IDs not increased. %s\n", (isFLA ? "FLA is loaded." : "FLA is NOT loaded."));
+        
+        if (memcmp(0x613B43, "8B 0C 85 C8 B0 A9 00 8B 71 28"))
+        {
+            injector::MakeInline<0x613B43, 0x613B43 + 10>([](injector::reg_pack& regs) {
+                if (currentOccupantsModel > 0 && vectorHasId(addedIDs, (int)regs.eax))
+                    regs.esi = 4;
+                else
+                    regs.esi = ((CPedModelInfo*)CModelInfo::GetModelInfo((int)regs.eax))->m_nPedType;
+            });
+        }
+        else
+            Log::LogModifiedAddress(0x613B43, "Modified method detected : CPopulation::AddPedInCar - 0x613B43 is %s\n", bytesToString(0x613B43, 5).c_str());
     }
 
 

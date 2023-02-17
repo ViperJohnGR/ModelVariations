@@ -30,7 +30,7 @@
 #pragma comment (lib, "urlmon.lib")
 
 
-#define MOD_VERSION "8.6"
+#define MOD_VERSION "8.7"
 #ifdef _DEBUG
 #define MOD_NAME "ModelVariations_d.asi"
 #define DEBUG_STRING " DEBUG"
@@ -465,7 +465,7 @@ public:
 
         Events::initScriptsEvent.after += []
         {
-            Log::Write("-- initScriptsEvent --\n");
+            Log::Write("-- initScriptsEvent (%s) --\n", getDatetime(false, true, true).c_str());
 
             clearEverything();
 

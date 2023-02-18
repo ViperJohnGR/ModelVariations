@@ -28,12 +28,15 @@ bool Log::Close()
 
 bool Log::Write(const char* format, ...)
 {
-	va_list argptr;
-	va_start(argptr, format);
 	if (logfile == INVALID_HANDLE_VALUE)
 		return false;
 
+	va_list argptr;
+	va_start(argptr, format);
+
 	vsnprintf(buffer.data(), MAX_LOG_WRITE_SIZE-1, format, argptr);
+
+	va_end(argptr);
 
 	DWORD bytesWritten = 0;
 	if (WriteFile(logfile, buffer.data(), strlen(buffer.data()), &bytesWritten, NULL) == 0)
@@ -41,8 +44,6 @@ bool Log::Write(const char* format, ...)
 
 	if (strlen(buffer.data()) != bytesWritten)
 		return false;
-
-	va_end(argptr);
 
 	return true;
 }
@@ -69,6 +70,8 @@ bool Log::LogModifiedAddress(std::uintptr_t address, const char* format, ...)
 
 	vsnprintf(buffer.data(), MAX_LOG_WRITE_SIZE-1, format, argptr);
 
+	va_end(argptr);
+
 	DWORD bytesWritten = 0;
 	if (WriteFile(logfile, buffer.data(), strlen(buffer.data()), &bytesWritten, NULL) == 0)
 		return false;
@@ -76,7 +79,6 @@ bool Log::LogModifiedAddress(std::uintptr_t address, const char* format, ...)
 	if (strlen(buffer.data()) != bytesWritten)
 		return false;
 
-	va_end(argptr);
 	modifiedAddresses.insert(address);		
 
 	return true;

@@ -139,6 +139,7 @@ std::vector<unsigned short> DataReader::ReadLine(std::string_view section, std::
 								CStreaming::RequestSpecialModel(i, token, 0);
 								retVector.push_back(i);
 								addedIDs.push_back(i);
+								pedInfo->m_nPedType = 4;
 							}
 						}
 						break;					

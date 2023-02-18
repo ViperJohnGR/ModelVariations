@@ -1734,44 +1734,6 @@ void __fastcall CAutomobile__PreRenderHooked(CAutomobile* veh)
 }
 
 template <std::uintptr_t address>
-char __fastcall GetTowBarPosHooked(CAutomobile* automobile, void*, CVector* outPos, char ignoreModelType, CVehicle* attachTo)
-{
-    switch (getVariationOriginalModel(automobile->m_nModelIndex))
-    {
-        case 403: //Linerunner
-            return changeModelAndReturn<char, address>("CAutomobile::GetTowBarPos", 403, automobile->m_nModelIndex, { 0x6AF27A }, automobile, outPos, ignoreModelType, attachTo);
-        case 485: //Baggage
-            return changeModelAndReturn<char, address>("CAutomobile::GetTowBarPos", 485, automobile->m_nModelIndex, { 0x6AF29C }, automobile, outPos, ignoreModelType, attachTo);
-        case 514: //Tanker
-            return changeModelAndReturn<char, address>("CAutomobile::GetTowBarPos", 514, automobile->m_nModelIndex, { 0x6AF26E }, automobile, outPos, ignoreModelType, attachTo);
-        case 515: //Roadtrain
-            return changeModelAndReturn<char, address>("CAutomobile::GetTowBarPos", 515, automobile->m_nModelIndex, { 0x6AF274 }, automobile, outPos, ignoreModelType, attachTo);
-        case 525: //Towtruck
-            return changeModelAndReturn<char, address>("CAutomobile::GetTowBarPos", 525, automobile->m_nModelIndex, { 0x6AF259 }, automobile, outPos, ignoreModelType, attachTo);
-        case 531: //Tractor
-            return changeModelAndReturn<char, address>("CAutomobile::GetTowBarPos", 531, automobile->m_nModelIndex, { 0x6AF264, 0x6AF343 }, automobile, outPos, ignoreModelType, attachTo);
-        case 552: //Utility Van
-            return changeModelAndReturn<char, address>("CAutomobile::GetTowBarPos", 552, automobile->m_nModelIndex, { 0x6AF286 }, automobile, outPos, ignoreModelType, attachTo);
-        case 583: //Tug
-            return changeModelAndReturn<char, address>("CAutomobile::GetTowBarPos", 583, automobile->m_nModelIndex, { 0x6AF2A2 }, automobile, outPos, ignoreModelType, attachTo);
-        case 591: //Artic Trailer
-            return changeModelAndReturn<char, address>("CAutomobile::GetTowBarPos", 591, automobile->m_nModelIndex, { 0x6AF280 }, automobile, outPos, ignoreModelType, attachTo);
-        case 606: //Bag Box A
-            return changeModelAndReturn<char, address>("CAutomobile::GetTowBarPos", 606, automobile->m_nModelIndex, { 0x6AF2A8, 0x6AF2BC }, automobile, outPos, ignoreModelType, attachTo);
-        case 607: //Bag Box B
-            return changeModelAndReturn<char, address>("CAutomobile::GetTowBarPos", 607, automobile->m_nModelIndex, { 0x6AF2AE, 0x6AF2C2 }, automobile, outPos, ignoreModelType, attachTo);
-        case 608: //Stairs
-            return changeModelAndReturn<char, address>("CAutomobile::GetTowBarPos", 608, automobile->m_nModelIndex, { 0x6AF2C8 }, automobile, outPos, ignoreModelType, attachTo);
-        case 610: //Farm Trailer
-            return changeModelAndReturn<char, address>("CAutomobile::GetTowBarPos", 610, automobile->m_nModelIndex, { 0x6AF362 }, automobile, outPos, ignoreModelType, attachTo);
-        case 611: //Utility Trailer
-            return changeModelAndReturn<char, address>("CAutomobile::GetTowBarPos", 611, automobile->m_nModelIndex, { 0x6AF296 }, automobile, outPos, ignoreModelType, attachTo);
-    }        
-
-    return callMethodOriginalAndReturn<char, address>(automobile, outPos, ignoreModelType, attachTo);
-}
-
-template <std::uintptr_t address>
 char __fastcall SetTowLinkHooked(CAutomobile* automobile, void*, CVehicle* vehicle, char a3)
 {
     if (vehicle != NULL)
@@ -2449,7 +2411,7 @@ void VehicleVariations::InstallHooks()
         hookCall(0x6CED23, ProcessControlHooked<0x6CED23>, "CAutomobile::ProcessControl"); //CTrailer::ProcessControl
         hookCall(0x871164, CAutomobile__PreRenderHooked<0x871164>, "CAutomobile::PreRender", true);
         hookCall(0x6CFADC, CAutomobile__PreRenderHooked<0x6CFADC>, "CAutomobile::PreRender");
-        hookCall(0x871210, GetTowBarPosHooked<0x871210>, "CAutomobile::GetTowBarPos", true);
+        //hookCall(0x871210, GetTowBarPosHooked<0x871210>, "CAutomobile::GetTowBarPos", true);
         hookCall(0x871214, SetTowLinkHooked<0x871214>, "CAutomobile::SetTowLink", true);
         hookCall(0x871D14, GetTowHitchPosHooked<0x871D14>, "CTrailer::GetTowHitchPos", true);
 
@@ -2644,6 +2606,10 @@ void VehicleVariations::InstallHooks()
         hookASM(0x431A99, "66 81 7E 22 E4 01",                cmpWordPtrRegModel<REG_ESI, 0x431A9F, 0x1E4>, "CCarCtrl::GenerateOneRandomCar");
         hookASM(0x6F13A4, "66 81 7E 22 E4 01",                cmpWordPtrRegModel<REG_ESI, 0x6F13AA, 0x1E4>, "CBoat::PreRender");
         hookASM(0x6F2B7E, "66 81 7E 22 E4 01",                cmpWordPtrRegModel<REG_ESI, 0x6F2B84, 0x1E4>, "CBoat::CBoat");
+        hookASM(0x6D03ED, "66 8B 46 22 66 3D 5E 02",          movReg16WordPtrReg<REG_AX, REG_ESI, 0x6D03F5, 4, 0x025E3D66>, "CTrailer::CTrailer");
+        hookASM(0x6CFD6B, "66 8B 41 22 66 3D 5E 02",          movReg16WordPtrReg<REG_AX, REG_ECX, 0x6CFD73, 4, 0x025E3D66>, "CTrailer::GetTowBarPos");
+        hookASM(0x6AF250, "66 8B 41 22 83 EC 0C",             movReg16WordPtrReg<REG_AX, REG_ECX, 0x6AF257, 3, 0x900CEC83>, "CAutomobile::GetTowBarPos");
+        hookASM(0x6AF2B6, "66 8B 42 22 66 3D 5E 02",          movReg16WordPtrReg<REG_AX, REG_EDX, 0x6AF2BE, 4, 0x025E3D66>, "CAutomobile::GetTowBarPos");
 
 
         if (memcmp(0x6DD218, "BF CC 01 00 00"))

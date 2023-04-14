@@ -375,8 +375,9 @@ public:
 
         disableKey = (unsigned int)iniSettings.ReadInteger("Settings", "DisableKey", 0);
         reloadKey = (unsigned int)iniSettings.ReadInteger("Settings", "ReloadKey", 0);
+        enableLog = iniSettings.ReadBoolean("Settings", "EnableLog", false);
 
-        if ((enableLog = iniSettings.ReadBoolean("Settings", "EnableLog", false)) == true)
+        if (enableLog)
         {
             enableLog = Log::Open("ModelVariations.log");
 
@@ -414,6 +415,9 @@ public:
             else
                 Log::Write("Unsupported exe detected: %s %u bytes %s\n", exeName.c_str(), exeFilesize, exeHash.c_str());
             
+            SYSTEM_INFO si;
+            GetSystemInfo(&si);
+            Log::Write("lpMaximumApplicationAddress = 0x%X\n", si.lpMaximumApplicationAddress);
 
             if (GetFileAttributes(dataFileName) == INVALID_FILE_ATTRIBUTES && GetLastError() == ERROR_FILE_NOT_FOUND)
                 Log::Write("\n%s not found!\n\n", dataFileName);

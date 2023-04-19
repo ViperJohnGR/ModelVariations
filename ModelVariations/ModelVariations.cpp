@@ -216,13 +216,10 @@ void getLoadedModules()
                         if (maxPedID == 0)
                             maxPedID = flaMaxID;
 
-                        Log::Write("Enable special features = %d\n"
-                                   "Apply ID limit patch = %d\n"
-                                   "Count of killable model IDs = %d\n"
-                                   "Enable model special feature loader = %d\n", flaIni.ReadInteger("VEHICLE SPECIAL FEATURES", "Enable special features", -1),
-                                                                                 flaIni.ReadInteger("ID LIMITS", "Apply ID limit patch", -1),
-                                                                                 flaMaxID,
-                                                                                 flaIni.ReadInteger("ADDONS", "Enable model special feature loader", -1));
+                        Log::Write("Enable special features = %d\n", flaIni.ReadInteger("VEHICLE SPECIAL FEATURES", "Enable special features", -1));
+                        Log::Write("Apply ID limit patch = %d\n", flaIni.ReadInteger("ID LIMITS", "Apply ID limit patch", -1));
+                        Log::Write("Count of killable model IDs = %d\n", flaMaxID);
+                        Log::Write("Enable model special feature loader = %d\n", flaIni.ReadInteger("ADDONS", "Enable model special feature loader", -1));                                        
                     }
                 }   
 #ifdef _DEBUG
@@ -587,7 +584,10 @@ public:
                         if (compareUpper(moduleName.c_str(), MOD_NAME) == false && callChecks.find({ it.first , moduleName }) == callChecks.end())
                         {
                             callChecks.insert({ it.first, moduleName });
-                            Log::Write("Modified call found: %s 0x%08X 0x%08X %s 0x%08X\n", it.second.name.data(), it.first, functionAddress, moduleName.c_str(), moduleInfo.first);
+                            if (functionAddress > 0)
+                                Log::Write("Modified call found: %s 0x%08X 0x%08X %s 0x%08X\n", it.second.name.data(), it.first, functionAddress, moduleName.c_str(), moduleInfo.first);
+                            else
+                                Log::Write("Modified call found: %s 0x%08X\n", it.second.name.data(), it.first);
                         }
                     }
 

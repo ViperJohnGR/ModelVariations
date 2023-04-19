@@ -85,9 +85,9 @@ void PedWeaponVariations::Process()
         CPed* ped = pedWepStack.top();
         pedWepStack.pop();
 
-        if (!IsPedPointerValid(ped))
+        if (!IsPedPointerValid(ped) || FindPlayerPed() == ped)
             continue;
-        
+
         const auto changeWeapon = [ped](const std::string section, const std::string key, eWeaponType originalWeaponId = WEAPON_UNARMED) -> bool
         {
             std::vector<unsigned short> vec = dataFile.ReadLine(section, key, READ_WEAPONS);
@@ -130,14 +130,19 @@ void PedWeaponVariations::Process()
         for (int i = 0; i < 13; i++)
             originalWeapons[i] = ped->m_aWeapons[i].m_eWeaponType;
 
-        for (int k=0;k<2;k++)
+        const int originalSlot = ped->m_nActiveWeaponSlot;
+        bool wepChanged = false;
+
+        for (int k = 0; k < 2; k++)
             for (int j = 0; j < 4; j++)
             {
+                if (wepChanged)
+                    break;
+
                 std::string vehId;
                 std::string wantedStr;
-                bool wepChanged = false;
 
-                if (j == 1 || j == 3)
+                if (j < 2)
                 {
                     if (IsVehiclePointerValid(ped->m_pVehicle))
                     {
@@ -150,21 +155,21 @@ void PedWeaponVariations::Process()
                     else
                         continue;
                 }
-                if (j > 1)
+                if (j == 0 || j == 2)
                 {
                     CWanted* wanted = FindPlayerWanted(-1);
                     if (wanted && wanted->m_nWantedLevel > 0)
                         wantedStr = "WANTED" + std::to_string(wanted->m_nWantedLevel) + "_";
                     else
-                        break;
+                        continue;
                 }
 
                 bool changeZoneWeaponForce = true;
-                if ((wepChanged = changeWeapon((!k) ? "Global" : section, wantedStr + vehId + "WEAPONFORCE")) == true)
+                if ((wepChanged = changeWeapon((k) ? "Global" : section, wantedStr + vehId + "WEAPONFORCE")) == true)
                     changeZoneWeaponForce = rand<bool>();
 
                 if (changeZoneWeaponForce || !mergeWeapons)
-                    wepChanged |= changeWeapon((!k) ? "Global" : section, wantedStr + vehId + currentZone + "_WEAPONFORCE");
+                    wepChanged |= changeWeapon((k) ? "Global" : section, wantedStr + vehId + currentZone + "_WEAPONFORCE");
 
 
                 if (!wepChanged)
@@ -174,24 +179,24 @@ void PedWeaponVariations::Process()
                             const eWeaponType weaponId = originalWeapons[i];
                             bool changeZoneWeapon = true;
                             bool changeZoneSlot = true;
-                            const int currentSlot = ped->m_nActiveWeaponSlot;
+                            //const int currentSlot = ped->m_nActiveWeaponSlot;
 
-                            if ((wepChanged = changeWeapon((!k) ? "Global" : section, wantedStr + vehId + "SLOT" + std::to_string(i), ped->m_aWeapons[i].m_eWeaponType)) == true)
+                            if ((wepChanged = changeWeapon((k) ? "Global" : section, wantedStr + vehId + "SLOT" + std::to_string(i), ped->m_aWeapons[i].m_eWeaponType)) == true)
                                 changeZoneSlot = rand<bool>();
 
                             if (changeZoneSlot || mergeWeapons == 0)
-                                wepChanged |= changeWeapon((!k) ? "Global" : section, wantedStr + vehId + currentZone + "_SLOT" + std::to_string(i), ped->m_aWeapons[i].m_eWeaponType);
+                                wepChanged |= changeWeapon((k) ? "Global" : section, wantedStr + vehId + currentZone + "_SLOT" + std::to_string(i), ped->m_aWeapons[i].m_eWeaponType);
 
-                            if ((changeWeapon((!k) ? "Global" : section, wantedStr + vehId + "WEAPON" + std::to_string(weaponId), ped->m_aWeapons[i].m_eWeaponType) == true) ? (wepChanged = true) : false)
+                            if ((changeWeapon((k) ? "Global" : section, wantedStr + vehId + "WEAPON" + std::to_string(weaponId), ped->m_aWeapons[i].m_eWeaponType) == true) ? (wepChanged = true) : false)
                                 changeZoneWeapon = rand<bool>();
 
                             if (changeZoneWeapon || mergeWeapons == 0)
-                                wepChanged |= changeWeapon((!k) ? "Global" : section, wantedStr + vehId + currentZone + "_WEAPON" + std::to_string(weaponId), ped->m_aWeapons[i].m_eWeaponType);
+                                wepChanged |= changeWeapon((k) ? "Global" : section, wantedStr + vehId + currentZone + "_WEAPON" + std::to_string(weaponId), ped->m_aWeapons[i].m_eWeaponType);
 
                             if (wepChanged)
-                                ped->SetCurrentWeapon(currentSlot);
+                                ped->SetCurrentWeapon(originalSlot);
                         }
-            }        
+            }
     }
 }
 
@@ -205,6 +210,6 @@ void PedWeaponVariations::LogDataFile()
         Log::Write("\n%s not found!\n\n", dataFileName);
     else
         Log::Write("####################################\n"
-                   "## ModelVariations_PedWeapons.ini ##\n"
-                   "####################################\n%s\n", Log::FileToString(dataFileName).c_str());
+            "## ModelVariations_PedWeapons.ini ##\n"
+            "####################################\n%s\n", Log::FileToString(dataFileName).c_str());
 }

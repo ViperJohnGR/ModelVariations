@@ -77,7 +77,7 @@ std::vector<unsigned short> DataReader::ReadLine(std::string_view section, std::
 			if (token[0] >= '0' && token[0] <= '9')
 				weaponType = atoi(token);
 
-			if (CWeaponInfo::GetWeaponInfo((eWeaponType)weaponType, 1) != NULL)
+			if (weaponType > -1 && weaponType < 1000 && CWeaponInfo::GetWeaponInfo((eWeaponType)weaponType, 1) != NULL)
 				retVector.push_back((unsigned short)weaponType);
 		}
 		else if (parseType == READ_GROUPS)

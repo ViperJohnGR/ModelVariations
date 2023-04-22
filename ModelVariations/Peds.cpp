@@ -155,7 +155,7 @@ void PedVariations::ClearData()
 
 void PedVariations::LoadData()
 {
-    dataFile.SetIniPath(dataFile.GetIniPath());
+    dataFile.SetIniPath(dataFileName);
 
     Log::Write("\nReading ped data...\n");
 

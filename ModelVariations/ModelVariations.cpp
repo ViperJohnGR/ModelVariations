@@ -81,8 +81,11 @@ bool enablePeds = false;
 bool enableSpecialPeds = false;
 bool enableVehicles = false;
 bool enablePedWeapons = false;
+int loadStage = 1;
 unsigned int disableKey = 0;
 unsigned int reloadKey = 0;
+
+bool modInitialized = false;
 
 
 bool checkForUpdate()
@@ -206,7 +209,7 @@ void getLoadedModules()
                 {
                     loadedMods.fastman92LimitAdjuster = true;
 
-                    if (CModelInfo::ms_modelInfoPtrs && *CModelInfo::ms_modelInfoPtrs == NULL)
+                    if (!modInitialized)
                     {
                         std::string flaIniPath = szModName;
                         flaIniPath = flaIniPath.substr(0, flaIniPath.find_last_of("\\/")) + "\\" + "fastman92limitAdjuster_GTASA.ini";
@@ -232,7 +235,7 @@ void getLoadedModules()
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////   DATA   /////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void clearEverything()
@@ -244,7 +247,7 @@ void clearEverything()
     VehicleVariations::ClearData();
 }
 
-void loadIniData(bool firstTime)
+void loadIniData()
 {
     iniSettings.SetIniPath(iniSettings.GetIniPath());
 
@@ -254,13 +257,13 @@ void loadIniData(bool firstTime)
 
     if (enablePeds)
     {
-        if (firstTime)
+        if (!modInitialized)
             enableSpecialPeds = iniSettings.ReadBoolean("Settings", "EnableSpecialPeds", false);
 
         if (enableSpecialPeds && !loadedMods.fastman92LimitAdjuster && !loadedMods.openLimitAdjuster)
         {
             enableSpecialPeds = false;
-            if (firstTime)
+            if (!modInitialized)
                 MessageBox(NULL, "No limit adjuster found! EnableSpecialPeds will be disabled.", "Model Variations", MB_ICONWARNING);
         }
 
@@ -364,12 +367,45 @@ void __cdecl CGame__ShutdownHooked()
 ///////////////////////////////////////////////  MAIN   ///////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
+void initialize()
+{
+    getLoadedModules();
+
+    loadIniData();
+
+    if (enablePeds)
+    {
+        Log::Write("Installing ped hooks...\n");
+        PedVariations::InstallHooks(enableSpecialPeds, loadedMods.fastman92LimitAdjuster);
+        Log::Write("Ped hooks installed.\n");
+    }
+
+    if (enableVehicles)
+    {
+        Log::Write("Installing vehicle hooks...\n");
+        VehicleVariations::InstallHooks();
+        Log::Write("Vehicle hooks installed.\n");
+    }
+
+    hookCall(0x748E6B, CGame__ShutdownHooked<0x748E6B>, "CGame::Shutdown");
+
+    Log::Write("\nLoaded modules:\n");
+
+    for (const auto& i : modulesSet)
+        Log::Write("0x%08X %s\n", i.first, i.second.c_str());
+
+    Log::Write("\n");
+
+    modInitialized = true;
+}
+
 class ModelVariations {
 public:
     ModelVariations() {
 
-        iniSettings.SetIniPath(iniSettings.GetIniPath());
+        iniSettings.SetIniPath(dataFileName);
 
+        loadStage = iniSettings.ReadInteger("Settings", "LoadStage", 1);
         disableKey = (unsigned int)iniSettings.ReadInteger("Settings", "DisableKey", 0);
         reloadKey = (unsigned int)iniSettings.ReadInteger("Settings", "ReloadKey", 0);
         enableLog = iniSettings.ReadBoolean("Settings", "EnableLog", false);
@@ -429,34 +465,13 @@ public:
             Log::Write("\n");
         }
 
+        if (loadStage == 0)
+            initialize();
+
         Events::initRwEvent += []
         {
-            getLoadedModules();
-
-            loadIniData(true);
-
-            if (enablePeds)
-            {
-                Log::Write("Installing ped hooks...\n");
-                PedVariations::InstallHooks(enableSpecialPeds, loadedMods.fastman92LimitAdjuster);
-                Log::Write("Ped hooks installed.\n");
-            }
-
-            if (enableVehicles)
-            {
-                Log::Write("Installing vehicle hooks...\n");
-                VehicleVariations::InstallHooks();
-                Log::Write("Vehicle hooks installed.\n");
-            }
-
-            hookCall(0x748E6B, CGame__ShutdownHooked<0x748E6B>, "CGame::Shutdown");
-
-            Log::Write("\nLoaded modules:\n");
-
-            for (const auto& i : modulesSet)
-                Log::Write("0x%08X %s\n", i.first, i.second.c_str());
-
-            Log::Write("\n");
+            if (loadStage == 1)
+                initialize();
         };
 
         Events::shutdownRwEvent += []
@@ -466,11 +481,14 @@ public:
 
         Events::initScriptsEvent.after += []
         {
+            if (!modInitialized && loadStage == 2)
+                initialize();
+
             Log::Write("-- initScriptsEvent (%s) --\n", getDatetime(false, true, true).c_str());
 
             clearEverything();
 
-            loadIniData(false);
+            loadIniData();
 
             if (enablePeds)
                 PedVariations::LogVariations();
@@ -550,7 +568,7 @@ public:
                     keyDown = true;
                     Log::Write("Reloading settings...\n");
                     clearEverything();
-                    loadIniData(false);
+                    loadIniData();
                     updateVariations();
                     logVariationChange("Settings reloaded.");
                     printMessage("~y~Model Variations~s~: Settings reloaded.", 2000);

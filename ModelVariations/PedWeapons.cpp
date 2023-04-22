@@ -44,7 +44,7 @@ void PedWeaponVariations::ClearData()
 
 void PedWeaponVariations::LoadData()
 {
-    dataFile.SetIniPath(dataFile.GetIniPath());
+    dataFile.SetIniPath(dataFileName);
 
     Log::Write("\nReading ped weapon data...\n");
 
@@ -210,6 +210,6 @@ void PedWeaponVariations::LogDataFile()
         Log::Write("\n%s not found!\n\n", dataFileName);
     else
         Log::Write("####################################\n"
-            "## ModelVariations_PedWeapons.ini ##\n"
-            "####################################\n%s\n", Log::FileToString(dataFileName).c_str());
+                   "## ModelVariations_PedWeapons.ini ##\n"
+                   "####################################\n%s\n", Log::FileToString(dataFileName).c_str());
 }

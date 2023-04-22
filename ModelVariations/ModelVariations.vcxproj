@@ -106,10 +106,10 @@
   <ItemGroup>
     <ClCompile Include="DataReader.cpp" />
     <ClCompile Include="Log.cpp" />
-    <ClCompile Include="ModelVariations.cpp" />
     <ClCompile Include="Peds.cpp" />
     <ClCompile Include="PedWeapons.cpp" />
     <ClCompile Include="Vehicles.cpp" />
+	<ClCompile Include="ModelVariations.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="DataReader.hpp" />

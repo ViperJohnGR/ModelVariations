@@ -351,7 +351,7 @@ void VehicleVariations::ClearData()
 
 void VehicleVariations::LoadData(std::string gamePath)
 {
-    dataFile.SetIniPath(dataFile.GetIniPath());
+    dataFile.SetIniPath(dataFileName);
 
     changeCarGenerators   = dataFile.ReadBoolean("Settings", "ChangeCarGenerators", false);
     changeScriptedCars    = dataFile.ReadBoolean("Settings", "ChangeScriptedCars", false);

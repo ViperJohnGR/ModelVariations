@@ -81,6 +81,7 @@ bool enablePeds = false;
 bool enableSpecialPeds = false;
 bool enableVehicles = false;
 bool enablePedWeapons = false;
+bool forceEnable = false;
 int loadStage = 1;
 unsigned int disableKey = 0;
 unsigned int reloadKey = 0;
@@ -405,6 +406,7 @@ public:
 
         iniSettings.SetIniPath(dataFileName);
 
+        forceEnable = iniSettings.ReadBoolean("Settings", "ForceEnable", false);
         loadStage = iniSettings.ReadInteger("Settings", "LoadStage", 1);
         disableKey = (unsigned int)iniSettings.ReadInteger("Settings", "DisableKey", 0);
         reloadKey = (unsigned int)iniSettings.ReadInteger("Settings", "ReloadKey", 0);
@@ -483,6 +485,8 @@ public:
         {
             if (!modInitialized && loadStage == 2)
                 initialize();
+
+            assert(modInitialized);
 
             Log::Write("-- initScriptsEvent (%s) --\n", getDatetime(false, true, true).c_str());
 

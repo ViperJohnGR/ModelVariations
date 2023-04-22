@@ -5,6 +5,7 @@
 #include <set>
 #include <string>
 
+extern bool forceEnable;
 extern char currentZone[8];
 extern unsigned int currentTown;
 extern std::set<std::pair<std::uintptr_t, std::string>> modulesSet;

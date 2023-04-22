@@ -139,57 +139,26 @@ int getTuningPartSlot(int model)
 
         if ((flags & 0x100) != 0)
         {
-            switch (v87)
-            {
-                case 1:
-                    return 11;
-                case 2:
-                    return 12;
-                case 12:
-                    return 14;
-                case 13:
-                    return 15;
-                case 19:
-                    return 13;
-                case 20:
-                case 21:
-                case 22:
-                    return 16;
-                default:
-                    return -1;
-            }
+            if (v87 == 1) return 11;
+            else if (v87 == 2) return 12;
+            else if (v87 == 12) return 14;
+            else if (v87 == 13) return 15;
+            else if (v87 == 19) return 13;
+            else if (v87 == 20 || v87 == 21 || v87 == 22) return 16;
         }
         else
         {
-            switch (v87)
-            {
-                case 0:
-                    return 0;
-                case 1:
-                case 2:
-                    return 1;
-                case 6:
-                    return 2;
-                case 8:
-                case 9:
-                    return 3;
-                case 10:
-                    return 4;
-                case 11:
-                    return 5;
-                case 12:
-                    return 6;
-                case 14:
-                    return 7;
-                case 15:
-                    return 8;
-                case 16:
-                    return 9;
-                case 17:
-                    return 10;
-                default:
-                    return -1;
-            }
+            if (v87 == 0) return 0;
+            else if (v87 == 1 || v87 == 2) return 1;
+            else if (v87 == 6) return 2;
+            else if (v87 == 8 || v87 == 9) return 3;
+            else if (v87 == 10) return 4;
+            else if (v87 == 11) return 5;
+            else if (v87 == 12) return 6;
+            else if (v87 == 14) return 7;
+            else if (v87 == 15) return 8;
+            else if (v87 == 16) return 9;
+            else if (v87 == 17) return 10;
         }
     }
 
@@ -758,7 +727,7 @@ void changeModel(const char* funcName, unsigned short oldModel, int newModel, st
     }
 
     for (auto& i : addresses)
-        if (*((uint16_t*)i) != oldModel)
+        if (*((uint16_t*)i) != oldModel && forceEnable == false)
         {
             Log::LogModifiedAddress(i, "Modified method detected : %s - 0x%08X is %u\n", funcName, i, *(uint16_t*)i);
             return callMethodOriginal<address>(args...);
@@ -780,7 +749,7 @@ T changeModelAndReturn(const char* funcName, unsigned short oldModel, int newMod
     }
 
     for (auto& i : addresses)
-        if (*((uint16_t*)i) != oldModel)
+        if (*((uint16_t*)i) != oldModel && forceEnable == false)
         {
             Log::LogModifiedAddress(i, "Modified method detected : %s - 0x%08X is %u\n", funcName, i, *(uint16_t*)i);
             return callMethodOriginalAndReturn<T, address>(args...);
@@ -925,7 +894,7 @@ signed int __fastcall PickRandomCarHooked(CLoadedCarGroup* cargrp, void*, char a
 
     if (originalModel == 531) //Tractor
     {
-        if (*(uint16_t*)0x6F3B9A == 531)
+        if (*(uint16_t*)0x6F3B9A == 531 || forceEnable)
         {
             *(uint16_t*)0x6F3B9A = (uint16_t)variation;
             carGenModel = 531;
@@ -935,7 +904,7 @@ signed int __fastcall PickRandomCarHooked(CLoadedCarGroup* cargrp, void*, char a
     }
     else if (originalModel == 532) //Combine Harvester
     {
-        if (*(uint16_t*)0x6F3BA0 == 532)
+        if (*(uint16_t*)0x6F3BA0 == 532 || forceEnable)
         {
             *(uint16_t*)0x6F3BA0 = (uint16_t)variation;
             carGenModel = 532;
@@ -976,7 +945,7 @@ void __fastcall DoInternalProcessingHooked(CCarGenerator* park) //for non-random
             
             if (model == 531) //Tractor
             {
-                if (*(uint16_t*)0x6F3B9A == 531)
+                if (*(uint16_t*)0x6F3B9A == 531 || forceEnable)
                 {
                     park->m_nModelId = (short)getRandomVariation(park->m_nModelId, true);
                     *(uint16_t*)0x6F3B9A = (uint16_t)park->m_nModelId;
@@ -994,7 +963,7 @@ void __fastcall DoInternalProcessingHooked(CCarGenerator* park) //for non-random
             }
             else if (model == 532) //Combine Harvester
             {
-                if (*(uint16_t*)0x6F3BA0 == 532)
+                if (*(uint16_t*)0x6F3BA0 == 532 || forceEnable)
                 {
                     park->m_nModelId = (short)getRandomVariation(park->m_nModelId, true);
                     *(uint16_t*)0x6F3BA0 = (uint16_t)park->m_nModelId;
@@ -1484,7 +1453,7 @@ void __cdecl PossiblyRemoveVehicleHooked(CVehicle* car)
         return;
     }
 
-    if (*((uint16_t*)0x4250AC) == 416)
+    if (*((uint16_t*)0x4250AC) == 416 || forceEnable)
     {
         *((uint16_t*)0x4250AC) = car->m_nModelIndex;
         callOriginal<address>(car);
@@ -1862,7 +1831,7 @@ int __cdecl GetMaximumNumberOfPassengersFromNumberOfDoorsHooked(__int16 modelInd
 {
     auto changeModelAtAddress = [&](std::uintptr_t modelAddress, short oldModel)
     {
-        if (*(short*)modelAddress == oldModel)
+        if (*(short*)modelAddress == oldModel || forceEnable)
         {
             *(short*)modelAddress = modelIndex;
             const signed int retValue = callOriginalAndReturn<int, address>(modelIndex);
@@ -2261,7 +2230,7 @@ void hookASM(std::uintptr_t address, std::string originalData, injector::memory_
 {
     int numBytes = (int)originalData.size()/3+1;
 
-    if (!memcmp(address, originalData.data()))
+    if (!memcmp(address, originalData.data()) && forceEnable == false)
     {
         std::string moduleName;
 
@@ -2590,7 +2559,7 @@ void VehicleVariations::InstallHooks()
         hookASM(0x6AF2B6, "66 8B 42 22 66 3D 5E 02",          movReg16WordPtrReg<REG_AX, REG_EDX, 0x6AF2BE, 4, 0x025E3D66>, "CAutomobile::GetTowBarPos");
 
 
-        if (memcmp(0x6DD218, "BF CC 01 00 00"))
+        if (memcmp(0x6DD218, "BF CC 01 00 00") || forceEnable)
             injector::MakeInline<0x6DD218>([](injector::reg_pack& regs)
             {
                 if (getVariationOriginalModel(reinterpret_cast<CEntity*>(regs.esi)->m_nModelIndex) == 460)
@@ -2600,7 +2569,7 @@ void VehicleVariations::InstallHooks()
             Log::LogModifiedAddress(0x6DD218, "Modified method detected : CVehicle::DoBoatSplashes - 0x6DD218 is %s\n", bytesToString(0x6DD218, 5).c_str());
 
 
-        if (memcmp(0x6CD78B, "B8 08 02 00 00"))
+        if (memcmp(0x6CD78B, "B8 08 02 00 00") || forceEnable)
             injector::MakeInline<0x6CD78B>([](injector::reg_pack& regs)
             {
                 if (getVariationOriginalModel(CPlane::GenPlane_ModelIndex) == 520)
@@ -2647,7 +2616,7 @@ void VehicleVariations::InstallHooks()
         hookCall(0x6ABA60, RegisterCoronaHooked<0x6ABA60>, "CCoronas::RegisterCorona"); //CAutomobile::PreRender
         hookCall(0x6ABB35, RegisterCoronaHooked<0x6ABB35>, "CCoronas::RegisterCorona"); //CAutomobile::PreRender
         hookCall(0x6ABC69, RegisterCoronaHooked<0x6ABC69>, "CCoronas::RegisterCorona"); //CAutomobile::PreRender
-        if (memcmp(0x6ABA56, "68 FF 00 00 00"))
+        if (memcmp(0x6ABA56, "68 FF 00 00 00") || forceEnable)
             injector::MakeJMP(0x6ABA56, patchCoronas);
         else
             Log::LogModifiedAddress(0x6ABA56, "Modified method detected : CAutomobile::PreRender - 0x6ABA56 is %s\n", bytesToString(0x6ABA56, 5).c_str());

@@ -14,6 +14,7 @@
 #include <CModelInfo.h>
 #include <CPopulation.h>
 #include <CTheScripts.h>
+#include <CTheZones.h>
 #include <CTrain.h>
 #include <CTrailer.h>
 #include <CVector.h>
@@ -365,28 +366,7 @@ void VehicleVariations::LoadData(std::string gamePath)
     vehCarGenExclude      = dataFile.ReadLine("Settings", "ExcludeCarGeneratorModels", READ_VEHICLES);
     vehInheritExclude     = dataFile.ReadLine("Settings", "ExcludeModelsFromInheritance", READ_VEHICLES);
 
-    std::string line;
-    std::vector<std::string> result;
-    std::ifstream zoneFile(gamePath + "\\data\\info.zon");     
-
-    while (std::getline(zoneFile, line))
-    {
-        std::stringstream ss(line);
-        if (ss.good())
-        {
-            std::string substr;
-            std::getline(ss, substr, ','); // Grab first names till first comma
-            if (substr != "zone" && substr != "end")
-            {
-                std::for_each(substr.begin(), substr.end(), [](char& c) {
-                    c = (char)::toupper(c);
-                });
-                result.push_back(substr);
-            }
-        }
-    }
-
-    for (auto& i : result) //for every zone name
+    for (int i = 0; i < CTheZones::TotalNumberOfInfoZones; i++) //for every zone name
         for (auto& j : dataFile.data)
         {
             std::string section = j.first;
@@ -398,9 +378,13 @@ void VehicleVariations::LoadData(std::string gamePath)
                 CModelInfo::GetModelInfo(section.data(), &modelid);
 
             if (modelid > 0)
-                for (auto& k : dataFile.ReadLine(j.first, i, READ_VEHICLES)) //for every variation 'k' of veh id 'j' in zone 'i'
+            {
+                char zoneLabel[9] = {};
+                memcpy(&zoneLabel[0], *(char**)(0x572BB6 + 1) + i * 0x20, 8);
+                for (auto& k : dataFile.ReadLine(j.first, zoneLabel, READ_VEHICLES)) //for every variation 'k' of veh id 'j' in zone 'i'
                     if (modelid != k && !(vectorHasId(vehInheritExclude, k)))
-                        vehOriginalModels.insert({ k, (unsigned short)modelid });           
+                        vehOriginalModels.insert({ k, (unsigned short)modelid });
+            }
         }
 
     Log::Write("\nReading vehicle data...\n");
@@ -595,11 +579,6 @@ void VehicleVariations::LoadData(std::string gamePath)
     }
 
     Log::Write("\n");
-
-    if (zoneFile.is_open())
-        Log::Write("Zone file 'info.zon' found.\n");
-    else
-        Log::Write("Zone file 'info.zon' NOT found!\n");
 }
 
 void VehicleVariations::Process()

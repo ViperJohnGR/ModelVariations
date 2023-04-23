@@ -1640,6 +1640,8 @@ void __fastcall CAutomobile__PreRenderHooked(CAutomobile* veh)
 
     if (getVariationOriginalModel(veh->m_nModelIndex) == 407) //Firetruck
         changeModel<address>("CAutomobile::PreRender", 407, veh->m_nModelIndex, { 0x6ACA59 }, veh);
+    else if (getVariationOriginalModel(veh->m_nModelIndex) == 424) //BF Injection
+        changeModel<address>("CAutomobile::PreRender", 424, veh->m_nModelIndex, { 0x6AC2A1 }, veh);
     else if (getVariationOriginalModel(veh->m_nModelIndex) == 432) //Rhino
         changeModel<address>("CAutomobile::PreRender", 432, veh->m_nModelIndex, { 0x6ABC83,
                                                                                   0x6ABD11,
@@ -1654,6 +1656,8 @@ void __fastcall CAutomobile__PreRenderHooked(CAutomobile* veh)
         changeModel<address>("CAutomobile::PreRender", 477, veh->m_nModelIndex, { 0x6ACA8F }, veh);
     else if (getVariationOriginalModel(veh->m_nModelIndex) == 486) //Dozer
         changeModel<address>("CAutomobile::PreRender", 486, veh->m_nModelIndex, { 0x6AC40E }, veh);
+    else if (getVariationOriginalModel(veh->m_nModelIndex) == 495) //Sandking
+        changeModel<address>("CAutomobile::PreRender", 495, veh->m_nModelIndex, { (GetGameVersion() != GAME_10US_COMPACT) ? 0x4064A0U : 0x6ACBCBU }, veh);
     else if (getVariationOriginalModel(veh->m_nModelIndex) == 524) //Cement Truck
         changeModel<address>("CAutomobile::PreRender", 524, veh->m_nModelIndex, { 0x6AC43D }, veh);
     else if (getVariationOriginalModel(veh->m_nModelIndex) == 525) //Towtruck
@@ -2557,6 +2561,8 @@ void VehicleVariations::InstallHooks()
         hookASM(0x6CFD6B, "66 8B 41 22 66 3D 5E 02",          movReg16WordPtrReg<REG_AX, REG_ECX, 0x6CFD73, 4, 0x025E3D66>, "CTrailer::GetTowBarPos");
         hookASM(0x6AF250, "66 8B 41 22 83 EC 0C",             movReg16WordPtrReg<REG_AX, REG_ECX, 0x6AF257, 3, 0x900CEC83>, "CAutomobile::GetTowBarPos");
         hookASM(0x6AF2B6, "66 8B 42 22 66 3D 5E 02",          movReg16WordPtrReg<REG_AX, REG_EDX, 0x6AF2BE, 4, 0x025E3D66>, "CAutomobile::GetTowBarPos");
+        hookASM(0x6A845E, "66 81 7E 22 A8 01",                cmpWordPtrRegModel<REG_ESI, 0x6A8464, 0x1A8>, "CAutomobile::VehicleDamage");
+        hookASM(0x6B539C, "66 8B 46 22 66 3D B9 01",          movReg16WordPtrReg<REG_AX, REG_ESI, 0x6B53A4, 4, 0x01B93D66>, "CAutomobile::ProcessAI");
 
 
         if (memcmp(0x6DD218, "BF CC 01 00 00") || forceEnable)

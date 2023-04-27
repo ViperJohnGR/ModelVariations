@@ -1670,6 +1670,8 @@ void __fastcall CAutomobile__PreRenderHooked(CAutomobile* veh)
         changeModel<address>("CAutomobile::PreRender", 532, veh->m_nModelIndex, { 0x6ABCA3, 0x6AC7AD }, veh);
     else if (getVariationOriginalModel(veh->m_nModelIndex) == 539) //Vortex
         changeModel<address>("CAutomobile::PreRender", 539, veh->m_nModelIndex, { 0x6AAE27 }, veh);
+    else if (getVariationOriginalModel(veh->m_nModelIndex) == 568) //Bandito
+        changeModel<address>("CAutomobile::PreRender", 568, veh->m_nModelIndex, { 0x6ACA39 }, veh);
     else if (getVariationOriginalModel(veh->m_nModelIndex) == 601) //SWAT Tank
         changeModel<address>("CAutomobile::PreRender", 601, veh->m_nModelIndex, { 0x6ACA53 }, veh); 
     else
@@ -1740,7 +1742,7 @@ void __fastcall UpdateTractorLinkHooked(CVehicle* veh, void*, bool a3, bool a4)
 template <std::uintptr_t address>
 char __fastcall SetUpWheelColModelHooked(CAutomobile* automobile, void*, CColModel* colModel)
 {
-    if (automobile && (getVariationOriginalModel(automobile->m_nModelIndex) == 531 || getVariationOriginalModel(automobile->m_nModelIndex) == 532))
+    if (automobile && (getVariationOriginalModel(automobile->m_nModelIndex) == 531 || getVariationOriginalModel(automobile->m_nModelIndex) == 532 || getVariationOriginalModel(automobile->m_nModelIndex) == 571))
         return 0;
 
     return callMethodOriginalAndReturn<char, address>(automobile, colModel);
@@ -1760,6 +1762,8 @@ void __fastcall SetupSuspensionLinesHooked(CAutomobile* veh)
 {
     if (getVariationOriginalModel(veh->m_nModelIndex) == 432) //Rhino
         return changeModel<address>("CAutomobile::SetupSuspensionLines", 432, veh->m_nModelIndex, { 0x6A6606, 0x6A6999 }, veh);
+    if (getVariationOriginalModel(veh->m_nModelIndex) == 571) //Kart
+        return changeModel<address>("CAutomobile::SetupSuspensionLines", 571, veh->m_nModelIndex, { 0x6A6907 }, veh);
 
     callMethodOriginal<address>(veh);
 }
@@ -2563,6 +2567,7 @@ void VehicleVariations::InstallHooks()
         hookASM(0x6AF2B6, "66 8B 42 22 66 3D 5E 02",          movReg16WordPtrReg<REG_AX, REG_EDX, 0x6AF2BE, 4, 0x025E3D66>, "CAutomobile::GetTowBarPos");
         hookASM(0x6A845E, "66 81 7E 22 A8 01",                cmpWordPtrRegModel<REG_ESI, 0x6A8464, 0x1A8>, "CAutomobile::VehicleDamage");
         hookASM(0x6B539C, "66 8B 46 22 66 3D B9 01",          movReg16WordPtrReg<REG_AX, REG_ESI, 0x6B53A4, 4, 0x01B93D66>, "CAutomobile::ProcessAI");
+        hookASM(0x6A6128, "66 81 FE 3B 02",                   cmpReg16Model<REG_SI, 0x6A612D, 0x23B>, "CAutomobile::FindWheelWidth");
 
 
         if (memcmp(0x6DD218, "BF CC 01 00 00") || forceEnable)

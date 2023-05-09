@@ -177,6 +177,49 @@ void checkNumGroups(std::vector<unsigned short>& vec, uint8_t numGroups)
     }
 }
 
+void processOccupantGroups(CVehicle* veh)
+{
+    if (vehUseOnlyGroups.find(veh->m_nModelIndex) != vehUseOnlyGroups.end() || rand<bool>())
+    {
+        auto it = modelNumGroups.find(veh->m_nModelIndex);
+        if (it != modelNumGroups.end())
+        {
+            const CWanted* wanted = FindPlayerWanted(-1);
+            const unsigned int wantedLevel = (wanted->m_nWantedLevel > 0) ? (wanted->m_nWantedLevel - 1) : (wanted->m_nWantedLevel);
+            currentOccupantsModel = veh->m_nModelIndex;
+
+            std::string section;
+            auto it2 = vehModels.find(veh->m_nModelIndex);
+            if (it2 != vehModels.end())
+                section = it2->second;
+            else
+                section = std::to_string(veh->m_nModelIndex);
+
+            std::vector<unsigned short> zoneGroups = dataFile.ReadLine(section, currentZone, READ_GROUPS);
+            checkNumGroups(zoneGroups, it->second);
+            if (vehGroups.find(veh->m_nModelIndex) != vehGroups.end())
+            {
+                if (vehMergeZones.find(veh->m_nModelIndex) != vehMergeZones.end())
+                    zoneGroups = vectorUnion(zoneGroups, vehGroups[veh->m_nModelIndex][currentTown]);
+                else if (zoneGroups.empty())
+                    zoneGroups = vehGroups[veh->m_nModelIndex][currentTown];
+            }
+
+            if (zoneGroups.empty() && !vehGroupWantedVariations[veh->m_nModelIndex][wantedLevel].empty())
+                currentOccupantsGroup = vectorGetRandom(vehGroupWantedVariations[veh->m_nModelIndex][wantedLevel]) - 1;
+            else
+            {
+                if (!vehGroupWantedVariations[veh->m_nModelIndex][wantedLevel].empty())
+                    vectorfilterVector(zoneGroups, vehGroupWantedVariations[veh->m_nModelIndex][wantedLevel]);
+                if (!zoneGroups.empty())
+                    currentOccupantsGroup = vectorGetRandom(zoneGroups) - 1;
+                else
+                    currentOccupantsGroup = rand<int32_t>(0, it->second);
+            }
+        }
+    }
+}
+
 bool hasModelSideMission(int model)
 {
     switch (model)
@@ -689,7 +732,7 @@ void VehicleVariations::LogDataFile()
     else
         Log::Write("##################################\n"
                    "## ModelVariations_Vehicles.ini ##\n"
-                   "##################################\n%s\n", Log::FileToString(dataFileName).c_str());
+                   "##################################\n%s\n", fileToString(dataFileName).c_str());
 }
 
 void VehicleVariations::LogVariations()
@@ -826,45 +869,7 @@ void __cdecl AddPoliceCarOccupantsHooked(CVehicle* a2, char a3)
     if (a2 == NULL)
         return;
 
-    if (vehUseOnlyGroups.find(a2->m_nModelIndex) != vehUseOnlyGroups.end() || rand<bool>())
-    {
-        auto it = modelNumGroups.find(a2->m_nModelIndex);
-        if (it != modelNumGroups.end())
-        {
-            const CWanted* wanted = FindPlayerWanted(-1);
-            const unsigned int wantedLevel = (wanted->m_nWantedLevel > 0) ? (wanted->m_nWantedLevel - 1) : (wanted->m_nWantedLevel);
-            currentOccupantsModel = a2->m_nModelIndex;
-
-            std::string section;
-            auto it2 = vehModels.find(a2->m_nModelIndex);
-            if (it2 != vehModels.end())
-                section = it2->second;
-            else
-                section = std::to_string(a2->m_nModelIndex);
-
-            std::vector<unsigned short> zoneGroups = dataFile.ReadLine(section, currentZone, READ_GROUPS);
-            checkNumGroups(zoneGroups, it->second);
-            if (vehGroups.find(a2->m_nModelIndex) != vehGroups.end())
-            {
-                if (vehMergeZones.find(a2->m_nModelIndex) != vehMergeZones.end())
-                    zoneGroups = vectorUnion(zoneGroups, vehGroups[a2->m_nModelIndex][currentTown]);
-                else if (zoneGroups.empty())
-                    zoneGroups = vehGroups[a2->m_nModelIndex][currentTown];
-            }
-
-            if (zoneGroups.empty() && !vehGroupWantedVariations[a2->m_nModelIndex][wantedLevel].empty())
-                currentOccupantsGroup = vectorGetRandom(vehGroupWantedVariations[a2->m_nModelIndex][wantedLevel]) - 1;
-            else
-            {
-                if (!vehGroupWantedVariations[a2->m_nModelIndex][wantedLevel].empty())
-                    vectorfilterVector(zoneGroups, vehGroupWantedVariations[a2->m_nModelIndex][wantedLevel]);
-                if (!zoneGroups.empty())
-                    currentOccupantsGroup = vectorGetRandom(zoneGroups) - 1;
-                else
-                    currentOccupantsGroup = rand<int32_t>(0, it->second);
-            }
-        }
-    }
+    processOccupantGroups(a2);
 
     const unsigned short model = a2->m_nModelIndex;
     a2->m_nModelIndex = (unsigned short)getVariationOriginalModel(a2->m_nModelIndex);
@@ -1131,16 +1136,16 @@ DWORD __cdecl FindSpecificDriverModelForCar_ToUseHooked(int carModel)
         auto itGroup = vehDriverGroups[currentOccupantsGroup].find(currentOccupantsModel);
         if (itGroup != vehDriverGroups[currentOccupantsGroup].end())
         {
-            const uint32_t random = rand<uint32_t>(0, itGroup->second.size());
-            loadModels({ itGroup->second[random] }, GAME_REQUIRED, true);
-            return itGroup->second[random];
+            auto model = vectorGetRandom(itGroup->second);
+            loadModels({ model }, GAME_REQUIRED, true);
+            return model;
         }
     }
     if (it != vehDrivers.end() && ((!replaceDriver && rand<bool>()) || replaceDriver))
     {
-        const unsigned int random = rand<uint32_t>(0, it->second.size());
-        loadModels({ it->second[random] }, GAME_REQUIRED, true);
-        return it->second[random];
+        auto model = vectorGetRandom(it->second);
+        loadModels({ model }, GAME_REQUIRED, true);
+        return model;
     }
 
     return callOriginalAndReturn<DWORD, address>(getVariationOriginalModel(carModel));
@@ -1184,12 +1189,16 @@ char __cdecl GenerateRoadBlockCopsForCarHooked(CVehicle* a1, int pedsPositionsTy
     if (a1 == NULL)
         return 0;
 
+    processOccupantGroups(a1);
+
     roadblockModel = a1->m_nModelIndex;
     a1->m_nModelIndex = (unsigned short)getVariationOriginalModel(a1->m_nModelIndex);
     callOriginal<address>(a1, pedsPositionsType, type);
     if (roadblockModel >= 400)
         a1->m_nModelIndex = roadblockModel;
     roadblockModel = 0;
+    currentOccupantsGroup = -1;
+    currentOccupantsModel = 0;
 
     return 1;
 }
@@ -1203,50 +1212,32 @@ CColModel* __fastcall GetColModelHooked(CVehicle* entity)
 }
 
 template <std::uintptr_t address>
+CCopPed* __fastcall CCopPedHooked(CCopPed* ped, void*, int copType)
+{
+    unsigned int originalModel = *(unsigned int*)0x5DDD90;
+
+    if (currentOccupantsGroup > -1 && currentOccupantsGroup < 9 && currentOccupantsModel > 0)
+    {
+        auto itGroup = vehDriverGroups[currentOccupantsGroup].find(currentOccupantsModel);
+        if (itGroup != vehDriverGroups[currentOccupantsGroup].end())
+        {
+            *(unsigned int*)0x5DDD90 = vectorGetRandom(itGroup->second);
+            copType = 3;
+        }
+    }
+
+    auto retVal = callMethodOriginalAndReturn<CCopPed*, address>(ped, copType);
+    *(unsigned int*)0x5DDD90 = originalModel;
+    return retVal;
+}
+
+template <std::uintptr_t address>
 void __cdecl SetUpDriverAndPassengersForVehicleHooked(CVehicle* car, int a3, int a4, char a5, char a6, int a7)
 {
     if (car == NULL)
         return;
 
-    if (vehUseOnlyGroups.find(car->m_nModelIndex) != vehUseOnlyGroups.end() || rand<bool>())
-    {
-        auto it = modelNumGroups.find(car->m_nModelIndex);
-        if (it != modelNumGroups.end())
-        {
-            const CWanted* wanted = FindPlayerWanted(-1);
-            const unsigned int wantedLevel = (wanted->m_nWantedLevel > 0) ? (wanted->m_nWantedLevel - 1) : (wanted->m_nWantedLevel);
-            currentOccupantsModel = car->m_nModelIndex;
-
-            std::string section;
-            auto it2 = vehModels.find(car->m_nModelIndex);
-            if (it2 != vehModels.end())
-                section = it2->second;
-            else
-                section = std::to_string(car->m_nModelIndex);
-
-            std::vector<unsigned short> zoneGroups = dataFile.ReadLine(section, currentZone, READ_GROUPS);
-            checkNumGroups(zoneGroups, it->second);
-            if (vehGroups.find(car->m_nModelIndex) != vehGroups.end())
-            {
-                if (vehMergeZones.find(car->m_nModelIndex) != vehMergeZones.end())
-                    zoneGroups = vectorUnion(zoneGroups, vehGroups[car->m_nModelIndex][currentTown]);
-                else if (zoneGroups.empty())
-                    zoneGroups = vehGroups[car->m_nModelIndex][currentTown];
-            }
-
-            if (zoneGroups.empty() && !vehGroupWantedVariations[car->m_nModelIndex][wantedLevel].empty())
-                currentOccupantsGroup = vectorGetRandom(vehGroupWantedVariations[car->m_nModelIndex][wantedLevel]) - 1;
-            else
-            {
-                if (!vehGroupWantedVariations[car->m_nModelIndex][wantedLevel].empty())
-                    vectorfilterVector(zoneGroups, vehGroupWantedVariations[car->m_nModelIndex][wantedLevel]);
-                if (!zoneGroups.empty())
-                    currentOccupantsGroup = zoneGroups[rand<uint32_t>(0, zoneGroups.size())] - 1;
-                else
-                    currentOccupantsGroup = rand<int32_t>(0, it->second);
-            }
-        }
-    }
+    processOccupantGroups(car);
 
     //laemt1 -> dsher
     loadModels(274, 288, GAME_REQUIRED, true);
@@ -1331,13 +1322,13 @@ CPed* __cdecl AddPedInCarHooked(CVehicle* a1, char driver, int a3, signed int a4
             auto itGroup = vehPassengerGroups[currentOccupantsGroup].find(currentOccupantsModel);
             if (itGroup != vehPassengerGroups[currentOccupantsGroup].end())
             {
-                passengerModelIndex = itGroup->second[rand<uint32_t>(0, itGroup->second.size())];
+                passengerModelIndex = vectorGetRandom(itGroup->second);
                 return modelChoosen();
             }
         }
         if (it != vehPassengers.end() && ((!replacePassenger && rand<bool>()) || replacePassenger))
         {
-            passengerModelIndex = it->second[rand<uint32_t>(0, it->second.size())];
+            passengerModelIndex = vectorGetRandom(it->second);
             return modelChoosen();
         }
     }
@@ -2335,6 +2326,8 @@ void VehicleVariations::InstallHooks()
     hookCall(0x42CDDD, IsLawEnforcementVehicleHooked<0x42CDDD>, "CVehicle::IsLawEnforcementVehicle"); //CCarCtrl::RemoveDistantCars
     hookCall(0x42CE07, GenerateRoadBlockCopsForCarHooked<0x42CE07>, "CRoadBlocks::GenerateRoadBlockCopsForCar"); //CCarCtrl::RemoveDistantCars
     hookCall(0x4613EB, GetColModelHooked<0x4613EB>, "CEntity::GetColModel"); //CCarCtrl::RemoveDistantCars
+    hookCall(0x46151A, CCopPedHooked<0x46151A>, "CCopPed::CCopPed"); //CRoadBlocks::GenerateRoadBlockCopsForCar
+    hookCall(0x461541, CCopPedHooked<0x461541>, "CCopPed::CCopPed"); //CRoadBlocks::GenerateRoadBlockCopsForCar
 
     hookCall(0x42BBFB, AddAmbulanceOccupantsHooked<0x42BBFB>, "CCarAI::AddAmbulanceOccupants"); //CCarCtrl::GenerateOneEmergencyServicesCar
     hookCall(0x42BC1A, AddFiretruckOccupantsHooked<0x42BC1A>, "CCarAI::AddFiretruckOccupants"); //CCarCtrl::GenerateOneEmergencyServicesCar

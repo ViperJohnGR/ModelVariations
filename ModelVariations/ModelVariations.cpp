@@ -30,7 +30,7 @@
 #pragma comment (lib, "urlmon.lib")
 
 
-#define MOD_VERSION "8.8"
+#define MOD_VERSION "8.9"
 #ifdef _DEBUG
 #define MOD_NAME "ModelVariations_d.asi"
 #define DEBUG_STRING " DEBUG"
@@ -459,7 +459,7 @@ public:
             else
                 Log::Write("#########################\n"
                            "## ModelVariations.ini ##\n"
-                           "#########################\n%s\n", Log::FileToString(dataFileName).c_str());
+                           "#########################\n%s\n", fileToString(dataFileName).c_str());
 
             PedVariations::LogDataFile();
             PedWeaponVariations::LogDataFile();

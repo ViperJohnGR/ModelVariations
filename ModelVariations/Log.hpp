@@ -19,7 +19,5 @@ public:
 	static bool Close();
 	static bool Write(const char* format, ...);
 
-	static std::string FileToString(std::string_view filename);
 	static bool LogModifiedAddress(std::uintptr_t address, const char* format, ...);
-
 };

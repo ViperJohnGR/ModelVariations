@@ -446,7 +446,7 @@ void PedVariations::LogDataFile()
     else
         Log::Write("##############################\n"
                    "## ModelVariations_Peds.ini ##\n"
-                   "##############################\n%s\n", Log::FileToString(dataFileName).c_str());
+                   "##############################\n%s\n", fileToString(dataFileName).c_str());
 }
 
 void PedVariations::LogVariations()
@@ -604,12 +604,12 @@ void PedVariations::InstallHooks(bool enableSpecialPeds, bool isFLA)
 
 
     hookCall(0x5E4890, SetModelIndexHooked<0x5E4890>, "CEntity::SetModelIndex");
-    hookCall(0x5E49EF, UpdateRpHAnimHooked<0x5E49EF>, "UpdateRpHAnim");
+    hookCall(0x5E49EF, UpdateRpHAnimHooked<0x5E49EF>, "CEntity::UpdateRpHAnim");
     if (useParentVoices)
     {
-        hookCall(0x5DDBB8, CAEPedSpeechAudioEntity__InitialiseHooked<0x5DDBB8>, "CAEPedSpeechAudioEntity__Initialise"); //CCivilianPed
-        hookCall(0x5DDD24, CAEPedSpeechAudioEntity__InitialiseHooked<0x5DDD24>, "CAEPedSpeechAudioEntity__Initialise"); //CCopPed
-        hookCall(0x5DE388, CAEPedSpeechAudioEntity__InitialiseHooked<0x5DE388>, "CAEPedSpeechAudioEntity__Initialise"); //CEmergencyPed
+        hookCall(0x5DDBB8, CAEPedSpeechAudioEntity__InitialiseHooked<0x5DDBB8>, "CAEPedSpeechAudioEntity::Initialise"); //CCivilianPed
+        hookCall(0x5DDD24, CAEPedSpeechAudioEntity__InitialiseHooked<0x5DDD24>, "CAEPedSpeechAudioEntity::Initialise"); //CCopPed
+        hookCall(0x5DE388, CAEPedSpeechAudioEntity__InitialiseHooked<0x5DE388>, "CAEPedSpeechAudioEntity::Initialise"); //CEmergencyPed
     }
    
 }

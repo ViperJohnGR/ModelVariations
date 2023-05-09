@@ -49,17 +49,6 @@ bool Log::Write(const char* format, ...)
 }
 
 
-std::string Log::FileToString(std::string_view filename)
-{
-	std::stringstream ss;
-	std::ifstream file(filename.data());
-
-	if (file.is_open())
-		ss << file.rdbuf();
-
-	return ss.str();
-}
-
 bool Log::LogModifiedAddress(std::uintptr_t address, const char* format, ...)
 {
 	if (logfile == INVALID_HANDLE_VALUE || modifiedAddresses.find(address) != modifiedAddresses.end())

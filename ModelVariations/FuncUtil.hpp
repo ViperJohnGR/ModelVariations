@@ -98,6 +98,17 @@ inline std::string bytesToString(std::uintptr_t address, int nBytes)
     return ss.str();
 }
 
+inline std::string fileToString(std::string_view filename)
+{
+    std::stringstream ss;
+    std::ifstream file(filename.data());
+
+    if (file.is_open())
+        ss << file.rdbuf();
+
+    return ss.str();
+}
+
 inline bool compareUpper(const char* a, const char* b)
 {
     for (int i = 0; a[i] || b[i]; i++)

@@ -211,5 +211,5 @@ void PedWeaponVariations::LogDataFile()
     else
         Log::Write("####################################\n"
                    "## ModelVariations_PedWeapons.ini ##\n"
-                   "####################################\n%s\n", Log::FileToString(dataFileName).c_str());
+                   "####################################\n%s\n", fileToString(dataFileName).c_str());
 }

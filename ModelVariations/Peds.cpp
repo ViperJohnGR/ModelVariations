@@ -35,6 +35,7 @@ std::stack<CPed*> pedStack;
 std::vector<unsigned short> pedCurrentVariations[MAX_PED_ID];
 
 //INI Options
+bool recursiveVariations = true;
 bool useParentVoices = false;
 bool enableCloneRemover = false;
 bool cloneRemoverVehicleOccupants = false;
@@ -226,6 +227,7 @@ void PedVariations::LoadData()
         }
     }
 
+    recursiveVariations = dataFile.ReadBoolean("Settings", "RecursiveVariations", true);
     useParentVoices = dataFile.ReadBoolean("Settings", "UseParentVoices", false);
     enableCloneRemover = dataFile.ReadBoolean("Settings", "EnableCloneRemover", false);
     cloneRemoverVehicleOccupants = dataFile.ReadBoolean("Settings", "CloneRemoverIncludeVehicleOccupants", false);
@@ -497,7 +499,12 @@ int __fastcall SetModelIndexHooked(CEntity* _this, void*, int index)
             loadModels({ variationModel }, GAME_REQUIRED, true);
             const unsigned short originalModel = _this->m_nModelIndex;
             _this->DeleteRwObject();
-            _this->SetModelIndex(variationModel);
+
+            if (recursiveVariations)
+                _this->SetModelIndex(variationModel);
+            else 
+                callMethodOriginalAndReturn<int, address>(_this, variationModel);
+
             if (dontInheritBehaviourModels.find(originalModel) == dontInheritBehaviourModels.end())
                 _this->m_nModelIndex = originalModel;
             modelIndex = variationModel;

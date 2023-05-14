@@ -362,7 +362,7 @@ void VehicleVariations::ClearData()
     dataFile.data.clear();
 }
 
-void VehicleVariations::LoadData(std::string gamePath)
+void VehicleVariations::LoadData()
 {
     dataFile.SetIniPath(dataFileName);
 
@@ -421,7 +421,7 @@ void VehicleVariations::LoadData(std::string gamePath)
         {
             if (i < 612)
             {
-                vehHasVariations.insert((unsigned short)(i - 400));
+                vehHasVariations.insert(i - 400U);
 
                 if (dataFile.ReadBoolean(section, "ChangeOnlyParked", false))
                     parkedCars.insert(i);
@@ -595,8 +595,6 @@ void VehicleVariations::LoadData(std::string gamePath)
 
 void VehicleVariations::Process()
 {
-    HookTaxi();
-
     while (!tuningStack.empty())
     {
         auto it = tuningStack.top();
@@ -804,33 +802,6 @@ T changeModelAndReturn(const char* funcName, unsigned short oldModel, int newMod
     for (auto& i : addresses)
         *(uint16_t*)i = oldModel;
     return retValue;
-}
-
-void VehicleVariations::HookTaxi()
-{
-    static bool isPlayerInTaxi = false;
-    if (enableSideMissions == false)
-        return;
-    const CPlayerPed* player = FindPlayerPed();
-    if (player == NULL)
-        return;
-    const CVehicle* vehicle = player->m_pVehicle;
-    if (vehicle == NULL)
-        return;
-
-    if (isPlayerInTaxi == false && isModelTaxi(vehicle->m_nModelIndex))
-    {
-        injector::MakeJMP(0x4912D4, 0x4912DC);
-        isPlayerInTaxi = true;
-    }
-    else if (isPlayerInTaxi == true)
-    {
-        if (!(isModelTaxi(vehicle->m_nModelIndex) || vehicle->m_nModelIndex == 420 || vehicle->m_nModelIndex == 438))
-        {
-            injector::MakeJMP(0x4912D4, 0x4912E1);
-            isPlayerInTaxi = false;
-        }
-    }
 }
 
 template <std::uintptr_t address>
@@ -1828,7 +1799,7 @@ void __fastcall DoSoftGroundResistanceHooked(CAutomobile* veh, void*, unsigned i
 template <std::uintptr_t address>
 int __cdecl GetMaximumNumberOfPassengersFromNumberOfDoorsHooked(__int16 modelIndex)
 {
-    auto changeModelAtAddress = [&](std::uintptr_t modelAddress, short oldModel)
+    auto changeModelAtAddress = [modelIndex](std::uintptr_t modelAddress, short oldModel)
     {
         if (*(short*)modelAddress == oldModel || forceEnable)
         {
@@ -1970,7 +1941,7 @@ void __declspec(naked) patch6A155C()
         mov ax, [edi + 0x22]
         jmp jmp6A1564
 
-        isCement :
+        isCement:
         mov ax, [edi + 0x22]
         jmp jmp6A1564
     }
@@ -2636,6 +2607,7 @@ void VehicleVariations::InstallHooks()
     {
         hookCall(0x48DA81, IsLawEnforcementVehicleHooked<0x48DA81>, "CVehicle::IsLawEnforcementVehicle");
         hookCall(0x469612, CollectParametersHooked<0x469612>, "CRunningScript::CollectParameters"); //00DD: IS_CHAR_IN_MODEL
+        hookASM(0x4912CC, "66 8B 40 22 66 3D A4 01", movReg16WordPtrReg<REG_AX, REG_EAX, 0x4912D4, 4, 0x01A43D66>, "CRunningScript::ProcessCommands1500To1599"); //0602: IS_CHAR_IN_TAXI
     }
 
     hookCall(0x4306A1, GetNewVehicleDependingOnCarModelHooked<0x4306A1>, "CCarCtrl::GetNewVehicleDependingOnCarModel"); ///CCarCtrl::GenerateOneRandomCar

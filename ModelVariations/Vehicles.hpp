@@ -15,7 +15,7 @@ class VehicleVariations
 public:
 	static void AddToStack(CVehicle * veh);
 	static void ClearData();
-	static void LoadData(std::string gamePath);
+	static void LoadData();
 	static void Process();
 	static void UpdateVariations();
 
@@ -25,6 +25,5 @@ public:
 	static void LogVariations();
 
 	//Call hooks
-	static void HookTaxi();
 	static void InstallHooks();
 };

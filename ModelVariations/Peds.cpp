@@ -367,7 +367,7 @@ void PedVariations::ProcessDrugDealers(bool reset)
                         for (auto& j : pedVariations[id][i])
                             if (j > MAX_PED_ID)
                             {
-                                Log::Write("%u\n", j);
+                                Log::Write((std::find(addedIDs.begin(), addedIDs.end(), j) != addedIDs.end()) ? "%uSP\n" : "%u\n", j);
                                 CTheScripts::ScriptsForBrains.AddNewScriptBrain(CTheScripts::StreamedScripts.GetProperIndexFromIndexUsedByScript(19), (short)j, 100, 0, -1, -1.0);
                             }
 
@@ -464,7 +464,7 @@ void PedVariations::LogVariations()
                     {
                         Log::Write("(%u) ", k);
                         for (const auto& l : pedVariations[i][k])
-                            Log::Write("%u ", l);
+                            Log::Write((std::find(addedIDs.begin(), addedIDs.end(), l) != addedIDs.end()) ? "%uSP " : "%u ", l);
                     }
 
                 Log::Write("\n", i);

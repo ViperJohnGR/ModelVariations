@@ -95,7 +95,7 @@ bool checkForUpdate()
 
     if (URLOpenBlockingStream(0, "http://api.github.com/repos/ViperJohnGR/ModelVariations/tags", &stream, 0, 0) != S_OK)
     {
-        Log::Write("Check for updates failed.\n");
+        Log::Write("Check for updates failed. Cannot open connection.\n");
         return false;
     }
 
@@ -278,7 +278,7 @@ void loadIniData()
         PedWeaponVariations::LoadData();
 
     if (enableVehicles)
-        VehicleVariations::LoadData(exePath.substr(0, exePath.find_last_of("/\\")));
+        VehicleVariations::LoadData();
 }
 
 void updateVariations()
@@ -537,8 +537,7 @@ public:
 
             const auto logVariationChange = [zInfo, wanted](const char* msg)
             {
-                Log::Write("\n");
-                Log::Write("%s (%s). Updating variations...\n", msg, getDatetime(false, true, true).c_str());
+                Log::Write("\n%s (%s). Updating variations...\n", msg, getDatetime(false, true, true).c_str());
                 Log::Write("currentWanted = %u wanted->m_nWantedLevel = %u\n", currentWanted, wanted->m_nWantedLevel);
                 Log::Write("currentZone = %s zInfo->m_szLabel = %s\n", currentZone, zInfo->m_szLabel);
 

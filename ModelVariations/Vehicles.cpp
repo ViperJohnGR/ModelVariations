@@ -88,21 +88,21 @@ uint32_t* jmpDest = NULL;
 std::array<std::vector<unsigned short>, 16> vehVariations[212];
 std::array<std::vector<unsigned short>, 6> vehWantedVariations[212];
 
-std::map<unsigned short, std::array<std::vector<unsigned short>, 16>> vehGroups;
-std::map<unsigned short, std::array<std::vector<unsigned short>, 16>> vehTuning;
-std::map<unsigned short, std::array<std::vector<unsigned short>, 6>> vehGroupWantedVariations;
-std::map<unsigned short, unsigned short> vehOriginalModels;
-std::map<unsigned short, std::vector<unsigned short>> vehDrivers;
-std::map<unsigned short, std::vector<unsigned short>> vehPassengers;
-std::map<unsigned short, std::vector<unsigned short>> vehDriverGroups[9];
-std::map<unsigned short, std::vector<unsigned short>> vehPassengerGroups[9];
-std::map<unsigned short, BYTE> modelNumGroups;
-std::map<unsigned short, std::pair<CVector, float>> LightPositions;
-std::map<unsigned short, rgba> LightColors;
-std::map<unsigned short, rgba> LightColors2;
+std::unordered_map<unsigned short, std::array<std::vector<unsigned short>, 16>> vehGroups;
+std::unordered_map<unsigned short, std::array<std::vector<unsigned short>, 16>> vehTuning;
+std::unordered_map<unsigned short, std::array<std::vector<unsigned short>, 6>> vehGroupWantedVariations;
+std::unordered_map<unsigned short, unsigned short> vehOriginalModels;
+std::unordered_map<unsigned short, std::vector<unsigned short>> vehDrivers;
+std::unordered_map<unsigned short, std::vector<unsigned short>> vehPassengers;
+std::unordered_map<unsigned short, std::vector<unsigned short>> vehDriverGroups[9];
+std::unordered_map<unsigned short, std::vector<unsigned short>> vehPassengerGroups[9];
+std::unordered_map<unsigned short, BYTE> modelNumGroups;
+std::unordered_map<unsigned short, std::pair<CVector, float>> LightPositions;
+std::unordered_map<unsigned short, rgba> LightColors;
+std::unordered_map<unsigned short, rgba> LightColors2;
 std::map<unsigned short, std::vector<unsigned short>> vehCurrentTuning;
-std::map<unsigned short, std::string> vehModels;
-std::map<unsigned short, BYTE> tuningRarities;
+std::unordered_map<unsigned short, std::string> vehModels;
+std::unordered_map<unsigned short, BYTE> tuningRarities;
 
 std::vector<unsigned short> vehCurrentVariations[212];
 

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <map>
+#include <unordered_map>
 #include <string>
 #include <memory>
 
@@ -14,7 +14,7 @@ struct hookinfo {
     bool isVTableAddress;
 };
 
-extern std::map<std::uintptr_t, hookinfo> hookedCalls;
+extern std::unordered_map<std::uintptr_t, hookinfo> hookedCalls;
 
 inline void hookCall(std::uintptr_t address, void* pFunction, std::string name, bool isVTableAddress = false)
 {

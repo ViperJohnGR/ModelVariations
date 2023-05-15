@@ -23,8 +23,8 @@ std::array<std::vector<unsigned short>, 16> pedVariations[MAX_PED_ID];
 std::array<std::vector<unsigned short>, 6> pedWantedVariations[MAX_PED_ID];
 
 std::map<unsigned short, int> pedTimeSinceLastSpawned;
-std::map<unsigned short, std::vector<unsigned short>> pedOriginalModels;
-std::map<unsigned short, std::string> pedModels;
+std::unordered_map<unsigned short, std::vector<unsigned short>> pedOriginalModels;
+std::unordered_map<unsigned short, std::string> pedModels;
 
 std::set<unsigned short> dontInheritBehaviourModels;
 std::set<unsigned short> pedMergeZones;

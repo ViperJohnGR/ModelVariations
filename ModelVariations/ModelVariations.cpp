@@ -47,7 +47,7 @@ unsigned int exeFilesize = 0;
 std::string exePath;
 std::string exeName;
 
-std::map<std::uintptr_t, hookinfo> hookedCalls;
+std::unordered_map<std::uintptr_t, hookinfo> hookedCalls;
 
 
 std::set<std::pair<std::uintptr_t, std::string>> callChecks;

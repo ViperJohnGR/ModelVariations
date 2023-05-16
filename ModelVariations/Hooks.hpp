@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Log.hpp"
+
 #include <unordered_map>
 #include <string>
 #include <memory>
@@ -15,6 +17,7 @@ struct hookinfo {
 };
 
 extern std::unordered_map<std::uintptr_t, hookinfo> hookedCalls;
+extern bool forceEnable;
 
 inline void hookCall(std::uintptr_t address, void* pFunction, std::string name, bool isVTableAddress = false)
 {
@@ -65,4 +68,14 @@ inline Ret callMethodOriginalAndReturn(C _this, Args... args)
         return reinterpret_cast<Ret(__thiscall*)(C, Args...)>(it->second.originalFunction)(_this, args...);
 
     return 0;
+}
+
+
+template <std::uintptr_t at, std::uintptr_t len = 5, class FuncT>
+inline void MakeInline(const char *funcName, const char* originalData, FuncT func)
+{
+    if (forceEnable || memcmp(at, originalData))
+        injector::MakeInline<at, at+len>(func);
+    else
+        Log::LogModifiedAddress(at, "Modified method detected : %s - %u is %s\n", funcName, at, bytesToString(at, len).c_str());
 }

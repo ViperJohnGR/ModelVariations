@@ -496,7 +496,7 @@ int __fastcall SetModelIndexHooked(CEntity* _this, void*, int index)
         const unsigned short variationModel = vectorGetRandom(pedCurrentVariations[_this->m_nModelIndex]);
         if (variationModel > 0 && variationModel != _this->m_nModelIndex)
         {
-            loadModels({ variationModel }, GAME_REQUIRED, true);
+            loadModels({ variationModel }, PRIORITY_REQUEST, true);
             const unsigned short originalModel = _this->m_nModelIndex;
             _this->DeleteRwObject();
 

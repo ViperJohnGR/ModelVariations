@@ -98,7 +98,7 @@ void PedWeaponVariations::Process()
 
                 if (wInfo != NULL && wInfo->m_nModelId1 >= 321)
                 {
-                    loadModels({ wInfo->m_nModelId1 }, GAME_REQUIRED, true);
+                    loadModels({ wInfo->m_nModelId1 }, PRIORITY_REQUEST, true);
 
                     if (originalWeaponId > WEAPON_UNARMED)
                         ped->ClearWeapon(originalWeaponId);

@@ -293,7 +293,7 @@ int getRandomVariation(const int modelid, bool parked = false)
     const unsigned short variationModel = vectorGetRandom(vehCurrentVariations[modelid - 400]);
     if (variationModel > 0)
     {
-        loadModels({ variationModel }, GAME_REQUIRED, true);
+        loadModels({ variationModel }, PRIORITY_REQUEST, true);
         return variationModel;
     }
     return modelid;
@@ -1108,14 +1108,14 @@ DWORD __cdecl FindSpecificDriverModelForCar_ToUseHooked(int carModel)
         if (itGroup != vehDriverGroups[currentOccupantsGroup].end())
         {
             auto model = vectorGetRandom(itGroup->second);
-            loadModels({ model }, GAME_REQUIRED, true);
+            loadModels({ model }, PRIORITY_REQUEST, true);
             return model;
         }
     }
     if (it != vehDrivers.end() && ((!replaceDriver && rand<bool>()) || replaceDriver))
     {
         auto model = vectorGetRandom(it->second);
-        loadModels({ model }, GAME_REQUIRED, true);
+        loadModels({ model }, PRIORITY_REQUEST, true);
         return model;
     }
 
@@ -1269,7 +1269,7 @@ CPed* __cdecl AddPedInCarHooked(CVehicle* a1, char driver, int a3, signed int a4
     auto modelChoosen = [&]()
     {
         const unsigned char originalData[5] = {*((uint8_t*)0x613B78), *((uint8_t*)0x613B79), *((uint8_t*)0x613B7A), *((uint8_t*)0x613B7B), *((uint8_t*)0x613B7C) };
-        loadModels({ passengerModelIndex }, GAME_REQUIRED, true);
+        loadModels({ passengerModelIndex }, PRIORITY_REQUEST, true);
         injector::MakeJMP(0x613B78, patchPassengerModel);
         CPed* ped = callOriginalAndReturn<CPed*, address>(a1, driver, a3, a4, a5, a6);
         memcpy((void*)0x613B78, originalData, 5);
@@ -1879,89 +1879,23 @@ void __fastcall ProcessWeaponsHooked(CEntity* _this)
 /////////////////////////////////////////////  ASM HOOKS  /////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void __declspec(naked) patch407293()
-{
-    __asm {
-        pushfd
-        push eax
-        movsx eax, word ptr[esi + 0x22]
-        push ecx
-        push edx
-        push eax
-        call getVariationOriginalModel
-        pop edx
-        pop ecx
-        cmp eax, 259h
-        pop eax
-        je isSWAT
-        mov ebx, 259h
-        popfd
-        jmp jmp729B7B
-
-isSWAT:
-        movsx ebx, word ptr[esi + 0x22]
-        popfd
-        jmp jmp729B7B
-    }
-    
-}
-
-void __declspec(naked) patch6AC730()
-{
-    __asm {
-        push ecx
-        movsx eax, ax
-        mov ecx, 4
-        mul ecx       
-        mov ecx, CModelInfo::ms_modelInfoPtrs
-        add ecx, eax
-        mov eax, [ecx]
-        pop ecx
-        jmp jmp6AC735
-    }
-}
-
 void __declspec(naked) patch6A155C()
 {
     __asm {
         push ecx
-        push eax
-        movsx eax, word ptr[edi + 0x22]
         push edx
+        movsx eax, word ptr[edi + 0x22]
         push eax
         call getVariationOriginalModel
         pop edx
-        mov cx, ax
-        pop eax
-        mov ax, cx
-        pop ecx
+        pop ecx        
         cmp ax, 0x20C
         je isCement
         cmp ax, 0x220
-        mov ax, [edi + 0x22]
-        jmp jmp6A1564
 
-        isCement:
-        mov ax, [edi + 0x22]
+    isCement:
+        mov ax, word ptr [edi + 0x22]
         jmp jmp6A1564
-    }
-}
-
-void __declspec(naked) patch6D46E5()
-{
-    __asm {
-        movsx edi, word ptr[ecx + 22h]
-        mov eax, DWORD PTR[edi * 4 + 0xa9b0c8]
-        push eax
-        push ecx
-        push edx
-        push edi
-        call getVariationOriginalModel
-        mov edi, eax
-        pop edx
-        pop ecx
-        pop eax
-        jmp jmp6D46F0
     }
 }
 
@@ -1980,18 +1914,6 @@ void __declspec(naked) patch588570()
         pop ecx
         pop eax
         jmp jmp588577
-    }
-}
-
-void __declspec(naked) patch6D42FE()
-{
-    __asm {
-        push edx
-        push ecx
-        call getVariationOriginalModel
-        lea eax, [eax-0x1A9]
-        pop edx
-        jmp jmp6D4304
     }
 }
 
@@ -2351,9 +2273,6 @@ void VehicleVariations::InstallHooks()
         hookASM(0x64467D, "66 81 78 22 13 02",                cmpWordPtrRegModel<REG_EAX, 0x644683, 0x213>, "CTaskSimpleCarDrive::ProcessPed");
         hookASM(0x51E5B8, "66 81 7E 22 B0 01",                cmpWordPtrRegModel<REG_ESI, 0x51E5BE, 0x1B0>, "CCamera::TryToStartNewCamMode");
         hookASM(0x6B4CE8, "66 8B 4E 22 66 81 F9 1B 02",       movReg16WordPtrReg<REG_CX, REG_ESI, 0x6B4CF1, 5, 0x1BF98166, 0x90909002>, "CAutomobile::ProcessAI");
-
-        hookASM((GetGameVersion() != GAME_10US_COMPACT) ? 0x407293 : 0x729B76U, "BB 59 02 00 00", patch407293, "CAutomobile::FireTruckControl");
-
         hookASM(0x5A0EAF, "66 81 78 22 59 02",                cmpWordPtrRegModel<REG_EAX, 0x5A0EB5, 0x259>, "CObject::ObjectDamage");
         hookASM(0x4308A1, "66 81 7E 22 A7 01",                cmpWordPtrRegModel<REG_ESI, 0x4308A7, 0x1A7>, "CCarCtrl::GenerateOneRandomCar");
         hookASM(0x4F62E4, "66 81 78 22 A7 01",                cmpWordPtrRegModel<REG_EAX, 0x4F62EA, 0x1A7>, "CAEVehicleAudioEntity::GetSirenState");
@@ -2375,7 +2294,6 @@ void VehicleVariations::InstallHooks()
         hookASM(0x6A1648, "66 81 7F 22 12 02",                cmpWordPtrRegModel<REG_EDI, 0x6A164E, 0x212>, "CAutomobile::UpdateMovingCollision");
         hookASM(0x6AD378, "66 81 7E 22 12 02",                cmpWordPtrRegModel<REG_ESI, 0x6AD37E, 0x212>, "CAutomobile::ProcessEntityCollision");
         hookASM(0x6E0FF8, "66 81 7F 22 12 02",                cmpWordPtrRegModel<REG_EDI, 0x6E0FFE, 0x212>, "CVehicle::DoHeadLightBeam");
-        hookASM(0x6AC730, "A1 10 B9 A9 00",                   patch6AC730, "CAutomobile::PreRender");
         hookASM(0x43064C, "81 FF AF 01 00 00",                cmpReg32Model<REG_EDI, 0x430652, 0x1AF>, "CCarCtrl::GenerateOneRandomCar");
         hookASM(0x64BCB3, "66 81 78 22 AF 01",                cmpWordPtrRegModel<REG_EAX, 0x64BCB9, 0x1AF>, "CTaskSimpleCarSetPedInAsDriver::ProcessPed");
         hookASM(0x430640, "81 FF B5 01 00 00",                cmpReg32Model<REG_EDI, 0x430646, 0x1B5>, "CCarCtrl::GenerateOneRandomCar");
@@ -2415,7 +2333,6 @@ void VehicleVariations::InstallHooks()
         hookASM(0x6D3E00, "0F BF 41 22 05 57 FE FF FF",       movsxReg32WordPtrReg<REG_EAX, REG_ECX, 0x6D3E09, 5, 0xFFFE5705, 0x909090FF>, "CVehicle::GetPlaneGunsAutoAimAngle");
         hookASM(0x501C73, "0F BF 42 22 05 F9 FD FF FF",       movsxReg32WordPtrReg<REG_EAX, REG_EDX, 0x501C7C, 5, 0xFFFDF905, 0x909090FF>, "CAEVehicleAudioEntity::ProcessAircraft");
         hookASM(0x4FF980, "0F BF 40 22 05 F9 FD FF FF",       movsxReg32WordPtrReg<REG_EAX, REG_EAX, 0x4FF989, 5, 0xFFFDF905, 0x909090FF>, "CAEVehicleAudioEntity::ProcessGenericJet");
-        hookASM(0x6D46E5, "0F BF 79 22 8B 04 BD C8 B0 A9 00", patch6D46E5, "CVehicle::GetPlaneOrdnancePosition");
         hookASM(0x524624, "66 8B 47 22 66 3D B9 01",          movReg16WordPtrReg<REG_AX, REG_EDI, 0x52462C, 4, 0x01B93D66>, "CCam::Process_FollowCar_SA");
         hookASM(0x4F7814, "0F BF 42 22 05 40 FE FF FF",       movsxReg32WordPtrReg<REG_EAX, REG_EDX, 0x4F781D, 5, 0xFFFE4005, 0x909090FF>, "CAEVehicleAudioEntity::Initialise");
         hookASM(0x4FB343, "0F BF 42 22 05 6A FE FF FF",       movsxReg32WordPtrReg<REG_EAX, REG_EDX, 0x4FB34C, 5, 0xFFFE6A05, 0x909090FF>, "CAEVehicleAudioEntity::ProcessMovingParts");
@@ -2460,7 +2377,6 @@ void VehicleVariations::InstallHooks()
         hookASM(0x501AB9, "0F BF 40 22 05 4D FE FF FF",       movsxReg32WordPtrReg<REG_EAX, REG_EAX, 0x501AC2, 5, 0xFFFE4D05, 0x909090FF>, "CAEVehicleAudioEntity::ProcessSpecialVehicle");
         hookASM(0x6C41D9, "81 FF A9 01 00 00",                cmpReg32Model<REG_EDI, 0x6C41DF, 0x1A9>, "CHeli::CHeli");
         hookASM(0x6C50B3, "66 8B 46 22 66 3D D1 01",          movReg16WordPtrReg<REG_AX, REG_ESI, 0x6C50BB, 4, 0x01D13D66>, "CHeli::ProcessFlyingCarStuff");
-        hookASM(0x6D42FE, "8D 81 57 FE FF FF",                patch6D42FE, "CVehicle::GetPlaneGunsPosition");
         hookASM(0x6D4900, "0F BF 41 22 05 57 FE FF FF",       movsxReg32WordPtrReg<REG_EAX, REG_ECX, 0x6D4909, 5, 0xFFFE5705, 0x909090FF>, "CVehicle::SelectPlaneWeapon");
         hookASM(0x6E1C17, "66 81 7E 22 DD 01",                cmpWordPtrRegModel<REG_ESI, 0x6E1C1D, 0x1DD>, "CVehicle::DoVehicleLights");
         hookASM(0x6C4F66, "66 8B 46 22 66 3D BF 01",          movReg16WordPtrReg<REG_AX, REG_ESI, 0x6C4F6E, 4, 0x01BF3D66>, "CHeli::ProcessFlyingCarStuff");
@@ -2533,25 +2449,42 @@ void VehicleVariations::InstallHooks()
         hookASM(0x6B539C, "66 8B 46 22 66 3D B9 01",          movReg16WordPtrReg<REG_AX, REG_ESI, 0x6B53A4, 4, 0x01B93D66>, "CAutomobile::ProcessAI");
         hookASM(0x6A6128, "66 81 FE 3B 02",                   cmpReg16Model<REG_SI, 0x6A612D, 0x23B>, "CAutomobile::FindWheelWidth");
 
+        
+        MakeInline<0x6D42FE, 6>("CVehicle::GetPlaneGunsPosition", "8D 81 57 FE FF FF", [](injector::reg_pack& regs)
+        {
+            regs.eax = (uint32_t)getVariationOriginalModel((int)regs.ecx) - 0x1A9;
+        });
 
-        if (memcmp(0x6DD218, "BF CC 01 00 00") || forceEnable)
-            injector::MakeInline<0x6DD218>([](injector::reg_pack& regs)
-            {
-                if (getVariationOriginalModel(reinterpret_cast<CEntity*>(regs.esi)->m_nModelIndex) == 460)
-                    regs.edi = reinterpret_cast<CEntity*>(regs.esi)->m_nModelIndex;
-            });
-        else 
-            Log::LogModifiedAddress(0x6DD218, "Modified method detected : CVehicle::DoBoatSplashes - 0x6DD218 is %s\n", bytesToString(0x6DD218, 5).c_str());
+        MakeInline<0x6AC730>("CAutomobile::PreRender", "A1 10 B9 A9 00", [](injector::reg_pack& regs)
+        {
+            regs.eax = reinterpret_cast<uint32_t>(CModelInfo::GetModelInfo((int)regs.eax & 0xFFFF));
+        });
 
+        MakeInline<0x6D46E5, 11>("CVehicle::GetPlaneOrdnancePosition", "0F BF 79 22 8B 04 BD C8 B0 A9 00", [](injector::reg_pack& regs)
+        {
+            int modelIndex = reinterpret_cast<CEntity*>(regs.ecx)->m_nModelIndex;
 
-        if (memcmp(0x6CD78B, "B8 08 02 00 00") || forceEnable)
-            injector::MakeInline<0x6CD78B>([](injector::reg_pack& regs)
-            {
-                if (getVariationOriginalModel(CPlane::GenPlane_ModelIndex) == 520)
-                    regs.eax = (uint32_t)CPlane::GenPlane_ModelIndex;
-            });
-        else
-            Log::LogModifiedAddress(0x6CD78B, "Modified method detected : CPlane::DoPlaneGenerationAndRemoval - 0x6CD78B is %s\n", bytesToString(0x6CD78B, 5).c_str());
+            regs.eax = reinterpret_cast<uint32_t>(CModelInfo::GetModelInfo(modelIndex));
+            regs.edi = (uint32_t)getVariationOriginalModel(modelIndex);
+        });
+
+        MakeInline<0x729B76U>("CAutomobile::FireTruckControl", (GetGameVersion() != GAME_10US_COMPACT) ? "E9 18 D7 CD FF" : "BB 59 02 00 00", [](injector::reg_pack& regs)
+        {
+            if (getVariationOriginalModel(reinterpret_cast<CEntity*>(regs.esi)->m_nModelIndex) == 601)
+                regs.ebx = reinterpret_cast<CEntity*>(regs.esi)->m_nModelIndex;
+        });
+
+        MakeInline<0x6DD218>("CVehicle::DoBoatSplashes", "BF CC 01 00 00", [](injector::reg_pack& regs)
+        {
+            if (getVariationOriginalModel(reinterpret_cast<CEntity*>(regs.esi)->m_nModelIndex) == 460)
+                regs.edi = reinterpret_cast<CEntity*>(regs.esi)->m_nModelIndex;
+        });
+
+        MakeInline<0x6CD78B>("CPlane::DoPlaneGenerationAndRemoval", "B8 08 02 00 00", [](injector::reg_pack& regs)
+        {
+            if (getVariationOriginalModel(CPlane::GenPlane_ModelIndex) == 520)
+                regs.eax = (uint32_t)CPlane::GenPlane_ModelIndex;
+        });
 
 
         hookCall(0x871200, VehicleDamageHooked<0x871200>, "CAutomobile::VehicleDamage", true);

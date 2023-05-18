@@ -72,11 +72,6 @@ constexpr std::uintptr_t jmp613B7E = 0x613B7E;
 constexpr std::uintptr_t jmp6A1564 = 0x6A1564;
 constexpr std::uintptr_t jmp6AB35A = 0x6AB35A;
 constexpr std::uintptr_t jmp6ABA65 = 0x6ABA65;
-constexpr std::uintptr_t jmp6AC735 = 0x6AC735;
-constexpr std::uintptr_t jmp6C8F16 = 0x6C8F16;
-constexpr std::uintptr_t jmp6D4304 = 0x6D4304;
-constexpr std::uintptr_t jmp6D46F0 = 0x6D46F0;
-constexpr std::uintptr_t jmp729B7B = 0x729B7B;
 int carGenModel = -1;
 
 uint32_t asmNextinstr[4] = {};
@@ -540,43 +535,42 @@ void VehicleVariations::LoadData()
                 vehMergeZones.insert(i);
 
             uint8_t numGroups = 0;
-            std::vector<unsigned short> vec;
             for (int j = 0; j < 9; j++)
             {
-                std::string key = "DriverGroup" + std::to_string(j + 1);
-                vec = dataFile.ReadLine(section, key, READ_PEDS);
-                if (!vec.empty())
+                std::vector<unsigned short> vecDrivers = dataFile.ReadLine(section, "DriverGroup" + std::to_string(j + 1), READ_PEDS);
+                if (!vecDrivers.empty())
                 {
-                    vehDriverGroups[j].insert({ i, vec });
-                    numGroups++;
+                    std::vector<unsigned short> vecPassengers = dataFile.ReadLine(section, "PassengerGroup" + std::to_string(j + 1), READ_PEDS);
+                    if (!vecPassengers.empty())
+                    {
+                        vehPassengerGroups[j].insert({ i, vecPassengers });
+                        vehDriverGroups[j].insert({ i, vecDrivers });
+                        numGroups++;
+                    }
                 }
-                if (numGroups > 0)
-                    modelNumGroups[i] = numGroups;
                 else
-                    continue;
-
-                key = "PassengerGroup" + std::to_string(j + 1);
-                vec = dataFile.ReadLine(section, key, READ_PEDS);
-                if (!vec.empty())
-                    vehPassengerGroups[j].insert({ i, vec });
+                    continue;                
             }
+
+            if (numGroups > 0)
+                modelNumGroups[i] = numGroups;
 
             for (unsigned short j = 0; j < 6; j++)
             {
-                vec = dataFile.ReadLineUnique(section, "Wanted" + std::to_string(j + 1), READ_GROUPS);
+                std::vector<unsigned short> vec = dataFile.ReadLineUnique(section, "Wanted" + std::to_string(j + 1), READ_GROUPS);
                 if (!vec.empty())
                 {
-                    checkNumGroups(vec, modelNumGroups[i]);
+                    checkNumGroups(vec, numGroups);
                     vehGroupWantedVariations[i][j] = vec;
                 }
             }
 
             if (vehGroups.find(i) != vehGroups.end())
                 for (unsigned int j = 0; j < 16; j++)
-                    checkNumGroups(vehGroups[i][j], modelNumGroups[i]);
+                    checkNumGroups(vehGroups[i][j], numGroups);
 
 
-            vec = dataFile.ReadLine(section, "Drivers", READ_PEDS);
+            std::vector<unsigned short> vec = dataFile.ReadLine(section, "Drivers", READ_PEDS);
             if (!vec.empty())
                 vehDrivers.insert({ i, vec });
 
@@ -1185,6 +1179,12 @@ CColModel* __fastcall GetColModelHooked(CVehicle* entity)
 template <std::uintptr_t address>
 CCopPed* __fastcall CCopPedHooked(CCopPed* ped, void*, int copType)
 {
+    if (!memcmp(0x5DDD90, "1D 01 00 00"))
+    {
+        Log::LogModifiedAddress(0x5DDD90, "Modified address detected: 0x5DDD90 is %u\n", *(uint16_t*)0x5DDD90);
+        return callMethodOriginalAndReturn<CCopPed*, address>(ped, copType);
+    }
+
     unsigned int originalModel = *(unsigned int*)0x5DDD90;
 
     if (currentOccupantsGroup > -1 && currentOccupantsGroup < 9 && currentOccupantsModel > 0)
@@ -1266,17 +1266,6 @@ void __declspec(naked) patchPassengerModel()
 template <std::uintptr_t address>
 CPed* __cdecl AddPedInCarHooked(CVehicle* a1, char driver, int a3, signed int a4, int a5, char a6)
 {
-    auto modelChoosen = [&]()
-    {
-        const unsigned char originalData[5] = {*((uint8_t*)0x613B78), *((uint8_t*)0x613B79), *((uint8_t*)0x613B7A), *((uint8_t*)0x613B7B), *((uint8_t*)0x613B7C) };
-        loadModels({ passengerModelIndex }, PRIORITY_REQUEST, true);
-        injector::MakeJMP(0x613B78, patchPassengerModel);
-        CPed* ped = callOriginalAndReturn<CPed*, address>(a1, driver, a3, a4, a5, a6);
-        memcpy((void*)0x613B78, originalData, 5);
-        passengerModelIndex = -1;
-        return ped;
-    };
-
     if (a1)
     {
         std::string section;
@@ -1292,16 +1281,21 @@ CPed* __cdecl AddPedInCarHooked(CVehicle* a1, char driver, int a3, signed int a4
         {
             auto itGroup = vehPassengerGroups[currentOccupantsGroup].find(currentOccupantsModel);
             if (itGroup != vehPassengerGroups[currentOccupantsGroup].end())
-            {
                 passengerModelIndex = vectorGetRandom(itGroup->second);
-                return modelChoosen();
-            }
         }
-        if (it != vehPassengers.end() && ((!replacePassenger && rand<bool>()) || replacePassenger))
-        {
+        else if (it != vehPassengers.end() && ((!replacePassenger && rand<bool>()) || replacePassenger))
             passengerModelIndex = vectorGetRandom(it->second);
-            return modelChoosen();
-        }
+    }
+
+    if (passengerModelIndex > 0)
+    {
+        const unsigned char originalData[5] = { *((uint8_t*)0x613B78), *((uint8_t*)0x613B79), *((uint8_t*)0x613B7A), *((uint8_t*)0x613B7B), *((uint8_t*)0x613B7C) };
+        loadModels({ passengerModelIndex }, PRIORITY_REQUEST, true);
+        injector::MakeJMP(0x613B78, patchPassengerModel);
+        CPed* ped = callOriginalAndReturn<CPed*, address>(a1, driver, a3, a4, a5, a6);
+        memcpy((void*)0x613B78, originalData, 5);
+        passengerModelIndex = -1;
+        return ped;
     }
 
     return callOriginalAndReturn<CPed*, address>(a1, driver, a3, a4, a5, a6);

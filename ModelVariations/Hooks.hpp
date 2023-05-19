@@ -77,5 +77,5 @@ inline void MakeInline(const char *funcName, const char* originalData, FuncT fun
     if (forceEnable || memcmp(at, originalData))
         injector::MakeInline<at, at+len>(func);
     else
-        Log::LogModifiedAddress(at, "Modified method detected : %s - %u is %s\n", funcName, at, bytesToString(at, len).c_str());
+        Log::LogModifiedAddress(at, "Modified method detected: %s - 0x%08X is %s\n", funcName, at, bytesToString(at, len).c_str());
 }

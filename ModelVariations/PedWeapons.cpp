@@ -8,7 +8,6 @@
 #include <CPed.h>
 #include <CTheScripts.h>
 
-#include <map>
 #include <stack>
 #include <string>
 
@@ -88,7 +87,7 @@ void PedWeaponVariations::Process()
         if (!IsPedPointerValid(ped) || FindPlayerPed() == ped)
             continue;
 
-        const auto changeWeapon = [ped](const std::string section, const std::string key, eWeaponType originalWeaponId = WEAPON_UNARMED) -> bool
+        const auto changeWeapon = [ped](std::string_view section, std::string_view key, eWeaponType originalWeaponId = WEAPON_UNARMED) -> bool
         {
             std::vector<unsigned short> vec = dataFile.ReadLine(section, key, READ_WEAPONS);
             if (!vec.empty())

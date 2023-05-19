@@ -4,11 +4,14 @@
 
 #include <set>
 #include <string>
+#include <vector>
+
+#include <psapi.h>
 
 extern bool forceEnable;
 extern char currentZone[8];
 extern unsigned int currentTown;
-extern std::set<std::pair<std::uintptr_t, std::string>> modulesSet;
+extern std::vector<std::pair<std::string, MODULEINFO>> loadedModules;
 
 class VehicleVariations
 {

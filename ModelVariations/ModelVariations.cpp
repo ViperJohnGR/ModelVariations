@@ -51,7 +51,7 @@ std::unordered_map<std::uintptr_t, hookinfo> hookedCalls;
 
 
 std::set<std::pair<std::uintptr_t, std::string>> callChecks;
-std::set<std::pair<std::uintptr_t, std::string>> modulesSet;
+std::vector<std::pair<std::string, MODULEINFO>> loadedModules;
 
 std::vector<unsigned short> addedIDs;
 int maxPedID = 0;
@@ -135,7 +135,7 @@ void detectExe()
     
     exeFilesize = GetFileSize(hFile, NULL);
 
-    if (exeFilesize != INVALID_FILE_SIZE && exeHash.empty())
+    if (exeFilesize != INVALID_FILE_SIZE)
     {
         DWORD lpNumberOfBytesRead = 0;
         BCRYPT_ALG_HANDLE hProvider = NULL;
@@ -192,7 +192,7 @@ std::string getDatetime(bool printDate, bool printTime, bool printMs)
 
 void getLoadedModules()
 {
-    modulesSet.clear();
+    loadedModules.clear();
 
     HMODULE modules[500] = {};
     HANDLE hProcess = GetCurrentProcess();
@@ -213,13 +213,14 @@ void getLoadedModules()
                     if (!modInitialized)
                     {
                         std::string flaIniPath = szModName;
-                        flaIniPath = flaIniPath.substr(0, flaIniPath.find_last_of("\\/")) + "\\" + "fastman92limitAdjuster_GTASA.ini";
+                        flaIniPath.replace(flaIniPath.find_last_of("\\/"), std::string::npos, "\\fastman92limitAdjuster_GTASA.ini");
 
                         DataReader flaIni(flaIniPath);
                         int flaMaxID = flaIni.ReadInteger("ID LIMITS", "Count of killable model IDs", -1);
                         if (maxPedID == 0)
                             maxPedID = flaMaxID;
 
+                        Log::Write("FLA settings:\n");
                         Log::Write("Enable special features = %d\n", flaIni.ReadInteger("VEHICLE SPECIAL FEATURES", "Enable special features", -1));
                         Log::Write("Apply ID limit patch = %d\n", flaIni.ReadInteger("ID LIMITS", "Apply ID limit patch", -1));
                         Log::Write("Count of killable model IDs = %d\n", flaMaxID);
@@ -229,8 +230,13 @@ void getLoadedModules()
 #ifdef _DEBUG
                 assert(!compareUpper("ModelVariations.asi", getFilenameFromPath(szModName).c_str()));
 #endif
-
-                modulesSet.insert(std::make_pair((std::uintptr_t)modules[i], szModName));
+                MODULEINFO mInfo;
+                GetModuleInformation(hProcess, modules[i], &mInfo, sizeof(MODULEINFO));
+                loadedModules.push_back({ szModName, mInfo });
+                std::sort(loadedModules.begin(), loadedModules.end(), [](std::pair<std::string, MODULEINFO> a, std::pair<std::string, MODULEINFO> b)
+                {
+                    return a.second.lpBaseOfDll < b.second.lpBaseOfDll;
+                });
             }
         }
 }
@@ -392,8 +398,8 @@ void initialize()
 
     Log::Write("\nLoaded modules:\n");
 
-    for (const auto& i : modulesSet)
-        Log::Write("0x%08X %s\n", i.first, i.second.c_str());
+    for (auto& i : loadedModules)
+        Log::Write("0x%08X %s\n", i.second.lpBaseOfDll, i.first.c_str());
 
     Log::Write("\n");
 
@@ -590,23 +596,25 @@ public:
                     for (auto it : hookedCalls)
                     {
                         const std::uintptr_t functionAddress = (it.second.isVTableAddress == false) ? injector::GetBranchDestination(it.first).as_int() : *reinterpret_cast<unsigned int*>(it.first);
-                        std::pair<std::uintptr_t, std::string> moduleInfo = { modulesSet.begin()->first, modulesSet.begin()->second };
+                        std::pair<std::string, MODULEINFO> moduleInfo = { "", {} };
 
-                        for (auto it2 = modulesSet.begin(); it2 != modulesSet.end(); it2++)
+                        for (auto &it2 : loadedModules)
                         {
-                            if (it2->first > functionAddress)
+                            uint32_t base = reinterpret_cast<uint32_t>(it2.second.lpBaseOfDll);
+                            if (functionAddress >= base && functionAddress < base + it2.second.SizeOfImage)
+                            {
+                                moduleInfo.first = it2.first;
+                                moduleInfo.second = it2.second;
                                 break;
-
-                            moduleInfo.first = it2->first;
-                            moduleInfo.second = it2->second;
+                            }
                         }
-                        std::string moduleName = moduleInfo.second.substr(moduleInfo.second.find_last_of("/\\") + 1);
+                        std::string moduleName = moduleInfo.first.substr(moduleInfo.first.find_last_of("/\\") + 1);
 
                         if (compareUpper(moduleName.c_str(), MOD_NAME) == false && callChecks.find({ it.first , moduleName }) == callChecks.end())
                         {
                             callChecks.insert({ it.first, moduleName });
-                            if (functionAddress > 0)
-                                Log::Write("Modified call found: %s 0x%08X 0x%08X %s 0x%08X\n", it.second.name.data(), it.first, functionAddress, moduleName.c_str(), moduleInfo.first);
+                            if (functionAddress > 0 && !moduleName.empty())
+                                Log::Write("Modified call found: %s 0x%08X 0x%08X %s 0x%08X\n", it.second.name.data(), it.first, functionAddress, moduleName.c_str(), moduleInfo.second.lpBaseOfDll);
                             else
                                 Log::Write("Modified call found: %s 0x%08X\n", it.second.name.data(), it.first);
                         }

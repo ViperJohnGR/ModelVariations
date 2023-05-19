@@ -9,10 +9,8 @@
 #include <CCarCtrl.h>
 #include <CCarGenerator.h>
 #include <CCoronas.h>
-#include <CDarkel.h>
 #include <CHeli.h>
 #include <CModelInfo.h>
-#include <CPopulation.h>
 #include <CTheScripts.h>
 #include <CTheZones.h>
 #include <CTrain.h>
@@ -22,6 +20,8 @@
 #include <array>
 #include <iomanip>
 #include <stack>
+
+#include <psapi.h>
 
 using namespace plugin;
 
@@ -870,7 +870,7 @@ signed int __fastcall PickRandomCarHooked(CLoadedCarGroup* cargrp, void*, char a
             carGenModel = 531;
         }
         else
-            Log::LogModifiedAddress(0x6F3B9A, "Modified method detected : CCarGenerator::DoInternalProcessing - 0x6F3B9A is %u\n", *(uint16_t*)0x6F3B9A);
+            Log::LogModifiedAddress(0x6F3B9A, "Modified method detected: CCarGenerator::DoInternalProcessing - 0x6F3B9A is %u\n", *(uint16_t*)0x6F3B9A);
     }
     else if (originalModel == 532) //Combine Harvester
     {
@@ -880,7 +880,7 @@ signed int __fastcall PickRandomCarHooked(CLoadedCarGroup* cargrp, void*, char a
             carGenModel = 532;
         }
         else
-            Log::LogModifiedAddress(0x6F3BA0, "Modified method detected : CCarGenerator::DoInternalProcessing - 0x6F3BA0 is %u\n", *(uint16_t*)0x6F3BA0);
+            Log::LogModifiedAddress(0x6F3BA0, "Modified method detected: CCarGenerator::DoInternalProcessing - 0x6F3BA0 is %u\n", *(uint16_t*)0x6F3BA0);
     }
 
     return variation;
@@ -927,7 +927,7 @@ void __fastcall DoInternalProcessingHooked(CCarGenerator* park) //for non-random
                 else
                 {
                     callMethodOriginal<address>(park);
-                    Log::LogModifiedAddress(0x6F3B9A, "Modified method detected : CCarGenerator::DoInternalProcessing - 0x6F3B9A is %u\n", *(uint16_t*)0x6F3B9A);
+                    Log::LogModifiedAddress(0x6F3B9A, "Modified method detected: CCarGenerator::DoInternalProcessing - 0x6F3B9A is %u\n", *(uint16_t*)0x6F3B9A);
                     return;
                 }
             }
@@ -944,7 +944,7 @@ void __fastcall DoInternalProcessingHooked(CCarGenerator* park) //for non-random
                 else
                 {
                     callMethodOriginal<address>(park);
-                    Log::LogModifiedAddress(0x6F3BA0, "Modified method detected : CCarGenerator::DoInternalProcessing - 0x6F3BA0 is %u\n", *(uint16_t*)0x6F3BA0);
+                    Log::LogModifiedAddress(0x6F3BA0, "Modified method detected: CCarGenerator::DoInternalProcessing - 0x6F3BA0 is %u\n", *(uint16_t*)0x6F3BA0);
                     return;
                 }
             }
@@ -1804,7 +1804,7 @@ int __cdecl GetMaximumNumberOfPassengersFromNumberOfDoorsHooked(__int16 modelInd
         }
         else
         {
-            Log::LogModifiedAddress(modelAddress, "Modified method detected : CVehicleModelInfo::GetMaximumNumberOfPassengersFromNumberOfDoors - 0x%X is %u\n", modelAddress, *(uint16_t*)modelAddress);
+            Log::LogModifiedAddress(modelAddress, "Modified method detected: CVehicleModelInfo::GetMaximumNumberOfPassengersFromNumberOfDoors - 0x%X is %u\n", modelAddress, *(uint16_t*)modelAddress);
             return callOriginalAndReturn<int, address>(modelIndex);
         }
     };
@@ -2112,10 +2112,10 @@ void __declspec(naked) movsxReg32WordPtrReg()
     }
 }
 
-void hookASM(std::uintptr_t address, std::string originalData, injector::memory_pointer_raw hookDest, std::string funcName)
+void hookASM(std::uintptr_t address, std::string_view originalData, injector::memory_pointer_raw hookDest, std::string_view funcName)
 {
     int numBytes = (int)originalData.size()/3+1;
-
+    
     if (!memcmp(address, originalData.data()) && forceEnable == false)
     {
         std::string moduleName;
@@ -2129,18 +2129,20 @@ void hookASM(std::uintptr_t address, std::string originalData, injector::memory_
         std::string bytes = ss.str();
         const auto dest = injector::GetBranchDestination(address);
         if (dest != nullptr)
-        {
-            for (auto it = modulesSet.begin(); it != modulesSet.end(); it++)
-                if (it->first > dest.as_int())
+            for (auto& it : loadedModules)
+            {
+                uint32_t base = reinterpret_cast<uint32_t>(it.second.lpBaseOfDll);
+                if (dest >= base && dest < base + it.second.SizeOfImage)
+                {
+                    moduleName = it.first;
                     break;
-                else
-                    moduleName = it->second;
-        }
+                }
+            }
 
         if (funcName.find("::") != std::string::npos)
-            Log::LogModifiedAddress(address, "Modified method detected: %s - 0x%08X is %s %s\n", funcName.c_str(), address, bytes.c_str(), getFilenameFromPath(moduleName).c_str());
+            Log::LogModifiedAddress(address, "Modified method detected: %s - 0x%08X is %s %s\n", funcName.data(), address, bytes.c_str(), getFilenameFromPath(moduleName).c_str());
         else
-            Log::LogModifiedAddress(address, "Modified function detected: %s - 0x%08X is %s %s\n", funcName.c_str(), address, bytes.c_str(), getFilenameFromPath(moduleName).c_str());
+            Log::LogModifiedAddress(address, "Modified function detected: %s - 0x%08X is %s %s\n", funcName.data(), address, bytes.c_str(), getFilenameFromPath(moduleName).c_str());
            
         return;
     }
@@ -2521,7 +2523,7 @@ void VehicleVariations::InstallHooks()
         if (memcmp(0x6ABA56, "68 FF 00 00 00") || forceEnable)
             injector::MakeJMP(0x6ABA56, patchCoronas);
         else
-            Log::LogModifiedAddress(0x6ABA56, "Modified method detected : CAutomobile::PreRender - 0x6ABA56 is %s\n", bytesToString(0x6ABA56, 5).c_str());
+            Log::LogModifiedAddress(0x6ABA56, "Modified method detected: CAutomobile::PreRender - 0x6ABA56 is %s\n", bytesToString(0x6ABA56, 5).c_str());
 
         hookCall(0x6AB80F, AddLightHooked<0x6AB80F>, "CPointLights::AddLight"); //CAutomobile::PreRender
         hookCall(0x6ABBA6, AddLightHooked<0x6ABBA6>, "CPointLights::AddLight"); //CAutomobile::PreRender

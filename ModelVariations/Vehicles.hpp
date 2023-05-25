@@ -2,7 +2,6 @@
 
 #include <CVehicle.h>
 
-#include <set>
 #include <string>
 #include <vector>
 

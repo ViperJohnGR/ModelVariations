@@ -18,7 +18,7 @@
 #include <CVector.h>
 
 #include <array>
-#include <iomanip>
+#include <set>
 #include <stack>
 
 #include <psapi.h>
@@ -1580,66 +1580,71 @@ void __fastcall CAutomobile__PreRenderHooked(CAutomobile* veh)
     if (veh == NULL)
         return;
 
-    const uint8_t sirenOriginal[5] = { *(uint8_t*)0x6AB350, *(uint8_t*)0x6AB351, *(uint8_t*)0x6AB352, *(uint8_t*)0x6AB353, *(uint8_t*)0x6AB354 };
+    uint8_t sirenLightsOriginal[5] = { *(uint8_t*)0x6AB350, *(uint8_t*)0x6AB351, *(uint8_t*)0x6AB352, *(uint8_t*)0x6AB353, *(uint8_t*)0x6AB354 };
 
     sirenModel = -1;
     lightsModel = 0;
-    bool hasSiren = false;
+    bool hasSirenLights = false;
 
     if (enableLights && (HasCarSiren<0>(veh) || getVariationOriginalModel(veh->m_nModelIndex) == 420 || getVariationOriginalModel(veh->m_nModelIndex) == 438))
     {
         sirenModel = getVariationOriginalModel(veh->m_nModelIndex);
         lightsModel = veh->m_nModelIndex;
         injector::MakeJMP(0x6AB350, enableSirenLights);
-        hasSiren = true;
+        hasSirenLights = true;
     }
 
-    if (getVariationOriginalModel(veh->m_nModelIndex) == 407) //Firetruck
-        changeModel<address>("CAutomobile::PreRender", 407, veh->m_nModelIndex, { 0x6ACA59 }, veh);
-    else if (getVariationOriginalModel(veh->m_nModelIndex) == 424) //BF Injection
-        changeModel<address>("CAutomobile::PreRender", 424, veh->m_nModelIndex, { 0x6AC2A1 }, veh);
-    else if (getVariationOriginalModel(veh->m_nModelIndex) == 432) //Rhino
-        changeModel<address>("CAutomobile::PreRender", 432, veh->m_nModelIndex, { 0x6ABC83,
-                                                                                  0x6ABD11,
-                                                                                  0x6ABFCC,
-                                                                                  0x6AC029,
-                                                                                  0x6ACA4D }, veh);
-    else if (getVariationOriginalModel(veh->m_nModelIndex) == 434) //Hotknife
-        changeModel<address>("CAutomobile::PreRender", 434, veh->m_nModelIndex, { 0x6ACA43 }, veh);
-    else if (getVariationOriginalModel(veh->m_nModelIndex) == 443) //Packer
-        changeModel<address>("CAutomobile::PreRender", 443, veh->m_nModelIndex, { 0x6AC4DB }, veh);
-    else if (getVariationOriginalModel(veh->m_nModelIndex) == 477) //ZR-350
-        changeModel<address>("CAutomobile::PreRender", 477, veh->m_nModelIndex, { 0x6ACA8F }, veh);
-    else if (getVariationOriginalModel(veh->m_nModelIndex) == 486) //Dozer
-        changeModel<address>("CAutomobile::PreRender", 486, veh->m_nModelIndex, { 0x6AC40E }, veh);
-    else if (getVariationOriginalModel(veh->m_nModelIndex) == 495) //Sandking
-        changeModel<address>("CAutomobile::PreRender", 495, veh->m_nModelIndex, { (GetGameVersion() != GAME_10US_COMPACT) ? 0x4064A0U : 0x6ACBCBU }, veh);
-    else if (getVariationOriginalModel(veh->m_nModelIndex) == 524) //Cement Truck
-        changeModel<address>("CAutomobile::PreRender", 524, veh->m_nModelIndex, { 0x6AC43D }, veh);
-    else if (getVariationOriginalModel(veh->m_nModelIndex) == 525) //Towtruck
-        changeModel<address>("CAutomobile::PreRender", 525, veh->m_nModelIndex, { 0x6AC509 }, veh);
-    else if (getVariationOriginalModel(veh->m_nModelIndex) == 530) //Forklift
-        changeModel<address>("CAutomobile::PreRender", 530, veh->m_nModelIndex, { 0x6AC71E }, veh);
-    else if (getVariationOriginalModel(veh->m_nModelIndex) == 531) //Tractor
-        changeModel<address>("CAutomobile::PreRender", 531, veh->m_nModelIndex, { 0x6AC6DB }, veh);
-    else if (getVariationOriginalModel(veh->m_nModelIndex) == 532) //Combine Harverster
-        changeModel<address>("CAutomobile::PreRender", 532, veh->m_nModelIndex, { 0x6ABCA3, 0x6AC7AD }, veh);
-    else if (getVariationOriginalModel(veh->m_nModelIndex) == 539) //Vortex
-        changeModel<address>("CAutomobile::PreRender", 539, veh->m_nModelIndex, { 0x6AAE27 }, veh);
-    else if (getVariationOriginalModel(veh->m_nModelIndex) == 568) //Bandito
-        changeModel<address>("CAutomobile::PreRender", 568, veh->m_nModelIndex, { 0x6ACA39 }, veh);
-    else if (getVariationOriginalModel(veh->m_nModelIndex) == 601) //SWAT Tank
-        changeModel<address>("CAutomobile::PreRender", 601, veh->m_nModelIndex, { 0x6ACA53 }, veh); 
+    if (enableSpecialFeatures)
+    {
+        if (getVariationOriginalModel(veh->m_nModelIndex) == 407) //Firetruck
+            changeModel<address>("CAutomobile::PreRender", 407, veh->m_nModelIndex, { 0x6ACA59 }, veh);
+        else if (getVariationOriginalModel(veh->m_nModelIndex) == 424) //BF Injection
+            changeModel<address>("CAutomobile::PreRender", 424, veh->m_nModelIndex, { 0x6AC2A1 }, veh);
+        else if (getVariationOriginalModel(veh->m_nModelIndex) == 432) //Rhino
+            changeModel<address>("CAutomobile::PreRender", 432, veh->m_nModelIndex, { 0x6ABC83,
+                                                                                      0x6ABD11,
+                                                                                      0x6ABFCC,
+                                                                                      0x6AC029,
+                                                                                      0x6ACA4D }, veh);
+        else if (getVariationOriginalModel(veh->m_nModelIndex) == 434) //Hotknife
+            changeModel<address>("CAutomobile::PreRender", 434, veh->m_nModelIndex, { 0x6ACA43 }, veh);
+        else if (getVariationOriginalModel(veh->m_nModelIndex) == 443) //Packer
+            changeModel<address>("CAutomobile::PreRender", 443, veh->m_nModelIndex, { 0x6AC4DB }, veh);
+        else if (getVariationOriginalModel(veh->m_nModelIndex) == 477) //ZR-350
+            changeModel<address>("CAutomobile::PreRender", 477, veh->m_nModelIndex, { 0x6ACA8F }, veh);
+        else if (getVariationOriginalModel(veh->m_nModelIndex) == 486) //Dozer
+            changeModel<address>("CAutomobile::PreRender", 486, veh->m_nModelIndex, { 0x6AC40E }, veh);
+        else if (getVariationOriginalModel(veh->m_nModelIndex) == 495) //Sandking
+            changeModel<address>("CAutomobile::PreRender", 495, veh->m_nModelIndex, { (GetGameVersion() != GAME_10US_COMPACT) ? 0x4064A0U : 0x6ACBCBU }, veh);
+        else if (getVariationOriginalModel(veh->m_nModelIndex) == 524) //Cement Truck
+            changeModel<address>("CAutomobile::PreRender", 524, veh->m_nModelIndex, { 0x6AC43D }, veh);
+        else if (getVariationOriginalModel(veh->m_nModelIndex) == 525) //Towtruck
+            changeModel<address>("CAutomobile::PreRender", 525, veh->m_nModelIndex, { 0x6AC509 }, veh);
+        else if (getVariationOriginalModel(veh->m_nModelIndex) == 530) //Forklift
+            changeModel<address>("CAutomobile::PreRender", 530, veh->m_nModelIndex, { 0x6AC71E }, veh);
+        else if (getVariationOriginalModel(veh->m_nModelIndex) == 531) //Tractor
+            changeModel<address>("CAutomobile::PreRender", 531, veh->m_nModelIndex, { 0x6AC6DB }, veh);
+        else if (getVariationOriginalModel(veh->m_nModelIndex) == 532) //Combine Harverster
+            changeModel<address>("CAutomobile::PreRender", 532, veh->m_nModelIndex, { 0x6ABCA3, 0x6AC7AD }, veh);
+        else if (getVariationOriginalModel(veh->m_nModelIndex) == 539) //Vortex
+            changeModel<address>("CAutomobile::PreRender", 539, veh->m_nModelIndex, { 0x6AAE27 }, veh);
+        else if (getVariationOriginalModel(veh->m_nModelIndex) == 568) //Bandito
+            changeModel<address>("CAutomobile::PreRender", 568, veh->m_nModelIndex, { 0x6ACA39 }, veh);
+        else if (getVariationOriginalModel(veh->m_nModelIndex) == 601) //SWAT Tank
+            changeModel<address>("CAutomobile::PreRender", 601, veh->m_nModelIndex, { 0x6ACA53 }, veh);
+        else
+            callMethodOriginal<address>(veh);
+    }
     else
         callMethodOriginal<address>(veh);
 
-    if (hasSiren)
+    if (hasSirenLights)
     {
-        ((uint8_t*)0x6AB350)[0] = sirenOriginal[0];
-        ((uint8_t*)0x6AB350)[1] = sirenOriginal[1];
-        ((uint8_t*)0x6AB350)[2] = sirenOriginal[2];
-        ((uint8_t*)0x6AB350)[3] = sirenOriginal[3];
-        ((uint8_t*)0x6AB350)[4] = sirenOriginal[4];
+        ((uint8_t*)0x6AB350)[0] = sirenLightsOriginal[0];
+        ((uint8_t*)0x6AB350)[1] = sirenLightsOriginal[1];
+        ((uint8_t*)0x6AB350)[2] = sirenLightsOriginal[2];
+        ((uint8_t*)0x6AB350)[3] = sirenLightsOriginal[3];
+        ((uint8_t*)0x6AB350)[4] = sirenLightsOriginal[4];
     }
 }
 
@@ -2236,6 +2241,9 @@ void VehicleVariations::InstallHooks()
 
     hookCall(0x64BB57, SetDriverHooked<0x64BB57>, "CVehicle::SetDriver"); //CTaskSimpleCarSetPedInAsDriver::ProcessPed
 
+    hookCall(0x871164, CAutomobile__PreRenderHooked<0x871164>, "CAutomobile::PreRender", true);
+    hookCall(0x6CFADC, CAutomobile__PreRenderHooked<0x6CFADC>, "CAutomobile::PreRender"); //CTrailer::PreRender
+
     if (changeScriptedCars)
         hookCall(0x467B01, CreateCarForScriptHooked<0x467B01>, "CCarCtrl::CreateCarForScript");
     
@@ -2247,8 +2255,6 @@ void VehicleVariations::InstallHooks()
         hookCall(0x6C9313, ProcessControlHooked<0x6C9313>, "CAutomobile::ProcessControl"); //CPlane::ProcessControl
         hookCall(0x6CE005, ProcessControlHooked<0x6CE005>, "CAutomobile::ProcessControl"); //CQuadBike::ProcessControl
         hookCall(0x6CED23, ProcessControlHooked<0x6CED23>, "CAutomobile::ProcessControl"); //CTrailer::ProcessControl
-        hookCall(0x871164, CAutomobile__PreRenderHooked<0x871164>, "CAutomobile::PreRender", true);
-        hookCall(0x6CFADC, CAutomobile__PreRenderHooked<0x6CFADC>, "CAutomobile::PreRender");
         hookCall(0x871214, SetTowLinkHooked<0x871214>, "CAutomobile::SetTowLink", true);
         hookCall(0x871D14, GetTowHitchPosHooked<0x871D14>, "CTrailer::GetTowHitchPos", true);
 
@@ -2515,7 +2521,7 @@ void VehicleVariations::InstallHooks()
     if (enableSiren)
         hookCall(0x6D8492, HasCarSiren<0x6D8492>, "HasCarSiren"); //CVehicle::UsesSiren
 
-    if (enableLights && enableSiren)
+    if (enableLights)
     {
         hookCall(0x6ABA60, RegisterCoronaHooked<0x6ABA60>, "CCoronas::RegisterCorona"); //CAutomobile::PreRender
         hookCall(0x6ABB35, RegisterCoronaHooked<0x6ABB35>, "CCoronas::RegisterCorona"); //CAutomobile::PreRender

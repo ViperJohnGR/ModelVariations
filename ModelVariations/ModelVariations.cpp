@@ -487,14 +487,16 @@ public:
             Log::Close();
         };
 
-        Events::initScriptsEvent.after += []
+        auto gameLoadEvent = []
         {
+            auto startTime = clock();
+
             if (!modInitialized && loadStage == 2)
                 initialize();
 
             assert(modInitialized);
 
-            Log::Write("-- initScriptsEvent (%s) --\n", getDatetime(false, true, true).c_str());
+            Log::Write("-- gameLoadEvent (%s) --\n", getDatetime(false, true, true).c_str());
 
             clearEverything();
 
@@ -520,7 +522,15 @@ public:
                 timeUpdate = clock();
             else
                 timeUpdate = -1;
+
+            auto finalTime = clock() - startTime;
+            if (finalTime < 1000)
+                Log::Write("Time spend loading: %dms.\n", finalTime);
+            else
+                Log::Write("Time spend loading: %gs.\n", finalTime / 1000.0);
         };
+        Events::initGameEvent += gameLoadEvent;
+        Events::reInitGameEvent += gameLoadEvent;
 
         Events::pedCtorEvent += [](CPed* ped)
         {

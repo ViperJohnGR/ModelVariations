@@ -762,17 +762,17 @@ void changeModel(const char* funcName, unsigned short oldModel, int newModel, st
     }
 
     for (auto& i : addresses)
-        if (*((uint16_t*)i) != oldModel && forceEnable == false)
+        if (*(uint16_t*)i != oldModel && forceEnable == false)
         {
             Log::LogModifiedAddress(i, "Modified method detected : %s - 0x%08X is %u\n", funcName, i, *(uint16_t*)i);
             return callMethodOriginal<address>(args...);
         }
 
     for (auto& i : addresses)
-        *(uint16_t*)i = (unsigned short)newModel;
+        WriteMemory<uint16_t>(i, newModel);
     callMethodOriginal<address>(args...);
     for (auto& i : addresses)
-        *(uint16_t*)i = oldModel;
+        WriteMemory<uint16_t>(i, oldModel);
 }
 
 template <typename T, std::uintptr_t address, typename... Args>
@@ -784,17 +784,17 @@ T changeModelAndReturn(const char* funcName, unsigned short oldModel, int newMod
     }
 
     for (auto& i : addresses)
-        if (*((uint16_t*)i) != oldModel && forceEnable == false)
+        if (*(uint16_t*)i != oldModel && forceEnable == false)
         {
             Log::LogModifiedAddress(i, "Modified method detected : %s - 0x%08X is %u\n", funcName, i, *(uint16_t*)i);
             return callMethodOriginalAndReturn<T, address>(args...);
         }
 
     for (auto& i : addresses)
-        *(uint16_t*)i = (unsigned short)newModel;
+        WriteMemory<uint16_t>(i, newModel);
     T retValue = callMethodOriginalAndReturn<T, address>(args...);
     for (auto& i : addresses)
-        *(uint16_t*)i = oldModel;
+        WriteMemory<uint16_t>(i, oldModel);
     return retValue;
 }
 
@@ -866,7 +866,7 @@ signed int __fastcall PickRandomCarHooked(CLoadedCarGroup* cargrp, void*, char a
     {
         if (*(uint16_t*)0x6F3B9A == 531 || forceEnable)
         {
-            *(uint16_t*)0x6F3B9A = (uint16_t)variation;
+            WriteMemory<uint16_t>(0x6F3B9A, variation);
             carGenModel = 531;
         }
         else
@@ -876,7 +876,7 @@ signed int __fastcall PickRandomCarHooked(CLoadedCarGroup* cargrp, void*, char a
     {
         if (*(uint16_t*)0x6F3BA0 == 532 || forceEnable)
         {
-            *(uint16_t*)0x6F3BA0 = (uint16_t)variation;
+            WriteMemory<uint16_t>(0x6F3BA0, variation);
             carGenModel = 532;
         }
         else
@@ -895,9 +895,9 @@ void __fastcall DoInternalProcessingHooked(CCarGenerator* park) //for non-random
         {
             callMethodOriginal<address>(park);
             if (carGenModel == 531)
-                *(uint16_t*)0x6F3B9A = 531;
+                WriteMemory<uint16_t>(0x6F3B9A, 531);
             else if (carGenModel == 532)
-                *(uint16_t*)0x6F3BA0 = 532;
+                WriteMemory<uint16_t>(0x6F3BA0, 532);
 
             carGenModel = -1;
             return;
@@ -918,9 +918,9 @@ void __fastcall DoInternalProcessingHooked(CCarGenerator* park) //for non-random
                 if (*(uint16_t*)0x6F3B9A == 531 || forceEnable)
                 {
                     park->m_nModelId = (short)getRandomVariation(park->m_nModelId, true);
-                    *(uint16_t*)0x6F3B9A = (uint16_t)park->m_nModelId;
+                    WriteMemory<uint16_t>(0x6F3B9A, park->m_nModelId);
                     callMethodOriginal<address>(park);
-                    *(uint16_t*)0x6F3B9A = 531;
+                    WriteMemory<uint16_t>(0x6F3B9A, 531);
                     //park->m_nModelId = 531;
                     return;
                 }
@@ -936,9 +936,9 @@ void __fastcall DoInternalProcessingHooked(CCarGenerator* park) //for non-random
                 if (*(uint16_t*)0x6F3BA0 == 532 || forceEnable)
                 {
                     park->m_nModelId = (short)getRandomVariation(park->m_nModelId, true);
-                    *(uint16_t*)0x6F3BA0 = (uint16_t)park->m_nModelId;
+                    WriteMemory<uint16_t>(0x6F3BA0, park->m_nModelId);
                     callMethodOriginal<address>(park);
-                    *(uint16_t*)0x6F3BA0 = 532;
+                    WriteMemory<uint16_t>(0x6F3BA0, 532);
                     return;
                 }
                 else
@@ -1289,11 +1289,11 @@ CPed* __cdecl AddPedInCarHooked(CVehicle* a1, char driver, int a3, signed int a4
 
     if (passengerModelIndex > 0)
     {
-        const unsigned char originalData[5] = { *((uint8_t*)0x613B78), *((uint8_t*)0x613B79), *((uint8_t*)0x613B7A), *((uint8_t*)0x613B7B), *((uint8_t*)0x613B7C) };
+        uint8_t originalData[5] = { *(uint8_t*)0x613B78, *(uint8_t*)0x613B79, *(uint8_t*)0x613B7A, *(uint8_t*)0x613B7B, *(uint8_t*)0x613B7C };
         loadModels({ passengerModelIndex }, PRIORITY_REQUEST, true);
         injector::MakeJMP(0x613B78, patchPassengerModel);
         CPed* ped = callOriginalAndReturn<CPed*, address>(a1, driver, a3, a4, a5, a6);
-        memcpy((void*)0x613B78, originalData, 5);
+        injector::WriteMemoryRaw(0x613B78, originalData, 5, true);
         passengerModelIndex = -1;
         return ped;
     }
@@ -1409,11 +1409,11 @@ void __cdecl PossiblyRemoveVehicleHooked(CVehicle* car)
         return;
     }
 
-    if (*((uint16_t*)0x4250AC) == 416 || forceEnable)
+    if (*(uint16_t*)0x4250AC == 416 || forceEnable)
     {
-        *((uint16_t*)0x4250AC) = car->m_nModelIndex;
+        WriteMemory<uint16_t>(0x4250AC, car->m_nModelIndex);
         callOriginal<address>(car);
-        *((uint16_t*)0x4250AC) = 416;
+        WriteMemory<uint16_t>(0x4250AC, 416);
         return;
     }
     else
@@ -1639,13 +1639,7 @@ void __fastcall CAutomobile__PreRenderHooked(CAutomobile* veh)
         callMethodOriginal<address>(veh);
 
     if (hasSirenLights)
-    {
-        ((uint8_t*)0x6AB350)[0] = sirenLightsOriginal[0];
-        ((uint8_t*)0x6AB350)[1] = sirenLightsOriginal[1];
-        ((uint8_t*)0x6AB350)[2] = sirenLightsOriginal[2];
-        ((uint8_t*)0x6AB350)[3] = sirenLightsOriginal[3];
-        ((uint8_t*)0x6AB350)[4] = sirenLightsOriginal[4];
-    }
+        injector::WriteMemoryRaw(0x6AB350, sirenLightsOriginal, 5, true);
 }
 
 template <std::uintptr_t address>
@@ -1802,9 +1796,9 @@ int __cdecl GetMaximumNumberOfPassengersFromNumberOfDoorsHooked(__int16 modelInd
     {
         if (*(short*)modelAddress == oldModel || forceEnable)
         {
-            *(short*)modelAddress = modelIndex;
+            WriteMemory<short>(modelAddress, modelIndex);
             const signed int retValue = callOriginalAndReturn<int, address>(modelIndex);
-            *(short*)modelAddress = oldModel;
+            WriteMemory<short>(modelAddress, oldModel);
             return retValue;
         }
         else

@@ -63,6 +63,18 @@ inline bool memcmp(std::uintptr_t address, const char* value)
     return true;
 }
 
+template <typename T>
+inline void WriteMemory(std::uintptr_t address, int value)
+{
+    injector::WriteMemory<T>(address, (T)value, true);
+}
+
+template <typename T>
+inline void WriteMemory(std::uintptr_t address, unsigned int value)
+{
+    injector::WriteMemory<T>(address, (T)value, true);
+}
+
 
 ////////////
 // Random //

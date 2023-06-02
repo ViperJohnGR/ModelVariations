@@ -17,6 +17,7 @@
 #include <CWorld.h>
 
 #include <array>
+#include <future>
 #include <iomanip>
 #include <map>
 #include <set>
@@ -73,6 +74,8 @@ unsigned int currentWanted = 0;
 
 bool keyDown = false;
 
+bool reloadingSettings = false;
+
 int timeUpdate = -1;
 
 //INI Options
@@ -82,11 +85,14 @@ bool enableSpecialPeds = false;
 bool enableVehicles = false;
 bool enablePedWeapons = false;
 bool forceEnable = false;
+bool loadSettingsImmediately = false;
 int loadStage = 1;
 unsigned int disableKey = 0;
 unsigned int reloadKey = 0;
 
 bool modInitialized = false;
+
+std::future<void> future;
 
 
 bool checkForUpdate()
@@ -256,7 +262,7 @@ void clearEverything()
 
 void loadIniData()
 {
-    iniSettings.SetIniPath(iniSettings.GetIniPath());
+    iniSettings.SetIniPath(dataFileName);
 
     enablePeds = iniSettings.ReadBoolean("Settings", "EnablePeds", false);
     enableVehicles = iniSettings.ReadBoolean("Settings", "EnableVehicles", false);
@@ -412,6 +418,7 @@ public:
 
         iniSettings.SetIniPath(dataFileName);
 
+        loadSettingsImmediately = iniSettings.ReadBoolean("Settings", "LoadSettingsImmediately", false);
         forceEnable = iniSettings.ReadBoolean("Settings", "ForceEnable", false);
         loadStage = iniSettings.ReadInteger("Settings", "LoadStage", 1);
         disableKey = (unsigned int)iniSettings.ReadInteger("Settings", "DisableKey", 0);
@@ -499,35 +506,41 @@ public:
             Log::Write("-- gameLoadEvent (%s) --\n", getDatetime(false, true, true).c_str());
 
             clearEverything();
-
-            loadIniData();
-
-            if (enablePeds)
-                PedVariations::LogVariations();
-
-            if (enableVehicles)
-            {
-                Log::Write("\n");
-                VehicleVariations::LogVariations();
-            }
-
-            Log::Write("\n\n");
-
             PedVariations::ProcessDrugDealers(true);
-            framesSinceCallsChecked = 900;
-
             getLoadedModules();
 
-            if (checkForUpdate())
-                timeUpdate = clock();
-            else
-                timeUpdate = -1;
+            framesSinceCallsChecked = 900;
 
-            auto finalTime = clock() - startTime;
-            if (finalTime < 1000)
-                Log::Write("Time spend loading: %dms.\n", finalTime);
-            else
-                Log::Write("Time spend loading: %gs.\n", finalTime / 1000.0);
+            reloadingSettings = true;
+            future = std::async(std::launch::async, [startTime] {
+                loadIniData();
+
+                if (enablePeds)
+                    PedVariations::LogVariations();
+
+                if (enableVehicles)
+                {
+                    Log::Write("\n");
+                    VehicleVariations::LogVariations();
+                }
+
+                Log::Write("\n\n");
+                
+                if (checkForUpdate())
+                    timeUpdate = clock();
+                else
+                    timeUpdate = -1;
+
+                auto finalTime = clock() - startTime;
+                if (finalTime < 1000)
+                    Log::Write("Time spend loading: %dms.\n", finalTime);
+                else
+                    Log::Write("Time spend loading: %gs.\n", finalTime / 1000.0);
+
+                reloadingSettings = false;
+            });
+            if (loadSettingsImmediately)
+                future.get();
         };
         Events::initGameEvent += gameLoadEvent;
         Events::reInitGameEvent += gameLoadEvent;
@@ -545,6 +558,9 @@ public:
 
         Events::gameProcessEvent += []
         {
+            if (reloadingSettings)
+                return;
+
             CVector pPos = FindPlayerCoors(-1);
             CZone* zInfo = NULL;
             CTheZones::GetZoneInfo(&pPos, &zInfo);
@@ -585,12 +601,19 @@ public:
                 if (!keyDown)
                 {
                     keyDown = true;
+                    reloadingSettings = true;
                     Log::Write("Reloading settings...\n");
                     clearEverything();
-                    loadIniData();
-                    updateVariations();
-                    logVariationChange("Settings reloaded.");
-                    printMessage("~y~Model Variations~s~: Settings reloaded.", 2000);
+                    printMessage("~y~Model Variations~s~: Reloading settings...", 10000);
+                    future = std::async(std::launch::async, [logVariationChange] {
+                        loadIniData();
+                        logVariationChange("Settings reloaded.");
+                        updateVariations();
+                        printMessage("~y~Model Variations~s~: Settings reloaded.", 2000);
+                        reloadingSettings = false;
+                    });
+                    if (loadSettingsImmediately)
+                        future.get();
                 }
             }
             else

@@ -511,6 +511,9 @@ public:
 
             framesSinceCallsChecked = 900;
 
+            currentZone[0] = 0;
+            lastInterior[0] = 0;
+
             reloadingSettings = true;
             future = std::async(std::launch::async, [startTime] {
                 loadIniData();
@@ -567,7 +570,7 @@ public:
             const CWanted* wanted = FindPlayerWanted(-1);
             const CPlayerPed* player = FindPlayerPed();
 
-            const auto logVariationChange = [zInfo, wanted](const char* msg)
+            auto logVariationChange = [zInfo, wanted](const char* msg)
             {
                 Log::Write("\n%s (%s). Updating variations...\n", msg, getDatetime(false, true, true).c_str());
                 Log::Write("currentWanted = %u wanted->m_nWantedLevel = %u\n", currentWanted, wanted->m_nWantedLevel);

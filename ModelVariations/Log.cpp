@@ -39,7 +39,7 @@ bool Log::Write(const char* format, ...)
 	va_end(argptr);
 
 	DWORD bytesWritten = 0;
-	if (WriteFile(logfile, buffer.data(), strlen(buffer.data()), &bytesWritten, NULL) == 0)
+	if (WriteFile(logfile, buffer.data(), strlen(buffer.data()), &bytesWritten, NULL) == 0 && GetLastError() != ERROR_IO_PENDING)
 		return false;
 
 	if (strlen(buffer.data()) != bytesWritten)
@@ -62,7 +62,7 @@ bool Log::LogModifiedAddress(std::uintptr_t address, const char* format, ...)
 	va_end(argptr);
 
 	DWORD bytesWritten = 0;
-	if (WriteFile(logfile, buffer.data(), strlen(buffer.data()), &bytesWritten, NULL) == 0)
+	if (WriteFile(logfile, buffer.data(), strlen(buffer.data()), &bytesWritten, NULL) == 0 && GetLastError() != ERROR_IO_PENDING)
 		return false;
 
 	if (strlen(buffer.data()) != bytesWritten)

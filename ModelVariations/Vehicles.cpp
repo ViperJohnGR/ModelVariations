@@ -125,36 +125,39 @@ std::vector<unsigned short> vehInheritExclude;
 
 int getTuningPartSlot(int model)
 {
-    auto mInfo = CModelInfo::GetModelInfo(model);
+    const auto mInfo = CModelInfo::GetModelInfo(model);
 
     if (mInfo != NULL)
     {
-        unsigned short flags = mInfo->m_nFlags;
-        int v87 = (flags >> 10) & 0x1F;
-
-        if ((flags & 0x100) != 0)
-        {
-            if (v87 == 1) return 11;
-            else if (v87 == 2) return 12;
-            else if (v87 == 12) return 14;
-            else if (v87 == 13) return 15;
-            else if (v87 == 19) return 13;
-            else if (v87 == 20 || v87 == 21 || v87 == 22) return 16;
-        }
+        if ((mInfo->m_nFlags & 0x100) != 0)
+            switch ((mInfo->m_nFlags >> 10) & 0x1F)
+            {
+                case 1:  return 11;
+                case 2:  return 12;
+                case 12: return 14;
+                case 13: return 15;
+                case 19: return 13;
+                case 20:
+                case 21:
+                case 22: return 16;
+            }
         else
-        {
-            if (v87 == 0) return 0;
-            else if (v87 == 1 || v87 == 2) return 1;
-            else if (v87 == 6) return 2;
-            else if (v87 == 8 || v87 == 9) return 3;
-            else if (v87 == 10) return 4;
-            else if (v87 == 11) return 5;
-            else if (v87 == 12) return 6;
-            else if (v87 == 14) return 7;
-            else if (v87 == 15) return 8;
-            else if (v87 == 16) return 9;
-            else if (v87 == 17) return 10;
-        }
+            switch ((mInfo->m_nFlags >> 10) & 0x1F)
+            {
+                case 0:  return 0;
+                case 1:
+                case 2:  return 1;
+                case 6:  return 2;
+                case 8:
+                case 9:  return 3;
+                case 10: return 4;
+                case 11: return 5;
+                case 12: return 6;
+                case 14: return 7;
+                case 15: return 8;
+                case 16: return 9;
+                case 17: return 10;
+            }
     }
 
     return -1;
@@ -172,7 +175,7 @@ void checkNumGroups(std::vector<unsigned short>& vec, uint8_t numGroups)
     }
 }
 
-void processOccupantGroups(CVehicle* veh)
+void processOccupantGroups(const CVehicle* veh)
 {
     if (vehUseOnlyGroups.find(veh->m_nModelIndex) != vehUseOnlyGroups.end() || rand<bool>())
     {
@@ -447,8 +450,8 @@ void VehicleVariations::LoadData()
                 vehWantedVariations[i - 400][5] = dataFile.ReadLine(section, "Wanted6", READ_VEHICLES);
 
 
-                for (unsigned int j = 0; j < 16; j++)
-                    for (auto& k : vehVariations[i - 400][j])
+                for (auto &j : vehVariations[i - 400])
+                    for (auto& k : j)
                         if (k != i && !(vectorHasId(vehInheritExclude, k)))
                             vehOriginalModels.insert({ k, i });
             }
@@ -510,7 +513,7 @@ void VehicleVariations::LoadData()
                 int b = dataFile.ReadInteger(section, "LightB", -1);
                 int a = dataFile.ReadInteger(section, "LightA", -1);
 
-                if (r >= 0 && r <= 255 && g >= 0 && g <= 255 && b >= 0 && b <= 255 && a >= 0 && a <= 255)
+                if ((uint8_t)r == r && (uint8_t)g == g && (uint8_t)b == b && (uint8_t)a == a)
                 {
                     rgba colors = { (uint8_t)r, (uint8_t)g, (uint8_t)b, (uint8_t)a };
                     LightColors.insert({ i, colors });
@@ -524,7 +527,7 @@ void VehicleVariations::LoadData()
                 b = dataFile.ReadInteger(section, "LightB2", -1);
                 a = dataFile.ReadInteger(section, "LightA2", -1);
 
-                if (r >= 0 && r <= 255 && g >= 0 && g <= 255 && b >= 0 && b <= 255 && a >= 0 && a <= 255)
+                if ((uint8_t)r == r && (uint8_t)g == g && (uint8_t)b == b && (uint8_t)a == a)
                 {
                     rgba colors = { (uint8_t)r, (uint8_t)g, (uint8_t)b, (uint8_t)a };
                     LightColors2.insert({ i, colors });
@@ -547,9 +550,7 @@ void VehicleVariations::LoadData()
                         vehDriverGroups[j].insert({ i, vecDrivers });
                         numGroups++;
                     }
-                }
-                else
-                    continue;                
+                }             
             }
 
             if (numGroups > 0)
@@ -566,8 +567,8 @@ void VehicleVariations::LoadData()
             }
 
             if (vehGroups.find(i) != vehGroups.end())
-                for (unsigned int j = 0; j < 16; j++)
-                    checkNumGroups(vehGroups[i][j], numGroups);
+                for (auto &j : vehGroups[i])
+                    checkNumGroups(j, numGroups);
 
 
             std::vector<unsigned short> vec = dataFile.ReadLine(section, "Drivers", READ_PEDS);
@@ -1490,7 +1491,7 @@ void* __cdecl GetNewVehicleDependingOnCarModelHooked(int modelIndex, int created
             std::array<bool, 18> slotsToInstall = {};
             for (unsigned int i = 0; i < 18; i++)
                 if (tuningRarity != tuningRarities.end())
-                    slotsToInstall[i] = (tuningRarity->second == 0) ? false : ((rand<uint32_t>(0, tuningRarity->second)) == 0 ? true : false);
+                    slotsToInstall[i] = (tuningRarity->second == 0) ? false : ((rand<uint32_t>(0, tuningRarity->second) == 0) ? true : false);
                 else
                     slotsToInstall[i] = (rand<uint32_t>(0, 3) == 0 ? true : false);
 

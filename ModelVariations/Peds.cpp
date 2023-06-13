@@ -122,13 +122,13 @@ void PedVariations::AddToStack(CPed* ped)
 
 void PedVariations::ClearData()
 {
-    for (int i = 0; i < MAX_PED_ID; i++)
-        for (unsigned short j = 0; j < 16; j++)
-        {
-            pedVariations[i][j].clear();
-            if (j < 6)
-                pedWantedVariations[i][j].clear();
-        }
+    for (auto& pedVariation : pedVariations)
+        for (auto& variation : pedVariation)
+            variation.clear();
+
+    for (auto& pedWantedVariation : pedWantedVariations)
+        for (auto& variation : pedWantedVariation)
+            variation.clear();
 
     //maps
     pedTimeSinceLastSpawned.clear();
@@ -146,8 +146,8 @@ void PedVariations::ClearData()
 
     //vectors
     cloneRemoverExclusions.clear();
-    for (int i = 0; i < MAX_PED_ID; i++)
-        pedCurrentVariations[i].clear();
+    for (auto &i : pedCurrentVariations)
+        i.clear();
 
     dataFile.data.clear();
 
@@ -206,14 +206,14 @@ void PedVariations::LoadData()
             pedWantedVariations[i][5] = dataFile.ReadLine(section, "Wanted6", READ_PEDS);
 
 
-            for (unsigned int j = 0; j < 16; j++)
-                for (unsigned int k = 0; k < pedVariations[i][j].size(); k++)
-                    if (pedVariations[i][j][k] > 0 && pedVariations[i][j][k] != i)
+            for (const auto& j : pedVariations[i])
+                for (const auto& k : j)
+                    if (k > 0 && k != i)
                     {
-                        if (pedOriginalModels.find(pedVariations[i][j][k]) != pedOriginalModels.end())
-                            pedOriginalModels[pedVariations[i][j][k]].push_back((unsigned short)i);
+                        if (pedOriginalModels.find(k) != pedOriginalModels.end())
+                            pedOriginalModels[k].push_back(static_cast<unsigned short>(i));
                         else
-                            pedOriginalModels.insert({ pedVariations[i][j][k], {(unsigned short)i} });
+                            pedOriginalModels.insert({ k, { static_cast<unsigned short>(i) } });
                     }
 
             for (auto it : pedOriginalModels)
@@ -284,8 +284,8 @@ void PedVariations::Process()
             if (IsPedPointerValid(veh->m_pDriver))
                 return false;
             else
-                for (int i = 0; i < 8; i++)
-                    if (IsPedPointerValid(veh->m_apPassengers[i]))
+                for (auto &i : veh->m_apPassengers)
+                    if (IsPedPointerValid(i))
                         return false;
 
             return true;
@@ -358,23 +358,14 @@ void PedVariations::ProcessDrugDealers(bool reset)
         {
             Log::Write("Applying drug dealer fix...\n");
          
-            int id = 28;
-
-            while (id < 255)
-            {
-                for (unsigned int i = 0; i < 16; i++)
-                    if (!pedVariations[id][i].empty())
-                        for (auto& j : pedVariations[id][i])
-                            if (j > MAX_PED_ID)
-                            {
-                                Log::Write((std::find(addedIDs.begin(), addedIDs.end(), j) != addedIDs.end()) ? "%uSP\n" : "%u\n", j);
-                                CTheScripts::ScriptsForBrains.AddNewScriptBrain(CTheScripts::StreamedScripts.GetProperIndexFromIndexUsedByScript(19), (short)j, 100, 0, -1, -1.0);
-                            }
-
-                if (id < 30) id++;
-                else if (id == 30) id = 254;
-                else id = 255;
-            }
+            for (auto& i : { 28, 29, 30, 254 })
+                for (auto &j : pedVariations[i])
+                    for (auto &k : j)
+                        if (k > MAX_PED_ID)
+                        {
+                            Log::Write((std::find(addedIDs.begin(), addedIDs.end(), k) != addedIDs.end()) ? "%uSP\n" : "%u\n", k);
+                            CTheScripts::ScriptsForBrains.AddNewScriptBrain(CTheScripts::StreamedScripts.GetProperIndexFromIndexUsedByScript(19), (short)k, 100, 0, -1, -1.0);
+                        }
 
             Log::Write("\n");
             dealersFrames = 11;

@@ -163,6 +163,77 @@ int getTuningPartSlot(int model)
     return -1;
 }
 
+void processTuning(CVehicle* veh)
+{
+    /* TUNING PART SLOTS
+       0 - hood vents
+       1 - hood scoops
+       2 - spoilers
+       3 - side skirts
+       4 - front bullbars
+       5 - rear bullbars
+       6 - lights
+       7 - roof
+       8 - nitrous
+       9 - hydralics
+       10 - stereo
+       11
+       12 - wheels
+       13 - exhaust
+       14 - front bumper
+       15 - rear bumper
+       16 - misc
+    */
+
+    if (veh->m_nCreatedBy != eVehicleCreatedBy::MISSION_VEHICLE)
+    {
+        auto it = vehCurrentTuning.find(veh->m_nModelIndex);
+        if (it != vehCurrentTuning.end() && !it->second.empty())
+        {
+            std::array<std::vector<unsigned short>, 18> partsToInstall;
+            for (auto& part : it->second)
+                if (part < static_cast<CVehicleModelInfo*>(CModelInfo::GetModelInfo(veh->m_nModelIndex))->GetNumRemaps())
+                    partsToInstall[17].push_back(part);
+                else
+                {
+                    unsigned modSlot = (unsigned)getTuningPartSlot(part);
+                    if (modSlot < 17)
+                        partsToInstall[modSlot].push_back(part);
+                }
+
+
+            auto tuningRarity = tuningRarities.find(veh->m_nModelIndex);
+
+            std::array<bool, 18> slotsToInstall = {};
+            for (unsigned int i = 0; i < 18; i++)
+                if (tuningRarity != tuningRarities.end())
+                    slotsToInstall[i] = (tuningRarity->second == 0) ? false : ((rand<uint32_t>(0, tuningRarity->second) == 0) ? true : false);
+                else
+                    slotsToInstall[i] = (rand<uint32_t>(0, 3) == 0 ? true : false);
+
+            std::string section;
+            auto it2 = vehModels.find(veh->m_nModelIndex);
+            if (it2 != vehModels.end())
+                section = it2->second;
+            else
+                section = std::to_string(veh->m_nModelIndex);
+
+            if (dataFile.ReadBoolean(section, "TuningFullBodykit", false))
+                if (slotsToInstall[14] == true || slotsToInstall[15] == true || slotsToInstall[3] == true)
+                    slotsToInstall[14] = slotsToInstall[15] = slotsToInstall[3] = true;
+
+            for (unsigned int i = 0; i < 18; i++)
+                if (slotsToInstall[i] == false)
+                    partsToInstall[i].clear();
+
+
+            //if (logfile.is_open())
+                //logfile << "Installing part " << it->second[0] << " modSlot " << modSlot << std::endl;
+            tuningStack.push({ veh, partsToInstall });
+        }
+    }
+}
+
 void checkNumGroups(std::vector<unsigned short>& vec, uint8_t numGroups)
 {
     auto it = vec.begin();
@@ -1448,75 +1519,7 @@ template <std::uintptr_t address>
 void* __cdecl GetNewVehicleDependingOnCarModelHooked(int modelIndex, int createdBy)
 {
     CVehicle *veh = reinterpret_cast<CVehicle*>(callOriginalAndReturn<void*, address>(modelIndex, createdBy));
-
-   /*   TUNING PART SLOTS 
-    *   0 - hood vents
-    *   1 - hood scoops
-    *   2 - spoilers
-    *   3 - side skirts
-    *   4 - front bullbars
-    *   5 - rear bullbars
-    *   6 - lights
-    *   7 - roof
-    *   8 - nitrous
-    *   9 - hydralics
-    *   10 - stereo
-    *   11
-    *   12 - wheels
-    *   13 - exhaust
-    *   14 - front bumper
-    *   15 - rear bumper
-    *   16 - misc
-    */
-
-    if (createdBy != eVehicleCreatedBy::MISSION_VEHICLE)
-    {
-        auto it = vehCurrentTuning.find(veh->m_nModelIndex);
-        if (it != vehCurrentTuning.end() && !it->second.empty())
-        {
-            std::array<std::vector<unsigned short>, 18> partsToInstall;
-            for (auto& part : it->second)
-                if (part < static_cast<CVehicleModelInfo*>(CModelInfo::GetModelInfo(veh->m_nModelIndex))->GetNumRemaps())
-                    partsToInstall[17].push_back(part);
-                else
-                {
-                    unsigned modSlot = (unsigned)getTuningPartSlot(part);
-                    if (modSlot < 17)
-                        partsToInstall[modSlot].push_back(part);
-                }
-
-
-            auto tuningRarity = tuningRarities.find(veh->m_nModelIndex);
-
-            std::array<bool, 18> slotsToInstall = {};
-            for (unsigned int i = 0; i < 18; i++)
-                if (tuningRarity != tuningRarities.end())
-                    slotsToInstall[i] = (tuningRarity->second == 0) ? false : ((rand<uint32_t>(0, tuningRarity->second) == 0) ? true : false);
-                else
-                    slotsToInstall[i] = (rand<uint32_t>(0, 3) == 0 ? true : false);
-
-            std::string section;
-            auto it2 = vehModels.find(veh->m_nModelIndex);
-            if (it2 != vehModels.end())
-                section = it2->second;
-            else
-                section = std::to_string(veh->m_nModelIndex);
-
-            if (dataFile.ReadBoolean(section, "TuningFullBodykit", false))
-                if (slotsToInstall[14] == true || slotsToInstall[15] == true || slotsToInstall[3] == true)
-                    slotsToInstall[14] = slotsToInstall[15] = slotsToInstall[3] = true;
-
-            for (unsigned int i = 0; i < 18; i++)
-                if (slotsToInstall[i] == false)
-                    partsToInstall[i].clear();
-
-
-            //if (logfile.is_open())
-                //logfile << "Installing part " << it->second[0] << " modSlot " << modSlot << std::endl;
-            tuningStack.push({ veh, partsToInstall });
-        }
-    }
-
+    processTuning(veh);
     return veh;
 }
 
@@ -2481,6 +2484,12 @@ void VehicleVariations::InstallHooks()
         {
             if (getVariationOriginalModel(CPlane::GenPlane_ModelIndex) == 520)
                 regs.eax = (uint32_t)CPlane::GenPlane_ModelIndex;
+        });
+
+        MakeInline<0x6F3B88, 6>("CCarGenerator::DoInternalProcessing", "88 96 2A 04 00 00", [](injector::reg_pack& regs)
+        {
+                *reinterpret_cast<uint8_t*>(regs.esi + 0x42A) = (uint8_t)(regs.edx & 0xFF);
+                processTuning(reinterpret_cast<CVehicle*>(regs.esi));
         });
 
 

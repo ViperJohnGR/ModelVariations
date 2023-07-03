@@ -75,6 +75,7 @@ unsigned int currentWanted = 0;
 bool keyDown = false;
 
 bool reloadingSettings = false;
+bool queuedReload = false;
 
 int timeUpdate = -1;
 
@@ -496,6 +497,12 @@ public:
 
         auto gameLoadEvent = []
         {
+            if (!loadSettingsImmediately && reloadingSettings)
+            {
+                queuedReload = true;
+                return;
+            }
+
             auto startTime = clock();
 
             if (!modInitialized && loadStage == 2)
@@ -559,10 +566,17 @@ public:
             VehicleVariations::AddToStack(veh);
         };
 
-        Events::gameProcessEvent += []
+        Events::gameProcessEvent += [&gameLoadEvent]
         {
             if (reloadingSettings)
                 return;
+
+            if (queuedReload)
+            {
+                gameLoadEvent();
+                queuedReload = false;
+                return;
+            }
 
             CVector pPos = FindPlayerCoors(-1);
             CZone* zInfo = NULL;

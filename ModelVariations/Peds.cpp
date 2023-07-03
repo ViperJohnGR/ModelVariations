@@ -26,6 +26,7 @@ std::map<unsigned short, int> pedTimeSinceLastSpawned;
 std::unordered_map<unsigned short, std::vector<unsigned short>> pedOriginalModels;
 std::unordered_map<unsigned short, std::string> pedModels;
 
+std::set<unsigned short> drugDealers;
 std::set<unsigned short> dontInheritBehaviourModels;
 std::set<unsigned short> pedMergeZones;
 std::set<unsigned short> pedHasVariations;
@@ -348,7 +349,10 @@ void PedVariations::Process()
 void PedVariations::ProcessDrugDealers(bool reset)
 {
     if (reset)
+    {
         dealersFrames = 0;
+        drugDealers.clear();
+    }
     else
     {
         if (dealersFrames < 10)
@@ -361,10 +365,11 @@ void PedVariations::ProcessDrugDealers(bool reset)
             for (auto& i : { 28, 29, 30, 254 })
                 for (auto &j : pedVariations[i])
                     for (auto &k : j)
-                        if (k > MAX_PED_ID)
+                        if (k > MAX_PED_ID && drugDealers.find(k) == drugDealers.end())
                         {
                             Log::Write((std::find(addedIDs.begin(), addedIDs.end(), k) != addedIDs.end()) ? "%uSP\n" : "%u\n", k);
                             CTheScripts::ScriptsForBrains.AddNewScriptBrain(CTheScripts::StreamedScripts.GetProperIndexFromIndexUsedByScript(19), (short)k, 100, 0, -1, -1.0);
+                            drugDealers.insert(k);
                         }
 
             Log::Write("\n");

@@ -2,6 +2,7 @@
 #include "DataReader.hpp"
 #include "FuncUtil.hpp"
 #include "Hooks.hpp"
+#include "LoadedModules.hpp"
 #include "Log.hpp"
 
 #include <plugin.h>
@@ -540,7 +541,7 @@ char __fastcall CAEPedSpeechAudioEntity__InitialiseHooked(CAEPedSpeechAudioEntit
     return callMethodOriginalAndReturn<char, address>(_this, ped);
 }
 
-void PedVariations::InstallHooks(bool enableSpecialPeds, bool isFLA)
+void PedVariations::InstallHooks(bool enableSpecialPeds)
 {
     //Count of killable model IDs
     if (enableSpecialPeds)
@@ -602,7 +603,7 @@ void PedVariations::InstallHooks(bool enableSpecialPeds, bool isFLA)
             maxPedID = 20000;
         }
         else
-            Log::Write("Count of killable model IDs not increased. %s\n", (isFLA ? "FLA is loaded." : "FLA is NOT loaded."));
+            Log::Write("Count of killable model IDs not increased. %s\n", (LoadedModules::IsModLoaded(MOD_FLA) ? "FLA is loaded." : "FLA is NOT loaded."));
     }
 
 

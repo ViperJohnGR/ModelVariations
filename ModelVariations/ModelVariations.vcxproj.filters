@@ -7,6 +7,7 @@
     <ClCompile Include="Peds.cpp" />
     <ClCompile Include="PedWeapons.cpp" />
     <ClCompile Include="Log.cpp" />
+    <ClCompile Include="LoadedModules.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Vehicles.hpp" />
@@ -16,6 +17,7 @@
     <ClInclude Include="PedWeapons.hpp" />
     <ClInclude Include="Log.hpp" />
     <ClInclude Include="FuncUtil.hpp" />
+    <ClInclude Include="LoadedModules.hpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="ModelVariations.ruleset" />

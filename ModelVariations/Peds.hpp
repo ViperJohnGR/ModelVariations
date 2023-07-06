@@ -23,5 +23,5 @@ public:
 	static void LogVariations();
 
 	//Call hooks
-	static void InstallHooks(bool enableSpecialPeds, bool isFLA);
+	static void InstallHooks(bool enableSpecialPeds);
 };

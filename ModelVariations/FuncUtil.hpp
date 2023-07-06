@@ -1,10 +1,12 @@
 #pragma once
 
 #include <algorithm>
+#include <fstream>
 #include <iomanip>
 #include <iterator>
 #include <charconv>
 #include <type_traits>
+#include <sstream>
 #include <vector>
 
 #include <CGeneral.h>

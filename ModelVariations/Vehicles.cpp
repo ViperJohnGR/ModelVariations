@@ -2,6 +2,7 @@
 #include "DataReader.hpp"
 #include "FuncUtil.hpp"
 #include "Hooks.hpp"
+#include "LoadedModules.hpp"
 #include "Log.hpp"
 
 #include <plugin.h>
@@ -2130,17 +2131,7 @@ void hookASM(std::uintptr_t address, std::string_view originalData, injector::me
             ss << std::setfill('0') << std::setw(2) << std::uppercase << std::hex << static_cast<unsigned int>(c[j]) << " ";
 
         std::string bytes = ss.str();
-        const auto dest = injector::GetBranchDestination(address);
-        if (dest != nullptr)
-            for (auto& it : loadedModules)
-            {
-                uint32_t base = reinterpret_cast<uint32_t>(it.second.lpBaseOfDll);
-                if (dest >= base && dest < base + it.second.SizeOfImage)
-                {
-                    moduleName = it.first;
-                    break;
-                }
-            }
+        moduleName = LoadedModules::GetModuleAtAddress(injector::GetBranchDestination(address).as_int()).first;
 
         if (funcName.find("::") != std::string::npos)
             Log::LogModifiedAddress(address, "Modified method detected: %s - 0x%08X is %s %s\n", funcName.data(), address, bytes.c_str(), getFilenameFromPath(moduleName).c_str());

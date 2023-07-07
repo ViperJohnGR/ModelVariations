@@ -65,6 +65,8 @@ void LoadedModules::Refresh()
                     loadedMods[MOD_OLA] = true;
                 else if (strcasestr(szModName, "fastman92limitAdjuster"))
                     loadedMods[MOD_FLA] = true;
+                else if (strcasestr(szModName, "WantedLevelEditor"))
+                    loadedMods[MOD_WLE] = true;
 
 #ifdef _DEBUG
                 assert(!compareUpper("ModelVariations.asi", getFilenameFromPath(szModName).c_str()));

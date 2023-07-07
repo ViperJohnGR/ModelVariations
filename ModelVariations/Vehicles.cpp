@@ -1591,13 +1591,14 @@ void __fastcall CAutomobile__PreRenderHooked(CAutomobile* veh)
     lightsModel = 0;
     bool hasSirenLights = false;
 
-    if (enableLights && (HasCarSiren<0>(veh) || getVariationOriginalModel(veh->m_nModelIndex) == 420 || getVariationOriginalModel(veh->m_nModelIndex) == 438))
-    {
-        sirenModel = getVariationOriginalModel(veh->m_nModelIndex);
-        lightsModel = veh->m_nModelIndex;
-        injector::MakeJMP(0x6AB350, enableSirenLights);
-        hasSirenLights = true;
-    }
+    if (!LoadedModules::IsModLoaded(MOD_WLE))
+        if (enableLights && (HasCarSiren<0>(veh) || getVariationOriginalModel(veh->m_nModelIndex) == 420 || getVariationOriginalModel(veh->m_nModelIndex) == 438))
+        {
+            sirenModel = getVariationOriginalModel(veh->m_nModelIndex);
+            lightsModel = veh->m_nModelIndex;
+            injector::MakeJMP(0x6AB350, enableSirenLights);
+            hasSirenLights = true;
+        }
 
     if (enableSpecialFeatures)
     {

@@ -378,7 +378,7 @@ public:
 
         iniSettings.SetIniPath(dataFileName);
 
-        loadSettingsImmediately = iniSettings.ReadBoolean("Settings", "LoadSettingsImmediately", false);
+        loadSettingsImmediately = iniSettings.ReadBoolean("Settings", "LoadSettingsImmediately", true);
         forceEnable = iniSettings.ReadBoolean("Settings", "ForceEnable", false);
         loadStage = iniSettings.ReadInteger("Settings", "LoadStage", 1);
         disableKey = (unsigned int)iniSettings.ReadInteger("Settings", "DisableKey", 0);

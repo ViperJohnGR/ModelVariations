@@ -66,6 +66,7 @@ int sirenModel = -1;
 unsigned short lightsModel = 0;
 int currentOccupantsGroup = -1;
 unsigned short currentOccupantsModel = 0;
+bool tuneParkedCar = false;
 
 int passengerModelIndex = -1;
 constexpr std::uintptr_t jmp588577 = 0x588577;
@@ -973,6 +974,7 @@ void __fastcall DoInternalProcessingHooked(CCarGenerator* park) //for non-random
                 WriteMemory<uint16_t>(0x6F3BA0, 532);
 
             carGenModel = -1;
+            tuneParkedCar = true;
             return;
         }
 
@@ -2478,12 +2480,6 @@ void VehicleVariations::InstallHooks()
                 regs.eax = (uint32_t)CPlane::GenPlane_ModelIndex;
         });
 
-        MakeInline<0x6F3B88, 6>("CCarGenerator::DoInternalProcessing", "88 96 2A 04 00 00", [](injector::reg_pack& regs)
-        {
-                *reinterpret_cast<uint8_t*>(regs.esi + 0x42A) = (uint8_t)(regs.edx & 0xFF);
-                processTuning(reinterpret_cast<CVehicle*>(regs.esi));
-        });
-
 
         hookCall(0x871200, VehicleDamageHooked<0x871200>, "CAutomobile::VehicleDamage", true);
         hookCall(0x8711E0, SetupSuspensionLinesHooked<0x8711E0>, "CAutomobile::SetupSuspensionLines", true);
@@ -2542,4 +2538,15 @@ void VehicleVariations::InstallHooks()
     }
 
     hookCall(0x4306A1, GetNewVehicleDependingOnCarModelHooked<0x4306A1>, "CCarCtrl::GetNewVehicleDependingOnCarModel"); ///CCarCtrl::GenerateOneRandomCar
+
+    //Tuning for parked cars
+    MakeInline<0x6F3B88, 6>("CCarGenerator::DoInternalProcessing", "88 96 2A 04 00 00", [](injector::reg_pack& regs)
+    {
+        *reinterpret_cast<uint8_t*>(regs.esi + 0x42A) = (uint8_t)(regs.edx & 0xFF);
+        if (tuneParkedCar)
+        {
+            processTuning(reinterpret_cast<CVehicle*>(regs.esi));
+            tuneParkedCar = false;
+        }
+    });
 }

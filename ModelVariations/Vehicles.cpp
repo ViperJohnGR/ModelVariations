@@ -1197,7 +1197,7 @@ void __fastcall CollectParametersHooked(CRunningScript* script, void*, unsigned 
     callMethodOriginal<address>(script, a2);
     if (enableAllSideMissions == 0)
     {
-        if (!hasModelSideMission((int)CTheScripts::ScriptParams[1].uParam))
+        if (!hasModelSideMission(ScriptParams[1]))
             return;
 
         if (strcmp(script->m_szName, "r3") != 0 && strcmp(script->m_szName, "ambulan") != 0 && strcmp(script->m_szName, "firetru") != 0 &&
@@ -1212,14 +1212,14 @@ void __fastcall CollectParametersHooked(CRunningScript* script, void*, unsigned 
 
     const int hplayer = CPools::GetPedRef(player);
 
-    if ((int)(CTheScripts::ScriptParams[0].uParam) != hplayer)
+    if (ScriptParams[0] != hplayer)
         return;
 
     if (player->m_pVehicle)
     {
         const int originalModel = getVariationOriginalModel(player->m_pVehicle->m_nModelIndex);
-        if ((int)(CTheScripts::ScriptParams[1].uParam) == originalModel)
-            CTheScripts::ScriptParams[1].uParam = player->m_pVehicle->m_nModelIndex;
+        if (ScriptParams[1] == originalModel)
+            ScriptParams[1] = player->m_pVehicle->m_nModelIndex;
     }
 }
 

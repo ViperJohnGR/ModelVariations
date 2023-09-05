@@ -509,7 +509,12 @@ public:
                 reloadingSettings = false;
             });
             if (loadSettingsImmediately)
-                future.get();
+                try { future.get(); }
+                catch (const std::exception& e) 
+                { 
+                    Log::Write("future.get() crashed. %s\n", e.what()); 
+                    reloadingSettings = false; 
+                }
         };
         Events::initGameEvent += gameLoadEvent;
         Events::reInitGameEvent += gameLoadEvent;
@@ -589,7 +594,8 @@ public:
                         reloadingSettings = false;
                     });
                     if (loadSettingsImmediately)
-                        future.get();
+                        try { future.get(); }
+                        catch (const std::exception& e) { Log::Write("future.get() on reload crashed. %s\n", e.what()); }
                 }
             }
             else

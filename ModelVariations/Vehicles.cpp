@@ -6,15 +6,12 @@
 #include "Log.hpp"
 
 #include <plugin.h>
-#include <CBoat.h>
-#include <CCarCtrl.h>
 #include <CCarGenerator.h>
-#include <CCoronas.h>
 #include <CHeli.h>
 #include <CModelInfo.h>
+#include <CPlane.h>
 #include <CTheScripts.h>
 #include <CTheZones.h>
-#include <CTrain.h>
 #include <CTrailer.h>
 #include <CVector.h>
 
@@ -76,7 +73,7 @@ constexpr std::uintptr_t jmp6AB35A = 0x6AB35A;
 constexpr std::uintptr_t jmp6ABA65 = 0x6ABA65;
 int carGenModel = -1;
 
-uint32_t asmNextinstr[4] = {};
+uint32_t asmNextInstr[4] = {};
 uint16_t asmModel16 = 0;
 uint32_t asmModel32 = 0;
 std::uintptr_t asmJmpAddress = 0;
@@ -1061,13 +1058,13 @@ void __fastcall DoInternalProcessingHooked(CCarGenerator* park) //for non-random
 }
 
 template <std::uintptr_t address>
-CTrain* __fastcall CTrainHooked(CTrain* train, void*, int modelIndex, int createdBy)
+void* __fastcall CTrainHooked(void* train, void*, int modelIndex, int createdBy)
 {
-    return callMethodOriginalAndReturn<CTrain*, address>(train, getRandomVariation(modelIndex), createdBy);
+    return callMethodOriginalAndReturn<void*, address>(train, getRandomVariation(modelIndex), createdBy);
 }
 
 template <std::uintptr_t address>
-CVehicle* __fastcall CBoatHooked(CBoat* boat, void*, int modelId, char a3)
+CVehicle* __fastcall CBoatHooked(void* boat, void*, int modelId, char a3)
 {
     return callMethodOriginalAndReturn<CVehicle*, address>(boat, getRandomVariation(modelId), a3);
 }
@@ -1378,7 +1375,7 @@ CPed* __cdecl AddPedInCarHooked(CVehicle* a1, char driver, int a3, signed int a4
 }
 
 template <std::uintptr_t address>
-void __cdecl RegisterCoronaHooked(CCoronas* _this, unsigned int a2, unsigned __int8 a3, unsigned __int8 a4, unsigned __int8 a5, unsigned __int8 a6, CVector* a7, const CVector* a8,
+void __cdecl RegisterCoronaHooked(void* _this, unsigned int a2, unsigned __int8 a3, unsigned __int8 a4, unsigned __int8 a5, unsigned __int8 a6, CVector* a7, const CVector* a8,
                                   float a9, void* texture, unsigned __int8 a11, unsigned __int8 a12, unsigned __int8 a13, int a14, float a15, float a16, float a17, float a18,
                                   float a19, float a20, bool a21)
 {
@@ -1413,7 +1410,7 @@ void __cdecl RegisterCoronaHooked(CCoronas* _this, unsigned int a2, unsigned __i
     callOriginal<address>(_this, a2, a3, a4, a5, a6, a7, a8, a9, texture, a11, a12, a13, a14, a15, a16, a17, a18, a19, a20, a21);
 }
 
-void __cdecl RegisterCoronaHooked2(CCoronas* _this, unsigned int a2, unsigned __int8 a3, unsigned __int8 a4, unsigned __int8 a5, unsigned __int8 a6, CVector* a7, const CVector* a8,
+void __cdecl RegisterCoronaHooked2(void* _this, unsigned int a2, unsigned __int8 a3, unsigned __int8 a4, unsigned __int8 a5, unsigned __int8 a6, CVector* a7, const CVector* a8,
                                    float a9, void* texture, unsigned __int8 a11, unsigned __int8 a12, unsigned __int8 a13, int a14, float a15, float a16, float a17, float a18,
                                    float a19, float a20, bool a21)
 {
@@ -2023,13 +2020,13 @@ void __declspec(naked) movReg16WordPtrReg()
         pushad
     }
 
-    asmNextinstr[0] = nextInstr;
-    asmNextinstr[1] = nextInstr2;
-    jmpDest = asmNextinstr;
+    asmNextInstr[0] = nextInstr;
+    asmNextInstr[1] = nextInstr2;
+    jmpDest = asmNextInstr;
     asmJmpAddress = jmpAddress;
-    ((uint8_t*)asmNextinstr)[nextInstrSize] = 0xFF;
-    ((uint8_t*)asmNextinstr)[nextInstrSize + 1] = 0x25;
-    *((uint32_t**)((uint8_t*)asmNextinstr + nextInstrSize + 2)) = &asmJmpAddress;
+    ((uint8_t*)asmNextInstr)[nextInstrSize] = 0xFF;
+    ((uint8_t*)asmNextInstr)[nextInstrSize + 1] = 0x25;
+    *((uint32_t**)((uint8_t*)asmNextInstr + nextInstrSize + 2)) = &asmJmpAddress;
 
     __asm {
         popad
@@ -2075,13 +2072,13 @@ void __declspec(naked) movsxReg32WordPtrReg()
         pushad
     }
 
-    asmNextinstr[0] = nextInstr;
-    asmNextinstr[1] = nextInstr2;
-    jmpDest = asmNextinstr;
+    asmNextInstr[0] = nextInstr;
+    asmNextInstr[1] = nextInstr2;
+    jmpDest = asmNextInstr;
     asmJmpAddress = jmpAddress;
-    ((uint8_t*)asmNextinstr)[nextInstrSize] = 0xFF;
-    ((uint8_t*)asmNextinstr)[nextInstrSize + 1] = 0x25;
-    *((uint32_t**)((uint8_t*)asmNextinstr + nextInstrSize + 2)) = &asmJmpAddress;
+    ((uint8_t*)asmNextInstr)[nextInstrSize] = 0xFF;
+    ((uint8_t*)asmNextInstr)[nextInstrSize + 1] = 0x25;
+    *((uint32_t**)((uint8_t*)asmNextInstr + nextInstrSize + 2)) = &asmJmpAddress;
 
     __asm {
         popad
@@ -2549,4 +2546,8 @@ void VehicleVariations::InstallHooks()
             tuneParkedCar = false;
         }
     });
+
+    DWORD oldProtect;
+    if (VirtualProtect(asmNextInstr, 16, PAGE_EXECUTE_READWRITE, &oldProtect) == 0)
+        Log::Write("VirtualProtect failed: %s\n", GetLastError());
 }

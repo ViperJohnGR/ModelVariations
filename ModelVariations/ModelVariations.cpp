@@ -31,7 +31,7 @@
 #pragma comment (lib, "urlmon.lib")
 
 
-#define MOD_VERSION "8.9"
+#define MOD_VERSION "9.0"
 #ifdef _DEBUG
 #define MOD_NAME "ModelVariations_d.asi"
 #define DEBUG_STRING " DEBUG"
@@ -602,7 +602,7 @@ public:
             {
                 if (enableLog)
                 {
-                    for (auto it : hookedCalls)
+                    for (auto &it : hookedCalls)
                     {
                         const std::uintptr_t functionAddress = (it.second.isVTableAddress == false) ? injector::GetBranchDestination(it.first).as_int() : *reinterpret_cast<unsigned int*>(it.first);
                         std::pair<std::string, MODULEINFO> moduleInfo = LoadedModules::GetModuleAtAddress(functionAddress);

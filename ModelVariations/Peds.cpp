@@ -124,13 +124,13 @@ void PedVariations::AddToStack(CPed* ped)
 
 void PedVariations::ClearData()
 {
-    for (auto& pedVariation : pedVariations)
-        for (auto& variation : pedVariation)
-            variation.clear();
-
-    for (auto& pedWantedVariation : pedWantedVariations)
-        for (auto& variation : pedWantedVariation)
-            variation.clear();
+    for (int i = 0; i < MAX_PED_ID; i++)
+        for (unsigned short j = 0; j < 16; j++)
+        {
+            pedVariations[i][j].clear();
+            if (j < 6)
+                pedWantedVariations[i][j].clear();
+        }
 
     //maps
     pedTimeSinceLastSpawned.clear();
@@ -218,7 +218,7 @@ void PedVariations::LoadData()
                             pedOriginalModels.insert({ k, { static_cast<unsigned short>(i) } });
                     }
 
-            for (auto it : pedOriginalModels)
+            for (auto &it : pedOriginalModels)
                 std::sort(it.second.begin(), it.second.end());
 
             if (dataFile.ReadBoolean(section, "MergeZonesWithCities", false))

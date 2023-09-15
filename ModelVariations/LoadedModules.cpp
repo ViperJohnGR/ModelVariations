@@ -27,7 +27,7 @@ std::pair<std::string, MODULEINFO> LoadedModules::GetModule(std::string_view nam
     for (auto& i : loadedModules)
         if (exactMatch)
         {
-            if (_stricmp(i.first.c_str(), name.data()))
+            if (_stricmp(i.first.c_str(), name.data()) == 0)
                 return i;
         }
         else if (strcasestr(i.first, name.data()))
@@ -69,7 +69,7 @@ void LoadedModules::Refresh()
                     loadedMods[MOD_WLE] = true;
 
 #ifdef _DEBUG
-                assert(!_stricmp("ModelVariations.asi", getFilenameFromPath(szModName).c_str()));
+                assert(_stricmp("ModelVariations.asi", getFilenameFromPath(szModName).c_str()) != 0);
 #endif
                 MODULEINFO mInfo;
                 GetModuleInformation(hProcess, modules[i], &mInfo, sizeof(MODULEINFO));

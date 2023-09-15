@@ -31,7 +31,7 @@
 #pragma comment (lib, "urlmon.lib")
 
 
-#define MOD_VERSION "9.0"
+#define MOD_VERSION "9.1"
 #ifdef _DEBUG
 #define MOD_NAME "ModelVariations_d.asi"
 #define DEBUG_STRING " DEBUG"
@@ -631,7 +631,7 @@ public:
                         std::pair<std::string, MODULEINFO> moduleInfo = LoadedModules::GetModuleAtAddress(functionAddress);
                         std::string moduleName = moduleInfo.first.substr(moduleInfo.first.find_last_of("/\\") + 1);
 
-                        if (_stricmp(moduleName.c_str(), MOD_NAME) == false && callChecks.find({ it.first , moduleName }) == callChecks.end())
+                        if (_stricmp(moduleName.c_str(), MOD_NAME) != 0 && callChecks.find({ it.first , moduleName }) == callChecks.end())
                         {
                             callChecks.insert({ it.first, moduleName });
                             if (functionAddress > 0 && !moduleName.empty())

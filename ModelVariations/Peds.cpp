@@ -31,6 +31,7 @@ std::set<unsigned short> drugDealers;
 std::set<unsigned short> dontInheritBehaviourModels;
 std::set<unsigned short> pedMergeZones;
 std::set<unsigned short> pedHasVariations;
+std::set<unsigned short> useParentVoice;
 
 std::stack<CPed*> pedStack;
 
@@ -38,7 +39,6 @@ std::vector<unsigned short> pedCurrentVariations[MAX_PED_ID];
 
 //INI Options
 bool recursiveVariations = true;
-bool useParentVoices = false;
 bool enableCloneRemover = false;
 bool cloneRemoverVehicleOccupants = false;
 int cloneRemoverSpawnDelay = 3;
@@ -142,6 +142,7 @@ void PedVariations::ClearData()
     pedMergeZones.clear();
     pedHasVariations.clear();
     cloneRemoverIncludeVariations.clear();
+    useParentVoice.clear();
 
     //stacks
     while (!pedStack.empty()) pedStack.pop();
@@ -213,11 +214,13 @@ void PedVariations::LoadData()
 
             if (dataFile.ReadBoolean(section, "DontInheritBehaviour", false))
                 dontInheritBehaviourModels.insert((unsigned short)i);
+
+            if (dataFile.ReadBoolean(section, "UseParentVoice", false))
+                useParentVoice.insert((unsigned short)i);
         }
     }
 
     recursiveVariations = dataFile.ReadBoolean("Settings", "RecursiveVariations", true);
-    useParentVoices = dataFile.ReadBoolean("Settings", "UseParentVoices", false);
     enableCloneRemover = dataFile.ReadBoolean("Settings", "EnableCloneRemover", false);
     cloneRemoverVehicleOccupants = dataFile.ReadBoolean("Settings", "CloneRemoverIncludeVehicleOccupants", false);
     cloneRemoverSpawnDelay = dataFile.ReadInteger("Settings", "CloneRemoverSpawnDelay", 3);
@@ -511,7 +514,7 @@ void __fastcall UpdateRpHAnimHooked(CEntity* entity)
 template <std::uintptr_t address>
 char __fastcall CAEPedSpeechAudioEntity__InitialiseHooked(CAEPedSpeechAudioEntity* _this, void*, CPed* ped)
 {
-    if (ped != NULL)
+    if (ped != NULL && useParentVoice.find(ped->m_nModelIndex) != useParentVoice.end())
     {
         auto it = pedOriginalModels.find(ped->m_nModelIndex);
         if (it != pedOriginalModels.end() && !it->second.empty())
@@ -596,11 +599,8 @@ void PedVariations::InstallHooks(bool enableSpecialPeds)
 
     hookCall(0x5E4890, SetModelIndexHooked<0x5E4890>, "CEntity::SetModelIndex");
     hookCall(0x5E49EF, UpdateRpHAnimHooked<0x5E49EF>, "CEntity::UpdateRpHAnim");
-    if (useParentVoices)
-    {
-        hookCall(0x5DDBB8, CAEPedSpeechAudioEntity__InitialiseHooked<0x5DDBB8>, "CAEPedSpeechAudioEntity::Initialise"); //CCivilianPed
-        hookCall(0x5DDD24, CAEPedSpeechAudioEntity__InitialiseHooked<0x5DDD24>, "CAEPedSpeechAudioEntity::Initialise"); //CCopPed
-        hookCall(0x5DE388, CAEPedSpeechAudioEntity__InitialiseHooked<0x5DE388>, "CAEPedSpeechAudioEntity::Initialise"); //CEmergencyPed
-    }
-   
+
+    hookCall(0x5DDBB8, CAEPedSpeechAudioEntity__InitialiseHooked<0x5DDBB8>, "CAEPedSpeechAudioEntity::Initialise"); //CCivilianPed
+    hookCall(0x5DDD24, CAEPedSpeechAudioEntity__InitialiseHooked<0x5DDD24>, "CAEPedSpeechAudioEntity::Initialise"); //CCopPed
+    hookCall(0x5DE388, CAEPedSpeechAudioEntity__InitialiseHooked<0x5DE388>, "CAEPedSpeechAudioEntity::Initialise"); //CEmergencyPed
 }

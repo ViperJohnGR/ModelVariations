@@ -43,6 +43,23 @@
 
 using namespace plugin;
 
+const std::pair<std::string, unsigned> areas[] = { {"Countryside", 0},
+                                                   {"LosSantos", 0},
+                                                   {"SanFierro", 0},
+                                                   {"LasVenturas", 0},
+                                                   {"Global", 0},
+                                                   {"Desert", 0},
+                                                   {"TierraRobada", 5},
+                                                   {"BoneCounty", 5},
+                                                   {"RedCounty", 0},
+                                                   {"Blueberry", 8},
+                                                   {"Montgomery", 8},
+                                                   {"Dillimore", 8},
+                                                   {"PalominoCreek", 8},
+                                                   {"FlintCounty", 0},
+                                                   {"Whetstone", 0},
+                                                   {"AngelPine", 14} };
+
 std::string exeHash;
 unsigned int exeFilesize = 0;
 std::string exePath;
@@ -614,7 +631,7 @@ public:
                         std::pair<std::string, MODULEINFO> moduleInfo = LoadedModules::GetModuleAtAddress(functionAddress);
                         std::string moduleName = moduleInfo.first.substr(moduleInfo.first.find_last_of("/\\") + 1);
 
-                        if (compareUpper(moduleName.c_str(), MOD_NAME) == false && callChecks.find({ it.first , moduleName }) == callChecks.end())
+                        if (_stricmp(moduleName.c_str(), MOD_NAME) == false && callChecks.find({ it.first , moduleName }) == callChecks.end())
                         {
                             callChecks.insert({ it.first, moduleName });
                             if (functionAddress > 0 && !moduleName.empty())

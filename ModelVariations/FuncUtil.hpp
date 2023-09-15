@@ -123,15 +123,6 @@ inline std::string fileToString(std::string_view filename)
     return ss.str();
 }
 
-inline bool compareUpper(const char* a, const char* b)
-{
-    for (int i = 0; a[i] || b[i]; i++)
-        if (toupper(a[i]) != toupper(b[i]))
-            return false;
-
-    return true;
-}
-
 inline std::string getFilenameFromPath(std::string_view path)
 {
     std::string filename = path.data();
@@ -152,6 +143,28 @@ inline bool strcasestr(std::string src, std::string sub)
         return true;
 
     return false;
+}
+
+inline std::vector<std::string> splitString(std::string_view sv, const char seperator)
+{
+    std::vector<std::string> result;
+    std::istringstream iss(sv.data());
+    std::string token;
+
+    while (std::getline(iss, token, seperator))
+        result.push_back(token);  
+
+    return result;
+}
+
+inline std::string trimString(const std::string& str) {
+    size_t first = str.find_first_not_of(" \t\n\r");
+    size_t last = str.find_last_not_of(" \t\n\r");
+
+    if (first == std::string::npos)
+        return "";
+
+    return str.substr(first, (last - first + 1));
 }
 
 
@@ -178,12 +191,12 @@ inline void vectorfilterVector(std::vector<unsigned short>& vec, std::vector<uns
         vec = vec2;
 }
 
-inline unsigned short vectorGetRandom(std::vector<unsigned short>& vec)
+inline unsigned short vectorGetRandom(const std::vector<unsigned short>& vec)
 {
     return vec[CGeneral::GetRandomNumberInRange(0, (int)vec.size())];
 }
 
-inline bool vectorHasId(std::vector<unsigned short>& vec, int id)
+inline bool vectorHasId(const std::vector<unsigned short>& vec, int id)
 {
     if (vec.size() < 1)
         return false;
@@ -196,6 +209,12 @@ inline bool vectorHasId(std::vector<unsigned short>& vec, int id)
 
 inline std::vector<unsigned short> vectorUnion(const std::vector<unsigned short>& vec1, const std::vector<unsigned short>& vec2)
 {
+    if (vec1.empty())
+        return vec2;
+
+    if (vec2.empty())
+        return vec1;
+
     std::vector<unsigned short> vecOut;
     std::set_union(vec1.begin(), vec1.end(), vec2.begin(), vec2.end(), std::back_inserter(vecOut));
     return vecOut;

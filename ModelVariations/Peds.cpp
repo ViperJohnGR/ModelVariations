@@ -181,24 +181,11 @@ void PedVariations::LoadData()
         {
             pedHasVariations.insert((unsigned short)i);
 
-            pedVariations[i][0] = dataFile.ReadLine(section, "Countryside", READ_PEDS);
-            pedVariations[i][1] = dataFile.ReadLine(section, "LosSantos", READ_PEDS);
-            pedVariations[i][2] = dataFile.ReadLine(section, "SanFierro", READ_PEDS);
-            pedVariations[i][3] = dataFile.ReadLine(section, "LasVenturas", READ_PEDS);
-            pedVariations[i][4] = dataFile.ReadLine(section, "Global", READ_PEDS);
-            pedVariations[i][5] = dataFile.ReadLine(section, "Desert", READ_PEDS);
-
-            pedVariations[i][6] = vectorUnion(dataFile.ReadLine(section, "TierraRobada", READ_PEDS), pedVariations[i][5]);
-            pedVariations[i][7] = vectorUnion(dataFile.ReadLine(section, "BoneCounty", READ_PEDS), pedVariations[i][5]);
-            pedVariations[i][8] = vectorUnion(dataFile.ReadLine(section, "RedCounty", READ_PEDS), pedVariations[i][0]);
-            pedVariations[i][9] = vectorUnion(dataFile.ReadLine(section, "Blueberry", READ_PEDS), pedVariations[i][8]);
-            pedVariations[i][10] = vectorUnion(dataFile.ReadLine(section, "Montgomery", READ_PEDS), pedVariations[i][8]);
-            pedVariations[i][11] = vectorUnion(dataFile.ReadLine(section, "Dillimore", READ_PEDS), pedVariations[i][8]);
-            pedVariations[i][12] = vectorUnion(dataFile.ReadLine(section, "PalominoCreek", READ_PEDS), pedVariations[i][8]);
-            pedVariations[i][13] = vectorUnion(dataFile.ReadLine(section, "FlintCounty", READ_PEDS), pedVariations[i][0]);
-            pedVariations[i][14] = vectorUnion(dataFile.ReadLine(section, "Whetstone", READ_PEDS), pedVariations[i][0]);
-            pedVariations[i][15] = vectorUnion(dataFile.ReadLine(section, "AngelPine", READ_PEDS), pedVariations[i][14]);
-
+            for (unsigned j = 0; j < 16; j++)
+                if (j < 6)
+                    pedVariations[i][j] = dataFile.ReadLine(section, areas[j].first, READ_PEDS);
+                else
+                    pedVariations[i][j] = vectorUnion(dataFile.ReadLine(section, areas[j].first, READ_PEDS), pedVariations[i][areas[j].second]);
 
             pedWantedVariations[i][0] = dataFile.ReadLine(section, "Wanted1", READ_PEDS);
             pedWantedVariations[i][1] = dataFile.ReadLine(section, "Wanted2", READ_PEDS);

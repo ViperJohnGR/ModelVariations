@@ -7,6 +7,7 @@
 
 #include <psapi.h>
 
+extern const std::pair<std::string, unsigned> areas[];
 extern bool forceEnable;
 extern char currentZone[8];
 extern unsigned int currentTown;

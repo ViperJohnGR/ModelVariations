@@ -1,4 +1,5 @@
 #include "DataReader.hpp"
+#include "FuncUtil.hpp"
 
 #include <CModelInfo.h>
 #include <CPedModelInfo.h>
@@ -65,35 +66,35 @@ std::vector<unsigned short> DataReader::ReadLine(std::string_view section, std::
 	if (iniString.empty())
 		return retVector;
 
-	for (char* token = strtok(iniString.data(), ","); token != NULL; token = strtok(NULL, ","))
+	auto line = splitString(iniString, ',');
+	for (auto &token : line)
 	{
 		int modelid = 0;
-		while (token[0] == ' ')
-			token++;
+		token = trimString(token);
 
 		if (parseType == READ_WEAPONS)
 		{
 			int weaponType = -1;
 			if (token[0] >= '0' && token[0] <= '9')
-				weaponType = atoi(token);
+				weaponType = atoi(token.data());
 
 			if (weaponType > -1 && weaponType < 1000 && CWeaponInfo::GetWeaponInfo((eWeaponType)weaponType, 1) != NULL)
 				retVector.push_back((unsigned short)weaponType);
 		}
 		else if (parseType == READ_GROUPS)
 		{
-			if (strncmp(token, "Group", 5) == 0)
+			if (strncmp(token.data(), "Group", 5) == 0)
 				retVector.push_back((unsigned short)(token[5] - '0'));
 		}
 		else if (parseType == READ_TUNING)
 		{
-			if (_strnicmp(token, "paintjob", 8) == 0)
+			if (_strnicmp(token.data(), "paintjob", 8) == 0)
 			{
-				retVector.push_back((unsigned short)atoi(token+8)-1U);
+				retVector.push_back((unsigned short)atoi(token.data()+8)-1U);
 			}
 			else if (token[0] != 'G')
 			{
-				auto mInfo = CModelInfo::GetModelInfo(token, &modelid);
+				auto mInfo = CModelInfo::GetModelInfo(token.data(), &modelid);
 				if (mInfo != NULL)
 				{
 					const auto modelType = mInfo->GetModelType();
@@ -107,11 +108,11 @@ std::vector<unsigned short> DataReader::ReadLine(std::string_view section, std::
 			CBaseModelInfo* mInfo = NULL;
 			if (token[0] >= '0' && token[0] <= '9')
 			{
-				modelid = atoi(token);
+				modelid = atoi(token.data());
 				mInfo = CModelInfo::GetModelInfo(modelid);
 			}
 			else
-				mInfo = CModelInfo::GetModelInfo(token, &modelid);
+				mInfo = CModelInfo::GetModelInfo(token.data(), &modelid);
 
 			if (mInfo != NULL)
 			{
@@ -130,13 +131,13 @@ std::vector<unsigned short> DataReader::ReadLine(std::string_view section, std::
 				for (uint16_t i = 1326; i < maxPedID; i++)
 					if (CModelInfo::GetModelInfo(i) == NULL)
 					{
-						if (CStreaming::ms_pExtraObjectsDir->FindItem(token))
+						if (CStreaming::ms_pExtraObjectsDir->FindItem(token.data()))
 						{
 							auto pedInfo = ((CPedModelInfo * (__cdecl*)(int))injector::GetBranchDestination(0x5B74A7).as_int())(i);
 							if (pedInfo)
 							{
 								pedInfo->SetColModel((CColModel*)0x968DF0, false);
-								CStreaming::RequestSpecialModel(i, token, 0);
+								CStreaming::RequestSpecialModel(i, token.data(), 0);
 								retVector.push_back(i);
 								addedIDs.push_back(i);
 								pedInfo->m_nPedType = 4;

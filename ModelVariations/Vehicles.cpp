@@ -494,23 +494,11 @@ void VehicleVariations::LoadData()
                 if (dataFile.ReadBoolean(section, "ChangeOnlyParked", false))
                     parkedCars.insert(i);
 
-                vehVariations[i - 400][0] = dataFile.ReadLine(section, "Countryside", READ_VEHICLES);
-                vehVariations[i - 400][1] = dataFile.ReadLine(section, "LosSantos", READ_VEHICLES);
-                vehVariations[i - 400][2] = dataFile.ReadLine(section, "SanFierro", READ_VEHICLES);
-                vehVariations[i - 400][3] = dataFile.ReadLine(section, "LasVenturas", READ_VEHICLES);
-                vehVariations[i - 400][4] = dataFile.ReadLine(section, "Global", READ_VEHICLES);
-                vehVariations[i - 400][5] = dataFile.ReadLine(section, "Desert", READ_VEHICLES);
-
-                vehVariations[i - 400][6] = vectorUnion(dataFile.ReadLine(section, "TierraRobada", READ_VEHICLES), vehVariations[i - 400][5]);
-                vehVariations[i - 400][7] = vectorUnion(dataFile.ReadLine(section, "BoneCounty", READ_VEHICLES), vehVariations[i - 400][5]);
-                vehVariations[i - 400][8] = vectorUnion(dataFile.ReadLine(section, "RedCounty", READ_VEHICLES), vehVariations[i - 400][0]);
-                vehVariations[i - 400][9] = vectorUnion(dataFile.ReadLine(section, "Blueberry", READ_VEHICLES), vehVariations[i - 400][8]);
-                vehVariations[i - 400][10] = vectorUnion(dataFile.ReadLine(section, "Montgomery", READ_VEHICLES), vehVariations[i - 400][8]);
-                vehVariations[i - 400][11] = vectorUnion(dataFile.ReadLine(section, "Dillimore", READ_VEHICLES), vehVariations[i - 400][8]);
-                vehVariations[i - 400][12] = vectorUnion(dataFile.ReadLine(section, "PalominoCreek", READ_VEHICLES), vehVariations[i - 400][8]);
-                vehVariations[i - 400][13] = vectorUnion(dataFile.ReadLine(section, "FlintCounty", READ_VEHICLES), vehVariations[i - 400][0]);
-                vehVariations[i - 400][14] = vectorUnion(dataFile.ReadLine(section, "Whetstone", READ_VEHICLES), vehVariations[i - 400][0]);
-                vehVariations[i - 400][15] = vectorUnion(dataFile.ReadLine(section, "AngelPine", READ_VEHICLES), vehVariations[i - 400][14]);
+                for (unsigned j = 0; j < 16; j++)
+                    if (j < 6)
+                        vehVariations[i - 400][j] = dataFile.ReadLine(section, areas[j].first, READ_VEHICLES);
+                    else
+                        vehVariations[i - 400][j] = vectorUnion(dataFile.ReadLine(section, areas[j].first, READ_VEHICLES), vehVariations[i - 400][areas[j].second]);
 
                 vehWantedVariations[i - 400][0] = dataFile.ReadLine(section, "Wanted1", READ_VEHICLES);
                 vehWantedVariations[i - 400][1] = dataFile.ReadLine(section, "Wanted2", READ_VEHICLES);
@@ -526,43 +514,20 @@ void VehicleVariations::LoadData()
                             vehOriginalModels.insert({ k, i });
             }
 
-            
-            vehGroups[i][0] = dataFile.ReadLine(section, "Countryside", READ_GROUPS);
-            vehGroups[i][1] = dataFile.ReadLine(section, "LosSantos", READ_GROUPS);
-            vehGroups[i][2] = dataFile.ReadLine(section, "SanFierro", READ_GROUPS);
-            vehGroups[i][3] = dataFile.ReadLine(section, "LasVenturas", READ_GROUPS);
-            vehGroups[i][4] = dataFile.ReadLine(section, "Global", READ_GROUPS);
-            vehGroups[i][5] = dataFile.ReadLine(section, "Desert", READ_GROUPS);
+            //Groups
+            for (unsigned j = 0; j < 16; j++)
+                if (j < 6)
+                    vehGroups[i][j] = dataFile.ReadLine(section, areas[j].first, READ_GROUPS);
+                else
+                    vehGroups[i][j] = vectorUnion(dataFile.ReadLine(section, areas[j].first, READ_GROUPS), vehGroups[i][areas[j].second]);
 
-            vehGroups[i][6] = vectorUnion(dataFile.ReadLine(section, "TierraRobada", READ_GROUPS), vehGroups[i][5]);
-            vehGroups[i][7] = vectorUnion(dataFile.ReadLine(section, "BoneCounty", READ_GROUPS), vehGroups[i][5]);
-            vehGroups[i][8] = vectorUnion(dataFile.ReadLine(section, "RedCounty", READ_GROUPS), vehGroups[i][0]);
-            vehGroups[i][9] = vectorUnion(dataFile.ReadLine(section, "Blueberry", READ_GROUPS), vehGroups[i][8]);
-            vehGroups[i][10] = vectorUnion(dataFile.ReadLine(section, "Montgomery", READ_GROUPS), vehGroups[i][8]);
-            vehGroups[i][11] = vectorUnion(dataFile.ReadLine(section, "Dillimore", READ_GROUPS), vehGroups[i][8]);
-            vehGroups[i][12] = vectorUnion(dataFile.ReadLine(section, "PalominoCreek", READ_GROUPS), vehGroups[i][8]);
-            vehGroups[i][13] = vectorUnion(dataFile.ReadLine(section, "FlintCounty", READ_GROUPS), vehGroups[i][0]);
-            vehGroups[i][14] = vectorUnion(dataFile.ReadLine(section, "Whetstone", READ_GROUPS), vehGroups[i][0]);
-            vehGroups[i][15] = vectorUnion(dataFile.ReadLine(section, "AngelPine", READ_GROUPS), vehGroups[i][14]);
+            //Tuning
+            for (unsigned j = 0; j < 16; j++)
+                if (j < 6)
+                    vehTuning[i][j] = dataFile.ReadLine(section, areas[j].first, READ_TUNING);
+                else
+                    vehTuning[i][j] = vectorUnion(dataFile.ReadLine(section, areas[j].first, READ_TUNING), vehTuning[i][areas[j].second]);
 
-            //Veh Tuning
-            vehTuning[i][0] = dataFile.ReadLine(section, "Countryside", READ_TUNING);
-            vehTuning[i][1] = dataFile.ReadLine(section, "LosSantos", READ_TUNING);
-            vehTuning[i][2] = dataFile.ReadLine(section, "SanFierro", READ_TUNING);
-            vehTuning[i][3] = dataFile.ReadLine(section, "LasVenturas", READ_TUNING);
-            vehTuning[i][4] = dataFile.ReadLine(section, "Global", READ_TUNING);
-            vehTuning[i][5] = dataFile.ReadLine(section, "Desert", READ_TUNING);
-
-            vehTuning[i][6] = vectorUnion(dataFile.ReadLine(section, "TierraRobada", READ_TUNING), vehTuning[i][5]);
-            vehTuning[i][7] = vectorUnion(dataFile.ReadLine(section, "BoneCounty", READ_TUNING), vehTuning[i][5]);
-            vehTuning[i][8] = vectorUnion(dataFile.ReadLine(section, "RedCounty", READ_TUNING), vehTuning[i][0]);
-            vehTuning[i][9] = vectorUnion(dataFile.ReadLine(section, "Blueberry", READ_TUNING), vehTuning[i][8]);
-            vehTuning[i][10] = vectorUnion(dataFile.ReadLine(section, "Montgomery", READ_TUNING), vehTuning[i][8]);
-            vehTuning[i][11] = vectorUnion(dataFile.ReadLine(section, "Dillimore", READ_TUNING), vehTuning[i][8]);
-            vehTuning[i][12] = vectorUnion(dataFile.ReadLine(section, "PalominoCreek", READ_TUNING), vehTuning[i][8]);
-            vehTuning[i][13] = vectorUnion(dataFile.ReadLine(section, "FlintCounty", READ_TUNING), vehTuning[i][0]);
-            vehTuning[i][14] = vectorUnion(dataFile.ReadLine(section, "Whetstone", READ_TUNING), vehTuning[i][0]);
-            vehTuning[i][15] = vectorUnion(dataFile.ReadLine(section, "AngelPine", READ_TUNING), vehTuning[i][14]);
 
             const int tuningRarity = dataFile.ReadInteger(section, "TuningRarity", -1);
             if (tuningRarity > -1)

@@ -75,7 +75,7 @@ int maxPedID = 0;
 static const char* dataFileName = "ModelVariations.ini";
 DataReader iniSettings(dataFileName);
 
-short framesSinceCallsChecked = 0;
+short framesSinceCallsChecked = 1001;
 char lastInterior[8] = {};
 const char* currentInterior = lastInterior;
 char currentZone[8] = {};
@@ -434,11 +434,11 @@ public:
             Log::Write("Model Variations %s\n%s\n%s\n\n%s\n", MOD_VERSION DEBUG_STRING, windowsVersion.c_str(), getDatetime(true, true, false).c_str(), exePath.c_str());
 
             if (GetGameVersion() == GAME_10US_HOODLUM)
-                Log::Write("Supported exe detected: 1.0 US HOODLUM\n");
+                Log::Write("Supported exe detected: 1.0 US HOODLUM | %u bytes | %s\n", exeFilesize, exeHash.c_str());
             else if (GetGameVersion() == GAME_10US_COMPACT)
-                Log::Write("Supported exe detected: 1.0 US Compact\n");
+                Log::Write("Supported exe detected: 1.0 US Compact | %u bytes | %s\n", exeFilesize, exeHash.c_str());
             else
-                Log::Write("Unsupported exe detected: %s %u bytes %s\n", exeName.c_str(), exeFilesize, exeHash.c_str());
+                Log::Write("Unsupported exe detected: %u bytes | %s\n", exeFilesize, exeHash.c_str());
             
             SYSTEM_INFO si;
             GetSystemInfo(&si);
@@ -492,7 +492,8 @@ public:
             PedVariations::ProcessDrugDealers(true);
             LoadedModules::Refresh();
 
-            framesSinceCallsChecked = 900;
+            if (enableLog)
+                framesSinceCallsChecked = 900;
 
             currentZone[0] = 0;
             lastInterior[0] = 0;
@@ -525,8 +526,12 @@ public:
 
                 reloadingSettings = false;
             });
+
             if (loadSettingsImmediately)
-                try { future.get(); }
+                try
+                {
+                    future.get();
+                }
                 catch (const std::exception& e) 
                 { 
                     Log::Write("future.get() crashed. %s\n", e.what()); 
@@ -610,9 +615,17 @@ public:
                         printMessage("~y~Model Variations~s~: Settings reloaded.", 2000);
                         reloadingSettings = false;
                     });
+
                     if (loadSettingsImmediately)
-                        try { future.get(); }
-                        catch (const std::exception& e) { Log::Write("future.get() on reload crashed. %s\n", e.what()); }
+                        try 
+                        { 
+                            future.get(); 
+                        }
+                        catch (const std::exception& e) 
+                        {
+                            Log::Write("future.get() on reload crashed. %s\n", e.what());
+                            reloadingSettings = false;
+                        }
                 }
             }
             else
@@ -623,28 +636,23 @@ public:
 
             if (framesSinceCallsChecked == 1000)
             {
-                if (enableLog)
+                for (auto &it : hookedCalls)
                 {
-                    for (auto &it : hookedCalls)
+                    const std::uintptr_t functionAddress = (it.second.isVTableAddress == false) ? injector::GetBranchDestination(it.first).as_int() : *reinterpret_cast<unsigned int*>(it.first);
+                    std::pair<std::string, MODULEINFO> moduleInfo = LoadedModules::GetModuleAtAddress(functionAddress);
+                    std::string moduleName = moduleInfo.first.substr(moduleInfo.first.find_last_of("/\\") + 1);
+
+                    if (_stricmp(moduleName.c_str(), MOD_NAME) != 0 && callChecks.find({ it.first , moduleName }) == callChecks.end())
                     {
-                        const std::uintptr_t functionAddress = (it.second.isVTableAddress == false) ? injector::GetBranchDestination(it.first).as_int() : *reinterpret_cast<unsigned int*>(it.first);
-                        std::pair<std::string, MODULEINFO> moduleInfo = LoadedModules::GetModuleAtAddress(functionAddress);
-                        std::string moduleName = moduleInfo.first.substr(moduleInfo.first.find_last_of("/\\") + 1);
-
-                        if (_stricmp(moduleName.c_str(), MOD_NAME) != 0 && callChecks.find({ it.first , moduleName }) == callChecks.end())
-                        {
-                            callChecks.insert({ it.first, moduleName });
-                            if (functionAddress > 0 && !moduleName.empty())
-                                Log::Write("Modified call found: %s 0x%08X 0x%08X %s 0x%08X\n", it.second.name.data(), it.first, functionAddress, moduleName.c_str(), moduleInfo.second.lpBaseOfDll);
-                            else
-                                Log::Write("Modified call found: %s 0x%08X\n", it.second.name.data(), it.first);
-                        }
+                        callChecks.insert({ it.first, moduleName });
+                        if (functionAddress > 0 && !moduleName.empty())
+                            Log::Write("Modified call found: %s 0x%08X 0x%08X %s 0x%08X\n", it.second.name.data(), it.first, functionAddress, moduleName.c_str(), moduleInfo.second.lpBaseOfDll);
+                        else
+                            Log::Write("Modified call found: %s 0x%08X\n", it.second.name.data(), it.first);
                     }
-
-                    framesSinceCallsChecked = 0;
                 }
-                else
-                    framesSinceCallsChecked = 1001;
+
+                framesSinceCallsChecked = 0;
             }
 
             if (player && player->m_pEnex)

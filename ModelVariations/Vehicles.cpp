@@ -77,7 +77,7 @@ uint32_t asmNextInstr[4] = {};
 uint16_t asmModel16 = 0;
 uint32_t asmModel32 = 0;
 std::uintptr_t asmJmpAddress = 0;
-uint32_t* jmpDest = NULL;
+uint32_t* jmpDest = asmNextInstr;
 
 std::array<std::vector<unsigned short>, 16> vehVariations[212];
 std::array<std::vector<unsigned short>, 6> vehWantedVariations[212];
@@ -445,6 +445,8 @@ void VehicleVariations::LoadData()
     loadAllVehicles       = dataFile.ReadBoolean("Settings", "LoadAllVehicles", false);
     vehCarGenExclude      = dataFile.ReadLine("Settings", "ExcludeCarGeneratorModels", READ_VEHICLES);
     vehInheritExclude     = dataFile.ReadLine("Settings", "ExcludeModelsFromInheritance", READ_VEHICLES);
+
+    Log::Write("\nReading zone data...\n");
 
     for (int i = 0; i < CTheZones::TotalNumberOfInfoZones; i++) //for every zone name
         for (auto& j : dataFile.data)
@@ -1987,11 +1989,8 @@ void __declspec(naked) movReg16WordPtrReg()
 
     asmNextInstr[0] = nextInstr;
     asmNextInstr[1] = nextInstr2;
-    jmpDest = asmNextInstr;
-    asmJmpAddress = jmpAddress;
-    ((uint8_t*)asmNextInstr)[nextInstrSize] = 0xFF;
-    ((uint8_t*)asmNextInstr)[nextInstrSize + 1] = 0x25;
-    *((uint32_t**)((uint8_t*)asmNextInstr + nextInstrSize + 2)) = &asmJmpAddress;
+    reinterpret_cast<uint8_t*>(asmNextInstr)[nextInstrSize] = 0xE9;
+    *(uint32_t*)((uint8_t*)asmNextInstr + nextInstrSize + 1) = jmpAddress - (uintptr_t)((uint8_t*)asmNextInstr + nextInstrSize + 5);
 
     __asm {
         popad
@@ -2039,11 +2038,8 @@ void __declspec(naked) movsxReg32WordPtrReg()
 
     asmNextInstr[0] = nextInstr;
     asmNextInstr[1] = nextInstr2;
-    jmpDest = asmNextInstr;
-    asmJmpAddress = jmpAddress;
-    ((uint8_t*)asmNextInstr)[nextInstrSize] = 0xFF;
-    ((uint8_t*)asmNextInstr)[nextInstrSize + 1] = 0x25;
-    *((uint32_t**)((uint8_t*)asmNextInstr + nextInstrSize + 2)) = &asmJmpAddress;
+    reinterpret_cast<uint8_t*>(asmNextInstr)[nextInstrSize] = 0xE9;
+    *(uint32_t*)((uint8_t*)asmNextInstr + nextInstrSize + 1) = jmpAddress - (uintptr_t)((uint8_t*)asmNextInstr + nextInstrSize + 5);
 
     __asm {
         popad
@@ -2083,17 +2079,16 @@ void __declspec(naked) movsxReg32WordPtrReg()
 
 void hookASM(std::uintptr_t address, std::string_view originalData, injector::memory_pointer_raw hookDest, std::string_view funcName)
 {
-    int numBytes = (int)originalData.size()/3+1;
+    unsigned numBytes = originalData.size()/3+1;
     
     if (!memcmp(address, originalData.data()) && forceEnable == false)
     {
         std::string moduleName;
 
         std::stringstream ss;
-        const unsigned char* c = reinterpret_cast<unsigned char*>(address);
 
-        for (int j = 0; j < numBytes; j++)
-            ss << std::setfill('0') << std::setw(2) << std::uppercase << std::hex << static_cast<unsigned int>(c[j]) << " ";
+        for (unsigned j = 0; j < numBytes; j++)
+            ss << std::setfill('0') << std::setw(2) << std::uppercase << std::hex << static_cast<unsigned int>(reinterpret_cast<unsigned char*>(address)[j]) << " ";
 
         std::string bytes = ss.str();
         moduleName = LoadedModules::GetModuleAtAddress(injector::GetBranchDestination(address).as_int()).first;

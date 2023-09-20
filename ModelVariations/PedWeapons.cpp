@@ -19,11 +19,6 @@ std::unordered_map<unsigned short, std::string> wepVehModels;
 
 std::stack<CPed*> pedWepStack;
 
-bool isOnMission()
-{
-    return (CTheScripts::OnAMissionFlag && *(CTheScripts::ScriptSpace + CTheScripts::OnAMissionFlag));
-}
-
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -122,7 +117,7 @@ void PedWeaponVariations::Process()
             section = wepModel->second;
         const bool mergeWeapons = dataFile.ReadBoolean(section, "MergeZonesWithGlobal", false);
 
-        if (dataFile.ReadBoolean(section, "DisableOnMission", false) && isOnMission())
+        if (dataFile.ReadBoolean(section, "DisableOnMission", false) && CTheScripts::IsPlayerOnAMission())
             continue;
 
         eWeaponType originalWeapons[13];

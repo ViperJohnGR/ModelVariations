@@ -66,13 +66,13 @@ inline bool memcmp(std::uintptr_t address, const char* value)
 }
 
 template <typename T>
-inline void WriteMemory(std::uintptr_t address, int value)
+void WriteMemory(std::uintptr_t address, int value)
 {
     injector::WriteMemory<T>(address, (T)value, true);
 }
 
 template <typename T>
-inline void WriteMemory(std::uintptr_t address, unsigned int value)
+void WriteMemory(std::uintptr_t address, unsigned int value)
 {
     injector::WriteMemory<T>(address, (T)value, true);
 }
@@ -83,13 +83,13 @@ inline void WriteMemory(std::uintptr_t address, unsigned int value)
 ////////////
 
 template <typename T>
-inline T rand(int min, unsigned int max)
+T rand(int min, unsigned int max)
 {
     return (T)CGeneral::GetRandomNumberInRange(min, (int)max);
 }
 
 template <typename T>
-inline bool rand()
+bool rand()
 {
     static_assert(std::is_same_v<T, bool>, "invalid type for template");
 

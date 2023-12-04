@@ -355,11 +355,11 @@ void initialize()
         if (maxPedID == 0)
             maxPedID = flaMaxID;
 
-        Log::Write("FLA settings:\n");
+        Log::Write("\nFLA settings:\n");
         Log::Write("Enable special features = %d\n", flaIni.ReadInteger("VEHICLE SPECIAL FEATURES", "Enable special features", -1));
         Log::Write("Apply ID limit patch = %d\n", flaIni.ReadInteger("ID LIMITS", "Apply ID limit patch", -1));
         Log::Write("Count of killable model IDs = %d\n", flaMaxID);
-        Log::Write("Enable model special feature loader = %d\n", flaIni.ReadInteger("ADDONS", "Enable model special feature loader", -1));
+        Log::Write("Enable model special feature loader = %d\n\n", flaIni.ReadInteger("ADDONS", "Enable model special feature loader", -1));
     }
 
     loadIniData();
@@ -646,9 +646,9 @@ public:
                     {
                         callChecks.insert({ it.first, moduleName });
                         if (functionAddress > 0 && !moduleName.empty())
-                            Log::Write("Modified call found: %s 0x%08X 0x%08X %s 0x%08X\n", it.second.name.data(), it.first, functionAddress, moduleName.c_str(), moduleInfo.second.lpBaseOfDll);
+                            Log::Write("Modified call detected: %s 0x%08X 0x%08X %s 0x%08X\n", it.second.name.data(), it.first, functionAddress, moduleName.c_str(), moduleInfo.second.lpBaseOfDll);
                         else
-                            Log::Write("Modified call found: %s 0x%08X\n", it.second.name.data(), it.first);
+                            Log::Write("Modified call detected: %s 0x%08X\n", it.second.name.data(), it.first);
                     }
                 }
 

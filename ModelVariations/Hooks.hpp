@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Log.hpp"
+#include "LoadedModules.hpp"
 
 #include <unordered_map>
 #include <string>
@@ -18,6 +19,32 @@ struct hookinfo {
 
 extern std::unordered_map<std::uintptr_t, hookinfo> hookedCalls;
 extern bool forceEnable;
+
+inline bool hookASM(std::uintptr_t address, std::string_view originalData, injector::memory_pointer_raw hookDest, std::string_view funcName)
+{
+    unsigned numBytes = originalData.size() / 3 + 1;
+
+    if (!memcmp(address, originalData.data()) && forceEnable == false)
+    {
+        std::stringstream ss;
+
+        for (unsigned j = 0; j < numBytes; j++)
+            ss << std::setfill('0') << std::setw(2) << std::uppercase << std::hex << static_cast<unsigned int>(reinterpret_cast<unsigned char*>(address)[j]) << " ";
+
+        std::string bytes = ss.str();
+        std::string moduleName = LoadedModules::GetModuleAtAddress(injector::GetBranchDestination(address).as_int()).first;
+
+        if (funcName.find("::") != std::string::npos)
+            Log::LogModifiedAddress(address, "Modified method detected: %s - 0x%08X is %s %s\n", funcName.data(), address, bytes.c_str(), getFilenameFromPath(moduleName).c_str());
+        else
+            Log::LogModifiedAddress(address, "Modified function detected: %s - 0x%08X is %s %s\n", funcName.data(), address, bytes.c_str(), getFilenameFromPath(moduleName).c_str());
+
+        return false;
+    }
+
+    injector::MakeJMP(address, hookDest);
+    return true;
+}
 
 inline void hookCall(std::uintptr_t address, void* pFunction, std::string name, bool isVTableAddress = false)
 {

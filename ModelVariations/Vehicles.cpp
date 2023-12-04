@@ -66,11 +66,6 @@ unsigned short currentOccupantsModel = 0;
 bool tuneParkedCar = false;
 
 int passengerModelIndex = -1;
-constexpr std::uintptr_t jmp588577 = 0x588577;
-constexpr std::uintptr_t jmp613B7E = 0x613B7E;
-constexpr std::uintptr_t jmp6A1564 = 0x6A1564;
-constexpr std::uintptr_t jmp6AB35A = 0x6AB35A;
-constexpr std::uintptr_t jmp6ABA65 = 0x6ABA65;
 int carGenModel = -1;
 
 uint32_t asmNextInstr[4] = {};
@@ -1298,7 +1293,8 @@ void __declspec(naked) patchPassengerModel()
         lea edx, [esp + 0x10]
         push edx
         push passengerModelIndex
-        jmp jmp613B7E
+        mov edx, 0x613B7E
+        jmp edx
     }
 }
 
@@ -1326,13 +1322,11 @@ CPed* __cdecl AddPedInCarHooked(CVehicle* a1, char driver, int a3, signed int a4
             passengerModelIndex = vectorGetRandom(it->second);
     }
 
-    if (passengerModelIndex > 0)
+    if (passengerModelIndex > 0 && hookASM(0x613B78, "8D 54 24 10 52", patchPassengerModel, "CPopulation::AddPedInCar"))
     {
-        uint8_t originalData[5] = { *(uint8_t*)0x613B78, *(uint8_t*)0x613B79, *(uint8_t*)0x613B7A, *(uint8_t*)0x613B7B, *(uint8_t*)0x613B7C };
         loadModels({ passengerModelIndex }, PRIORITY_REQUEST, true);
-        injector::MakeJMP(0x613B78, patchPassengerModel);
         CPed* ped = callOriginalAndReturn<CPed*, address>(a1, driver, a3, a4, a5, a6);
-        injector::WriteMemoryRaw(0x613B78, originalData, 5, true);
+        WriteMemory(0x613B78, "8D 54 24 10 52");
         passengerModelIndex = -1;
         return ped;
     }
@@ -1483,9 +1477,9 @@ CVehicle* __cdecl CreateCarForScriptHooked(int modelId, float posX, float posY, 
 }
 
 template <std::uintptr_t address>
-void* __cdecl GetNewVehicleDependingOnCarModelHooked(int modelIndex, int createdBy)
+CVehicle* __cdecl GetNewVehicleDependingOnCarModelHooked(int modelIndex, int createdBy)
 {
-    CVehicle *veh = reinterpret_cast<CVehicle*>(callOriginalAndReturn<void*, address>(modelIndex, createdBy));
+    CVehicle *veh = callOriginalAndReturn<CVehicle*, address>(modelIndex, createdBy);
     processTuning(veh);
     return veh;
 }
@@ -1541,7 +1535,8 @@ void __declspec(naked) enableSirenLights()
     __asm {
         mov eax, sirenModel
         lea edi, [eax - 0x197]
-        jmp jmp6AB35A
+        mov eax, 0x6AB35A
+        jmp eax
     }
 }
 
@@ -1551,18 +1546,15 @@ void __fastcall CAutomobile__PreRenderHooked(CAutomobile* veh)
     if (veh == NULL)
         return;
 
-    uint8_t sirenLightsOriginal[5] = { *(uint8_t*)0x6AB350, *(uint8_t*)0x6AB351, *(uint8_t*)0x6AB352, *(uint8_t*)0x6AB353, *(uint8_t*)0x6AB354 };
-
     sirenModel = -1;
     lightsModel = 0;
     bool hasSirenLights = false;
 
-    if (!LoadedModules::IsModLoaded(MOD_WLE))
-        if (enableLights && (HasCarSiren<0>(veh) || getVariationOriginalModel(veh->m_nModelIndex) == 420 || getVariationOriginalModel(veh->m_nModelIndex) == 438))
+    if (enableLights && (HasCarSiren<0>(veh) || getVariationOriginalModel(veh->m_nModelIndex) == 420 || getVariationOriginalModel(veh->m_nModelIndex) == 438))
+        if (hookASM(0x6AB350, "0F BF 46 22 8D", enableSirenLights, "CAutomobile::PreRender"))
         {
             sirenModel = getVariationOriginalModel(veh->m_nModelIndex);
             lightsModel = veh->m_nModelIndex;
-            injector::MakeJMP(0x6AB350, enableSirenLights);
             hasSirenLights = true;
         }
 
@@ -1611,7 +1603,7 @@ void __fastcall CAutomobile__PreRenderHooked(CAutomobile* veh)
         callMethodOriginal<address>(veh);
 
     if (hasSirenLights)
-        injector::WriteMemoryRaw(0x6AB350, sirenLightsOriginal, 5, true);
+        WriteMemory(0x6AB350, "0F BF 46 22 8D");
 }
 
 template <std::uintptr_t address>
@@ -1860,7 +1852,8 @@ void __declspec(naked) patch6A155C()
 
     isCement:
         mov ax, word ptr [edi + 0x22]
-        jmp jmp6A1564
+        mov ecx, 0x6A1564
+        jmp ecx
     }
 }
 
@@ -1878,7 +1871,8 @@ void __declspec(naked) patch588570()
         pop edx
         pop ecx
         pop eax
-        jmp jmp588577
+        mov ebx, 0x588577
+        jmp ebx
     }
 }
 
@@ -1892,7 +1886,8 @@ void __declspec(naked) patchCoronas()
         push esi
         push edi
         call RegisterCoronaHooked2
-        jmp jmp6ABA65
+        mov eax, 0x6ABA65
+        jmp eax
     }
 }
 
@@ -2075,33 +2070,6 @@ void __declspec(naked) movsxReg32WordPtrReg()
     __asm {
         jmp jmpDest
     }
-}
-
-void hookASM(std::uintptr_t address, std::string_view originalData, injector::memory_pointer_raw hookDest, std::string_view funcName)
-{
-    unsigned numBytes = originalData.size()/3+1;
-    
-    if (!memcmp(address, originalData.data()) && forceEnable == false)
-    {
-        std::string moduleName;
-
-        std::stringstream ss;
-
-        for (unsigned j = 0; j < numBytes; j++)
-            ss << std::setfill('0') << std::setw(2) << std::uppercase << std::hex << static_cast<unsigned int>(reinterpret_cast<unsigned char*>(address)[j]) << " ";
-
-        std::string bytes = ss.str();
-        moduleName = LoadedModules::GetModuleAtAddress(injector::GetBranchDestination(address).as_int()).first;
-
-        if (funcName.find("::") != std::string::npos)
-            Log::LogModifiedAddress(address, "Modified method detected: %s - 0x%08X is %s %s\n", funcName.data(), address, bytes.c_str(), getFilenameFromPath(moduleName).c_str());
-        else
-            Log::LogModifiedAddress(address, "Modified function detected: %s - 0x%08X is %s %s\n", funcName.data(), address, bytes.c_str(), getFilenameFromPath(moduleName).c_str());
-           
-        return;
-    }
-
-    injector::MakeJMP(address, hookDest);
 }
 
 void VehicleVariations::InstallHooks()

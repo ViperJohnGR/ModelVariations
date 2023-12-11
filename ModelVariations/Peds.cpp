@@ -20,30 +20,38 @@ static const char* dataFileName = "ModelVariations_Peds.ini";
 static DataReader dataFile(dataFileName);
 int16_t destroyedModelCounters[20000];
 
-std::array<std::vector<unsigned short>, 16> pedVariations[MAX_PED_ID];
-std::array<std::vector<unsigned short>, 6> pedWantedVariations[MAX_PED_ID];
+struct tPedVars {
+    std::array<std::vector<unsigned short>, 16> variations[MAX_PED_ID];
+    std::array<std::vector<unsigned short>, 6> wantedVariations[MAX_PED_ID];
 
-std::map<unsigned short, int> pedTimeSinceLastSpawned;
-std::unordered_map<unsigned short, std::vector<unsigned short>> pedOriginalModels;
-std::unordered_map<unsigned short, std::string> pedModels;
+    std::map<unsigned short, int> pedTimeSinceSpawn;
+    std::unordered_map<unsigned short, std::vector<unsigned short>> originalModels;
+    std::unordered_map<unsigned short, std::string> pedModels;
 
-std::set<unsigned short> drugDealers;
-std::set<unsigned short> dontInheritBehaviourModels;
-std::set<unsigned short> pedMergeZones;
-std::set<unsigned short> pedHasVariations;
-std::set<unsigned short> useParentVoice;
+    std::set<unsigned short> drugDealers;
+    std::set<unsigned short> dontInheritBehaviourModels;
+    std::set<unsigned short> mergeZones;
+    std::set<unsigned short> pedHasVariations;
+    std::set<unsigned short> useParentVoice;
 
-std::stack<CPed*> pedStack;
+    std::stack<CPed*> stack;
 
-std::vector<unsigned short> pedCurrentVariations[MAX_PED_ID];
+    std::vector<unsigned short> currentVariations[MAX_PED_ID];
+};
 
-//INI Options
-bool recursiveVariations = true;
-bool enableCloneRemover = false;
-bool cloneRemoverVehicleOccupants = false;
-int cloneRemoverSpawnDelay = 3;
-std::vector<unsigned short> cloneRemoverIncludeVariations;
-std::vector<unsigned short> cloneRemoverExclusions;
+std::unique_ptr<tPedVars> pedVars(new tPedVars);
+
+
+struct tPedOptions {
+    bool recursiveVariations = true;
+    bool enableCloneRemover = false;
+    bool cloneRemoverVehicleOccupants = false;
+    int cloneRemoverSpawnDelay = 3;
+    std::vector<unsigned short> cloneRemoverIncludeVariations;
+    std::vector<unsigned short> cloneRemoverExclusions;
+};
+
+std::unique_ptr<tPedOptions> pedOptions(new tPedOptions);
 
 int dealersFrames = 0;
 unsigned short modelIndex = 0;
@@ -63,15 +71,15 @@ bool pedDelaySpawn(unsigned short model, bool includeParentModels)
 {
     if (!includeParentModels)
     {
-        if (pedTimeSinceLastSpawned.find(model) != pedTimeSinceLastSpawned.end())
+        if (pedVars->pedTimeSinceSpawn.find(model) != pedVars->pedTimeSinceSpawn.end())
             return true;
     }
     else
     {
-        auto it = pedOriginalModels.find(model);
-        if (it != pedOriginalModels.end())
+        auto it = pedVars->originalModels.find(model);
+        if (it != pedVars->originalModels.end())
             for (auto& i : it->second)
-                if (pedTimeSinceLastSpawned.find(i) != pedTimeSinceLastSpawned.end())
+                if (pedVars->pedTimeSinceSpawn.find(i) != pedVars->pedTimeSinceSpawn.end())
                     return true;
     }
     return false;
@@ -84,20 +92,20 @@ bool compareOriginalModels(unsigned short model1, unsigned short model2, bool in
 
     if (includeVariations)
     {
-        auto it1 = pedOriginalModels.find(model1);
-        auto it2 = pedOriginalModels.find(model2);
-        if (it1 != pedOriginalModels.end() && it2 != pedOriginalModels.end())
+        auto it1 = pedVars->originalModels.find(model1);
+        auto it2 = pedVars->originalModels.find(model2);
+        if (it1 != pedVars->originalModels.end() && it2 != pedVars->originalModels.end())
             return std::find_first_of(it1->second.begin(), it1->second.end(), it2->second.begin(), it2->second.end()) != it1->second.end();
         else
         {
             unsigned short model = 0;
             std::vector<unsigned short>* vec = NULL;
-            if (it1 != pedOriginalModels.end())
+            if (it1 != pedVars->originalModels.end())
             {
                 model = model2;
                 vec = &it1->second;
             }
-            else if (it2 != pedOriginalModels.end())
+            else if (it2 != pedVars->originalModels.end())
             {
                 model = model1;
                 vec = &it2->second;
@@ -119,42 +127,15 @@ bool compareOriginalModels(unsigned short model1, unsigned short model2, bool in
 
 void PedVariations::AddToStack(CPed* ped)
 {
-    pedStack.push(ped);
+    pedVars->stack.push(ped);
 }
 
 void PedVariations::ClearData()
 {
-    for (int i = 0; i < MAX_PED_ID; i++)
-        for (unsigned short j = 0; j < 16; j++)
-        {
-            pedVariations[i][j].clear();
-            if (j < 6)
-                pedWantedVariations[i][j].clear();
-        }
-
-    //maps
-    pedTimeSinceLastSpawned.clear();
-    pedOriginalModels.clear();
-    pedModels.clear();
-
-    //sets
-    dontInheritBehaviourModels.clear();
-    pedMergeZones.clear();
-    pedHasVariations.clear();
-    cloneRemoverIncludeVariations.clear();
-    useParentVoice.clear();
-
-    //stacks
-    while (!pedStack.empty()) pedStack.pop();
-
-    //vectors
-    cloneRemoverExclusions.clear();
-    for (auto &i : pedCurrentVariations)
-        i.clear();
+    pedVars.reset(new tPedVars);
+    pedOptions.reset(new tPedOptions);
 
     dataFile.data.clear();
-
-    enableCloneRemover = 0;
 }
 
 void PedVariations::LoadData()
@@ -175,76 +156,76 @@ void PedVariations::LoadData()
         else
         {
             CModelInfo::GetModelInfo(section.data(), &i);
-            pedModels.insert({ (unsigned short)i, section });
+            pedVars->pedModels.insert({ (unsigned short)i, section });
         }
 
         if (isValidPedId(i))
         {
-            pedHasVariations.insert((unsigned short)i);
+            pedVars->pedHasVariations.insert((unsigned short)i);
 
             for (unsigned j = 0; j < 16; j++)
                 if (j < 6)
-                    pedVariations[i][j] = dataFile.ReadLine(section, areas[j].first, READ_PEDS);
+                    pedVars->variations[i][j] = dataFile.ReadLine(section, areas[j].first, READ_PEDS);
                 else
-                    pedVariations[i][j] = vectorUnion(dataFile.ReadLine(section, areas[j].first, READ_PEDS), pedVariations[i][areas[j].second]);
+                    pedVars->variations[i][j] = vectorUnion(dataFile.ReadLine(section, areas[j].first, READ_PEDS), pedVars->variations[i][areas[j].second]);
 
-            pedWantedVariations[i][0] = dataFile.ReadLine(section, "Wanted1", READ_PEDS);
-            pedWantedVariations[i][1] = dataFile.ReadLine(section, "Wanted2", READ_PEDS);
-            pedWantedVariations[i][2] = dataFile.ReadLine(section, "Wanted3", READ_PEDS);
-            pedWantedVariations[i][3] = dataFile.ReadLine(section, "Wanted4", READ_PEDS);
-            pedWantedVariations[i][4] = dataFile.ReadLine(section, "Wanted5", READ_PEDS);
-            pedWantedVariations[i][5] = dataFile.ReadLine(section, "Wanted6", READ_PEDS);
+            pedVars->wantedVariations[i][0] = dataFile.ReadLine(section, "Wanted1", READ_PEDS);
+            pedVars->wantedVariations[i][1] = dataFile.ReadLine(section, "Wanted2", READ_PEDS);
+            pedVars->wantedVariations[i][2] = dataFile.ReadLine(section, "Wanted3", READ_PEDS);
+            pedVars->wantedVariations[i][3] = dataFile.ReadLine(section, "Wanted4", READ_PEDS);
+            pedVars->wantedVariations[i][4] = dataFile.ReadLine(section, "Wanted5", READ_PEDS);
+            pedVars->wantedVariations[i][5] = dataFile.ReadLine(section, "Wanted6", READ_PEDS);
 
 
-            for (const auto& j : pedVariations[i])
+            for (const auto& j : pedVars->variations[i])
                 for (const auto& k : j)
                     if (k > 0 && k != i)
                     {
-                        if (pedOriginalModels.find(k) != pedOriginalModels.end())
-                            pedOriginalModels[k].push_back(static_cast<unsigned short>(i));
+                        if (pedVars->originalModels.find(k) != pedVars->originalModels.end())
+                            pedVars->originalModels[k].push_back(static_cast<unsigned short>(i));
                         else
-                            pedOriginalModels.insert({ k, { static_cast<unsigned short>(i) } });
+                            pedVars->originalModels.insert({ k, { static_cast<unsigned short>(i) } });
                     }
 
-            for (auto &it : pedOriginalModels)
+            for (auto &it : pedVars->originalModels)
                 std::sort(it.second.begin(), it.second.end());
 
             if (dataFile.ReadBoolean(section, "MergeZonesWithCities", false))
-                pedMergeZones.insert((unsigned short)i);
+                pedVars->mergeZones.insert((unsigned short)i);
 
             if (dataFile.ReadBoolean(section, "DontInheritBehaviour", false))
-                dontInheritBehaviourModels.insert((unsigned short)i);
+                pedVars->dontInheritBehaviourModels.insert((unsigned short)i);
 
             if (dataFile.ReadBoolean(section, "UseParentVoice", false))
-                useParentVoice.insert((unsigned short)i);
+                pedVars->useParentVoice.insert((unsigned short)i);
         }
     }
 
-    recursiveVariations = dataFile.ReadBoolean("Settings", "RecursiveVariations", true);
-    enableCloneRemover = dataFile.ReadBoolean("Settings", "EnableCloneRemover", false);
-    cloneRemoverVehicleOccupants = dataFile.ReadBoolean("Settings", "CloneRemoverIncludeVehicleOccupants", false);
-    cloneRemoverSpawnDelay = dataFile.ReadInteger("Settings", "CloneRemoverSpawnDelay", 3);
-    cloneRemoverIncludeVariations = dataFile.ReadLine("Settings", "CloneRemoverIncludeVariations", READ_PEDS);
-    cloneRemoverExclusions = dataFile.ReadLine("Settings", "CloneRemoverExcludeModels", READ_PEDS);
+    pedOptions->recursiveVariations = dataFile.ReadBoolean("Settings", "RecursiveVariations", true);
+    pedOptions->enableCloneRemover = dataFile.ReadBoolean("Settings", "EnableCloneRemover", false);
+    pedOptions->cloneRemoverVehicleOccupants = dataFile.ReadBoolean("Settings", "CloneRemoverIncludeVehicleOccupants", false);
+    pedOptions->cloneRemoverSpawnDelay = dataFile.ReadInteger("Settings", "CloneRemoverSpawnDelay", 3);
+    pedOptions->cloneRemoverIncludeVariations = dataFile.ReadLine("Settings", "CloneRemoverIncludeVariations", READ_PEDS);
+    pedOptions->cloneRemoverExclusions = dataFile.ReadLine("Settings", "CloneRemoverExcludeModels", READ_PEDS);
 
     Log::Write("\n");
 }
 
 void PedVariations::Process()
 {
-    if (enableCloneRemover)
+    if (pedOptions->enableCloneRemover)
     {
-        auto it = pedTimeSinceLastSpawned.begin();
-        while (it != pedTimeSinceLastSpawned.end())
-            if ((clock() - it->second) / CLOCKS_PER_SEC < cloneRemoverSpawnDelay)
+        auto it = pedVars->pedTimeSinceSpawn.begin();
+        while (it != pedVars->pedTimeSinceSpawn.end())
+            if ((clock() - it->second) / CLOCKS_PER_SEC < pedOptions->cloneRemoverSpawnDelay)
                 it++;
             else
-                it = pedTimeSinceLastSpawned.erase(it);
+                it = pedVars->pedTimeSinceSpawn.erase(it);
     }
 
     ProcessDrugDealers();
 
-    while (!pedStack.empty())
+    while (!pedVars->stack.empty())
     {
         const auto deletePed = [](CPed* ped)
         {
@@ -283,11 +264,11 @@ void PedVariations::Process()
             return true;
         };
 
-        CPed* ped = pedStack.top();
-        pedStack.pop();
+        CPed* ped = pedVars->stack.top();
+        pedVars->stack.pop();
 
         if (IsPedPointerValid(ped) && isValidPedId(ped->m_nModelIndex))
-            if (!pedCurrentVariations[ped->m_nModelIndex].empty() && pedCurrentVariations[ped->m_nModelIndex][0] == 0 && ped->m_nCreatedBy != 2) //Delete models with a 0 id variation
+            if (!pedVars->currentVariations[ped->m_nModelIndex].empty() && pedVars->currentVariations[ped->m_nModelIndex][0] == 0 && ped->m_nCreatedBy != 2) //Delete models with a 0 id variation
             {
                 if (IsVehiclePointerValid(ped->m_pVehicle))
                     pedDeleteVeh(ped);
@@ -295,28 +276,28 @@ void PedVariations::Process()
                     deletePed(ped);
             }
 
-        if (IsPedPointerValid(ped) && enableCloneRemover && ped->m_nCreatedBy != 2 && CPools::ms_pPedPool) //Clone remover
+        if (IsPedPointerValid(ped) && pedOptions->enableCloneRemover && ped->m_nCreatedBy != 2 && CPools::ms_pPedPool) //Clone remover
         {
-            bool includeVariations = std::find(cloneRemoverIncludeVariations.begin(), cloneRemoverIncludeVariations.end(), ped->m_nModelIndex) != cloneRemoverIncludeVariations.end();
+            bool includeVariations = std::find(pedOptions->cloneRemoverIncludeVariations.begin(), pedOptions->cloneRemoverIncludeVariations.end(), ped->m_nModelIndex) != pedOptions->cloneRemoverIncludeVariations.end();
             if (pedDelaySpawn(ped->m_nModelIndex, includeVariations)) //Delete peds spawned before SpawnTime
             {
                 if (!IsVehiclePointerValid(ped->m_pVehicle))
                     deletePed(ped);
-                else if (cloneRemoverVehicleOccupants && !isCarEmpty(ped->m_pVehicle))
+                else if (pedOptions->cloneRemoverVehicleOccupants && !isCarEmpty(ped->m_pVehicle))
                     pedDeleteVeh(ped);
             }
 
-            if (IsPedPointerValid(ped) && !vectorHasId(cloneRemoverExclusions, ped->m_nModelIndex) && ped->m_nModelIndex > 0) //Delete peds already spawned
+            if (IsPedPointerValid(ped) && !vectorHasId(pedOptions->cloneRemoverExclusions, ped->m_nModelIndex) && ped->m_nModelIndex > 0) //Delete peds already spawned
             {
                 if (includeVariations)
                 {
-                    auto it = pedOriginalModels.find(ped->m_nModelIndex);
-                    if (it != pedOriginalModels.end())
+                    auto it = pedVars->originalModels.find(ped->m_nModelIndex);
+                    if (it != pedVars->originalModels.end())
                         for (auto& i : it->second)
-                            pedTimeSinceLastSpawned.insert({ i, clock() });
+                            pedVars->pedTimeSinceSpawn.insert({ i, clock() });
                 }
                 else
-                    pedTimeSinceLastSpawned.insert({ ped->m_nModelIndex, clock() });
+                    pedVars->pedTimeSinceSpawn.insert({ ped->m_nModelIndex, clock() });
 
                 for (CPed* ped2 : CPools::ms_pPedPool)
                     if (IsPedPointerValid(ped2) && ped2 != ped && compareOriginalModels(ped->m_nModelIndex, ped2->m_nModelIndex, includeVariations))
@@ -326,7 +307,7 @@ void PedVariations::Process()
                             deletePed(ped);
                             break;
                         }
-                        else if (cloneRemoverVehicleOccupants && !isCarEmpty(ped->m_pVehicle))
+                        else if (pedOptions->cloneRemoverVehicleOccupants && !isCarEmpty(ped->m_pVehicle))
                         {
                             pedDeleteVeh(ped);
                             break;
@@ -342,7 +323,7 @@ void PedVariations::ProcessDrugDealers(bool reset)
     if (reset)
     {
         dealersFrames = 0;
-        drugDealers.clear();
+        pedVars->drugDealers.clear();
     }
     else
     {
@@ -354,13 +335,13 @@ void PedVariations::ProcessDrugDealers(bool reset)
             Log::Write("Applying drug dealer fix...\n");
          
             for (auto& i : { 28, 29, 30, 254 })
-                for (auto &j : pedVariations[i])
+                for (auto &j : pedVars->variations[i])
                     for (auto &k : j)
-                        if (k > MAX_PED_ID && drugDealers.find(k) == drugDealers.end())
+                        if (k > MAX_PED_ID && pedVars->drugDealers.find(k) == pedVars->drugDealers.end())
                         {
                             Log::Write((std::find(addedIDs.begin(), addedIDs.end(), k) != addedIDs.end()) ? "%uSP\n" : "%u\n", k);
                             CTheScripts::ScriptsForBrains.AddNewScriptBrain(CTheScripts::StreamedScripts.GetProperIndexFromIndexUsedByScript(19), (short)k, 100, 0, -1, -1.0);
-                            drugDealers.insert(k);
+                            pedVars->drugDealers.insert(k);
                         }
 
             Log::Write("\n");
@@ -373,13 +354,13 @@ void PedVariations::UpdateVariations()
 {
     const CWanted* wanted = FindPlayerWanted(-1);
 
-    for (auto& modelid : pedHasVariations)
+    for (auto& modelid : pedVars->pedHasVariations)
     {
-        pedCurrentVariations[modelid] = vectorUnion(pedVariations[modelid][4], pedVariations[modelid][currentTown]);
+        pedVars->currentVariations[modelid] = vectorUnion(pedVars->variations[modelid][4], pedVars->variations[modelid][currentTown]);
 
         std::string section;
-        auto it = pedModels.find(modelid);
-        if (it != pedModels.end())
+        auto it = pedVars->pedModels.find(modelid);
+        if (it != pedVars->pedModels.end())
             section = it->second;
         else
             section = std::to_string(modelid);
@@ -387,21 +368,21 @@ void PedVariations::UpdateVariations()
         std::vector<unsigned short> vec = dataFile.ReadLine(section, currentZone, READ_PEDS);
         if (!vec.empty())
         {
-            if (pedMergeZones.find(modelid) != pedMergeZones.end())
-                pedCurrentVariations[modelid] = vectorUnion(pedCurrentVariations[modelid], vec);
+            if (pedVars->mergeZones.find(modelid) != pedVars->mergeZones.end())
+                pedVars->currentVariations[modelid] = vectorUnion(pedVars->currentVariations[modelid], vec);
             else
-                pedCurrentVariations[modelid] = vec;
+                pedVars->currentVariations[modelid] = vec;
         }
 
         vec = dataFile.ReadLine(section, currentInterior, READ_PEDS);
         if (!vec.empty())
-            pedCurrentVariations[modelid] = vectorUnion(pedCurrentVariations[modelid], vec);
+            pedVars->currentVariations[modelid] = vectorUnion(pedVars->currentVariations[modelid], vec);
 
         if (wanted)
         {
             const unsigned int wantedLevel = (wanted->m_nWantedLevel > 0) ? (wanted->m_nWantedLevel - 1) : (wanted->m_nWantedLevel);
-            if (!pedWantedVariations[modelid][wantedLevel].empty() && !pedCurrentVariations[modelid].empty())
-                vectorfilterVector(pedCurrentVariations[modelid], pedWantedVariations[modelid][wantedLevel]);
+            if (!pedVars->wantedVariations[modelid][wantedLevel].empty() && !pedVars->currentVariations[modelid].empty())
+                vectorfilterVector(pedVars->currentVariations[modelid], pedVars->wantedVariations[modelid][wantedLevel]);
         }
     }
 }
@@ -414,10 +395,10 @@ void PedVariations::LogCurrentVariations()
 {
     Log::Write("pedCurrentVariations\n");
     for (int i = 0; i < MAX_PED_ID; i++)
-        if (!pedCurrentVariations[i].empty())
+        if (!pedVars->currentVariations[i].empty())
         {
             Log::Write("%d: ", i);
-            for (auto j : pedCurrentVariations[i])
+            for (auto j : pedVars->currentVariations[i])
             {
                 const char* suffix = " ";
                 if (std::find(addedIDs.begin(), addedIDs.end(), j) != addedIDs.end())
@@ -443,14 +424,14 @@ void PedVariations::LogVariations()
     Log::Write("\nPed Variations:\n");
     for (unsigned int i = 0; i < MAX_PED_ID; i++)
         for (unsigned int j = 0; j < 16; j++)
-            if (!pedVariations[i][j].empty())
+            if (!pedVars->variations[i][j].empty())
             {
                 Log::Write("%u: ", i);
                 for (unsigned int k = 0; k < 16; k++)
-                    if (!pedVariations[i][k].empty())
+                    if (!pedVars->variations[i][k].empty())
                     {
                         Log::Write("(%u) ", k);
-                        for (const auto& l : pedVariations[i][k])
+                        for (const auto& l : pedVars->variations[i][k])
                             Log::Write((std::find(addedIDs.begin(), addedIDs.end(), l) != addedIDs.end()) ? "%uSP " : "%u ", l);
                     }
 
@@ -478,21 +459,21 @@ int __fastcall SetModelIndexHooked(CEntity* _this, void*, int index)
 {
     int retVal = callMethodOriginalAndReturn<int, address>(_this, index);
 
-    if (isValidPedId(_this->m_nModelIndex) && !pedCurrentVariations[_this->m_nModelIndex].empty())
+    if (isValidPedId(_this->m_nModelIndex) && !pedVars->currentVariations[_this->m_nModelIndex].empty())
     {
-        const unsigned short variationModel = vectorGetRandom(pedCurrentVariations[_this->m_nModelIndex]);
+        const unsigned short variationModel = vectorGetRandom(pedVars->currentVariations[_this->m_nModelIndex]);
         if (variationModel > 0 && variationModel != _this->m_nModelIndex)
         {
             loadModels({ variationModel }, PRIORITY_REQUEST, true);
             const unsigned short originalModel = _this->m_nModelIndex;
             _this->DeleteRwObject();
 
-            if (recursiveVariations)
+            if (pedOptions->recursiveVariations)
                 _this->SetModelIndex(variationModel);
             else 
                 callMethodOriginalAndReturn<int, address>(_this, variationModel);
 
-            if (dontInheritBehaviourModels.find(originalModel) == dontInheritBehaviourModels.end())
+            if (pedVars->dontInheritBehaviourModels.find(originalModel) == pedVars->dontInheritBehaviourModels.end())
                 _this->m_nModelIndex = originalModel;
             modelIndex = variationModel;
         }
@@ -514,10 +495,10 @@ void __fastcall UpdateRpHAnimHooked(CEntity* entity)
 template <std::uintptr_t address>
 char __fastcall CAEPedSpeechAudioEntity__InitialiseHooked(CAEPedSpeechAudioEntity* _this, void*, CPed* ped)
 {
-    if (ped != NULL && useParentVoice.find(ped->m_nModelIndex) != useParentVoice.end())
+    if (ped != NULL && pedVars->useParentVoice.find(ped->m_nModelIndex) != pedVars->useParentVoice.end())
     {
-        auto it = pedOriginalModels.find(ped->m_nModelIndex);
-        if (it != pedOriginalModels.end() && !it->second.empty())
+        auto it = pedVars->originalModels.find(ped->m_nModelIndex);
+        if (it != pedVars->originalModels.end() && !it->second.empty())
         {
             auto parentModel = it->second[0];
             auto currentModel = ped->m_nModelIndex;

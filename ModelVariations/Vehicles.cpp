@@ -59,7 +59,6 @@ static const char* dataFileName = "ModelVariations_Vehicles.ini";
 static DataReader dataFile(dataFileName);
 
 unsigned short roadblockModel = 0;
-int sirenModel = -1;
 unsigned short lightsModel = 0;
 int currentOccupantsGroup = -1;
 unsigned short currentOccupantsModel = 0;
@@ -973,9 +972,6 @@ void __fastcall DoInternalProcessingHooked(CCarGenerator* park) //for non-random
             case 497: //Police Maverick
             case 488: //News Chopper
                 park->m_nModelId = (short)getRandomVariation(park->m_nModelId, true);
-                callMethodOriginal<address>(park);
-                //park->m_nModelId = model;
-                break;
             default:
                 callMethodOriginal<address>(park);
         }
@@ -1256,8 +1252,8 @@ void __declspec(naked) patchPassengerModel()
         lea edx, [esp + 0x10]
         push edx
         push passengerModelIndex
-        mov edx, 0x613B7E
-        jmp edx
+        mov asmJmpAddress, 0x613B7E
+        jmp asmJmpAddress
     }
 }
 
@@ -1299,7 +1295,7 @@ CPed* __cdecl AddPedInCarHooked(CVehicle* a1, char driver, int a3, signed int a4
 }
 
 template <std::uintptr_t address>
-void __cdecl RegisterCoronaHooked(void* _this, unsigned int a2, unsigned __int8 a3, unsigned __int8 a4, unsigned __int8 a5, unsigned __int8 a6, CVector* a7, const CVector* a8,
+void __cdecl RegisterCoronaHooked(void* _this, CEntity* a2, unsigned __int8 a3, unsigned __int8 a4, unsigned __int8 a5, unsigned __int8 a6, CVector* a7, const CVector* a8,
                                   float a9, void* texture, unsigned __int8 a11, unsigned __int8 a12, unsigned __int8 a13, int a14, float a15, float a16, float a17, float a18,
                                   float a19, float a20, bool a21)
 {
@@ -1334,7 +1330,7 @@ void __cdecl RegisterCoronaHooked(void* _this, unsigned int a2, unsigned __int8 
     callOriginal<address>(_this, a2, a3, a4, a5, a6, a7, a8, a9, texture, a11, a12, a13, a14, a15, a16, a17, a18, a19, a20, a21);
 }
 
-void __cdecl RegisterCoronaHooked2(void* _this, unsigned int a2, unsigned __int8 a3, unsigned __int8 a4, unsigned __int8 a5, unsigned __int8 a6, CVector* a7, const CVector* a8,
+void __cdecl RegisterCoronaHooked2(void* _this, CEntity* a2, unsigned __int8 a3, unsigned __int8 a4, unsigned __int8 a5, unsigned __int8 a6, CVector* a7, const CVector* a8,
                                    float a9, void* texture, unsigned __int8 a11, unsigned __int8 a12, unsigned __int8 a13, int a14, float a15, float a16, float a17, float a18,
                                    float a19, float a20, bool a21)
 {
@@ -1496,10 +1492,16 @@ void __fastcall ProcessControlHooked(CAutomobile* veh)
 void __declspec(naked) enableSirenLights()
 {
     __asm {
-        mov eax, sirenModel
+        push ecx
+        push edx
+        movsx eax, word ptr [esi+0x22]
+        push eax
+        call getVariationOriginalModel
         lea edi, [eax - 0x197]
-        mov eax, 0x6AB35A
-        jmp eax
+        pop edx
+        pop ecx
+        mov asmJmpAddress, 0x6AB35A
+        jmp asmJmpAddress
     }
 }
 
@@ -1509,14 +1511,12 @@ void __fastcall CAutomobile__PreRenderHooked(CAutomobile* veh)
     if (veh == NULL)
         return;
 
-    sirenModel = -1;
     lightsModel = 0;
     bool hasSirenLights = false;
 
     if (vehOptions->enableLights && (HasCarSiren<0>(veh) || getVariationOriginalModel(veh->m_nModelIndex) == 420 || getVariationOriginalModel(veh->m_nModelIndex) == 438))
         if (hookASM(0x6AB350, "0F BF 46 22 8D", enableSirenLights, "CAutomobile::PreRender"))
         {
-            sirenModel = getVariationOriginalModel(veh->m_nModelIndex);
             lightsModel = veh->m_nModelIndex;
             hasSirenLights = true;
         }
@@ -1802,21 +1802,17 @@ void __fastcall ProcessWeaponsHooked(CEntity* _this)
 void __declspec(naked) patch6A155C()
 {
     __asm {
-        push ecx
-        push edx
         movsx eax, word ptr[edi + 0x22]
         push eax
-        call getVariationOriginalModel
-        pop edx
-        pop ecx        
+        call getVariationOriginalModel     
         cmp ax, 0x20C
         je isCement
         cmp ax, 0x220
 
     isCement:
         mov ax, word ptr [edi + 0x22]
-        mov ecx, 0x6A1564
-        jmp ecx
+        mov asmJmpAddress, 0x6A1564
+        jmp asmJmpAddress
     }
 }
 
@@ -1825,17 +1821,13 @@ void __declspec(naked) patch588570()
     __asm {
         add esp, 8
         push eax
-        push ecx
-        push edx
         movsx ecx, word ptr [eax+0x22]
         push ecx
         call getVariationOriginalModel
         cmp ax, bx
-        pop edx
-        pop ecx
         pop eax
-        mov ebx, 0x588577
-        jmp ebx
+        mov asmJmpAddress, 0x588577
+        jmp asmJmpAddress
     }
 }
 
@@ -1849,8 +1841,8 @@ void __declspec(naked) patchCoronas()
         push esi
         push edi
         call RegisterCoronaHooked2
-        mov eax, 0x6ABA65
-        jmp eax
+        mov asmJmpAddress, 0x6ABA65
+        jmp asmJmpAddress
     }
 }
 

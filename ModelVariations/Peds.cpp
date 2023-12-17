@@ -27,6 +27,7 @@ struct tPedVars {
     std::map<unsigned short, int> pedTimeSinceSpawn;
     std::unordered_map<unsigned short, std::vector<unsigned short>> originalModels;
     std::unordered_map<unsigned short, std::string> pedModels;
+    std::unordered_map<unsigned short, std::vector<unsigned short>> voices;
 
     std::set<unsigned short> drugDealers;
     std::set<unsigned short> dontInheritBehaviourModels;
@@ -198,6 +199,10 @@ void PedVariations::LoadData()
 
             if (dataFile.ReadBoolean(section, "UseParentVoice", false))
                 pedVars->useParentVoice.insert((unsigned short)i);
+
+            auto vec = dataFile.ReadLine(section, "Voice", READ_PEDS);
+            if (!vec.empty())
+                pedVars->voices.insert({ (unsigned short)i, vec });
         }
     }
 
@@ -495,14 +500,25 @@ void __fastcall UpdateRpHAnimHooked(CEntity* entity)
 template <std::uintptr_t address>
 char __fastcall CAEPedSpeechAudioEntity__InitialiseHooked(CAEPedSpeechAudioEntity* _this, void*, CPed* ped)
 {
-    if (ped != NULL && pedVars->useParentVoice.find(ped->m_nModelIndex) != pedVars->useParentVoice.end())
+    if (ped != NULL)
     {
-        auto it = pedVars->originalModels.find(ped->m_nModelIndex);
-        if (it != pedVars->originalModels.end() && !it->second.empty())
+        const auto currentModel = ped->m_nModelIndex;
+        unsigned short newModel = 0;
+
+        auto it = pedVars->voices.find(ped->m_nModelIndex);
+        if (it != pedVars->voices.end() && !it->second.empty())
+            newModel = vectorGetRandom(it->second);
+
+        if (pedVars->useParentVoice.find(ped->m_nModelIndex) != pedVars->useParentVoice.end())
         {
-            auto parentModel = it->second[0];
-            auto currentModel = ped->m_nModelIndex;
-            ped->m_nModelIndex = parentModel;
+            it = pedVars->originalModels.find(ped->m_nModelIndex);
+            if (it != pedVars->originalModels.end() && !it->second.empty())
+                newModel = it->second[0];
+        }
+
+        if (newModel > 0)
+        {
+            ped->m_nModelIndex = it->second[0];
             char retVal = callMethodOriginalAndReturn<char, address>(_this, ped);
             ped->m_nModelIndex = currentModel;
             return retVal;

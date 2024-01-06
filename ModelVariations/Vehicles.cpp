@@ -12,7 +12,6 @@
 #include <CPlane.h>
 #include <CTheScripts.h>
 #include <CTheZones.h>
-#include <CTrailer.h>
 #include <CVector.h>
 
 #include <array>
@@ -65,7 +64,6 @@ unsigned short currentOccupantsModel = 0;
 bool tuneParkedCar = false;
 
 int passengerModelIndex = -1;
-int carGenModel = -1;
 
 uint32_t asmNextInstr[4] = {};
 uint16_t asmModel16 = 0;
@@ -113,7 +111,6 @@ struct tVehOptions {
     bool disablePayAndSpray = false;
     bool enableLights = false;
     bool enableSideMissions = false;
-    bool enableAllSideMissions = false;
     bool enableSiren = false;
     bool enableSpecialFeatures = false;
     bool loadAllVehicles = false;
@@ -249,13 +246,13 @@ void checkNumGroups(std::vector<unsigned short>& vec, uint8_t numGroups)
 
 void processOccupantGroups(const CVehicle* veh)
 {
-    if (vehVars->useOnlyGroups.find(veh->m_nModelIndex) != vehVars->useOnlyGroups.end() || rand<bool>())
+    if (vehVars->useOnlyGroups.contains(veh->m_nModelIndex) || rand<bool>())
     {
         auto it = vehVars->modelNumGroups.find(veh->m_nModelIndex);
         if (it != vehVars->modelNumGroups.end())
         {
             const CWanted* wanted = FindPlayerWanted(-1);
-            const unsigned int wantedLevel = (wanted->m_nWantedLevel > 0) ? (wanted->m_nWantedLevel - 1) : (wanted->m_nWantedLevel);
+            const unsigned int wantedLevel = (wanted->m_nWantedLevel > 0) ? (wanted->m_nWantedLevel - 1) : 0;
             currentOccupantsModel = veh->m_nModelIndex;
 
             std::string section;
@@ -267,9 +264,9 @@ void processOccupantGroups(const CVehicle* veh)
 
             std::vector<unsigned short> zoneGroups = dataFile.ReadLine(section, currentZone, READ_GROUPS);
             checkNumGroups(zoneGroups, it->second);
-            if (vehVars->occupantGroups.find(veh->m_nModelIndex) != vehVars->occupantGroups.end())
+            if (vehVars->occupantGroups.contains(veh->m_nModelIndex))
             {
-                if (vehVars->mergeZones.find(veh->m_nModelIndex) != vehVars->mergeZones.end())
+                if (vehVars->mergeZones.contains(veh->m_nModelIndex))
                     zoneGroups = vectorUnion(zoneGroups, vehVars->occupantGroups[veh->m_nModelIndex][currentTown]);
                 else if (zoneGroups.empty())
                     zoneGroups = vehVars->occupantGroups[veh->m_nModelIndex][currentTown];
@@ -396,7 +393,6 @@ void VehicleVariations::LoadData()
     vehOptions->disablePayAndSpray    = dataFile.ReadBoolean("Settings", "DisablePayAndSpray", false);
     vehOptions->enableLights          = dataFile.ReadBoolean("Settings", "EnableLights", false);
     vehOptions->enableSideMissions    = dataFile.ReadBoolean("Settings", "EnableSideMissions", false);
-    vehOptions->enableAllSideMissions = dataFile.ReadBoolean("Settings", "EnableSideMissionsForAllScripts", false);
     vehOptions->enableSiren           = dataFile.ReadBoolean("Settings", "EnableSiren", false);
     vehOptions->enableSpecialFeatures = dataFile.ReadBoolean("Settings", "EnableSpecialFeatures", false);
     vehOptions->loadAllVehicles       = dataFile.ReadBoolean("Settings", "LoadAllVehicles", false);
@@ -560,7 +556,7 @@ void VehicleVariations::LoadData()
                 }
             }
 
-            if (vehVars->occupantGroups.find(i) != vehVars->occupantGroups.end())
+            if (vehVars->occupantGroups.contains(i))
                 for (auto &j : vehVars->occupantGroups[i])
                     checkNumGroups(j, numGroups);
 
@@ -601,7 +597,7 @@ void VehicleVariations::Process()
                     }
                     else
                     {
-                        CStreaming::RequestVehicleUpgrade(slot[i], 2);
+                        CStreaming::RequestVehicleUpgrade(slot[i], PRIORITY_REQUEST);
                         CStreaming::LoadAllRequestedModels(false);
 
                         it.first->AddVehicleUpgrade(slot[i]);
@@ -646,7 +642,10 @@ void VehicleVariations::UpdateVariations()
 {
     for (auto& i : vehVars->tuning)
     {
-        vehVars->currentTuning[i.first] = vectorUnion(i.second[4], i.second[currentTown]);
+        auto currentTuning = vectorUnion(i.second[4], i.second[currentTown]);
+
+        if (!currentTuning.empty() || vehVars->currentTuning.contains(i.first))
+            vehVars->currentTuning[i.first] = currentTuning;
 
         std::string section;
         auto it = vehVars->vehModels.find(i.first);
@@ -658,7 +657,7 @@ void VehicleVariations::UpdateVariations()
         std::vector<unsigned short> vec = dataFile.ReadLine(section, currentZone, READ_TUNING);
         if (!vec.empty())
         {
-            if (vehVars->mergeZones.find(i.first) != vehVars->mergeZones.end())
+            if (vehVars->mergeZones.contains(i.first))
                 vehVars->currentTuning[i.first] = vectorUnion(vehVars->currentTuning[i.first], vec);
             else
                 vehVars->currentTuning[i.first] = vec;
@@ -679,7 +678,7 @@ void VehicleVariations::UpdateVariations()
         std::vector<unsigned short> vec = dataFile.ReadLine(section, currentZone, READ_VEHICLES);
         if (!vec.empty())
         {
-            if (vehVars->mergeZones.find((unsigned short)(modelid + 400)) != vehVars->mergeZones.end())
+            if (vehVars->mergeZones.contains(modelid + 400U))
                 vehVars->currentVariations[modelid] = vectorUnion(vehVars->currentVariations[modelid], vec);
             else
                 vehVars->currentVariations[modelid] = vec;
@@ -802,12 +801,8 @@ template <std::uintptr_t address>
 int __cdecl ChooseModelHooked(int* a1)
 {
     const int model = callOriginalAndReturn<int, address>(a1);
-    //int model = CCarCtrl::ChooseModel(a1);
 
     if (model < 400 || model > 611)
-        return model;
-
-    if (vehVars->currentVariations[model - 400].empty())
         return model;
 
     return getRandomVariation((unsigned short)model);
@@ -817,12 +812,8 @@ template <std::uintptr_t address>
 int __cdecl ChoosePoliceCarModelHooked(int a1)
 {
     const int model = callOriginalAndReturn<int, address>(a1);
-    //int model = CCarCtrl::ChoosePoliceCarModel(a1);
 
     if (model < 427 || model > 601)
-        return model;
-
-    if (vehVars->currentVariations[model - 400].empty())
         return model;
 
     return getRandomVariation((unsigned short)model);
@@ -854,36 +845,9 @@ CAutomobile* __fastcall CAutomobileHooked(CAutomobile* automobile, void*, int mo
 }
 
 template <std::uintptr_t address>
-signed int __fastcall PickRandomCarHooked(CLoadedCarGroup* cargrp, void*, char a2, char a3) //for random parked cars
+int __fastcall PickRandomCarHooked(CLoadedCarGroup* cargrp, void*, char a2, char a3) //for random parked cars
 {
-    if (cargrp == NULL)
-        return -1;
-
-    const int originalModel = callMethodOriginalAndReturn<signed int, address>(cargrp, a2, a3);
-    int variation = getRandomVariation(originalModel, true);
-
-    if (originalModel == 531) //Tractor
-    {
-        if (*(uint16_t*)0x6F3B9A == 531 || forceEnable)
-        {
-            WriteMemory<uint16_t>(0x6F3B9A, variation);
-            carGenModel = 531;
-        }
-        else
-            Log::LogModifiedAddress(0x6F3B9A, "Modified method detected: CCarGenerator::DoInternalProcessing - 0x6F3B9A is %u\n", *(uint16_t*)0x6F3B9A);
-    }
-    else if (originalModel == 532) //Combine Harvester
-    {
-        if (*(uint16_t*)0x6F3BA0 == 532 || forceEnable)
-        {
-            WriteMemory<uint16_t>(0x6F3BA0, variation);
-            carGenModel = 532;
-        }
-        else
-            Log::LogModifiedAddress(0x6F3BA0, "Modified method detected: CCarGenerator::DoInternalProcessing - 0x6F3BA0 is %u\n", *(uint16_t*)0x6F3BA0);
-    }
-
-    return variation;
+    return (cargrp == NULL) ? -1 : getRandomVariation(callMethodOriginalAndReturn<int, address>(cargrp, a2, a3), true);
 }
 
 template <std::uintptr_t address>
@@ -894,62 +858,18 @@ void __fastcall DoInternalProcessingHooked(CCarGenerator* park) //for non-random
         if (park->m_nModelId < 0)
         {
             callMethodOriginal<address>(park);
-            if (carGenModel == 531)
-                WriteMemory<uint16_t>(0x6F3B9A, 531);
-            else if (carGenModel == 532)
-                WriteMemory<uint16_t>(0x6F3BA0, 532);
-
-            carGenModel = -1;
             tuneParkedCar = true;
             return;
         }
 
-        const short model = park->m_nModelId;
         if (vehOptions->changeCarGenerators)
         {
             if (!vehOptions->carGenExclude.empty())
-                if (std::find(vehOptions->carGenExclude.begin(), vehOptions->carGenExclude.end(), model) != vehOptions->carGenExclude.end())
+                if (std::find(vehOptions->carGenExclude.begin(), vehOptions->carGenExclude.end(), park->m_nModelId) != vehOptions->carGenExclude.end())
                 {
                     callMethodOriginal<address>(park);
                     return;
                 }
-            
-            if (model == 531) //Tractor
-            {
-                if (*(uint16_t*)0x6F3B9A == 531 || forceEnable)
-                {
-                    park->m_nModelId = (short)getRandomVariation(park->m_nModelId, true);
-                    WriteMemory<uint16_t>(0x6F3B9A, park->m_nModelId);
-                    callMethodOriginal<address>(park);
-                    WriteMemory<uint16_t>(0x6F3B9A, 531);
-                    //park->m_nModelId = 531;
-                    return;
-                }
-                else
-                {
-                    callMethodOriginal<address>(park);
-                    Log::LogModifiedAddress(0x6F3B9A, "Modified method detected: CCarGenerator::DoInternalProcessing - 0x6F3B9A is %u\n", *(uint16_t*)0x6F3B9A);
-                    return;
-                }
-            }
-            else if (model == 532) //Combine Harvester
-            {
-                if (*(uint16_t*)0x6F3BA0 == 532 || forceEnable)
-                {
-                    park->m_nModelId = (short)getRandomVariation(park->m_nModelId, true);
-                    WriteMemory<uint16_t>(0x6F3BA0, park->m_nModelId);
-                    callMethodOriginal<address>(park);
-                    WriteMemory<uint16_t>(0x6F3BA0, 532);
-                    return;
-                }
-                else
-                {
-                    callMethodOriginal<address>(park);
-                    Log::LogModifiedAddress(0x6F3BA0, "Modified method detected: CCarGenerator::DoInternalProcessing - 0x6F3BA0 is %u\n", *(uint16_t*)0x6F3BA0);
-                    return;
-                }
-            }
-
 
             park->m_nModelId = (short)getRandomVariation(park->m_nModelId, true);
             callMethodOriginal<address>(park);
@@ -1080,38 +1000,6 @@ DWORD __cdecl FindSpecificDriverModelForCar_ToUseHooked(int carModel)
 }
 
 template <std::uintptr_t address>
-void __fastcall CollectParametersHooked(CRunningScript* script, void*, unsigned __int16 a2)
-{
-    callMethodOriginal<address>(script, a2);
-    if (vehOptions->enableAllSideMissions == 0)
-    {
-        if (!hasModelSideMission(ScriptParams[1]))
-            return;
-
-        if (strcmp(script->m_szName, "r3") != 0 && strcmp(script->m_szName, "ambulan") != 0 && strcmp(script->m_szName, "firetru") != 0 &&
-            strcmp(script->m_szName, "freight") != 0 && strcmp(script->m_szName, "trains") != 0 && strcmp(script->m_szName, "trainsl") != 0 &&
-            strcmp(script->m_szName, "copcar") != 0)
-            return;
-    }
-
-    CPlayerPed* player = FindPlayerPed();  
-    if (player == NULL)
-        return;
-
-    const int hplayer = CPools::GetPedRef(player);
-
-    if (ScriptParams[0] != hplayer)
-        return;
-
-    if (player->m_pVehicle)
-    {
-        const int originalModel = getVariationOriginalModel(player->m_pVehicle->m_nModelIndex);
-        if (ScriptParams[1] == originalModel)
-            ScriptParams[1] = player->m_pVehicle->m_nModelIndex;
-    }
-}
-
-template <std::uintptr_t address>
 char __cdecl GenerateRoadBlockCopsForCarHooked(CVehicle* a1, int pedsPositionsType, int type)
 {
     if (a1 == NULL)
@@ -1155,13 +1043,13 @@ CCopPed* __fastcall CCopPedHooked(CCopPed* ped, void*, int copType)
         auto itGroup = vehVars->driverGroups[currentOccupantsGroup].find(currentOccupantsModel);
         if (itGroup != vehVars->driverGroups[currentOccupantsGroup].end())
         {
-            *(unsigned int*)0x5DDD90 = vectorGetRandom(itGroup->second);
+            WriteMemory<unsigned int>(0x5DDD90, vectorGetRandom(itGroup->second));
             copType = 3;
         }
     }
 
     auto retVal = callMethodOriginalAndReturn<CCopPed*, address>(ped, copType);
-    *(unsigned int*)0x5DDD90 = originalModel;
+    WriteMemory<unsigned int>(0x5DDD90, originalModel);
     return retVal;
 }
 
@@ -1199,10 +1087,10 @@ CHeli* __cdecl GenerateHeliHooked(CPed* ped, char newsHeli)
     {
         loadModels({ 488, 497 }, GAME_REQUIRED, true);
         newsHeli = 1;
-        if (CHeli::pHelis[0] && (CHeli::pHelis[0]->m_nModelIndex == 488 || getVariationOriginalModel(CHeli::pHelis[0]->m_nModelIndex) == 488))
+        if (CHeli::pHelis[0] && getVariationOriginalModel(CHeli::pHelis[0]->m_nModelIndex) == 488)
             newsHeli = 0;
 
-        if (CHeli::pHelis[1] && (CHeli::pHelis[1]->m_nModelIndex == 488 || getVariationOriginalModel(CHeli::pHelis[1]->m_nModelIndex) == 488))
+        if (CHeli::pHelis[1] && getVariationOriginalModel(CHeli::pHelis[1]->m_nModelIndex) == 488)
             newsHeli = 0;
     }
 
@@ -1228,7 +1116,7 @@ void __declspec(naked) patchPassengerModel()
 }
 
 template <std::uintptr_t address>
-CPed* __cdecl AddPedInCarHooked(CVehicle* a1, char driver, int a3, signed int a4, int a5, char a6)
+CPed* __cdecl AddPedInCarHooked(CVehicle* a1, char driver, int a3, int a4, int a5, char a6)
 {
     if (a1)
     {
@@ -1265,8 +1153,8 @@ CPed* __cdecl AddPedInCarHooked(CVehicle* a1, char driver, int a3, signed int a4
 }
 
 template <std::uintptr_t address, bool second = false>
-void __cdecl RegisterCoronaHooked(void* _this, CEntity* a2, unsigned __int8 a3, unsigned __int8 a4, unsigned __int8 a5, unsigned __int8 a6, CVector* a7, const CVector* a8,
-                                  float a9, void* texture, unsigned __int8 a11, unsigned __int8 a12, unsigned __int8 a13, int a14, float a15, float a16, float a17, float a18,
+void __cdecl RegisterCoronaHooked(void* _this, CEntity* a2, unsigned char a3, unsigned char a4, unsigned char a5, unsigned char a6, CVector* a7, const CVector* a8,
+                                  float a9, void* texture, unsigned char a11, unsigned char a12, unsigned char a13, int a14, float a15, float a16, float a17, float a18,
                                   float a19, float a20, bool a21)
 {
     if (a7 && a2)
@@ -1338,6 +1226,8 @@ void __cdecl PossiblyRemoveVehicleHooked(CVehicle* car)
         case 416: //Ambulance
             return changeModel<address, false>("CCarCtrl::PossiblyRemoveVehicle", 416, car->m_nModelIndex, { 0x4250AC }, car);
     }
+
+    callOriginal<address>(car);
 }
 
 template <std::uintptr_t address>
@@ -1438,6 +1328,7 @@ void __fastcall CAutomobile__PreRenderHooked(CAutomobile* veh)
             case 432: return changeModelAtAddress(432, { 0x6ABC83, 0x6ABD11, 0x6ABFCC, 0x6AC029, 0x6ACA4D }); //Rhino
             case 434: return changeModelAtAddress(434, { 0x6ACA43 }); //Hotknife
             case 443: return changeModelAtAddress(443, { 0x6AC4DB }); //Packer
+            case 471: return changeModelAtAddress(471, { 0x6ABCA9 }); //Quad
             case 477: return changeModelAtAddress(477, { 0x6ACA8F }); //ZR-350
             case 486: return changeModelAtAddress(486, { 0x6AC40E }); //Dozer
             case 495: return changeModelAtAddress(495, { (GetGameVersion() != GAME_10US_COMPACT) ? 0x4064A0U : 0x6ACBCBU }); //Sandking
@@ -1447,6 +1338,7 @@ void __fastcall CAutomobile__PreRenderHooked(CAutomobile* veh)
             case 531: return changeModelAtAddress(531, { 0x6AC6DB }); //Tractor
             case 532: return changeModelAtAddress(532, { 0x6ABCA3, 0x6AC7AD }); //Combine Harverster
             case 539: return changeModelAtAddress(539, { 0x6AAE27 }); //Vortex
+            case 544: return changeModelAtAddress(544, { 0x6AC0E3 }); //Firetruck LS
             case 568: return changeModelAtAddress(568, { 0x6ACA39 }); //Bandito
             case 601: return changeModelAtAddress(601, { 0x6ACA53 }); //SWAT Tank
         }            
@@ -1470,7 +1362,7 @@ char __fastcall SetTowLinkHooked(CAutomobile* automobile, void*, CVehicle* vehic
 }
 
 template <std::uintptr_t address>
-char __fastcall GetTowHitchPosHooked(CTrailer* trailer, void*, CVector* point, char a3, CVehicle* a4)
+char __fastcall GetTowHitchPosHooked(void* trailer, void*, CVector* point, char a3, CVehicle* a4)
 {
     if (a4 != NULL)
         if (getVariationOriginalModel(a4->m_nModelIndex) == 525) //Towtruck
@@ -1623,7 +1515,7 @@ void __fastcall DoHeadLightReflectionHooked(CVehicle* veh, void*, RwMatrixTag* m
 }
 
 template <std::uintptr_t address>
-void __fastcall ProcessControlInputsHooked(CPlane* _this, void*, unsigned __int8 a2)
+void __fastcall ProcessControlInputsHooked(CPlane* _this, void*, unsigned char a2)
 {
     if (_this == NULL)
         return;
@@ -1926,6 +1818,7 @@ void VehicleVariations::InstallHooks()
 
     hookCall(0x6F3583, PickRandomCarHooked<0x6F3583>, "CLoadedCarGroup::PickRandomCar"); //CCarGenerator::DoInternalProcessing
     hookCall(0x6F3EC1, DoInternalProcessingHooked<0x6F3EC1>, "CCarGenerator::DoInternalProcessing"); //CCarGenerator::Process 
+    hookASM(0x6F3B94, "66 8B 46 22 66 3D 13 02", movReg16WordPtrReg<REG_AX, REG_ESI, 0x6F3B9C, 4, 0x02133D66>, "CCarGenerator::DoInternalProcessing");
 
     //Trains
     //patch::RedirectCall(0x4214DC, CTrainHooked); //CCarCtrl::GetNewVehicleDependingOnCarModel
@@ -1956,7 +1849,7 @@ void VehicleVariations::InstallHooks()
     //Roadblocks
     hookCall(0x42CDDD, IsLawEnforcementVehicleHooked<0x42CDDD>, "CVehicle::IsLawEnforcementVehicle"); //CCarCtrl::RemoveDistantCars
     hookCall(0x42CE07, GenerateRoadBlockCopsForCarHooked<0x42CE07>, "CRoadBlocks::GenerateRoadBlockCopsForCar"); //CCarCtrl::RemoveDistantCars
-    hookCall(0x4613EB, GetColModelHooked<0x4613EB>, "CEntity::GetColModel"); //CCarCtrl::RemoveDistantCars
+    hookCall(0x4613EB, GetColModelHooked<0x4613EB>, "CEntity::GetColModel"); //CRoadBlocks::GenerateRoadBlockCopsForCar
     hookCall(0x46151A, CCopPedHooked<0x46151A>, "CCopPed::CCopPed"); //CRoadBlocks::GenerateRoadBlockCopsForCar
     hookCall(0x461541, CCopPedHooked<0x461541>, "CCopPed::CCopPed"); //CRoadBlocks::GenerateRoadBlockCopsForCar
 
@@ -2190,6 +2083,15 @@ void VehicleVariations::InstallHooks()
         hookASM(0x6A8052, "66 8B 4E 22 66 81 F9 AC 01",       movReg16WordPtrReg<REG_CX, REG_ESI, 0x6A805B, 5, 0xACF98166, 0x90909001>, "CAutomobile::VehicleDamage");
         hookASM(0x6A80BC, "66 81 7D 22 B0 01",                cmpWordPtrRegModel<REG_EBP, 0x6A80C2, 0x1B0>, "CAutomobile::VehicleDamage");
         hookASM(0x6A8380, "66 81 78 22 B0 01",                cmpWordPtrRegModel<REG_EAX, 0x6A8386, 0x1B0>, "CAutomobile::VehicleDamage");
+        hookASM(0x6E153D, "66 81 FE D7 01",                   cmpReg16Model<REG_SI, 0x6E1542, 471>, "CVehicle::DoHeadLightReflectionSingle");
+        hookASM(0x6DEC4A, "66 81 7E 22 D7 01",                cmpWordPtrRegModel<REG_ESI, 0x6DEC50, 471>, "CVehicle::AddSingleWheelParticles");
+        hookASM(0x6DEEA3, "66 81 7E 22 D7 01",                cmpWordPtrRegModel<REG_ESI, 0x6DEEA9, 471>, "CVehicle::AddSingleWheelParticles");
+        hookASM(0x6DF0E3, "66 81 7E 22 D7 01",                cmpWordPtrRegModel<REG_ESI, 0x6DF0E9, 471>, "CVehicle::AddSingleWheelParticles");
+        hookASM(0x6DF316, "66 81 7E 22 D7 01",                cmpWordPtrRegModel<REG_ESI, 0x6DF31C, 471>, "CVehicle::AddSingleWheelParticles");
+        hookASM(0x430778, "66 81 F9 BE 01",                   cmpReg16Model<REG_CX, 0x43077D, 446>, "CCarCtrl::GenerateOneRandomCar");
+        hookASM(0x43077F, "66 81 F9 C4 01",                   cmpReg16Model<REG_CX, 0x430784, 452>, "CCarCtrl::GenerateOneRandomCar");
+        hookASM(0x430786, "66 81 F9 ED 01",                   cmpReg16Model<REG_CX, 0x43078B, 493>, "CCarCtrl::GenerateOneRandomCar");
+        hookASM(0x431D89, "66 8B 46 22 66 3D CF 01",          movReg16WordPtrReg<REG_AX, REG_ESI, 0x431D91, 4, 0x01CF3D66>, "CCarCtrl::GenerateOneRandomCar");
 
         
         MakeInline<0x6D42FE, 6>("CVehicle::GetPlaneGunsPosition", "8D 81 57 FE FF FF", [](injector::reg_pack& regs)
@@ -2296,7 +2198,7 @@ void VehicleVariations::InstallHooks()
     if (vehOptions->enableSideMissions)
     {
         hookCall(0x48DA81, IsLawEnforcementVehicleHooked<0x48DA81>, "CVehicle::IsLawEnforcementVehicle");
-        hookCall(0x469612, CollectParametersHooked<0x469612>, "CRunningScript::CollectParameters"); //00DD: IS_CHAR_IN_MODEL
+        hookASM(0x46963E, "0F BF 50 22 3B 15 7C 3C A4 00", movsxReg32WordPtrReg<REG_EDX, REG_EAX, 0x469648, 6, 0x3C7C153B, 0x909000A4>, "CRunningScript::ProcessCommands200To299"); //00DD: IS_CHAR_IN_MODEL
         hookASM(0x4912CC, "66 8B 40 22 66 3D A4 01", movReg16WordPtrReg<REG_AX, REG_EAX, 0x4912D4, 4, 0x01A43D66>, "CRunningScript::ProcessCommands1500To1599"); //0602: IS_CHAR_IN_TAXI
     }
 

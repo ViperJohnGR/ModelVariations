@@ -574,10 +574,10 @@ public:
             {
                 Log::Write("\n%s (%s). Updating variations...\n", msg, getDatetime(false, true, true).c_str());
                 Log::Write("currentWanted = %u wanted->m_nWantedLevel = %u\n", currentWanted, wanted->m_nWantedLevel);
-                Log::Write("currentZone = %s zInfo->m_szLabel = %s\n", currentZone, zInfo->m_szLabel);
+                Log::Write("currentZone = %.8s zInfo->m_szLabel = %.8s\n", currentZone, zInfo->m_szLabel);
 
                 if (currentInterior[0] != 0 || lastInterior[0] != 0)
-                    Log::Write("currentInterior = %s lastInterior = %s\n", currentInterior, lastInterior);
+                    Log::Write("currentInterior = %.8s lastInterior = %.8s\n", currentInterior, lastInterior);
 
                 Log::Write("\n");
             };
@@ -642,9 +642,8 @@ public:
                     std::pair<std::string, MODULEINFO> moduleInfo = LoadedModules::GetModuleAtAddress(functionAddress);
                     std::string moduleName = moduleInfo.first.substr(moduleInfo.first.find_last_of("/\\") + 1);
 
-                    if (_stricmp(moduleName.c_str(), MOD_NAME) != 0 && callChecks.find({ it.first , moduleName }) == callChecks.end())
+                    if (_stricmp(moduleName.c_str(), MOD_NAME) != 0 && callChecks.insert({ it.first, moduleName }).second)
                     {
-                        callChecks.insert({ it.first, moduleName });
                         if (functionAddress > 0 && !moduleName.empty())
                             Log::Write("Modified call detected: %s 0x%08X 0x%08X %s 0x%08X\n", it.second.name.data(), it.first, functionAddress, moduleName.c_str(), moduleInfo.second.lpBaseOfDll);
                         else

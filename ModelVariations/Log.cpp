@@ -51,7 +51,7 @@ bool Log::Write(const char* format, ...)
 
 bool Log::LogModifiedAddress(std::uintptr_t address, const char* format, ...)
 {
-	if (logfile == INVALID_HANDLE_VALUE || modifiedAddresses.find(address) != modifiedAddresses.end())
+	if (logfile == INVALID_HANDLE_VALUE || modifiedAddresses.contains(address))
 		return false;
 
 	va_list argptr;

@@ -72,7 +72,7 @@ bool pedDelaySpawn(unsigned short model, bool includeParentModels)
 {
     if (!includeParentModels)
     {
-        if (pedVars->pedTimeSinceSpawn.find(model) != pedVars->pedTimeSinceSpawn.end())
+        if (pedVars->pedTimeSinceSpawn.contains(model))
             return true;
     }
     else
@@ -80,7 +80,7 @@ bool pedDelaySpawn(unsigned short model, bool includeParentModels)
         auto it = pedVars->originalModels.find(model);
         if (it != pedVars->originalModels.end())
             for (auto& i : it->second)
-                if (pedVars->pedTimeSinceSpawn.find(i) != pedVars->pedTimeSinceSpawn.end())
+                if (pedVars->pedTimeSinceSpawn.contains(i))
                     return true;
     }
     return false;
@@ -182,7 +182,7 @@ void PedVariations::LoadData()
                 for (const auto& k : j)
                     if (k > 0 && k != i)
                     {
-                        if (pedVars->originalModels.find(k) != pedVars->originalModels.end())
+                        if (pedVars->originalModels.contains(k))
                             pedVars->originalModels[k].push_back(static_cast<unsigned short>(i));
                         else
                             pedVars->originalModels.insert({ k, { static_cast<unsigned short>(i) } });
@@ -342,7 +342,7 @@ void PedVariations::ProcessDrugDealers(bool reset)
             for (auto& i : { 28, 29, 30, 254 })
                 for (auto &j : pedVars->variations[i])
                     for (auto &k : j)
-                        if (k > MAX_PED_ID && pedVars->drugDealers.find(k) == pedVars->drugDealers.end())
+                        if (k > MAX_PED_ID && !pedVars->drugDealers.contains(k))
                         {
                             Log::Write((std::find(addedIDs.begin(), addedIDs.end(), k) != addedIDs.end()) ? "%uSP\n" : "%u\n", k);
                             CTheScripts::ScriptsForBrains.AddNewScriptBrain(CTheScripts::StreamedScripts.GetProperIndexFromIndexUsedByScript(19), (short)k, 100, 0, -1, -1.0);
@@ -373,7 +373,7 @@ void PedVariations::UpdateVariations()
         std::vector<unsigned short> vec = dataFile.ReadLine(section, currentZone, READ_PEDS);
         if (!vec.empty())
         {
-            if (pedVars->mergeZones.find(modelid) != pedVars->mergeZones.end())
+            if (pedVars->mergeZones.contains(modelid))
                 pedVars->currentVariations[modelid] = vectorUnion(pedVars->currentVariations[modelid], vec);
             else
                 pedVars->currentVariations[modelid] = vec;
@@ -478,7 +478,7 @@ int __fastcall SetModelIndexHooked(CEntity* _this, void*, int index)
             else 
                 callMethodOriginalAndReturn<int, address>(_this, variationModel);
 
-            if (pedVars->dontInheritBehaviourModels.find(originalModel) == pedVars->dontInheritBehaviourModels.end())
+            if (!pedVars->dontInheritBehaviourModels.contains(originalModel))
                 _this->m_nModelIndex = originalModel;
             modelIndex = variationModel;
         }
@@ -509,7 +509,7 @@ char __fastcall CAEPedSpeechAudioEntity__InitialiseHooked(CAEPedSpeechAudioEntit
         if (it != pedVars->voices.end() && !it->second.empty())
             newModel = vectorGetRandom(it->second);
 
-        if (pedVars->useParentVoice.find(ped->m_nModelIndex) != pedVars->useParentVoice.end())
+        if (pedVars->useParentVoice.contains(ped->m_nModelIndex))
         {
             it = pedVars->originalModels.find(ped->m_nModelIndex);
             if (it != pedVars->originalModels.end() && !it->second.empty())

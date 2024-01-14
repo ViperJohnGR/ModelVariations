@@ -363,12 +363,7 @@ void PedVariations::UpdateVariations()
     {
         pedVars->currentVariations[modelid] = vectorUnion(pedVars->variations[modelid][4], pedVars->variations[modelid][currentTown]);
 
-        std::string section;
-        auto it = pedVars->pedModels.find(modelid);
-        if (it != pedVars->pedModels.end())
-            section = it->second;
-        else
-            section = std::to_string(modelid);
+        std::string section = pedVars->pedModels.contains(modelid) ? pedVars->pedModels[modelid] : std::to_string(modelid);
 
         std::vector<unsigned short> vec = dataFile.ReadLine(section, currentZone, READ_PEDS);
         if (!vec.empty())

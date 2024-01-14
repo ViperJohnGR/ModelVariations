@@ -12,10 +12,8 @@
 #include <CModelInfo.h>
 #include <CPedModelInfo.h>
 #include <CPopulation.h>
-#include <CTheScripts.h>
 #include <CTheZones.h>
 #include <CVector.h>
-#include <CWorld.h>
 
 #include <array>
 #include <future>

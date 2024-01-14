@@ -209,12 +209,7 @@ void processTuning(CVehicle* veh)
                 else
                     slotsToInstall[i] = (rand<uint32_t>(0, 3) == 0 ? true : false);
 
-            std::string section;
-            auto it2 = vehVars->vehModels.find(veh->m_nModelIndex);
-            if (it2 != vehVars->vehModels.end())
-                section = it2->second;
-            else
-                section = std::to_string(veh->m_nModelIndex);
+            std::string section = vehVars->vehModels.contains(veh->m_nModelIndex) ? vehVars->vehModels[veh->m_nModelIndex] : std::to_string(veh->m_nModelIndex);
 
             if (dataFile.ReadBoolean(section, "TuningFullBodykit", false))
                 if (slotsToInstall[14] == true || slotsToInstall[15] == true || slotsToInstall[3] == true)
@@ -248,22 +243,16 @@ void processOccupantGroups(const CVehicle* veh)
 {
     if (vehVars->useOnlyGroups.contains(veh->m_nModelIndex) || rand<bool>())
     {
-        auto it = vehVars->modelNumGroups.find(veh->m_nModelIndex);
-        if (it != vehVars->modelNumGroups.end())
+        if (vehVars->modelNumGroups.contains(veh->m_nModelIndex))
         {
             const CWanted* wanted = FindPlayerWanted(-1);
             const unsigned int wantedLevel = (wanted->m_nWantedLevel > 0) ? (wanted->m_nWantedLevel - 1) : 0;
             currentOccupantsModel = veh->m_nModelIndex;
 
-            std::string section;
-            auto it2 = vehVars->vehModels.find(veh->m_nModelIndex);
-            if (it2 != vehVars->vehModels.end())
-                section = it2->second;
-            else
-                section = std::to_string(veh->m_nModelIndex);
+            std::string section = vehVars->vehModels.contains(veh->m_nModelIndex) ? vehVars->vehModels[veh->m_nModelIndex] : std::to_string(veh->m_nModelIndex);
 
             std::vector<unsigned short> zoneGroups = dataFile.ReadLine(section, currentZone, READ_GROUPS);
-            checkNumGroups(zoneGroups, it->second);
+            checkNumGroups(zoneGroups, vehVars->modelNumGroups[veh->m_nModelIndex]);
             if (vehVars->occupantGroups.contains(veh->m_nModelIndex))
             {
                 if (vehVars->mergeZones.contains(veh->m_nModelIndex))
@@ -281,7 +270,7 @@ void processOccupantGroups(const CVehicle* veh)
                 if (!zoneGroups.empty())
                     currentOccupantsGroup = vectorGetRandom(zoneGroups) - 1;
                 else
-                    currentOccupantsGroup = rand<int32_t>(0, it->second);
+                    currentOccupantsGroup = rand<int32_t>(0, vehVars->modelNumGroups[veh->m_nModelIndex]);
             }
         }
     }
@@ -396,8 +385,8 @@ void VehicleVariations::LoadData()
     vehOptions->enableSiren           = dataFile.ReadBoolean("Settings", "EnableSiren", false);
     vehOptions->enableSpecialFeatures = dataFile.ReadBoolean("Settings", "EnableSpecialFeatures", false);
     vehOptions->loadAllVehicles       = dataFile.ReadBoolean("Settings", "LoadAllVehicles", false);
-    vehOptions->carGenExclude      = dataFile.ReadLine("Settings", "ExcludeCarGeneratorModels", READ_VEHICLES);
-    vehOptions->inheritExclude     = dataFile.ReadLine("Settings", "ExcludeModelsFromInheritance", READ_VEHICLES);
+    vehOptions->carGenExclude         = dataFile.ReadLine("Settings", "ExcludeCarGeneratorModels", READ_VEHICLES);
+    vehOptions->inheritExclude        = dataFile.ReadLine("Settings", "ExcludeModelsFromInheritance", READ_VEHICLES);
 
     Log::Write("\nReading zone data...\n");
 
@@ -624,8 +613,7 @@ void VehicleVariations::Process()
         }
         else
         {
-            auto it = vehVars->passengers.find(veh->m_nModelIndex);
-            if (it != vehVars->passengers.end() && it->second[0] == 0)
+            if (vehVars->passengers.contains(veh->m_nModelIndex) && vehVars->passengers[veh->m_nModelIndex][0] == 0)
                 for (int i = 0; i < 8; i++)
                     if (veh->m_apPassengers[i] != NULL)
                     {
@@ -647,12 +635,7 @@ void VehicleVariations::UpdateVariations()
         if (!currentTuning.empty() || vehVars->currentTuning.contains(i.first))
             vehVars->currentTuning[i.first] = currentTuning;
 
-        std::string section;
-        auto it = vehVars->vehModels.find(i.first);
-        if (it != vehVars->vehModels.end())
-            section = it->second;
-        else
-            section = std::to_string(i.first);
+        std::string section = vehVars->vehModels.contains(i.first) ? vehVars->vehModels[i.first] : std::to_string(i.first);
 
         std::vector<unsigned short> vec = dataFile.ReadLine(section, currentZone, READ_TUNING);
         if (!vec.empty())
@@ -668,12 +651,7 @@ void VehicleVariations::UpdateVariations()
     {
         vehVars->currentVariations[modelid] = vectorUnion(vehVars->variations[modelid][4], vehVars->variations[modelid][currentTown]);
 
-        std::string section;
-        auto it = vehVars->vehModels.find(modelid + 400U);
-        if (it != vehVars->vehModels.end())
-            section = it->second;
-        else
-            section = std::to_string(modelid + 400);
+        std::string section = vehVars->vehModels.contains(modelid + 400U) ? vehVars->vehModels[modelid + 400U] : std::to_string(modelid + 400);
 
         std::vector<unsigned short> vec = dataFile.ReadLine(section, currentZone, READ_VEHICLES);
         if (!vec.empty())
@@ -687,7 +665,7 @@ void VehicleVariations::UpdateVariations()
         const CWanted* wanted = FindPlayerWanted(-1);
         if (wanted)
         {
-            const unsigned int wantedLevel = (wanted->m_nWantedLevel > 0) ? (wanted->m_nWantedLevel - 1) : (wanted->m_nWantedLevel);
+            const unsigned int wantedLevel = (wanted->m_nWantedLevel > 0) ? (wanted->m_nWantedLevel - 1) : 0;
             if (!vehVars->wantedVariations[modelid][wantedLevel].empty() && !vehVars->currentVariations[modelid].empty())
                 vectorfilterVector(vehVars->currentVariations[modelid], vehVars->wantedVariations[modelid][wantedLevel]);
         }
@@ -968,30 +946,22 @@ DWORD __cdecl FindSpecificDriverModelForCar_ToUseHooked(int carModel)
 {
     if (carModel < 400)
         return callOriginalAndReturn<DWORD, address>(getVariationOriginalModel(carModel));
-
-    auto it = vehVars->drivers.find((unsigned short)carModel);
     
-    std::string section;
-    auto it2 = vehVars->vehModels.find((unsigned short)carModel);
-    if (it2 != vehVars->vehModels.end())
-        section = it2->second;
-    else
-        section = std::to_string(carModel);
+    std::string section = vehVars->vehModels.contains((unsigned short)carModel) ? vehVars->vehModels[(unsigned short)carModel] : std::to_string(carModel);
 
-    const auto replaceDriver = dataFile.ReadBoolean(section, "ReplaceDriver", false);
+    const bool replaceDriver = dataFile.ReadBoolean(section, "ReplaceDriver", false) ? true : rand<bool>();
     if (currentOccupantsGroup > -1 && currentOccupantsGroup < 9 && currentOccupantsModel > 0)
     {
-        auto itGroup = vehVars->driverGroups[currentOccupantsGroup].find(currentOccupantsModel);
-        if (itGroup != vehVars->driverGroups[currentOccupantsGroup].end())
+        if (vehVars->driverGroups[currentOccupantsGroup].contains(currentOccupantsModel))
         {
-            auto model = vectorGetRandom(itGroup->second);
+            auto model = vectorGetRandom(vehVars->driverGroups[currentOccupantsGroup][currentOccupantsModel]);
             loadModels({ model }, PRIORITY_REQUEST, true);
             return model;
         }
     }
-    if (it != vehVars->drivers.end() && ((!replaceDriver && rand<bool>()) || replaceDriver))
+    if (vehVars->drivers.contains((unsigned short)carModel) && replaceDriver)
     {
-        auto model = vectorGetRandom(it->second);
+        auto model = vectorGetRandom(vehVars->drivers[(unsigned short)carModel]);
         loadModels({ model }, PRIORITY_REQUEST, true);
         return model;
     }
@@ -1040,11 +1010,20 @@ CCopPed* __fastcall CCopPedHooked(CCopPed* ped, void*, int copType)
 
     if (currentOccupantsGroup > -1 && currentOccupantsGroup < 9 && currentOccupantsModel > 0)
     {
-        auto itGroup = vehVars->driverGroups[currentOccupantsGroup].find(currentOccupantsModel);
-        if (itGroup != vehVars->driverGroups[currentOccupantsGroup].end())
+        if (vehVars->driverGroups[currentOccupantsGroup].contains(currentOccupantsModel))
         {
-            WriteMemory<unsigned int>(0x5DDD90, vectorGetRandom(itGroup->second));
-            copType = 3;
+            auto driver = vectorGetRandom(vehVars->driverGroups[currentOccupantsGroup][currentOccupantsModel]);
+
+            WriteMemory<unsigned int>(0x5DDD90, driver);
+
+            if (driver == 285)
+                copType = COP_TYPE_SWAT1;
+            else if (driver == 286)
+                copType = COP_TYPE_FBI;
+            else if (driver == 287)
+                copType = COP_TYPE_ARMY;
+            else
+                copType = COP_TYPE_CITYCOP;
         }
     }
 
@@ -1120,23 +1099,16 @@ CPed* __cdecl AddPedInCarHooked(CVehicle* a1, char driver, int a3, int a4, int a
 {
     if (a1)
     {
-        std::string section;
-        auto it2 = vehVars->vehModels.find(a1->m_nModelIndex);
-        if (it2 != vehVars->vehModels.end())
-            section = it2->second;
-        else
-            section = std::to_string(a1->m_nModelIndex);
+        std::string section = vehVars->vehModels.contains(a1->m_nModelIndex) ? vehVars->vehModels[a1->m_nModelIndex] : std::to_string(a1->m_nModelIndex);
 
-        const auto replacePassenger = dataFile.ReadBoolean(section, "ReplacePassengers", false);
-        auto it = vehVars->passengers.find(a1->m_nModelIndex);
+        const bool replacePassenger = dataFile.ReadBoolean(section, "ReplacePassengers", false) ? true : rand<bool>();
         if (currentOccupantsGroup > -1 && currentOccupantsGroup < 9 && currentOccupantsModel > 0)
         {
-            auto itGroup = vehVars->passengerGroups[currentOccupantsGroup].find(currentOccupantsModel);
-            if (itGroup != vehVars->passengerGroups[currentOccupantsGroup].end())
-                passengerModelIndex = vectorGetRandom(itGroup->second);
+            if (vehVars->passengerGroups[currentOccupantsGroup].contains(currentOccupantsModel))
+                passengerModelIndex = vectorGetRandom(vehVars->passengerGroups[currentOccupantsGroup][currentOccupantsModel]);
         }
-        else if (it != vehVars->passengers.end() && ((!replacePassenger && rand<bool>()) || replacePassenger))
-            passengerModelIndex = vectorGetRandom(it->second);
+        else if (vehVars->passengers.contains(a1->m_nModelIndex) && replacePassenger)
+            passengerModelIndex = vectorGetRandom(vehVars->passengers[a1->m_nModelIndex]);
     }
 
     if (passengerModelIndex > 0 && hookASM(0x613B78, "8D 54 24 10 52", patchPassengerModel, "CPopulation::AddPedInCar"))
@@ -1402,7 +1374,8 @@ void __fastcall UpdateTractorLinkHooked(CVehicle* veh, void*, bool a3, bool a4)
 template <std::uintptr_t address>
 char __fastcall SetUpWheelColModelHooked(CAutomobile* automobile, void*, CColModel* colModel)
 {
-    if (automobile && (getVariationOriginalModel(automobile->m_nModelIndex) == 531 || getVariationOriginalModel(automobile->m_nModelIndex) == 532 || getVariationOriginalModel(automobile->m_nModelIndex) == 571))
+    auto originalModel = getVariationOriginalModel(automobile->m_nModelIndex);
+    if (automobile && (originalModel == 531 || originalModel == 532 || originalModel == 571))
         return 0;
 
     return callMethodOriginalAndReturn<char, address>(automobile, colModel);

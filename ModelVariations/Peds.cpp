@@ -46,6 +46,7 @@ std::unique_ptr<tPedVars> pedVars(new tPedVars);
 struct tPedOptions {
     bool recursiveVariations = true;
     bool enableCloneRemover = false;
+    bool cloneRemoverDisableOnMission = true;
     bool cloneRemoverVehicleOccupants = false;
     int cloneRemoverSpawnDelay = 3;
     std::vector<unsigned short> cloneRemoverIncludeVariations;
@@ -208,6 +209,7 @@ void PedVariations::LoadData()
 
     pedOptions->recursiveVariations = dataFile.ReadBoolean("Settings", "RecursiveVariations", true);
     pedOptions->enableCloneRemover = dataFile.ReadBoolean("Settings", "EnableCloneRemover", false);
+    pedOptions->cloneRemoverDisableOnMission = dataFile.ReadBoolean("Settings", "CloneRemoverDisableOnMission", true);
     pedOptions->cloneRemoverVehicleOccupants = dataFile.ReadBoolean("Settings", "CloneRemoverIncludeVehicleOccupants", false);
     pedOptions->cloneRemoverSpawnDelay = dataFile.ReadInteger("Settings", "CloneRemoverSpawnDelay", 3);
     pedOptions->cloneRemoverIncludeVariations = dataFile.ReadLine("Settings", "CloneRemoverIncludeVariations", READ_PEDS);
@@ -281,7 +283,8 @@ void PedVariations::Process()
                     deletePed(ped);
             }
 
-        if (IsPedPointerValid(ped) && pedOptions->enableCloneRemover && ped->m_nCreatedBy != 2 && CPools::ms_pPedPool) //Clone remover
+        if (IsPedPointerValid(ped) && pedOptions->enableCloneRemover && ped->m_nCreatedBy != 2 && CPools::ms_pPedPool && 
+            !(pedOptions->cloneRemoverDisableOnMission && CTheScripts::IsPlayerOnAMission())) //Clone remover
         {
             bool includeVariations = std::find(pedOptions->cloneRemoverIncludeVariations.begin(), pedOptions->cloneRemoverIncludeVariations.end(), ped->m_nModelIndex) != pedOptions->cloneRemoverIncludeVariations.end();
             if (pedDelaySpawn(ped->m_nModelIndex, includeVariations)) //Delete peds spawned before SpawnTime

@@ -63,6 +63,7 @@ unsigned int exeFilesize = 0;
 std::string exePath;
 std::string exeName;
 
+std::unordered_map<std::uintptr_t, std::string> hooksASM;
 std::unordered_map<std::uintptr_t, hookinfo> hookedCalls;
 
 std::set<std::pair<std::uintptr_t, std::string>> callChecks;
@@ -646,6 +647,22 @@ public:
                             Log::Write("Modified call detected: %s 0x%08X 0x%08X %s 0x%08X\n", it.second.name.data(), it.first, functionAddress, moduleName.c_str(), moduleInfo.second.lpBaseOfDll);
                         else
                             Log::Write("Modified call detected: %s 0x%08X\n", it.second.name.data(), it.first);
+                    }
+                }
+
+                for (auto& it : hooksASM)
+                {
+                    const auto currentDestination = injector::GetBranchDestination(it.first).as_int();
+
+                    std::pair<std::string, MODULEINFO> moduleInfo = LoadedModules::GetModuleAtAddress(currentDestination);
+                    std::string moduleName = moduleInfo.first.substr(moduleInfo.first.find_last_of("/\\") + 1);
+
+                    if (_stricmp(moduleName.c_str(), MOD_NAME) != 0 && callChecks.insert({ it.first, moduleName }).second)
+                    {
+                        if (currentDestination > 0 && !moduleName.empty())
+                            Log::Write("Modified ASM hook detected: %s 0x%08X 0x%08X %s 0x%08X\n", it.second.c_str(), it.first, currentDestination, moduleName.c_str(), moduleInfo.second.lpBaseOfDll);
+                        else
+                            Log::Write("Modified ASM hook detected: %s 0x%08X %s\n", it.second.c_str(), it.first, bytesToString(it.first, 5).c_str());
                     }
                 }
 

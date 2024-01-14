@@ -17,6 +17,7 @@ struct hookinfo {
     bool isVTableAddress;
 };
 
+extern std::unordered_map<std::uintptr_t, std::string> hooksASM;
 extern std::unordered_map<std::uintptr_t, hookinfo> hookedCalls;
 extern bool forceEnable;
 
@@ -43,6 +44,7 @@ inline bool hookASM(std::uintptr_t address, std::string_view originalData, injec
     }
 
     injector::MakeJMP(address, hookDest);
+    hooksASM[address] = funcName;
     return true;
 }
 

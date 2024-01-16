@@ -603,25 +603,25 @@ void VehicleVariations::Process()
         CVehicle* veh = vehVars->stack.top();
         vehVars->stack.pop();
 
-        if (!IsVehiclePointerValid(veh))
+        if (!IsVehiclePointerValid(veh) || veh->m_nCreatedBy == eVehicleCreatedBy::MISSION_VEHICLE)
             continue;
 
-        if (veh->m_nModelIndex >= 400 && veh->m_nModelIndex < 612 && !vehVars->currentVariations[veh->m_nModelIndex - 400].empty() &&
-            vehVars->currentVariations[veh->m_nModelIndex - 400][0] == 0 && veh->m_nCreatedBy != eVehicleCreatedBy::MISSION_VEHICLE)
+        if (veh->m_nModelIndex >= 400 && veh->m_nModelIndex < 612 && !vehVars->currentVariations[veh->m_nModelIndex - 400].empty() && vehVars->currentVariations[veh->m_nModelIndex - 400][0] == 0)
         {
             veh->m_nVehicleFlags.bFadeOut = 1;
         }
-        else
+        else if(vehVars->passengers.contains(veh->m_nModelIndex) && vehVars->passengers[veh->m_nModelIndex][0] == 0)
         {
-            if (vehVars->passengers.contains(veh->m_nModelIndex) && vehVars->passengers[veh->m_nModelIndex][0] == 0)
-                for (int i = 0; i < 8; i++)
-                    if (veh->m_apPassengers[i] != NULL)
-                    {
-                        CPed* passenger = veh->m_apPassengers[i];
-                        if (passenger->m_pIntelligence)
-                            passenger->m_pIntelligence->FlushImmediately(false);
-                        CTheScripts::RemoveThisPed(passenger);
-                    }
+            for (int i = 0; i < 8; i++)
+            {
+                CPed* passenger = veh->m_apPassengers[i];
+                if (passenger != NULL && passenger->m_nModelIndex > 0 && passenger->m_nCreatedBy != 2)
+                {
+                    if (passenger->m_pIntelligence)
+                        passenger->m_pIntelligence->FlushImmediately(false);
+                    CTheScripts::RemoveThisPed(passenger);
+                }
+            }
         }
     }
 }
@@ -630,10 +630,10 @@ void VehicleVariations::UpdateVariations()
 {
     for (auto& i : vehVars->tuning)
     {
-        auto currentTuning = vectorUnion(i.second[4], i.second[currentTown]);
+        auto currentAreaTuning = vectorUnion(i.second[4], i.second[currentTown]);
 
-        if (!currentTuning.empty() || vehVars->currentTuning.contains(i.first))
-            vehVars->currentTuning[i.first] = currentTuning;
+        if (!currentAreaTuning.empty() || vehVars->currentTuning.contains(i.first))
+            vehVars->currentTuning[i.first] = currentAreaTuning;
 
         std::string section = vehVars->vehModels.contains(i.first) ? vehVars->vehModels[i.first] : std::to_string(i.first);
 
@@ -942,12 +942,14 @@ void __cdecl AddFiretruckOccupantsHooked(CVehicle* pVehicle)
 }
 
 template <std::uintptr_t address>
-DWORD __cdecl FindSpecificDriverModelForCar_ToUseHooked(int carModel)
+DWORD __cdecl FindSpecificDriverModelForCar_ToUseHooked(int a1)
 {
-    if (carModel < 400)
-        return callOriginalAndReturn<DWORD, address>(getVariationOriginalModel(carModel));
+    if (a1 < 400)
+        return callOriginalAndReturn<DWORD, address>(getVariationOriginalModel(a1));
+
+    unsigned short carModel = static_cast<unsigned short>(a1);
     
-    std::string section = vehVars->vehModels.contains((unsigned short)carModel) ? vehVars->vehModels[(unsigned short)carModel] : std::to_string(carModel);
+    std::string section = vehVars->vehModels.contains(carModel) ? vehVars->vehModels[carModel] : std::to_string(carModel);
 
     const bool replaceDriver = dataFile.ReadBoolean(section, "ReplaceDriver", false) ? true : rand<bool>();
     if (currentOccupantsGroup > -1 && currentOccupantsGroup < 9 && currentOccupantsModel > 0)
@@ -959,9 +961,9 @@ DWORD __cdecl FindSpecificDriverModelForCar_ToUseHooked(int carModel)
             return model;
         }
     }
-    if (vehVars->drivers.contains((unsigned short)carModel) && replaceDriver)
+    if (vehVars->drivers.contains(carModel) && replaceDriver)
     {
-        auto model = vectorGetRandom(vehVars->drivers[(unsigned short)carModel]);
+        auto model = vectorGetRandom(vehVars->drivers[carModel]);
         loadModels({ model }, PRIORITY_REQUEST, true);
         return model;
     }
@@ -1374,8 +1376,11 @@ void __fastcall UpdateTractorLinkHooked(CVehicle* veh, void*, bool a3, bool a4)
 template <std::uintptr_t address>
 char __fastcall SetUpWheelColModelHooked(CAutomobile* automobile, void*, CColModel* colModel)
 {
+    if (automobile == NULL)
+        return 0;
+
     auto originalModel = getVariationOriginalModel(automobile->m_nModelIndex);
-    if (automobile && (originalModel == 531 || originalModel == 532 || originalModel == 571))
+    if (originalModel == 531 || originalModel == 532 || originalModel == 571)
         return 0;
 
     return callMethodOriginalAndReturn<char, address>(automobile, colModel);

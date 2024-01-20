@@ -21,7 +21,7 @@ extern std::unordered_map<std::uintptr_t, std::string> hooksASM;
 extern std::unordered_map<std::uintptr_t, hookinfo> hookedCalls;
 extern bool forceEnable;
 
-inline bool hookASM(std::uintptr_t address, std::string_view originalData, injector::memory_pointer_raw hookDest, std::string_view funcName)
+inline bool hookASM(std::uintptr_t address, std::string_view originalData, injector::memory_pointer_raw hookDest, std::string_view funcName, const bool skipRuntimeCheck = false)
 {
     unsigned numBytes = originalData.size() / 3 + 1;
 
@@ -44,7 +44,9 @@ inline bool hookASM(std::uintptr_t address, std::string_view originalData, injec
     }
 
     injector::MakeJMP(address, hookDest);
-    hooksASM[address] = funcName;
+    if (!skipRuntimeCheck)
+        hooksASM[address] = funcName;
+
     return true;
 }
 

@@ -840,6 +840,8 @@ void __fastcall DoInternalProcessingHooked(CCarGenerator* park) //for non-random
             return;
         }
 
+        tuneParkedCar = false;
+
         if (vehOptions->changeCarGenerators)
         {
             if (!vehOptions->carGenExclude.empty())
@@ -1113,7 +1115,7 @@ CPed* __cdecl AddPedInCarHooked(CVehicle* a1, char driver, int a3, int a4, int a
             passengerModelIndex = vectorGetRandom(vehVars->passengers[a1->m_nModelIndex]);
     }
 
-    if (passengerModelIndex > 0 && hookASM(0x613B78, "8D 54 24 10 52", patchPassengerModel, "CPopulation::AddPedInCar"))
+    if (passengerModelIndex > 0 && hookASM(0x613B78, "8D 54 24 10 52", patchPassengerModel, "CPopulation::AddPedInCar", true))
     {
         loadModels({ passengerModelIndex }, PRIORITY_REQUEST, true);
         CPed* ped = callOriginalAndReturn<CPed*, address>(a1, driver, a3, a4, a5, a6);

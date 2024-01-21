@@ -33,12 +33,14 @@ inline bool hookASM(std::uintptr_t address, std::string_view originalData, injec
             ss << std::setfill('0') << std::setw(2) << std::uppercase << std::hex << static_cast<unsigned int>(reinterpret_cast<unsigned char*>(address)[j]) << " ";
 
         std::string bytes = ss.str();
-        std::string moduleName = LoadedModules::GetModuleAtAddress(injector::GetBranchDestination(address).as_int()).first;
+        auto branchDestination = injector::GetBranchDestination(address).as_int();
+        std::string moduleName = LoadedModules::GetModuleAtAddress(branchDestination).first;
+        std::string funcType = (funcName.find("::") != std::string::npos) ? "Modified method" : "Modified function";
 
-        if (funcName.find("::") != std::string::npos)
-            Log::LogModifiedAddress(address, "Modified method detected: %s - 0x%08X is %s %s\n", funcName.data(), address, bytes.c_str(), getFilenameFromPath(moduleName).c_str());
+        if (branchDestination)
+            Log::LogModifiedAddress(address, "%s detected: %s - 0x%08X is %s %s 0x%08X\n", funcType.c_str(), funcName.data(), address, bytes.c_str(), getFilenameFromPath(moduleName).c_str(), branchDestination);
         else
-            Log::LogModifiedAddress(address, "Modified function detected: %s - 0x%08X is %s %s\n", funcName.data(), address, bytes.c_str(), getFilenameFromPath(moduleName).c_str());
+            Log::LogModifiedAddress(address, "%s detected: %s - 0x%08X is %s\n", funcType.c_str(), funcName.data(), address, bytes.c_str());
 
         return false;
     }

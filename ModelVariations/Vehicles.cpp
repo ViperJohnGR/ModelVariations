@@ -728,16 +728,13 @@ template <std::uintptr_t address, bool isMethod = true, typename... Args>
 void changeModel(const char* funcName, unsigned short oldModel, int newModel, std::vector<std::uintptr_t> addresses, Args... args)
 {
     if (newModel < 400 || newModel > 65535)
-    {
-        callMethodOriginal<address>(args...);
-        return;
-    }
+        return isMethod ? callMethodOriginal<address>(args...) : callOriginal<address>(args...);
 
     for (auto& i : addresses)
         if (*(uint16_t*)i != oldModel && forceEnable == false)
         {
-            Log::LogModifiedAddress(i, "Modified method detected : %s - 0x%08X is %u\n", funcName, i, *(uint16_t*)i);
-            return callMethodOriginal<address>(args...);
+            Log::LogModifiedAddress(i, "Modified method detected: %s - 0x%08X is %u\n", funcName, i, *(uint16_t*)i);
+            return isMethod ? callMethodOriginal<address>(args...) : callOriginal<address>(args...);
         }
 
     for (auto& i : addresses)
@@ -753,15 +750,13 @@ template <typename T, std::uintptr_t address, bool isMethod = true, typename... 
 T changeModelAndReturn(const char* funcName, unsigned short oldModel, int newModel, std::vector<std::uintptr_t> addresses, Args... args)
 {
     if (newModel < 400 || newModel > 65535)
-    {
-        return callMethodOriginalAndReturn<T, address>(args...);
-    }
+        return isMethod ? callMethodOriginalAndReturn<T, address>(args...) : callOriginalAndReturn<T, address>(args...);
 
     for (auto& i : addresses)
         if (*(uint16_t*)i != oldModel && forceEnable == false)
         {
-            Log::LogModifiedAddress(i, "Modified method detected : %s - 0x%08X is %u\n", funcName, i, *(uint16_t*)i);
-            return callMethodOriginalAndReturn<T, address>(args...);
+            Log::LogModifiedAddress(i, "Modified method detected: %s - 0x%08X is %u\n", funcName, i, *(uint16_t*)i);
+            return isMethod ? callMethodOriginalAndReturn<T, address>(args...) : callOriginalAndReturn<T, address>(args...);
         }
 
     for (auto& i : addresses)

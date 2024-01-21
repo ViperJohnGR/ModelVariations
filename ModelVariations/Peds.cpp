@@ -291,7 +291,7 @@ void PedVariations::Process()
             {
                 if (!IsVehiclePointerValid(ped->m_pVehicle))
                     deletePed(ped);
-                else if (pedOptions->cloneRemoverVehicleOccupants && !isCarEmpty(ped->m_pVehicle))
+                else if (pedOptions->cloneRemoverVehicleOccupants && !isCarEmpty(ped->m_pVehicle) && ped->m_pVehicle->m_nVehicleSubClass != eVehicleType::VEHICLE_TRAIN)
                     pedDeleteVeh(ped);
             }
 
@@ -315,7 +315,7 @@ void PedVariations::Process()
                             deletePed(ped);
                             break;
                         }
-                        else if (pedOptions->cloneRemoverVehicleOccupants && !isCarEmpty(ped->m_pVehicle))
+                        else if (pedOptions->cloneRemoverVehicleOccupants && !isCarEmpty(ped->m_pVehicle) && ped->m_pVehicle->m_nVehicleSubClass != eVehicleType::VEHICLE_TRAIN)
                         {
                             pedDeleteVeh(ped);
                             break;

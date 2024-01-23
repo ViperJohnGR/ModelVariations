@@ -222,6 +222,17 @@ inline bool vectorHasId(const std::vector<unsigned short>& vec, int id)
     return false;
 }
 
+inline bool vectorPushUnique(std::vector<unsigned short>& vec, unsigned short value)
+{
+    if (std::find(vec.begin(), vec.end(), value) == vec.end())
+    {
+        vec.push_back(value);
+        return true;
+    }
+
+    return false;
+}
+
 inline std::vector<unsigned short> vectorUnion(const std::vector<unsigned short>& vec1, const std::vector<unsigned short>& vec2)
 {
     if (vec1.empty())

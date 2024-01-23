@@ -67,6 +67,7 @@ std::unordered_map<std::uintptr_t, std::string> hooksASM;
 std::unordered_map<std::uintptr_t, hookinfo> hookedCalls;
 
 std::set<std::pair<std::uintptr_t, std::string>> callChecks;
+std::set<std::string> zones;
 
 std::vector<unsigned short> addedIDs;
 int maxPedID = 0;
@@ -83,6 +84,7 @@ unsigned int currentWanted = 0;
 
 bool keyDown = false;
 
+bool zonesRead = false;
 bool reloadingSettings = false;
 bool queuedReload = false;
 
@@ -553,6 +555,18 @@ public:
 
         Events::gameProcessEvent += [&gameLoadEvent]
         {
+            if (!zonesRead)
+            {
+                Log::Write("\nReading zone data...\n");
+                for (int i = 0; i < CTheZones::TotalNumberOfInfoZones; i++) //for every zone name
+                {
+                    char zoneLabel[9] = {};
+                    memcpy(&zoneLabel[0], *(char**)(0x572BB6 + 1) + i * 0x20, 8);
+                    zones.insert(zoneLabel);
+                }
+                zonesRead = true;
+            }
+
             if (reloadingSettings)
                 return;
 

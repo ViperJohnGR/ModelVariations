@@ -182,12 +182,13 @@ void PedVariations::LoadData()
             for (const auto& j : pedVars->variations[i])
                 for (const auto& k : j)
                     if (k > 0 && k != i)
-                    {
-                        if (pedVars->originalModels.contains(k))
-                            pedVars->originalModels[k].push_back(static_cast<unsigned short>(i));
-                        else
-                            pedVars->originalModels.insert({ k, { static_cast<unsigned short>(i) } });
-                    }
+                        vectorPushUnique(pedVars->originalModels[k], static_cast<unsigned short>(i));
+            
+            for (const auto& keyValue : iniData.second)
+                if (zones.contains(keyValue.first))
+                    for (auto variation : dataFile.ReadLine(section, keyValue.first, READ_PEDS))
+                        if (variation > 0 && variation != i)
+                            vectorPushUnique(pedVars->originalModels[variation], static_cast<unsigned short>(i));
 
             for (auto &it : pedVars->originalModels)
                 std::sort(it.second.begin(), it.second.end());
@@ -197,14 +198,14 @@ void PedVariations::LoadData()
 
             if (dataFile.ReadBoolean(section, "DontInheritBehaviour", false))
                 pedVars->dontInheritBehaviourModels.insert((unsigned short)i);
-
-            if (dataFile.ReadBoolean(section, "UseParentVoice", false))
-                pedVars->useParentVoice.insert((unsigned short)i);
-
-            auto vec = dataFile.ReadLine(section, "Voice", READ_PEDS);
-            if (!vec.empty())
-                pedVars->voices.insert({ (unsigned short)i, vec });
         }
+
+        if (dataFile.ReadBoolean(section, "UseParentVoice", false))
+            pedVars->useParentVoice.insert((unsigned short)i);
+
+        auto vec = dataFile.ReadLine(section, "Voice", READ_PEDS);
+        if (!vec.empty())
+            pedVars->voices.insert({ (unsigned short)i, vec });
     }
 
     pedOptions->recursiveVariations = dataFile.ReadBoolean("Settings", "RecursiveVariations", true);

@@ -2,11 +2,14 @@
 
 #include <CPed.h>
 
+#include <set>
+
 extern const std::pair<std::string, unsigned> areas[];
 extern int maxPedID;
 extern char currentZone[8];
 extern unsigned int currentTown;
 extern const char* currentInterior;
+extern std::set<std::string> zones;
 
 class PedVariations
 {

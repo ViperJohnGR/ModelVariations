@@ -388,36 +388,13 @@ void VehicleVariations::LoadData()
     vehOptions->carGenExclude         = dataFile.ReadLine("Settings", "ExcludeCarGeneratorModels", READ_VEHICLES);
     vehOptions->inheritExclude        = dataFile.ReadLine("Settings", "ExcludeModelsFromInheritance", READ_VEHICLES);
 
-    Log::Write("\nReading zone data...\n");
-
-    for (int i = 0; i < CTheZones::TotalNumberOfInfoZones; i++) //for every zone name
-        for (auto& j : dataFile.data)
-        {
-            std::string section = j.first;
-
-            int modelid = 0;
-            if (j.first[0] >= '0' && j.first[0] <= '9')
-                modelid = std::stoi(j.first);
-            else
-                CModelInfo::GetModelInfo(section.data(), &modelid);
-
-            if (modelid > 0)
-            {
-                char zoneLabel[9] = {};
-                memcpy(&zoneLabel[0], *(char**)(0x572BB6 + 1) + i * 0x20, 8);
-                for (auto& k : dataFile.ReadLine(j.first, zoneLabel, READ_VEHICLES)) //for every variation 'k' of veh id 'j' in zone 'i'
-                    if (modelid != k && !(vectorHasId(vehOptions->inheritExclude, k)))
-                        vehVars->originalModels.insert({ k, (unsigned short)modelid });
-            }
-        }
-
     Log::Write("\nReading vehicle data...\n");
 
-    for (auto& inidata : dataFile.data)
+    for (auto& iniData : dataFile.data)
     {
-        Log::Write("%s\n", inidata.first.c_str());
+        Log::Write("%s\n", iniData.first.c_str());
 
-        std::string section = inidata.first;
+        std::string section = iniData.first;
         int modelid = 0;
         if (section[0] >= '0' && section[0] <= '9')
             modelid = std::stoi(section);
@@ -454,8 +431,14 @@ void VehicleVariations::LoadData()
 
                 for (auto &j : vehVars->variations[i - 400])
                     for (auto& k : j)
-                        if (k != i && !(vectorHasId(vehOptions->inheritExclude, k)))
+                        if (k > 0 && k != i && !(vectorHasId(vehOptions->inheritExclude, k)))
                             vehVars->originalModels.insert({ k, i });
+
+                for (const auto& keyValue : iniData.second)
+                    if (zones.contains(keyValue.first))
+                        for (auto variation : dataFile.ReadLine(section, keyValue.first, READ_VEHICLES))
+                            if (variation > 0 && variation != i && !(vectorHasId(vehOptions->inheritExclude, variation)))
+                                vehVars->originalModels[variation] = i;
             }
 
             //Groups

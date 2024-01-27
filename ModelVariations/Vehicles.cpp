@@ -58,12 +58,13 @@ static const char* dataFileName = "ModelVariations_Vehicles.ini";
 static DataReader dataFile(dataFileName);
 
 unsigned short roadblockModel = 0;
+unsigned short roadblockDriver = 0;
 unsigned short lightsModel = 0;
 int currentOccupantsGroup = -1;
 unsigned short currentOccupantsModel = 0;
 bool tuneParkedCar = false;
 
-int passengerModelIndex = -1;
+int occupantModelIndex = -1;
 
 uint32_t asmNextInstr[4] = {};
 uint16_t asmModel16 = 0;
@@ -276,50 +277,6 @@ void processOccupantGroups(const CVehicle* veh)
     }
 }
 
-bool hasModelSideMission(int model)
-{
-    switch (model)
-    {
-        case 407: //Fire Truck
-        case 416: //Ambulance
-        case 425: //Hunter
-        case 537: //Freight
-        case 538: //Brown Streak
-        case 570: //Streak Car
-        case 575: //Broadway
-        case 609: //Boxville Mission
-            return true;
-    }
-    return false;
-}
-
-bool isModelAmbulance(const unsigned short model)
-{
-    auto it = vehVars->originalModels.find(model);
-    if (it != vehVars->originalModels.end() && it->second == 416)
-        return true;
-
-    return false;
-}
-
-bool isModelFiretruck(const unsigned short model)
-{
-    auto it = vehVars->originalModels.find(model);
-    if (it != vehVars->originalModels.end() && it->second == 407)
-        return true;
-
-    return false;
-}
-
-bool isModelTaxi(const unsigned short model)
-{
-    auto it = vehVars->originalModels.find(model);
-    if (it != vehVars->originalModels.end() && (it->second == 438 || it->second == 420))
-        return true;
-
-    return false;
-}
-
 static int __stdcall getVariationOriginalModel(const int modelIndex)
 {
     if (modelIndex < 400)
@@ -401,7 +358,7 @@ void VehicleVariations::LoadData()
         else
         {
             CModelInfo::GetModelInfo(section.data(), &modelid);
-            if (modelid > 400)
+            if (modelid >= 400)
                 vehVars->vehModels.insert({ (unsigned short)modelid, section });
         }
 
@@ -778,8 +735,7 @@ int __cdecl ChoosePoliceCarModelHooked(int a1)
 template <std::uintptr_t address>
 void __cdecl AddPoliceCarOccupantsHooked(CVehicle* a2, char a3)
 {
-    if (a2 == NULL)
-        return;
+    assert(a2 != NULL);
 
     processOccupantGroups(a2);
 
@@ -787,9 +743,9 @@ void __cdecl AddPoliceCarOccupantsHooked(CVehicle* a2, char a3)
     a2->m_nModelIndex = (unsigned short)getVariationOriginalModel(a2->m_nModelIndex);
 
     callOriginal<address>(a2, a3);
-    //CCarAI::AddPoliceCarOccupants(a2, a3);
 
     a2->m_nModelIndex = model;
+
     currentOccupantsGroup = -1;
     currentOccupantsModel = 0;
 }
@@ -894,64 +850,6 @@ char __fastcall IsLawEnforcementVehicleHooked(CVehicle* vehicle)
 }
 
 template <std::uintptr_t address>
-void __cdecl AddAmbulanceOccupantsHooked(CVehicle* pVehicle)
-{
-    if (pVehicle == NULL)
-        return;
-    
-    const auto model = pVehicle->m_nModelIndex;
-
-    if (isModelAmbulance(pVehicle->m_nModelIndex))
-        pVehicle->m_nModelIndex = 416;
-    callOriginal<address>(pVehicle);
-    pVehicle->m_nModelIndex = model;
-}
-
-template <std::uintptr_t address>
-void __cdecl AddFiretruckOccupantsHooked(CVehicle* pVehicle)
-{
-    if (pVehicle == NULL)
-        return;
-
-    const auto model = pVehicle->m_nModelIndex;
-
-    if (isModelFiretruck(pVehicle->m_nModelIndex))
-        pVehicle->m_nModelIndex = 407;
-    callOriginal<address>(pVehicle);
-    pVehicle->m_nModelIndex = model;
-}
-
-template <std::uintptr_t address>
-DWORD __cdecl FindSpecificDriverModelForCar_ToUseHooked(int a1)
-{
-    if (a1 < 400)
-        return callOriginalAndReturn<DWORD, address>(getVariationOriginalModel(a1));
-
-    unsigned short carModel = static_cast<unsigned short>(a1);
-    
-    std::string section = vehVars->vehModels.contains(carModel) ? vehVars->vehModels[carModel] : std::to_string(carModel);
-
-    const bool replaceDriver = dataFile.ReadBoolean(section, "ReplaceDriver", false) ? true : rand<bool>();
-    if (currentOccupantsGroup > -1 && currentOccupantsGroup < 9 && currentOccupantsModel > 0)
-    {
-        if (vehVars->driverGroups[currentOccupantsGroup].contains(currentOccupantsModel))
-        {
-            auto model = vectorGetRandom(vehVars->driverGroups[currentOccupantsGroup][currentOccupantsModel]);
-            loadModels({ model }, PRIORITY_REQUEST, true);
-            return model;
-        }
-    }
-    if (vehVars->drivers.contains(carModel) && replaceDriver)
-    {
-        auto model = vectorGetRandom(vehVars->drivers[carModel]);
-        loadModels({ model }, PRIORITY_REQUEST, true);
-        return model;
-    }
-
-    return callOriginalAndReturn<DWORD, address>(getVariationOriginalModel(carModel));
-}
-
-template <std::uintptr_t address>
 char __cdecl GenerateRoadBlockCopsForCarHooked(CVehicle* a1, int pedsPositionsType, int type)
 {
     if (a1 == NULL)
@@ -980,61 +878,89 @@ CColModel* __fastcall GetColModelHooked(CVehicle* entity)
 }
 
 template <std::uintptr_t address>
+int __cdecl GetDefaultCopModelHooked()
+{
+    if (roadblockDriver > 0)
+        return roadblockDriver;
+
+    return callOriginalAndReturn<int, address>();
+}
+
+template <std::uintptr_t address>
 CCopPed* __fastcall CCopPedHooked(CCopPed* ped, void*, int copType)
 {
-    if (!memcmp(0x5DDD90, "1D 01 00 00"))
-    {
-        Log::LogModifiedAddress(0x5DDD90, "Modified address detected: 0x5DDD90 is %u\n", *(uint16_t*)0x5DDD90);
-        return callMethodOriginalAndReturn<CCopPed*, address>(ped, copType);
-    }
+    std::pair<std::uintptr_t, std::string> originalData[4] = { {0x5DDE4F, "68 1B 01 00 00"}, 
+                                                               {0x5DDD8F, "68 1D 01 00 00"}, 
+                                                               {0x5DDDCF, "68 1E 01 00 00"}, 
+                                                               {0x5DDE0F, "68 1F 01 00 00"} };
 
-    unsigned int originalModel = *(unsigned int*)0x5DDD90;
+    for (const auto &i : originalData)
+        if (!memcmp(i.first, i.second.c_str()) && !forceEnable)
+        {
+            Log::LogModifiedAddress(i.first, "Modified address detected: 0x%08X is %u\n", i.first, *(uint16_t*)(i.first+1));
+            return callMethodOriginalAndReturn<CCopPed*, address>(ped, copType);
+        }
+
+    unsigned int original283 = *(unsigned int*)0x5DDE50;
+    unsigned int original285 = *(unsigned int*)0x5DDD90;
+    unsigned int original286 = *(unsigned int*)0x5DDDD0;
+    unsigned int original287 = *(unsigned int*)0x5DDE10;
 
     if (currentOccupantsGroup > -1 && currentOccupantsGroup < 9 && currentOccupantsModel > 0)
     {
         if (vehVars->driverGroups[currentOccupantsGroup].contains(currentOccupantsModel))
         {
             auto driver = vectorGetRandom(vehVars->driverGroups[currentOccupantsGroup][currentOccupantsModel]);
+            loadModels({ driver }, PRIORITY_REQUEST, true);
 
-            WriteMemory<unsigned int>(0x5DDD90, driver);
+            switch (getVariationOriginalModel(currentOccupantsModel))
+            {
+                case 427:
+                case 601:
+                    copType = COP_TYPE_SWAT1;
+                    WriteMemory<unsigned int>(0x5DDD90, driver);
+                    break;
+                case 433:
+                case 470:
+                    copType = COP_TYPE_ARMY;
+                    WriteMemory<unsigned int>(0x5DDE10, driver);
+                    break;
+                case 490:
+                    copType = COP_TYPE_FBI;
+                    WriteMemory<unsigned int>(0x5DDDD0, driver);
+                    break;
+                case 596:
+                case 597:
+                case 598:
+                    copType = COP_TYPE_CITYCOP;
+                    roadblockDriver = driver;
+                    break;
+                case 599:
+                    copType = COP_TYPE_CSHER;
+                    WriteMemory<unsigned int>(0x5DDE50, driver);
+            }
+            if (copType == COP_TYPE_CITYCOP)
+            {
+                if (driver == 283)
+                    copType = COP_TYPE_CSHER;
+                else if (driver == 285)
+                    copType = COP_TYPE_SWAT1;
+                else if (driver == 286)
+                    copType = COP_TYPE_FBI;
+                else if (driver == 287)
+                    copType = COP_TYPE_ARMY;
+            }
 
-            if (driver == 285)
-                copType = COP_TYPE_SWAT1;
-            else if (driver == 286)
-                copType = COP_TYPE_FBI;
-            else if (driver == 287)
-                copType = COP_TYPE_ARMY;
-            else
-                copType = COP_TYPE_CITYCOP;
         }
     }
 
     auto retVal = callMethodOriginalAndReturn<CCopPed*, address>(ped, copType);
-    WriteMemory<unsigned int>(0x5DDD90, originalModel);
+    WriteMemory<unsigned int>(0x5DDE50, original283);
+    WriteMemory<unsigned int>(0x5DDD90, original285);
+    WriteMemory<unsigned int>(0x5DDDD0, original286);
+    WriteMemory<unsigned int>(0x5DDE10, original287);
+    roadblockDriver = 0;
     return retVal;
-}
-
-template <std::uintptr_t address>
-void __cdecl SetUpDriverAndPassengersForVehicleHooked(CVehicle* car, int a3, int a4, char a5, char a6, int a7)
-{
-    if (car == NULL)
-        return;
-
-    processOccupantGroups(car);
-
-    //laemt1 -> dsher
-    loadModels(274, 288, GAME_REQUIRED, true);
-
-    const auto model = car->m_nModelIndex;
-
-    car->m_nModelIndex = (unsigned short)getVariationOriginalModel(car->m_nModelIndex);
-
-    callOriginal<address>(car, a3, a4, a5, a6, a7);
-    //CCarCtrl::SetUpDriverAndPassengersForVehicle(car, a3, a4, a5, a6, a7);
-
-    car->m_nModelIndex = model;
-    currentOccupantsGroup = -1;
-    currentOccupantsModel = 0;
 }
 
 template <std::uintptr_t address>
@@ -1065,45 +991,65 @@ CPlane* __fastcall CPlaneHooked(CPlane* plane, void*, int a2, char a3)
     return callMethodOriginalAndReturn<CPlane*, address>(plane, getRandomVariation(a2), a3);
 }
 
-void __declspec(naked) patchPassengerModel()
-{
-    __asm {
-        lea edx, [esp + 0x10]
-        push edx
-        push passengerModelIndex
-        mov asmJmpAddress, 0x613B7E
-        jmp asmJmpAddress
-    }
-}
-
 template <std::uintptr_t address>
-CPed* __cdecl AddPedInCarHooked(CVehicle* a1, char driver, int a3, int a4, int a5, char a6)
+CPed* __cdecl AddPedInCarHooked(CVehicle* veh, char driver, int a3, int a4, int a5, char a6)
 {
-    if (a1)
-    {
-        std::string section = vehVars->vehModels.contains(a1->m_nModelIndex) ? vehVars->vehModels[a1->m_nModelIndex] : std::to_string(a1->m_nModelIndex);
+    assert(veh != NULL);
 
+    //laemt1 -> dsher
+    loadModels(274, 288, GAME_REQUIRED, true);
+    if (currentOccupantsGroup == -1)
+        processOccupantGroups(veh);
+
+    std::string section = vehVars->vehModels.contains(veh->m_nModelIndex) ? vehVars->vehModels[veh->m_nModelIndex] : std::to_string(veh->m_nModelIndex);
+
+    if (driver)
+    {
+        const bool replaceDriver = dataFile.ReadBoolean(section, "ReplaceDriver", false) ? true : rand<bool>();
+        if (currentOccupantsGroup > -1 && currentOccupantsGroup < 9 && currentOccupantsModel > 0)
+        {
+            if (vehVars->driverGroups[currentOccupantsGroup].contains(currentOccupantsModel))
+                occupantModelIndex = vectorGetRandom(vehVars->driverGroups[currentOccupantsGroup][currentOccupantsModel]);
+        }
+        else if (vehVars->drivers.contains(veh->m_nModelIndex) && replaceDriver)
+            occupantModelIndex = vectorGetRandom(vehVars->drivers[veh->m_nModelIndex]);
+    }
+    else
+    {
         const bool replacePassenger = dataFile.ReadBoolean(section, "ReplacePassengers", false) ? true : rand<bool>();
         if (currentOccupantsGroup > -1 && currentOccupantsGroup < 9 && currentOccupantsModel > 0)
         {
             if (vehVars->passengerGroups[currentOccupantsGroup].contains(currentOccupantsModel))
-                passengerModelIndex = vectorGetRandom(vehVars->passengerGroups[currentOccupantsGroup][currentOccupantsModel]);
+                occupantModelIndex = vectorGetRandom(vehVars->passengerGroups[currentOccupantsGroup][currentOccupantsModel]);
         }
-        else if (vehVars->passengers.contains(a1->m_nModelIndex) && replacePassenger)
-            passengerModelIndex = vectorGetRandom(vehVars->passengers[a1->m_nModelIndex]);
+        else if (vehVars->passengers.contains(veh->m_nModelIndex) && replacePassenger)
+            occupantModelIndex = vectorGetRandom(vehVars->passengers[veh->m_nModelIndex]);
     }
 
-    if (passengerModelIndex > 0 && hookASM(0x613B78, "8D 54 24 10 52", patchPassengerModel, "CPopulation::AddPedInCar", true))
+    unsigned short model = veh->m_nModelIndex;
+    veh->m_nModelIndex = (unsigned short)getVariationOriginalModel(veh->m_nModelIndex);
+    CPed* ped = callOriginalAndReturn<CPed*, address>(veh, driver, a3, a4, a5, a6);
+    veh->m_nModelIndex = model;
+
+    currentOccupantsGroup = -1;
+    currentOccupantsModel = 0;
+
+    return ped;
+}
+
+template <std::uintptr_t address>
+CPed* __cdecl AddPedHooked(int pedType, int modelIndex, CVector* posn, bool unknown)
+{
+    if (occupantModelIndex > 0)
     {
-        loadModels({ passengerModelIndex }, PRIORITY_REQUEST, true);
-        CPed* ped = callOriginalAndReturn<CPed*, address>(a1, driver, a3, a4, a5, a6);
-        WriteMemory(0x613B78, "8D 54 24 10 52");
-        passengerModelIndex = -1;
+        modelIndex = occupantModelIndex;
+        loadModels({ occupantModelIndex }, PRIORITY_REQUEST, true);
+        CPed* ped = callOriginalAndReturn<CPed*, address>(pedType, modelIndex, posn, unknown);
+        occupantModelIndex = -1;
         return ped;
     }
 
-    return callOriginalAndReturn<CPed*, address>(a1, driver, a3, a4, a5, a6);
-    //return CPopulation::AddPedInCar(a1, a2, a3, a4, a5, a6);
+    return callOriginalAndReturn<CPed*, address>(pedType, modelIndex, posn, unknown);
 }
 
 template <std::uintptr_t address, bool second = false>
@@ -1219,40 +1165,28 @@ CVehicle* __cdecl GetNewVehicleDependingOnCarModelHooked(int modelIndex, int cre
 template <std::uintptr_t address>
 void __fastcall ProcessControlHooked(CAutomobile* veh)
 {
+    auto changeModelAtAddress = [veh](unsigned short originalModel, std::vector<std::uintptr_t> addresses) -> void {
+        changeModel<address>("CAutomobile::ProcessControl", originalModel, veh->m_nModelIndex, addresses, veh);
+    };
+
     switch (getVariationOriginalModel(veh->m_nModelIndex))
     {
-        case 406: //Dumper
-            return changeModel<address>("CAutomobile::ProcessControl", 406, veh->m_nModelIndex, { 0x6B1F9D }, veh);
-        case 407: //Firetruck
-            return changeModel<address>("CAutomobile::ProcessControl", 407, veh->m_nModelIndex, { 0x6B1F51 }, veh);
-        case 417: //Leviathan
-            return changeModel<address>("CAutomobile::ProcessControl", 417, veh->m_nModelIndex, { 0x6B1E34 }, veh);
-        case 423: //Mr. Whoopie
-            return changeModel<address>("CAutomobile::ProcessControl", 423, veh->m_nModelIndex, { 0x6B2BD8 }, veh);
-        case 432: //Rhino
-            return changeModel<address>("CAutomobile::ProcessControl", 432, veh->m_nModelIndex, { 0x6B1F7D, 0x6B36D8 }, veh);
-        case 443: //Packer
-            return changeModel<address>("CAutomobile::ProcessControl", 443, veh->m_nModelIndex, { 0x6B1F91 }, veh);
-        case 447: //Sea Sparrow
-            return changeModel<address>("CAutomobile::ProcessControl", 447, veh->m_nModelIndex, { 0x6B1E2D }, veh);
-        case 460: //Skimmer
-            return changeModel<address>("CAutomobile::ProcessControl", 460, veh->m_nModelIndex, { 0x6B2181 }, veh);
-        case 486: //Dozer
-            return changeModel<address>("CAutomobile::ProcessControl", 486, veh->m_nModelIndex, { 0x6B1F97 }, veh);
-        case 524: //Cement Truck
-            return changeModel<address>("CAutomobile::ProcessControl", 524, veh->m_nModelIndex, { 0x6B1FA3 }, veh);
-        case 525: //Towtruck
-            return changeModel<address>("CAutomobile::ProcessControl", 525, veh->m_nModelIndex, { 0x6B1FB5 }, veh);
-        case 530: //Forklift
-            return changeModel<address>("CAutomobile::ProcessControl", 530, veh->m_nModelIndex, { 0x6B1FAF }, veh);
-        case 531: //Tractor
-            return changeModel<address>("CAutomobile::ProcessControl", 531, veh->m_nModelIndex, { 0x6B1FBB }, veh);
-        case 532: //Combine Harverster
-            return changeModel<address>("CAutomobile::ProcessControl", 532, veh->m_nModelIndex, { 0x6B36C9 }, veh);
-        case 539: //Vortex
-            return changeModel<address>("CAutomobile::ProcessControl", 539, veh->m_nModelIndex, { 0x6B1E5C, 0x6B284F, 0x6B356E }, veh);
-        case 601: //Swat Tank
-            return changeModel<address>("CAutomobile::ProcessControl", 601, veh->m_nModelIndex, { 0x6B1F57 }, veh);
+        case 406: return changeModelAtAddress(406, { 0x6B1F9D }); //Dumper
+        case 407: return changeModelAtAddress(407, { 0x6B1F51 }); //Firetruck
+        case 417: return changeModelAtAddress(417, { 0x6B1E34 }); //Leviathan
+        case 423: return changeModelAtAddress(423, { 0x6B2BD8 }); //Mr. Whoopie
+        case 432: return changeModelAtAddress(432, { 0x6B1F7D, 0x6B36D8 }); //Rhino
+        case 443: return changeModelAtAddress(443, { 0x6B1F91 }); //Packer
+        case 447: return changeModelAtAddress(447, { 0x6B1E2D }); //Sea Sparrow
+        case 460: return changeModelAtAddress(460, { 0x6B2181 }); //Skimmer
+        case 486: return changeModelAtAddress(486, { 0x6B1F97 }); //Dozer
+        case 524: return changeModelAtAddress(524, { 0x6B1FA3 }); //Cement Truck
+        case 525: return changeModelAtAddress(525, { 0x6B1FB5 }); //Towtruck
+        case 530: return changeModelAtAddress(530, { 0x6B1FAF }); //Forklift
+        case 531: return changeModelAtAddress(531, { 0x6B1FBB }); //Tractor
+        case 532: return changeModelAtAddress(532, { 0x6B36C9 }); //Combine Harverster
+        case 539: return changeModelAtAddress(539, { 0x6B1E5C, 0x6B284F, 0x6B356E }); //Vortex
+        case 601: return changeModelAtAddress(601, { 0x6B1F57 }); //Swat Tank
     }
 
     callMethodOriginal<address>(veh);
@@ -1261,8 +1195,7 @@ void __fastcall ProcessControlHooked(CAutomobile* veh)
 template <std::uintptr_t address>
 void __fastcall CAutomobile__PreRenderHooked(CAutomobile* veh)
 {
-    if (veh == NULL)
-        return;
+    assert(veh != NULL);
 
     lightsModel = 0;
 
@@ -1768,8 +1701,7 @@ void VehicleVariations::InstallHooks()
 
 /*****************************************************************************************************/
     
-    if (!LoadedModules::IsModLoaded(MOD_WLE))
-        hookCall(0x42B909, CAutomobileHooked<0x42B909>, "CAutomobile::CAutomobile"); //CCarCtrl::GenerateOneEmergencyServicesCar
+    hookCall(0x42B909, CAutomobileHooked<0x42B909>, "CAutomobile::CAutomobile"); //CCarCtrl::GenerateOneEmergencyServicesCar
     hookCall(0x462217, CAutomobileHooked<0x462217>, "CAutomobile::CAutomobile"); //CRoadBlocks::CreateRoadBlockBetween2Points
     hookCall(0x4998F0, CAutomobileHooked<0x4998F0>, "CAutomobile::CAutomobile"); //CSetPiece::TryToGenerateCopCar
     hookCall(0x61354A, CAutomobileHooked<0x61354A>, "CAutomobile::CAutomobile"); //CPopulation::CreateWaitingCoppers
@@ -1787,7 +1719,6 @@ void VehicleVariations::InstallHooks()
     hookASM(0x6F60D9, "66 81 7E 22 3A 02", cmpWordPtrRegModel<REG_ESI, 0x6F60DF, 0x23A>, "CTrain::CTrain");
     hookASM(0x6F6576, "66 81 7F 22 3A 02", cmpWordPtrRegModel<REG_EDI, 0x6F657C, 0x23A>, "CTrain::OpenDoor");
     hookASM(0x6F8E8A, "66 81 7E 22 3A 02", cmpWordPtrRegModel<REG_ESI, 0x6F8E90, 0x23A>, "CTrain::ProcessControl");
-    hookASM(0x613A68, "0F BF 47 22 05",    movsxReg32WordPtrReg<REG_EAX, REG_EDI, 0x613A71, 5, 0xFFFE6905, 0x909090FF>, "CPopulation::AddPedInCar");
 
     //Boats
     hookCall(0x42149E, CBoatHooked<0x42149E>, "CBoat::CBoat"); //CCarCtrl::GetNewVehicleDependingOnCarModel
@@ -1808,19 +1739,14 @@ void VehicleVariations::InstallHooks()
     hookCall(0x42CDDD, IsLawEnforcementVehicleHooked<0x42CDDD>, "CVehicle::IsLawEnforcementVehicle"); //CCarCtrl::RemoveDistantCars
     hookCall(0x42CE07, GenerateRoadBlockCopsForCarHooked<0x42CE07>, "CRoadBlocks::GenerateRoadBlockCopsForCar"); //CCarCtrl::RemoveDistantCars
     hookCall(0x4613EB, GetColModelHooked<0x4613EB>, "CEntity::GetColModel"); //CRoadBlocks::GenerateRoadBlockCopsForCar
+    hookCall(0x5DDCA8, GetDefaultCopModelHooked<0x5DDCA8>, "CStreaming::GetDefaultCopModel"); //CCopPed::CCopPed
     hookCall(0x46151A, CCopPedHooked<0x46151A>, "CCopPed::CCopPed"); //CRoadBlocks::GenerateRoadBlockCopsForCar
     hookCall(0x461541, CCopPedHooked<0x461541>, "CCopPed::CCopPed"); //CRoadBlocks::GenerateRoadBlockCopsForCar
 
-    hookCall(0x42BBFB, AddAmbulanceOccupantsHooked<0x42BBFB>, "CCarAI::AddAmbulanceOccupants"); //CCarCtrl::GenerateOneEmergencyServicesCar
-    hookCall(0x42BC1A, AddFiretruckOccupantsHooked<0x42BC1A>, "CCarAI::AddFiretruckOccupants"); //CCarCtrl::GenerateOneEmergencyServicesCar
-
-    hookCall(0x613A43, FindSpecificDriverModelForCar_ToUseHooked<0x613A43>, "CPopulation::FindSpecificDriverModelForCar_ToUse"); //CPopulation::AddPedInCar
+    hookCall(0x6D1A7A, AddPedInCarHooked<0x6D1A7A>, "CPopulation::AddPedInCar"); //CVehicle::SetUpDriver
     hookCall(0x6D1B0E, AddPedInCarHooked<0x6D1B0E>, "CPopulation::AddPedInCar"); //CVehicle::SetupPassenger 
     hookCall(0x6F6986, AddPedInCarHooked<0x6F6986>, "CPopulation::AddPedInCar"); //CTrain::RemoveRandomPassenger
-
-    hookCall(0x431DE2, SetUpDriverAndPassengersForVehicleHooked<0x431DE2>, "CCarCtrl::SetUpDriverAndPassengersForVehicle"); //CCarCtrl::GenerateOneRandomCar
-    hookCall(0x431DF9, SetUpDriverAndPassengersForVehicleHooked<0x431DF9>, "CCarCtrl::SetUpDriverAndPassengersForVehicle"); //CCarCtrl::GenerateOneRandomCar
-    hookCall(0x431ED1, SetUpDriverAndPassengersForVehicleHooked<0x431ED1>, "CCarCtrl::SetUpDriverAndPassengersForVehicle"); //CCarCtrl::GenerateOneRandomCar
+    hookCall(0x613B7F, AddPedHooked<0x613B7F>, "CPopulation::AddPed"); //CPopulation::AddPedInCar
 
     hookCall(0x6B11C2, IsLawEnforcementVehicleHooked<0x6B11C2>, "CVehicle::IsLawEnforcementVehicle"); //CAutomobile::CAutomobile
 

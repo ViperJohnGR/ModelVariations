@@ -29,7 +29,7 @@
 #pragma comment (lib, "urlmon.lib")
 
 
-#define MOD_VERSION "9.3"
+#define MOD_VERSION "9.4"
 #ifdef _DEBUG
 #define MOD_NAME "ModelVariations_d.asi"
 #define DEBUG_STRING " DEBUG"
@@ -489,6 +489,20 @@ public:
 
             Log::Write("-- gameLoadEvent (%s) --\n", getDatetime(false, true, true).c_str());
 
+            if (!zonesRead)
+            {
+                Log::Write("\nReading zone data...\n");
+                for (int i = 0; i < CTheZones::TotalNumberOfInfoZones; i++)
+                {
+                    char zoneLabel[9] = {};
+                    memcpy(&zoneLabel[0], *(char**)(0x572BB6 + 1) + i * 0x20, 8);
+                    zones.insert(zoneLabel);
+                }
+                zonesRead = true;
+
+                Log::Write("Finished reading %u zones.\n", zones.size());
+            }
+
             clearEverything();
             PedVariations::ProcessDrugDealers(true);
             LoadedModules::Refresh();
@@ -555,18 +569,6 @@ public:
 
         Events::gameProcessEvent += [&gameLoadEvent]
         {
-            if (!zonesRead)
-            {
-                Log::Write("\nReading zone data...\n");
-                for (int i = 0; i < CTheZones::TotalNumberOfInfoZones; i++) //for every zone name
-                {
-                    char zoneLabel[9] = {};
-                    memcpy(&zoneLabel[0], *(char**)(0x572BB6 + 1) + i * 0x20, 8);
-                    zones.insert(zoneLabel);
-                }
-                zonesRead = true;
-            }
-
             if (reloadingSettings)
                 return;
 

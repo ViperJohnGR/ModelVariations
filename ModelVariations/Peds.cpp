@@ -378,9 +378,7 @@ void PedVariations::UpdateVariations()
                 pedVars->currentVariations[modelid] = vec;
         }
 
-        vec = dataFile.ReadLine(section, currentInterior, READ_PEDS);
-        if (!vec.empty())
-            pedVars->currentVariations[modelid] = vectorUnion(pedVars->currentVariations[modelid], vec);
+        pedVars->currentVariations[modelid] = vectorUnion(pedVars->currentVariations[modelid], dataFile.ReadLine(section, currentInterior, READ_PEDS));
 
         if (wanted)
         {

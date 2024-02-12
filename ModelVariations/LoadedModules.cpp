@@ -27,7 +27,8 @@ std::pair<std::string, MODULEINFO> LoadedModules::GetModule(std::string_view nam
     for (auto& i : loadedModules)
         if (exactMatch)
         {
-            if (_stricmp(i.first.c_str(), name.data()) == 0)
+            auto filename = getFilenameFromPath(i.first);
+            if (_stricmp(filename.c_str(), name.data()) == 0)
                 return i;
         }
         else if (strcasestr(i.first, name.data()))

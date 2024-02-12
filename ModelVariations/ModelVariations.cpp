@@ -296,6 +296,8 @@ void updateVariations()
             currentTown = 7;
     }
 
+    Log::Write("CTheZones::m_CurrLevel = %d currentTown = %d\n\n", CTheZones::m_CurrLevel, currentTown);
+
     if (enablePeds)
         PedVariations::UpdateVariations();
 
@@ -593,8 +595,6 @@ public:
 
                 if (currentInterior[0] != 0 || lastInterior[0] != 0)
                     Log::Write("currentInterior = %.8s lastInterior = %.8s\n", currentInterior, lastInterior);
-
-                Log::Write("\n");
             };
 
             if (timeUpdate > -1 && ((clock() - timeUpdate) / CLOCKS_PER_SEC > 6))
@@ -662,7 +662,7 @@ public:
                         if (functionAddress > 0 && !moduleName.empty())
                             Log::Write("Modified call detected: %s 0x%08X 0x%08X %s 0x%08X\n", it.second.name.data(), it.first, functionAddress, moduleName.c_str(), moduleInfo.second.lpBaseOfDll);
                         else
-                            Log::Write("Modified call detected: %s 0x%08X\n", it.second.name.data(), it.first);
+                            Log::Write("Modified call detected: %s 0x%08X %s\n", it.second.name.data(), it.first, bytesToString(it.first, 5).c_str());
                     }
                 }
 

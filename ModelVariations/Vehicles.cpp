@@ -1499,7 +1499,7 @@ CPed* __fastcall CPool__atHandleTaxiHooked(void* _this, void*, signed int h) //U
         CPed* pTaxiPed = reinterpret_cast<CPed*>(&taxiPed);
         pTaxiPed->m_nPedFlags.bInVehicle = ped->m_nPedFlags.bInVehicle;
 
-        auto pTaxiVeh = &taxiVeh;
+        constexpr auto pTaxiVeh = &taxiVeh;
         memcpy(&taxiPed[0x58C], &pTaxiVeh, 4);
 
         unsigned short originalModel = static_cast<uint16_t>(getVariationOriginalModel(ped->m_pVehicle->m_nModelIndex));

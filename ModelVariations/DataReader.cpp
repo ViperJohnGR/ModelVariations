@@ -127,21 +127,18 @@ std::vector<unsigned short> DataReader::ReadLine(std::string_view section, std::
 						retVector.push_back((unsigned short)modelid);
 				}
 			}
-			else if (parseType == READ_PEDS && !(token[0] >= '0' && token[0] <= '9') && CModelInfo::ms_modelInfoPtrs && *CModelInfo::ms_modelInfoPtrs)
+			else if (parseType == READ_PEDS && !(token[0] >= '0' && token[0] <= '9') && CModelInfo::ms_modelInfoPtrs && *CModelInfo::ms_modelInfoPtrs && CStreaming::ms_pExtraObjectsDir->FindItem(token.data()))
 				for (uint16_t i = 1326; i < maxPedID; i++)
 					if (CModelInfo::GetModelInfo(i) == NULL)
 					{
-						if (CStreaming::ms_pExtraObjectsDir->FindItem(token.data()))
+						auto pedInfo = reinterpret_cast<CPedModelInfo * (__cdecl*)(int)>(injector::GetBranchDestination(0x5B74A7).as_int())(i);
+						if (pedInfo)
 						{
-							auto pedInfo = ((CPedModelInfo * (__cdecl*)(int))injector::GetBranchDestination(0x5B74A7).as_int())(i);
-							if (pedInfo)
-							{
-								pedInfo->SetColModel((CColModel*)0x968DF0, false);
-								CStreaming::RequestSpecialModel(i, token.data(), 0);
-								retVector.push_back(i);
-								addedIDs.push_back(i);
-								pedInfo->m_nPedType = 4;
-							}
+							pedInfo->SetColModel((CColModel*)0x968DF0, false);
+							CStreaming::RequestSpecialModel(i, token.data(), 0);
+							retVector.push_back(i);
+							addedIDs.push_back(i);
+							pedInfo->m_nPedType = 4;
 						}
 						break;					
 					}

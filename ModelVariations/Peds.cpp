@@ -343,14 +343,15 @@ void PedVariations::ProcessDrugDealers(bool reset)
         {
             Log::Write("Applying drug dealer fix...\n");
          
-            for (auto& i : { 28, 29, 30, 254 })
-                for (auto &j : pedVars->variations[i])
-                    for (auto &k : j)
-                        if (k > MAX_PED_ID && !pedVars->drugDealers.contains(k))
+            for (auto& it : pedVars->originalModels)
+                if (it.first > MAX_PED_ID)
+                    for (auto& originalModel : it.second)
+                        if (originalModel == 28 || originalModel == 29 || originalModel == 30 || originalModel == 254)
                         {
-                            Log::Write((std::find(addedIDs.begin(), addedIDs.end(), k) != addedIDs.end()) ? "%uSP\n" : "%u\n", k);
-                            CTheScripts::ScriptsForBrains.AddNewScriptBrain(CTheScripts::StreamedScripts.GetProperIndexFromIndexUsedByScript(19), (short)k, 100, 0, -1, -1.0);
-                            pedVars->drugDealers.insert(k);
+                            Log::Write((std::find(addedIDs.begin(), addedIDs.end(), it.first) != addedIDs.end()) ? "%uSP\n" : "%u\n", it.first);
+                            CTheScripts::ScriptsForBrains.AddNewScriptBrain(CTheScripts::StreamedScripts.GetProperIndexFromIndexUsedByScript(19), (short)it.first, 100, 0, -1, -1.0);
+                            pedVars->drugDealers.insert(it.first);
+                            break;
                         }
 
             Log::Write("\n");

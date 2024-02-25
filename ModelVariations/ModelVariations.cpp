@@ -29,7 +29,7 @@
 #pragma comment (lib, "urlmon.lib")
 
 
-#define MOD_VERSION "9.4"
+#define MOD_VERSION "9.5"
 #ifdef _DEBUG
 #define MOD_NAME "ModelVariations_d.asi"
 #define DEBUG_STRING " DEBUG"
@@ -516,7 +516,7 @@ public:
             lastInterior[0] = 0;
 
             reloadingSettings = true;
-            future = std::async(std::launch::async, [startTime] {
+            auto doAsyncStuff = [startTime] {
                 loadIniData();
 
                 if (enablePeds)
@@ -529,7 +529,7 @@ public:
                 }
 
                 Log::Write("\n\n");
-                
+
                 if (checkForUpdate())
                     timeUpdate = clock();
                 else
@@ -542,18 +542,12 @@ public:
                     Log::Write("Time spend loading: %gs.\n", finalTime / 1000.0);
 
                 reloadingSettings = false;
-            });
+            };
 
             if (loadSettingsImmediately)
-                try
-                {
-                    future.get();
-                }
-                catch (const std::exception& e) 
-                { 
-                    Log::Write("future.get() crashed. %s\n", e.what()); 
-                    reloadingSettings = false; 
-                }
+                doAsyncStuff();
+            else
+                future = std::async(std::launch::async, doAsyncStuff);
         };
         Events::initGameEvent += gameLoadEvent;
         Events::reInitGameEvent += gameLoadEvent;
@@ -623,24 +617,18 @@ public:
                     Log::Write("Reloading settings...\n");
                     clearEverything();
                     printMessage("~y~Model Variations~s~: Reloading settings...", 10000);
-                    future = std::async(std::launch::async, [logVariationChange] {
+                    auto doAsyncStuff = [logVariationChange] {
                         loadIniData();
                         logVariationChange("Settings reloaded.");
                         updateVariations();
                         printMessage("~y~Model Variations~s~: Settings reloaded.", 2000);
                         reloadingSettings = false;
-                    });
+                    };
 
                     if (loadSettingsImmediately)
-                        try 
-                        { 
-                            future.get(); 
-                        }
-                        catch (const std::exception& e) 
-                        {
-                            Log::Write("future.get() on reload crashed. %s\n", e.what());
-                            reloadingSettings = false;
-                        }
+                        doAsyncStuff();
+                    else
+                        future = std::async(std::launch::async, doAsyncStuff);
                 }
             }
             else

@@ -27,13 +27,13 @@ struct tPedVars {
     std::map<unsigned short, int> pedTimeSinceSpawn;
     std::unordered_map<unsigned short, std::vector<unsigned short>> originalModels;
     std::unordered_map<unsigned short, std::string> pedModels;
+    std::unordered_map<unsigned short, bool> useParentVoice;
     std::unordered_map<unsigned short, std::vector<unsigned short>> voices;
 
     std::set<unsigned short> drugDealers;
     std::set<unsigned short> dontInheritBehaviourModels;
     std::set<unsigned short> mergeZones;
     std::set<unsigned short> pedHasVariations;
-    std::set<unsigned short> useParentVoice;
 
     std::stack<CPed*> stack;
 
@@ -45,6 +45,7 @@ std::unique_ptr<tPedVars> pedVars(new tPedVars);
 
 struct tPedOptions {
     bool recursiveVariations = true;
+    bool useParentVoices = false;
     bool enableCloneRemover = false;
     bool cloneRemoverDisableOnMission = true;
     bool cloneRemoverVehicleOccupants = false;
@@ -200,8 +201,9 @@ void PedVariations::LoadData()
                 pedVars->dontInheritBehaviourModels.insert((unsigned short)i);
         }
 
-        if (dataFile.ReadBoolean(section, "UseParentVoice", false))
-            pedVars->useParentVoice.insert((unsigned short)i);
+        int parentVoice = dataFile.ReadInteger(section, "UseParentVoice", -1);
+        if (parentVoice > 0)
+            pedVars->useParentVoice[(unsigned short)i] = static_cast<bool>(parentVoice);
 
         auto vec = dataFile.ReadLine(section, "Voice", READ_PEDS);
         if (!vec.empty())
@@ -209,6 +211,7 @@ void PedVariations::LoadData()
     }
 
     pedOptions->recursiveVariations = dataFile.ReadBoolean("Settings", "RecursiveVariations", true);
+    pedOptions->useParentVoices = dataFile.ReadBoolean("Settings", "UseParentVoices", false);
     pedOptions->enableCloneRemover = dataFile.ReadBoolean("Settings", "EnableCloneRemover", false);
     pedOptions->cloneRemoverDisableOnMission = dataFile.ReadBoolean("Settings", "CloneRemoverDisableOnMission", true);
     pedOptions->cloneRemoverVehicleOccupants = dataFile.ReadBoolean("Settings", "CloneRemoverIncludeVehicleOccupants", false);
@@ -507,7 +510,16 @@ char __fastcall CAEPedSpeechAudioEntity__InitialiseHooked(CAEPedSpeechAudioEntit
         if (it != pedVars->voices.end() && !it->second.empty())
             newModel = vectorGetRandom(it->second);
 
-        if (pedVars->useParentVoice.contains(ped->m_nModelIndex))
+        bool useParentVoice = false;
+
+        try {
+            useParentVoice = pedVars->useParentVoice.at(ped->m_nModelIndex);
+        }
+        catch (...) {
+            useParentVoice = pedOptions->useParentVoices;
+        }
+
+        if (useParentVoice)
         {
             it = pedVars->originalModels.find(ped->m_nModelIndex);
             if (it != pedVars->originalModels.end() && !it->second.empty())

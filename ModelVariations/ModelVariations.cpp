@@ -322,15 +322,18 @@ void updateVariations()
 ///////////////////////////////////////////  CALL HOOKS    ////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
+//Fix for crash on game exit when adding special peds. Something related to m_pHitColModel.
+//This is needed if PedModels in OLA is set to unlimited. If set manually to a high number (e.g PedModels=5000) the game exits ok for some reason.
 template <std::uintptr_t address>
-void __cdecl CGame__ShutdownHooked()
+void __cdecl CGame__ShutdownHooked() 
 {
     Log::Write("Game shutting down...\n");
 
     if (!addedIDs.empty())
     {
-        CPedModelInfo* start = reinterpret_cast<CPedModelInfo*>(0xB478FC);
-        for (int i = 0; i < 278; i++)
+        unsigned int pedModelCount = **reinterpret_cast<unsigned int**>(0x4C6518);
+        CPedModelInfo* start = reinterpret_cast<CPedModelInfo*>(*reinterpret_cast<unsigned int*>(0x4C6518) + 4);
+        for (unsigned int i = 0; i < pedModelCount; i++)
             start[i].m_pHitColModel = NULL;
     }
 

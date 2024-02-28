@@ -41,6 +41,12 @@
 
 using namespace plugin;
 
+struct jumpInfo {
+    std::uintptr_t address;
+    std::uintptr_t destination;
+    unsigned char type;
+};
+
 const std::pair<std::string, unsigned> areas[] = { {"Countryside", 0},
                                                    {"LosSantos", 0},
                                                    {"SanFierro", 0},
@@ -82,6 +88,7 @@ char currentZone[8] = {};
 unsigned int currentTown = 0;
 unsigned int currentWanted = 0;
 
+bool jumpsLogged = false;
 bool keyDown = false;
 
 bool zonesRead = false;
@@ -92,6 +99,7 @@ int timeUpdate = -1;
 
 //INI Options
 bool enableLog = false;
+bool logJumps = false;
 bool enablePeds = false;
 bool enableSpecialPeds = false;
 bool enableVehicles = false;
@@ -206,6 +214,82 @@ std::string getDatetime(bool printDate, bool printTime, bool printMs)
        << std::setfill('0') << std::setw(2) << systime.wSecond << ms;
 
     return ss.str();
+}
+
+
+bool LoadPESection(const char* filePath, int section, std::vector<unsigned char>& buffer, unsigned int* size) {
+    HANDLE hFile;
+    HANDLE hFileMapping;
+    LPVOID mapView;
+    PIMAGE_DOS_HEADER dosHeader;
+    PIMAGE_NT_HEADERS ntHeaders;
+    PIMAGE_SECTION_HEADER sectionHeader;
+
+    auto functionError = [&](const char* msg, int errorType)
+    {
+        std::cerr << msg << std::endl;
+        switch (errorType)
+        {
+            case 3:
+                UnmapViewOfFile(mapView);
+            case 2:
+                CloseHandle(hFileMapping);
+            case 1:
+                CloseHandle(hFile);
+        }
+
+        return false;
+    };
+
+    hFile = CreateFileA(filePath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (hFile == INVALID_HANDLE_VALUE) 
+    {
+        std::cerr << "Failed to open file" << std::endl;
+        return false;
+    }
+
+    // Create a file mapping
+    hFileMapping = CreateFileMapping(hFile, NULL, PAGE_READONLY, 0, 0, NULL);
+    if (hFileMapping == NULL)
+        return functionError("Failed to create file mapping", 1);
+
+    // Map the PE file into memory
+    mapView = MapViewOfFile(hFileMapping, FILE_MAP_READ, 0, 0, 0);
+    if (mapView == NULL)
+        return functionError("Failed to map view of file", 2);
+
+    // Get the DOS header
+    dosHeader = (PIMAGE_DOS_HEADER)mapView;
+    if (dosHeader->e_magic != IMAGE_DOS_SIGNATURE)
+        return functionError("Invalid DOS signature", 3);
+
+    // Get the NT headers
+    ntHeaders = (PIMAGE_NT_HEADERS)((BYTE*)mapView + dosHeader->e_lfanew);
+    if (ntHeaders->Signature != IMAGE_NT_SIGNATURE)
+        return functionError("Invalid NT signature", 3);
+
+    // Get the section headers
+    sectionHeader = IMAGE_FIRST_SECTION(ntHeaders);
+    for (WORD i = 0; i < ntHeaders->FileHeader.NumberOfSections; ++i)
+    {
+        if (i == section)
+        {
+            *size = sectionHeader->SizeOfRawData;
+            if (buffer.size() < sectionHeader->SizeOfRawData)
+                buffer.resize(sectionHeader->SizeOfRawData);
+
+            memcpy(&buffer[0], (BYTE*)mapView + sectionHeader->PointerToRawData, *size);
+            break;
+        }
+        sectionHeader++;
+    }
+
+    // Clean up resources
+    UnmapViewOfFile(mapView);
+    CloseHandle(hFileMapping);
+    CloseHandle(hFile);
+
+    return true;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -407,6 +491,7 @@ public:
         disableKey = (unsigned int)iniSettings.ReadInteger("Settings", "DisableKey", 0);
         reloadKey = (unsigned int)iniSettings.ReadInteger("Settings", "ReloadKey", 0);
         enableLog = iniSettings.ReadBoolean("Settings", "EnableLog", false);
+        logJumps = iniSettings.ReadBoolean("Settings", "LogJumps", false);
 
         if (enableLog)
         {
@@ -469,7 +554,7 @@ public:
         Events::initRwEvent += []
         {
             if (loadStage == 1)
-                initialize();
+                initialize(); 
         };
 
         Events::shutdownRwEvent += []
@@ -576,6 +661,58 @@ public:
                 gameLoadEvent();
                 queuedReload = false;
                 return;
+            }
+
+            if (!jumpsLogged && logJumps)
+            {
+                Log::Write("\nLogging JMP hooks...\n");
+                std::vector<unsigned char> buffer;
+
+                const std::vector<int> sections = (GetGameVersion() == GAME_10US_HOODLUM) ? std::vector<int> { 0, 1, 7, 8, 9, 10 } : std::vector<int>{ 0, 1 };
+                const std::vector<std::uintptr_t> validRanges = (GetGameVersion() == GAME_10US_HOODLUM) ? std::vector<std::uintptr_t> { 0x401000, 0x857000, 0xCB1000, 0x12FB000, 0x1301000, 0x1556000 } : std::vector<std::uintptr_t>{ 0x401000, 0x857000 };
+                std::unordered_map<std::string, std::vector<jumpInfo>> jumpsMap;
+
+                auto gta_saModule = LoadedModules::GetModule("gta_sa.exe");
+                std::uintptr_t gta_saEndAddress = ((std::uintptr_t)gta_saModule.second.lpBaseOfDll + gta_saModule.second.SizeOfImage);
+                unsigned int secCount = 0;
+
+                for (auto& rangeStart : validRanges)
+                {
+                    unsigned int sectionSize;
+                    LoadPESection("gta_sa.exe", sections[secCount++], buffer, &sectionSize);
+                    for (unsigned int i = rangeStart; i < sectionSize+0x400000;i++)
+                    {
+                        auto currentByte = *reinterpret_cast<unsigned char*>(i);
+                        if (currentByte != buffer[i - rangeStart])
+                        {
+                            auto destination = injector::GetBranchDestination(i).as_int();
+                            if (destination > gta_saEndAddress)
+                            {
+                                auto moduleInfo = LoadedModules::GetModuleAtAddress(destination);
+                                std::string moduleName = moduleInfo.first.substr(moduleInfo.first.find_last_of("/\\") + 1);
+
+                                if (!strcasestr(moduleInfo.first, "Windows"))
+                                {
+                                    if (moduleName.empty())
+                                        jumpsMap["unknown"].push_back({ i, destination, currentByte });
+                                    else
+                                        jumpsMap[moduleName].push_back({ i, destination, currentByte });
+                                }
+                                i += 3;
+                            }
+                        }
+                    }
+                }
+                for (auto& i : jumpsMap)
+                {
+                    Log::Write("\n%s:\n", i.first.c_str());
+                    for (auto& j : i.second)
+                    {
+                        Log::Write("0x%08X 0x%08X %X\n", j.address, j.destination, j.type);
+                    }
+                }
+
+                jumpsLogged = true;
             }
 
             CVector pPos = FindPlayerCoors(-1);

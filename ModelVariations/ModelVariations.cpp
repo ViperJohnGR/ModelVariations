@@ -540,9 +540,9 @@ public:
 
                 auto finalTime = clock() - startTime;
                 if (finalTime < 1000)
-                    Log::Write("Time spend loading: %dms.\n", finalTime);
+                    Log::Write("Time spent loading: %dms.\n", finalTime);
                 else
-                    Log::Write("Time spend loading: %gs.\n", finalTime / 1000.0);
+                    Log::Write("Time spent loading: %gs.\n", finalTime / 1000.0);
 
                 reloadingSettings = false;
             };
@@ -654,6 +654,22 @@ public:
                             Log::Write("Modified call detected: %s 0x%08X 0x%08X %s 0x%08X\n", it.second.name.data(), it.first, functionAddress, moduleName.c_str(), moduleInfo.second.lpBaseOfDll);
                         else
                             Log::Write("Modified call detected: %s 0x%08X %s\n", it.second.name.data(), it.first, bytesToString(it.first, 5).c_str());
+                    }
+
+                    auto gta_saModule = LoadedModules::GetModule("gta_sa.exe");
+                    std::uintptr_t gta_saEndAddress = ((std::uintptr_t)gta_saModule.second.lpBaseOfDll + gta_saModule.second.SizeOfImage);
+
+                    if ((std::uintptr_t)it.second.originalFunction < gta_saEndAddress)
+                    {
+                        auto functionStartDestination = injector::GetBranchDestination(it.second.originalFunction).as_int();
+                        if (functionStartDestination && functionStartDestination > gta_saEndAddress)
+                        {
+                            auto functionStartModule = LoadedModules::GetModuleAtAddress(functionStartDestination);
+                            std::string functionStartModuleName = functionStartModule.first.substr(functionStartModule.first.find_last_of("/\\") + 1);
+
+                            if (_stricmp(functionStartModuleName.c_str(), MOD_NAME) != 0)
+                                Log::LogModifiedAddress((std::uintptr_t)it.second.originalFunction, "Modified function start detected: %s 0x%08X 0x%08X %s\n", it.second.name.c_str(), it.second.originalFunction, functionStartDestination, functionStartModuleName.c_str());
+                        }
                     }
                 }
 

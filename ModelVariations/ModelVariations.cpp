@@ -691,7 +691,7 @@ public:
                                 auto moduleInfo = LoadedModules::GetModuleAtAddress(destination);
                                 std::string moduleName = moduleInfo.first.substr(moduleInfo.first.find_last_of("/\\") + 1);
 
-                                if (!strcasestr(moduleInfo.first, "Windows"))
+                                if (!strcasestr(moduleInfo.first, "Windows") && _stricmp(moduleName.c_str(), MOD_NAME) != 0)
                                 {
                                     if (moduleName.empty())
                                         jumpsMap["unknown"].push_back({ i, destination, currentByte });

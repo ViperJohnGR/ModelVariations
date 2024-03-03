@@ -66,6 +66,8 @@ bool tuneParkedCar = false;
 
 int occupantModelIndex = -1;
 
+std::uintptr_t x6ABCBE_Destination = 0;
+
 uint32_t asmNextInstr[4] = {};
 uint16_t asmModel16 = 0;
 uint32_t asmModel32 = 0;
@@ -1172,6 +1174,62 @@ void* __fastcall SetDriverHooked(CVehicle* _this, void*, CPed* a2)
 }
 
 template <std::uintptr_t address>
+void __fastcall CAutomobile__PreRenderHooked(CAutomobile* veh)
+{
+    assert(veh != NULL);
+
+    //For some reason, this fixes cop car lights not working while having VehFuncs installed.
+    //They also work ok on the debug build (don't know why).
+    injector::ReadMemory<uint32_t>(0x006ACCCC, true); 
+
+    unsigned short originalModel = veh->m_nModelIndex;
+    lightsModel = veh->m_nModelIndex;
+
+    if (vehOptions->enableSpecialFeatures)
+    {
+        auto changeModelAtAddress = [veh](unsigned short oldModel, std::vector<std::uintptr_t> addresses) -> void {
+            changeModel<address>("CAutomobile::PreRender", oldModel, veh->m_nModelIndex, addresses, veh);
+        };
+
+        switch (getVariationOriginalModel(veh->m_nModelIndex))
+        {
+            case 407: return changeModelAtAddress(407, { 0x6ACA59 }); //Firetruck
+            case 424: return changeModelAtAddress(424, { 0x6AC2A1 }); //BF Injection
+            case 432: return changeModelAtAddress(432, { 0x6ABC83, 0x6ABD11, 0x6ABFCC, 0x6AC029, 0x6ACA4D }); //Rhino
+            case 434: return changeModelAtAddress(434, { 0x6ACA43 }); //Hotknife
+            case 443: return changeModelAtAddress(443, { 0x6AC4DB }); //Packer
+            case 471: return changeModelAtAddress(471, { 0x6ABCA9 }); //Quad
+            case 477: return changeModelAtAddress(477, { 0x6ACA8F }); //ZR-350
+            case 486: return changeModelAtAddress(486, { 0x6AC40E }); //Dozer
+            case 495: return changeModelAtAddress(495, { (GetGameVersion() != GAME_10US_COMPACT) ? 0x4064A0U : 0x6ACBCBU }); //Sandking
+            case 524: return changeModelAtAddress(524, { 0x6AC43D }); //Cement Truck
+            case 525: return changeModelAtAddress(525, { 0x6AC509 }); //Towtruck
+            case 530: return changeModelAtAddress(530, { 0x6AC71E }); //Forklift
+            case 531: return changeModelAtAddress(531, { 0x6AC6DB }); //Tractor
+            case 532: return changeModelAtAddress(532, { 0x6ABCA3, 0x6AC7AD }); //Combine Harverster
+            case 539: return changeModelAtAddress(539, { 0x6AAE27 }); //Vortex
+            case 544: return changeModelAtAddress(544, { 0x6AC0E3 }); //Firetruck LS
+            case 568: return changeModelAtAddress(568, { 0x6ACA39 }); //Bandito
+            case 601: return changeModelAtAddress(601, { 0x6ACA53 }); //SWAT Tank
+        }
+    }
+
+    callMethodOriginal<address>(veh);
+    veh->m_nModelIndex = originalModel;
+    lightsModel = 0;
+}
+
+template <std::uintptr_t address>
+int __fastcall GetVehicleAppearanceHooked(CVehicle* veh)
+{
+    if (lightsModel > 0)
+        veh->m_nModelIndex = lightsModel;
+
+    lightsModel = 0;
+    return callMethodOriginalAndReturn<int, address>(veh);
+}
+
+template <std::uintptr_t address>
 CVehicle* __cdecl CreateCarForScriptHooked(int modelId, float posX, float posY, float posZ, char doMissionCleanup)
 {
     return callOriginalAndReturn<CVehicle*, address>(getRandomVariation(modelId), posX, posY, posZ, doMissionCleanup);
@@ -1220,51 +1278,11 @@ void __fastcall ProcessControlHooked(CAutomobile* veh)
 }
 
 template <std::uintptr_t address>
-void __fastcall CAutomobile__PreRenderHooked(CAutomobile* veh)
-{
-    assert(veh != NULL);
-
-    unsigned short originalModel = veh->m_nModelIndex;
-    lightsModel = veh->m_nModelIndex;
-
-    if (vehOptions->enableSpecialFeatures)
-    {
-        auto changeModelAtAddress = [veh](unsigned short oldModel, std::vector<std::uintptr_t> addresses) -> void {
-            changeModel<address>("CAutomobile::PreRender", oldModel, veh->m_nModelIndex, addresses, veh);
-        };
-
-        switch (getVariationOriginalModel(veh->m_nModelIndex))
-        {
-            case 407: return changeModelAtAddress(407, { 0x6ACA59 }); //Firetruck
-            case 424: return changeModelAtAddress(424, { 0x6AC2A1 }); //BF Injection
-            case 432: return changeModelAtAddress(432, { 0x6ABC83, 0x6ABD11, 0x6ABFCC, 0x6AC029, 0x6ACA4D }); //Rhino
-            case 434: return changeModelAtAddress(434, { 0x6ACA43 }); //Hotknife
-            case 443: return changeModelAtAddress(443, { 0x6AC4DB }); //Packer
-            case 471: return changeModelAtAddress(471, { 0x6ABCA9 }); //Quad
-            case 477: return changeModelAtAddress(477, { 0x6ACA8F }); //ZR-350
-            case 486: return changeModelAtAddress(486, { 0x6AC40E }); //Dozer
-            case 495: return changeModelAtAddress(495, { (GetGameVersion() != GAME_10US_COMPACT) ? 0x4064A0U : 0x6ACBCBU }); //Sandking
-            case 524: return changeModelAtAddress(524, { 0x6AC43D }); //Cement Truck
-            case 525: return changeModelAtAddress(525, { 0x6AC509 }); //Towtruck
-            case 530: return changeModelAtAddress(530, { 0x6AC71E }); //Forklift
-            case 531: return changeModelAtAddress(531, { 0x6AC6DB }); //Tractor
-            case 532: return changeModelAtAddress(532, { 0x6ABCA3, 0x6AC7AD }); //Combine Harverster
-            case 539: return changeModelAtAddress(539, { 0x6AAE27 }); //Vortex
-            case 544: return changeModelAtAddress(544, { 0x6AC0E3 }); //Firetruck LS
-            case 568: return changeModelAtAddress(568, { 0x6ACA39 }); //Bandito
-            case 601: return changeModelAtAddress(601, { 0x6ACA53 }); //SWAT Tank
-        }            
-    }
-
-    callMethodOriginal<address>(veh);
-    veh->m_nModelIndex = originalModel;
-}
-
-template <std::uintptr_t address>
 void __fastcall AddDamagedVehicleParticlesHooked(CVehicle* veh)
 {
     callMethodOriginal<address>(veh);
-    veh->m_nModelIndex = (unsigned short)getVariationOriginalModel(veh->m_nModelIndex);
+    if (lightsModel > 0)
+        veh->m_nModelIndex = (unsigned short)getVariationOriginalModel(veh->m_nModelIndex);
 }
 
 template <std::uintptr_t address>
@@ -1546,13 +1564,26 @@ void __declspec(naked) patch588570()
     }
 }
 
-void __declspec(naked) patch6ABC87()
+void __declspec(naked) patch6ABCBE()
 {
     __asm {
         mov ax, lightsModel
+        test ax, ax
+        jz skipModelChange
         mov word ptr [esi+0x22], ax
-        mov al, [esi + 0x42C]
-        mov asmJmpAddress, 0x6ABC8D
+        mov lightsModel, 0
+
+skipModelChange:
+        mov eax, x6ABCBE_Destination
+        test eax, eax
+        jz jmpOriginal
+        jmp x6ABCBE_Destination
+
+jmpOriginal:
+        xor edi, edi
+        push edi
+        push 0xFFFFFFFF
+        mov asmJmpAddress, 0x6ABCC3
         jmp asmJmpAddress
     }
 }
@@ -1838,6 +1869,10 @@ void VehicleVariations::InstallHooks()
     hookCall(0x871164, CAutomobile__PreRenderHooked<0x871164>, "CAutomobile::PreRender", true);
     hookCall(0x6CFADC, CAutomobile__PreRenderHooked<0x6CFADC>, "CAutomobile::PreRender"); //CTrailer::PreRender
 
+    hookCall(0x6ABC93, GetVehicleAppearanceHooked<0x6ABC93>, "CVehicle::GetVehicleAppearance"); //CAutomobile::PreRender
+    x6ABCBE_Destination = injector::GetBranchDestination(0x6ABCBE).as_int();
+    injector::MakeJMP(0x6ABCBE, patch6ABCBE);
+
     if (vehOptions->changeScriptedCars)
         hookCall(0x467B01, CreateCarForScriptHooked<0x467B01>, "CCarCtrl::CreateCarForScript");
     
@@ -2122,8 +2157,6 @@ void VehicleVariations::InstallHooks()
         hookCall(0x6C9348, ProcessWeaponsHooked<0x6C9348>, "CVehicle::ProcessWeapons"); //CPlane::ProcessControl
     }
 
-    hookASM(0x6ABC87, "8A 86 2C 04 00 00", patch6ABC87, "CAutomobile::PreRender");
-
     if (vehOptions->enableSiren)
     {
         hookCall(0x41DC74, UsesSirenHooked<0x41DC74>, "CVehicle::UsesSiren"); //CCarAI::UpdateCarAI
@@ -2158,9 +2191,9 @@ void VehicleVariations::InstallHooks()
 
     if (vehOptions->enableSideMissions)
     {
-        hookCall(0x48DA81, IsLawEnforcementVehicleHooked<0x48DA81>, "CVehicle::IsLawEnforcementVehicle");
-        hookCall(0x469624, CPool__atHandleHooked<0x469624>, "CRunningScript::ProcessCommands200To299"); //00DD: IS_CHAR_IN_MODEL
-        hookCall(0x4912AD, CPool__atHandleTaxiHooked<0x4912AD>, "CRunningScript::ProcessCommands1500To1599"); //0602: IS_CHAR_IN_TAXI
+        hookCall(0x48DA81, IsLawEnforcementVehicleHooked<0x48DA81>, "CVehicle::IsLawEnforcementVehicle"); //056C: IS_CHAR_IN_ANY_POLICE_VEHICLE
+        hookCall(0x469624, CPool__atHandleHooked<0x469624>, "CPool<CPed>::atHandle"); //00DD: IS_CHAR_IN_MODEL
+        hookCall(0x4912AD, CPool__atHandleTaxiHooked<0x4912AD>, "CPool<CPed>::atHandle"); //0602: IS_CHAR_IN_TAXI
     }
 
     hookCall(0x4306A1, GetNewVehicleDependingOnCarModelHooked<0x4306A1>, "CCarCtrl::GetNewVehicleDependingOnCarModel"); ///CCarCtrl::GenerateOneRandomCar

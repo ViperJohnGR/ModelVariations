@@ -212,7 +212,7 @@ void processTuning(CVehicle* veh)
                 else
                     slotsToInstall[i] = (rand<uint32_t>(0, 3) == 0 ? true : false);
 
-            std::string section = vehVars->vehModels.contains(veh->m_nModelIndex) ? vehVars->vehModels[veh->m_nModelIndex] : std::to_string(veh->m_nModelIndex);
+            const std::string section = vehVars->vehModels.contains(veh->m_nModelIndex) ? vehVars->vehModels[veh->m_nModelIndex] : std::to_string(veh->m_nModelIndex);
 
             if (dataFile.ReadBoolean(section, "TuningFullBodykit", false))
                 if (slotsToInstall[14] == true || slotsToInstall[15] == true || slotsToInstall[3] == true)
@@ -252,7 +252,7 @@ void processOccupantGroups(const CVehicle* veh)
             const unsigned int wantedLevel = (wanted->m_nWantedLevel > 0) ? (wanted->m_nWantedLevel - 1) : 0;
             currentOccupantsModel = veh->m_nModelIndex;
 
-            std::string section = vehVars->vehModels.contains(veh->m_nModelIndex) ? vehVars->vehModels[veh->m_nModelIndex] : std::to_string(veh->m_nModelIndex);
+            const std::string section = vehVars->vehModels.contains(veh->m_nModelIndex) ? vehVars->vehModels[veh->m_nModelIndex] : std::to_string(veh->m_nModelIndex);
 
             std::vector<unsigned short> zoneGroups = dataFile.ReadLine(section, currentZone, READ_GROUPS);
             checkNumGroups(zoneGroups, vehVars->modelNumGroups[veh->m_nModelIndex]);
@@ -577,7 +577,7 @@ void VehicleVariations::UpdateVariations()
         if (!currentAreaTuning.empty() || vehVars->currentTuning.contains(i.first))
             vehVars->currentTuning[i.first] = currentAreaTuning;
 
-        std::string section = vehVars->vehModels.contains(i.first) ? vehVars->vehModels[i.first] : std::to_string(i.first);
+        const std::string section = vehVars->vehModels.contains(i.first) ? vehVars->vehModels[i.first] : std::to_string(i.first);
 
         std::vector<unsigned short> vec = dataFile.ReadLine(section, currentZone, READ_TUNING);
         if (!vec.empty())
@@ -593,7 +593,7 @@ void VehicleVariations::UpdateVariations()
     {
         vehVars->currentVariations[modelid] = vectorUnion(vehVars->variations[modelid][4], vehVars->variations[modelid][currentTown]);
 
-        std::string section = vehVars->vehModels.contains(modelid + 400U) ? vehVars->vehModels[modelid + 400U] : std::to_string(modelid + 400);
+        const std::string section = vehVars->vehModels.contains(modelid + 400U) ? vehVars->vehModels[modelid + 400U] : std::to_string(modelid + 400);
 
         std::vector<unsigned short> vec = dataFile.ReadLine(section, currentZone, READ_VEHICLES);
         if (!vec.empty())
@@ -822,7 +822,7 @@ void __fastcall DoInternalProcessingHooked(CCarGenerator* park) //for non-random
 template <std::uintptr_t address>
 void* __fastcall CTrainHooked(void* train, void*, int modelIndex, int createdBy)
 {
-    return callMethodOriginalAndReturn<void*, address>(train, getRandomVariation(modelIndex), createdBy);
+    return callMethodOriginalAndReturn<void*, address>(train, CTheScripts::IsPlayerOnAMission() ? modelIndex : getRandomVariation(modelIndex), createdBy);
 }
 
 template <std::uintptr_t address>
@@ -1021,7 +1021,7 @@ CPlane* __fastcall CPlaneHooked(CPlane* plane, void*, int a2, char a3)
 }
 
 template <std::uintptr_t address>
-CPed* __cdecl AddPedInCarHooked(CVehicle* veh, char driver, int a3, int a4, int a5, char a6)
+CPed* __cdecl AddPedInCarHooked(CVehicle* veh, char driver, int a3, int a4, char a5, char a6)
 {
     assert(veh != NULL);
 
@@ -1030,7 +1030,7 @@ CPed* __cdecl AddPedInCarHooked(CVehicle* veh, char driver, int a3, int a4, int 
     if (currentOccupantsGroup == -1)
         processOccupantGroups(veh);
 
-    std::string section = vehVars->vehModels.contains(veh->m_nModelIndex) ? vehVars->vehModels[veh->m_nModelIndex] : std::to_string(veh->m_nModelIndex);
+    const std::string section = vehVars->vehModels.contains(veh->m_nModelIndex) ? vehVars->vehModels[veh->m_nModelIndex] : std::to_string(veh->m_nModelIndex);
 
     if (driver)
     {
@@ -1870,8 +1870,7 @@ void VehicleVariations::InstallHooks()
     hookCall(0x6CFADC, CAutomobile__PreRenderHooked<0x6CFADC>, "CAutomobile::PreRender"); //CTrailer::PreRender
 
     hookCall(0x6ABC93, GetVehicleAppearanceHooked<0x6ABC93>, "CVehicle::GetVehicleAppearance"); //CAutomobile::PreRender
-    x6ABCBE_Destination = injector::GetBranchDestination(0x6ABCBE).as_int();
-    injector::MakeJMP(0x6ABCBE, patch6ABCBE);
+    x6ABCBE_Destination = injector::MakeJMP(0x6ABCBE, patch6ABCBE).as_int();
 
     if (vehOptions->changeScriptedCars)
         hookCall(0x467B01, CreateCarForScriptHooked<0x467B01>, "CCarCtrl::CreateCarForScript");

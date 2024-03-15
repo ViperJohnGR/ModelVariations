@@ -452,6 +452,16 @@ void initialize()
         Log::Write("Enable model special feature loader = %d\n\n", flaIni.ReadInteger("ADDONS", "Enable model special feature loader", -1));
     }
 
+    auto olaModule = LoadedModules::GetModule("III.VC.SA.LimitAdjuster.asi");
+    if (!olaModule.first.empty())
+    {
+        std::string olaIniPath = olaModule.first;
+        olaIniPath.replace(olaIniPath.find_last_of("\\/"), std::string::npos, "\\III.VC.SA.LimitAdjuster.ini");
+
+        DataReader olaIni(olaIniPath);
+        Log::Write("PedModels limit in OLA is %s\n\n", olaIni.ReadString("SALIMITS", "PedModels", "").c_str());
+    }
+
     loadIniData();
 
     if (enablePeds)

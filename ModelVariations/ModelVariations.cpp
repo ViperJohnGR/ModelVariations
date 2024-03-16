@@ -445,11 +445,17 @@ void initialize()
         if (maxPedID == 0)
             maxPedID = flaMaxID;
 
+        int isFLASpecialFeaturesEnabled = flaIni.ReadInteger("ADDONS", "Enable model special feature loader", -1);
+        if (isFLASpecialFeaturesEnabled == 1)
+        {
+            MessageBox(NULL, "Both Model Variations and FLA special features are enabled. Disable one of them.", "Model Variations", MB_ICONWARNING);
+        }
+
         Log::Write("\nFLA settings:\n");
         Log::Write("Enable special features = %d\n", flaIni.ReadInteger("VEHICLE SPECIAL FEATURES", "Enable special features", -1));
         Log::Write("Apply ID limit patch = %d\n", flaIni.ReadInteger("ID LIMITS", "Apply ID limit patch", -1));
         Log::Write("Count of killable model IDs = %d\n", flaMaxID);
-        Log::Write("Enable model special feature loader = %d\n\n", flaIni.ReadInteger("ADDONS", "Enable model special feature loader", -1));
+        Log::Write("Enable model special feature loader = %d\n\n", isFLASpecialFeaturesEnabled);
     }
 
     auto olaModule = LoadedModules::GetModule("III.VC.SA.LimitAdjuster.asi");

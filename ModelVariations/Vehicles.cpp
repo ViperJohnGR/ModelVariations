@@ -1238,6 +1238,7 @@ CVehicle* __cdecl CreateCarForScriptHooked(int modelId, float posX, float posY, 
 template <std::uintptr_t address>
 CVehicle* __cdecl GetNewVehicleDependingOnCarModelHooked(int modelIndex, int createdBy)
 {
+    loadModels({ modelIndex }, PRIORITY_REQUEST, true);
     CVehicle *veh = callOriginalAndReturn<CVehicle*, address>(modelIndex, createdBy);
     processTuning(veh);
     return veh;
@@ -1787,6 +1788,12 @@ void __declspec(naked) movsxReg32WordPtrReg()
 
 void VehicleVariations::InstallHooks()
 {
+    if (isFLASpecialFeaturesEnabled == 1 && vehOptions->enableSpecialFeatures)
+    {
+        MessageBox(NULL, "Both Model Variations and FLA special features are enabled. Disable one of them.", "Model Variations", MB_ICONWARNING);
+        vehOptions->enableSpecialFeatures = false;
+    }
+
     Events::initScriptsEvent.after += []
     {
         if (vehOptions->loadAllVehicles)

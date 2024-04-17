@@ -6,6 +6,8 @@
 #include <string>
 #include <vector>
 
+extern int isFLASpecialFeaturesEnabled;
+
 extern const std::pair<std::string, unsigned> areas[];
 extern bool forceEnable;
 extern char currentZone[8];

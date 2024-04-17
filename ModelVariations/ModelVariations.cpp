@@ -87,6 +87,7 @@ const char* currentInterior = lastInterior;
 char currentZone[8] = {};
 unsigned int currentTown = 0;
 unsigned int currentWanted = 0;
+int isFLASpecialFeaturesEnabled = 0;
 
 bool jumpsLogged = false;
 bool keyDown = false;
@@ -445,11 +446,7 @@ void initialize()
         if (maxPedID == 0)
             maxPedID = flaMaxID;
 
-        int isFLASpecialFeaturesEnabled = flaIni.ReadInteger("ADDONS", "Enable model special feature loader", -1);
-        if (isFLASpecialFeaturesEnabled == 1)
-        {
-            MessageBox(NULL, "Both Model Variations and FLA special features are enabled. Disable one of them.", "Model Variations", MB_ICONWARNING);
-        }
+        isFLASpecialFeaturesEnabled = flaIni.ReadInteger("ADDONS", "Enable model special feature loader", -1);
 
         Log::Write("\nFLA settings:\n");
         Log::Write("Enable special features = %d\n", flaIni.ReadInteger("VEHICLE SPECIAL FEATURES", "Enable special features", -1));

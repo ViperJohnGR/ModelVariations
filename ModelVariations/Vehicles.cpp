@@ -822,7 +822,10 @@ void __fastcall DoInternalProcessingHooked(CCarGenerator* park) //for non-random
 template <std::uintptr_t address>
 void* __fastcall CTrainHooked(void* train, void*, int modelIndex, int createdBy)
 {
-    return callMethodOriginalAndReturn<void*, address>(train, CTheScripts::IsPlayerOnAMission() ? modelIndex : getRandomVariation(modelIndex), createdBy);
+    if (createdBy != 2)
+        return callMethodOriginalAndReturn<void*, address>(train, modelIndex, createdBy);
+    else
+        return callMethodOriginalAndReturn<void*, address>(train, getRandomVariation(modelIndex), createdBy);
 }
 
 template <std::uintptr_t address>
@@ -2097,6 +2100,7 @@ void VehicleVariations::InstallHooks()
         hookASM(0x43077F, "66 81 F9 C4 01",                   cmpReg16Model<REG_CX, 0x430784, 452>, "CCarCtrl::GenerateOneRandomCar");
         hookASM(0x430786, "66 81 F9 ED 01",                   cmpReg16Model<REG_CX, 0x43078B, 493>, "CCarCtrl::GenerateOneRandomCar");
         hookASM(0x431D89, "66 8B 46 22 66 3D CF 01",          movReg16WordPtrReg<REG_AX, REG_ESI, 0x431D91, 4, 0x01CF3D66>, "CCarCtrl::GenerateOneRandomCar");
+        hookASM(0x6B6C86, "66 81 7E 22 B0 01",                cmpWordPtrRegModel<REG_ESI, 0x6B6C8C, 0x1B0>, "CBike::DoBurstAndSoftGroundRatios");
 
         
         MakeInline<0x6D42FE, 6>("CVehicle::GetPlaneGunsPosition", "8D 81 57 FE FF FF", [](injector::reg_pack& regs)

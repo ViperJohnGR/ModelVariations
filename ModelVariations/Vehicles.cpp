@@ -62,6 +62,7 @@ unsigned short roadblockDriver = 0;
 unsigned short lightsModel = 0;
 int currentOccupantsGroup = -1;
 unsigned short currentOccupantsModel = 0;
+bool policeOccupants = false;
 bool tuneParkedCar = false;
 
 int occupantModelIndex = -1;
@@ -740,6 +741,7 @@ void __cdecl AddPoliceCarOccupantsHooked(CVehicle* a2, char a3)
     assert(a2 != NULL);
 
     processOccupantGroups(a2);
+    policeOccupants = true;
 
     const unsigned short model = a2->m_nModelIndex;
     a2->m_nModelIndex = (unsigned short)getVariationOriginalModel(a2->m_nModelIndex);
@@ -748,6 +750,7 @@ void __cdecl AddPoliceCarOccupantsHooked(CVehicle* a2, char a3)
 
     a2->m_nModelIndex = model;
 
+    policeOccupants = false;
     currentOccupantsGroup = -1;
     currentOccupantsModel = 0;
 }
@@ -1027,7 +1030,7 @@ CPed* __cdecl AddPedInCarHooked(CVehicle* veh, char driver, int a3, int a4, char
 
     //laemt1 -> dsher
     loadModels(274, 288, GAME_REQUIRED, true);
-    if (currentOccupantsGroup == -1)
+    if (!policeOccupants && currentOccupantsGroup == -1)
         processOccupantGroups(veh);
 
     const std::string section = vehVars->vehModels.contains(veh->m_nModelIndex) ? vehVars->vehModels[veh->m_nModelIndex] : std::to_string(veh->m_nModelIndex);
@@ -1060,8 +1063,11 @@ CPed* __cdecl AddPedInCarHooked(CVehicle* veh, char driver, int a3, int a4, char
     CPed* ped = callOriginalAndReturn<CPed*, address>(veh, driver, a3, a4, a5, a6);
     veh->m_nModelIndex = model;
 
-    currentOccupantsGroup = -1;
-    currentOccupantsModel = 0;
+    if (!policeOccupants)
+    {
+        currentOccupantsGroup = -1;
+        currentOccupantsModel = 0;
+    }
 
     return ped;
 }

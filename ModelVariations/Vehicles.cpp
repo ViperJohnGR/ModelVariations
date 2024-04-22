@@ -822,10 +822,7 @@ void __fastcall DoInternalProcessingHooked(CCarGenerator* park) //for non-random
 template <std::uintptr_t address>
 void* __fastcall CTrainHooked(void* train, void*, int modelIndex, int createdBy)
 {
-    if (createdBy != 2)
-        return callMethodOriginalAndReturn<void*, address>(train, modelIndex, createdBy);
-    else
-        return callMethodOriginalAndReturn<void*, address>(train, getRandomVariation(modelIndex), createdBy);
+    return callMethodOriginalAndReturn<void*, address>(train, CTheScripts::IsPlayerOnAMission() ? modelIndex : getRandomVariation(modelIndex), createdBy);
 }
 
 template <std::uintptr_t address>

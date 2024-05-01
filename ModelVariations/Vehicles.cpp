@@ -1535,6 +1535,21 @@ CPed* __fastcall CPool__atHandleTaxiHooked(void* _this, void*, signed int h) //U
     return ped;
 }
 
+template <std::uintptr_t address>
+int __fastcall CreateInstanceHooked(CVehicleModelInfo* _this)
+{
+    if (_this->m_pVehicleStruct == NULL)
+    {
+        int index = 0;
+        CModelInfo::GetModelInfoFromHashKey(_this->m_nKey, &index);
+        Log::Write("Model %d has NULL vehicle struct.\n", index);
+        loadModels({ index }, PRIORITY_REQUEST, true);
+    }
+
+    return callMethodOriginalAndReturn<int, address>(_this);
+}
+
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////  ASM HOOKS  /////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -2208,6 +2223,8 @@ void VehicleVariations::InstallHooks()
         hookCall(0x469624, CPool__atHandleHooked<0x469624>, "CPool<CPed>::atHandle"); //00DD: IS_CHAR_IN_MODEL
         hookCall(0x4912AD, CPool__atHandleTaxiHooked<0x4912AD>, "CPool<CPed>::atHandle"); //0602: IS_CHAR_IN_TAXI
     }
+
+    hookCall(0x85C5F4, CreateInstanceHooked<0x85C5F4>, "CVehicleModelInfo::CreateInstance", true);
 
     hookCall(0x4306A1, GetNewVehicleDependingOnCarModelHooked<0x4306A1>, "CCarCtrl::GetNewVehicleDependingOnCarModel"); ///CCarCtrl::GenerateOneRandomCar
 

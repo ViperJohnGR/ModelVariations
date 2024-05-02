@@ -123,6 +123,9 @@ void PedWeaponVariations::Process()
 
         const int originalSlot = ped->m_nActiveWeaponSlot;
         bool wepChanged = false;
+        std::string zoneString = currentZone;
+        if (currentInterior[0] != 0)
+            zoneString = currentInterior;
 
         for (int k = 0; k < 2; k++)
             for (int j = 0; j < 4; j++)
@@ -160,7 +163,7 @@ void PedWeaponVariations::Process()
                     changeZoneWeaponForce = rand<bool>();
 
                 if (changeZoneWeaponForce || !mergeWeapons)
-                    wepChanged |= changeWeapon((k) ? "Global" : section, wantedStr + vehId + currentZone + "|WEAPONFORCE");
+                    wepChanged |= changeWeapon((k) ? "Global" : section, wantedStr + vehId + zoneString + "|WEAPONFORCE");
 
 
                 if (!wepChanged)
@@ -176,13 +179,13 @@ void PedWeaponVariations::Process()
                                 changeZoneSlot = rand<bool>();
 
                             if (changeZoneSlot || mergeWeapons == 0)
-                                wepChanged |= changeWeapon((k) ? "Global" : section, wantedStr + vehId + currentZone + "|SLOT" + std::to_string(i), ped->m_aWeapons[i].m_eWeaponType);
+                                wepChanged |= changeWeapon((k) ? "Global" : section, wantedStr + vehId + zoneString + "|SLOT" + std::to_string(i), ped->m_aWeapons[i].m_eWeaponType);
 
                             if ((changeWeapon((k) ? "Global" : section, wantedStr + vehId + "WEAPON" + std::to_string(weaponId), ped->m_aWeapons[i].m_eWeaponType) == true) ? (wepChanged = true) : false)
                                 changeZoneWeapon = rand<bool>();
 
                             if (changeZoneWeapon || mergeWeapons == 0)
-                                wepChanged |= changeWeapon((k) ? "Global" : section, wantedStr + vehId + currentZone + "|WEAPON" + std::to_string(weaponId), ped->m_aWeapons[i].m_eWeaponType);
+                                wepChanged |= changeWeapon((k) ? "Global" : section, wantedStr + vehId + zoneString + "|WEAPON" + std::to_string(weaponId), ped->m_aWeapons[i].m_eWeaponType);
 
                             if (wepChanged)
                                 ped->SetCurrentWeapon(originalSlot);

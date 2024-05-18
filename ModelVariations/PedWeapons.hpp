@@ -15,4 +15,7 @@ public:
 
 	//Logging
 	static void LogDataFile();
+
+	//Call hooks
+	static void InstallHooks();
 };

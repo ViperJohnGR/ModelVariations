@@ -70,6 +70,18 @@ bool isValidPedId(int id)
     return true;
 }
 
+std::vector<unsigned short> PedVariations::GetVariationOriginalModels(const int index)
+{
+    if (index < 400)
+        return { (unsigned short)index };
+
+    auto it = pedVars->originalModels.find((unsigned short)index);
+    if (it != pedVars->originalModels.end())
+        return it->second;
+
+    return { (unsigned short)index };
+}
+
 bool pedDelaySpawn(unsigned short model, bool includeParentModels)
 {
     if (!includeParentModels)

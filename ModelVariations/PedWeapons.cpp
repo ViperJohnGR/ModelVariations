@@ -1,6 +1,8 @@
 #include "PedWeapons.hpp"
+#include "Peds.hpp"
 #include "DataReader.hpp"
 #include "FuncUtil.hpp"
+#include "Hooks.hpp"
 #include "Log.hpp"
 
 #include <plugin.h>
@@ -10,6 +12,7 @@
 
 #include <stack>
 #include <string>
+#include <vector>
 
 static const char* dataFileName = "ModelVariations_PedWeapons.ini";
 static DataReader dataFile(dataFileName);
@@ -18,6 +21,24 @@ std::unordered_map<unsigned short, std::string> wepPedModels;
 std::unordered_map<unsigned short, std::string> wepVehModels;
 
 std::stack<CPed*> pedWepStack;
+
+std::vector<std::pair<CPed*, int>> weaponWatchers;
+
+bool isIdValidForWatcher(unsigned short id) //TODO: Add all scripted ped ids
+{
+    for (auto i : PedVariations::GetVariationOriginalModels(id))
+        switch (i)  //TODO: drug dealers only work with WEAPONFORCE because they are initially unarmed
+        {
+            case 28:
+            case 29:
+            case 30:
+            case 163:
+            case 164:
+            case 254:
+                return true;
+        }
+    return false;
+}
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -92,6 +113,12 @@ void PedWeaponVariations::Process()
 
                 if (wInfo != NULL && wInfo->m_nModelId1 >= 321)
                 {
+                    if (isIdValidForWatcher(ped->m_nModelIndex))
+                    {
+                        weaponWatchers.push_back({ ped, weaponId });
+                        return true;
+                    };
+
                     loadModels({ wInfo->m_nModelId1 }, PRIORITY_REQUEST, true);
 
                     if (originalWeaponId > WEAPON_UNARMED)
@@ -206,4 +233,59 @@ void PedWeaponVariations::LogDataFile()
         Log::Write("####################################\n"
                    "## ModelVariations_PedWeapons.ini ##\n"
                    "####################################\n%s\n", fileToString(dataFileName).c_str());
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////  CALL HOOKS    ////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+template <std::uintptr_t address>
+int __fastcall GiveWeaponHooked(CPed* ped, void*, int weaponID, int ammo, int a4)
+{
+    for (auto it = weaponWatchers.begin();it != weaponWatchers.end();)
+    {
+        if (it->first == ped)
+        {
+            weaponID = it->second;
+            const CWeaponInfo* wInfo = CWeaponInfo::GetWeaponInfo((eWeaponType)weaponID, 1);
+            if (wInfo != NULL && wInfo->m_nModelId1 >= 321)
+                loadModels({wInfo->m_nModelId1}, PRIORITY_REQUEST, true);
+            break;
+        }
+
+        if (!IsPedPointerValid(it->first))
+            it = weaponWatchers.erase(it);
+        else
+            it++;
+    }
+
+    return callMethodOriginalAndReturn<int, address>(ped, weaponID, ammo, a4);
+}
+
+template <std::uintptr_t address>
+int16_t __fastcall CollectParametersHooked(CRunningScript * _this, void*, unsigned __int16 a2)
+{
+    auto retVal = callMethodOriginalAndReturn<int16_t, address>(_this, a2);
+
+    if (!ScriptParams[1])
+        return retVal;
+
+    for (auto& i : weaponWatchers)
+    {
+        if (ScriptParams[0] == CPools::GetPedRef(i.first) && ScriptParams[1] == 22 /* TODO: add check based on ped model id, don't assume Pistol */)
+        {
+            ScriptParams[1] = i.second;
+            break;
+        }
+    }   
+
+    return retVal;
+}
+
+void PedWeaponVariations::InstallHooks()
+{
+    hookCall(0x47D335, GiveWeaponHooked<0x47D335>, "CPed::GiveWeapon");
+    hookCall(0x47D4AC, CollectParametersHooked<0x47D4AC>, "CRunningScript::CollectParameters"); //SET_CURRENT_CHAR_WEAPON
+    hookCall(0x48AE9E, CollectParametersHooked<0x48AE9E>, "CRunningScript::CollectParameters"); //HAS_CHAR_GOT_WEAPON
 }

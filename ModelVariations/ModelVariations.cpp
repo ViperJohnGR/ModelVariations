@@ -474,6 +474,13 @@ void initialize()
         Log::Write("Ped hooks installed.\n");
     }
 
+    if (enablePedWeapons)
+    {
+        Log::Write("Installing ped weapon hooks...\n");
+        PedWeaponVariations::InstallHooks();
+        Log::Write("Ped weapon hooks installed.\n");
+    }
+
     if (enableVehicles)
     {
         Log::Write("Installing vehicle hooks...\n");

@@ -2119,6 +2119,7 @@ void VehicleVariations::InstallHooks()
         hookASM(0x430786, "66 81 F9 ED 01",                   cmpReg16Model<REG_CX, 0x43078B, 493>, "CCarCtrl::GenerateOneRandomCar");
         hookASM(0x431D89, "66 8B 46 22 66 3D CF 01",          movReg16WordPtrReg<REG_AX, REG_ESI, 0x431D91, 4, 0x01CF3D66>, "CCarCtrl::GenerateOneRandomCar");
         hookASM(0x6B6C86, "66 81 7E 22 B0 01",                cmpWordPtrRegModel<REG_ESI, 0x6B6C8C, 0x1B0>, "CBike::DoBurstAndSoftGroundRatios");
+        hookASM(0x6AF292, "66 81 7A 22 63 02",                cmpWordPtrRegModel<REG_EDX, 0x6AF298, 0x263>, "CAutomobile::GetTowBarPos");
 
         
         MakeInline<0x6D42FE, 6>("CVehicle::GetPlaneGunsPosition", "8D 81 57 FE FF FF", [](injector::reg_pack& regs)

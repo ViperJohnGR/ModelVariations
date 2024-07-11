@@ -4,6 +4,7 @@
 #include "Hooks.hpp"
 #include "LoadedModules.hpp"
 #include "Log.hpp"
+#include "SA.hpp"
 
 #include <plugin.h>
 #include <CModelInfo.h>
@@ -364,12 +365,9 @@ void PedVariations::ProcessDrugDealers(bool reset)
                         if (originalModel == 28 || originalModel == 29 || originalModel == 30 || originalModel == 254)
                         {
                             Log::Write((std::find(addedIDs.begin(), addedIDs.end(), it.first) != addedIDs.end()) ? "%uSP\n" : "%u\n", it.first);
-                            auto streamedScripts = reinterpret_cast<void*>(*(uintptr_t*)0x476D51);
-                            auto findByScmIndex = reinterpret_cast<short(__thiscall*)(void*, short)>(injector::GetBranchDestination(0x476D56).as_int())(streamedScripts, 19);
+                            auto findByScmIndex = CExternalScripts__findByScmIndex(CTheScripts__StreamedScripts, 19);
 
-
-                            void* scriptsForBrains = reinterpret_cast<void*>(*(uintptr_t*)0x476D7D);
-                            reinterpret_cast<void(__thiscall*)(void*, short, short, short, char, char, float)>(injector::GetBranchDestination(0x476D86).as_int())(scriptsForBrains, findByScmIndex, (short)it.first, 100, 0, -1, -1.0);
+                            CScriptsForBrains__AddNewScriptBrain(CTheScripts__ScriptsForBrains, findByScmIndex, (short)it.first, 100, 0, -1, -1.0);
 
                             pedVars->drugDealers.insert(it.first);
                             break;

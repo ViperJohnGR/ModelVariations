@@ -121,6 +121,7 @@
     <ClInclude Include="Hooks.hpp" />
     <ClInclude Include="Peds.hpp" />
     <ClInclude Include="PedWeapons.hpp" />
+    <ClInclude Include="SA.hpp" />
     <ClInclude Include="Vehicles.hpp" />
   </ItemGroup>
   <ItemGroup>

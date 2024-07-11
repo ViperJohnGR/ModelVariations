@@ -3,6 +3,7 @@
 #include "Hooks.hpp"
 #include "LoadedModules.hpp"
 #include "Log.hpp"
+#include "SA.hpp"
 
 #include "Peds.hpp"
 #include "PedWeapons.hpp"
@@ -416,10 +417,8 @@ void __cdecl CGame__ShutdownHooked()
 
     if (!addedIDs.empty())
     {
-        unsigned int pedModelCount = **reinterpret_cast<unsigned int**>(0x4C6518);
-        CPedModelInfo* start = reinterpret_cast<CPedModelInfo*>(*reinterpret_cast<unsigned int*>(0x4C6518) + 4);
-        for (unsigned int i = 0; i < pedModelCount; i++)
-            start[i].m_pHitColModel = NULL;
+        for (unsigned int i = 0; i < pedsModelsCount; i++)
+            pedsModels[i].m_pHitColModel = NULL;
     }
 
     callOriginal<address>();

@@ -4,6 +4,7 @@
 #include "Hooks.hpp"
 #include "LoadedModules.hpp"
 #include "Log.hpp"
+#include "SA.hpp"
 
 #include <plugin.h>
 #include <CCarGenerator.h>
@@ -11,7 +12,6 @@
 #include <CModelInfo.h>
 #include <CPlane.h>
 #include <CTheScripts.h>
-#include <CTheZones.h>
 #include <CVector.h>
 
 #include <array>
@@ -534,7 +534,7 @@ void VehicleVariations::Process()
 
                         it.first->AddVehicleUpgrade(slot[i]);
                         CStreaming::SetMissionDoesntRequireModel(slot[i]);
-                        short otherUpgrade = reinterpret_cast<short(__thiscall*)(uint32_t, uint16_t)>(0x4C74D0)(0xB4E6D8, slot[i]);
+                        short otherUpgrade = CVehicleModelInfo__CLinkedUpgradeList__FindOtherUpgrade(CVehicleModelInfo__ms_linkedUpgrades, slot[i]);
                         if (otherUpgrade > -1)
                             CStreaming::SetMissionDoesntRequireModel(otherUpgrade);
                     }

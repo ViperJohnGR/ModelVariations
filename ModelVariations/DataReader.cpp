@@ -1,6 +1,7 @@
 #include "DataReader.hpp"
 #include "FuncUtil.hpp"
 #include "Log.hpp"
+#include "SA.hpp"
 
 #include <CModelInfo.h>
 #include <CPedModelInfo.h>
@@ -130,14 +131,13 @@ std::vector<unsigned short> DataReader::ReadLine(std::string_view section, std::
 			}
 			else if (parseType == READ_PEDS && !(token[0] >= '0' && token[0] <= '9') && CModelInfo::GetModelInfo(0))
 			{
-				auto ms_pExtraObjectsDir = **reinterpret_cast<CDirectory***>(0x409F6C);
-				if (ms_pExtraObjectsDir->FindItem(token.data()))
+				if (CStreaming__ms_pExtraObjectsDir->FindItem(token.data()))
 				{
 					for (uint16_t i = 1326; i < maxPedID; i++)
 						if (CModelInfo::GetModelInfo(i) == NULL)
 						{
 							//Log::Write("Adding model %s to id %d... ", token.data(), i);
-							auto pedInfo = reinterpret_cast<CPedModelInfo * (__cdecl*)(int)>(injector::GetBranchDestination(0x5B74A7).as_int())(i);
+							auto pedInfo = CModelInfo__AddPedModel(i);
 							if (pedInfo)
 							{
 								pedInfo->SetColModel((CColModel*)0x968DF0, false);

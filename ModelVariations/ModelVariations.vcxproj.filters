@@ -18,6 +18,7 @@
     <ClInclude Include="Log.hpp" />
     <ClInclude Include="FuncUtil.hpp" />
     <ClInclude Include="LoadedModules.hpp" />
+    <ClInclude Include="SA.hpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="ModelVariations.ruleset" />

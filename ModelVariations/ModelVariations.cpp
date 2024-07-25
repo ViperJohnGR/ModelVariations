@@ -74,6 +74,7 @@ std::unordered_map<std::uintptr_t, std::string> hooksASM;
 std::unordered_map<std::uintptr_t, hookinfo> hookedCalls;
 
 std::set<std::pair<std::uintptr_t, std::string>> callChecks;
+std::set<unsigned short> referenceCountModels;
 std::set<std::string> zones;
 
 std::vector<unsigned short> addedIDs;
@@ -99,6 +100,8 @@ bool queuedReload = false;
 
 int timeUpdate = -1;
 
+int flaMaxID = -1;
+
 //INI Options
 bool enableLog = false;
 bool logJumps = false;
@@ -109,6 +112,7 @@ bool enablePedWeapons = false;
 bool forceEnable = false;
 bool loadSettingsImmediately = false;
 int loadStage = 1;
+int trackReferenceCounts = -1;
 unsigned int disableKey = 0;
 unsigned int reloadKey = 0;
 
@@ -441,7 +445,7 @@ void initialize()
         flaIniPath.replace(flaIniPath.find_last_of("\\/"), std::string::npos, "\\fastman92limitAdjuster_GTASA.ini");
 
         DataReader flaIni(flaIniPath);
-        int flaMaxID = flaIni.ReadInteger("ID LIMITS", "Count of killable model IDs", -1);
+        flaMaxID = flaIni.ReadInteger("ID LIMITS", "Count of killable model IDs", -1);
         if (maxPedID == 0)
             maxPedID = flaMaxID;
 
@@ -504,6 +508,7 @@ public:
 
         iniSettings.SetIniPath(dataFileName);
 
+        trackReferenceCounts = iniSettings.ReadInteger("Settings", "TrackReferenceCounts", -1);
         loadSettingsImmediately = iniSettings.ReadBoolean("Settings", "LoadSettingsImmediately", true);
         forceEnable = iniSettings.ReadBoolean("Settings", "ForceEnable", false);
         loadStage = iniSettings.ReadInteger("Settings", "LoadStage", 1);
@@ -739,6 +744,22 @@ public:
             CTheZones::GetZoneInfo(&pPos, &zInfo);
             const CWanted* wanted = FindPlayerWanted(-1);
             const CPlayerPed* player = FindPlayerPed();
+
+            if (trackReferenceCounts && CModelInfo::GetModelInfo(0))
+                for (int i = 7; i < std::max<int>(flaMaxID, 20000); i++)
+                {
+                    auto mInfo = CModelInfo::GetModelInfo(i);
+                    if (mInfo && mInfo->m_nRefCount > trackReferenceCounts && !referenceCountModels.contains(static_cast<unsigned short>(i)))
+                    {
+                        char warning_string[256] = {};
+                        snprintf(warning_string, 255, "WARNING: model %d has a reference count of %d\n", i, mInfo->m_nRefCount);
+                        Log::Write(warning_string);
+#ifdef _DEBUG
+                        MessageBox(NULL, warning_string, "Model Variations", MB_ICONWARNING);
+#endif
+                        referenceCountModels.insert(static_cast<unsigned short>(i));
+                    }
+                }
 
             auto logVariationChange = [zInfo, wanted](const char* msg)
             {

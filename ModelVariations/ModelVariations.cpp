@@ -386,7 +386,13 @@ void updateVariations()
             currentTown = 7;
     }
 
-    Log::Write("CTheZones::m_CurrLevel = %d currentTown = %d\n\n", CTheZones::m_CurrLevel, currentTown);
+    Log::Write("CTheZones::m_CurrLevel = %d currentTown = %d\n", CTheZones::m_CurrLevel, currentTown);
+    Log::Write("CStreaming::ms_pedsLoaded: ");
+    for (int i = 0; i < 8; i++)
+    {
+        Log::Write("%d ", CStreaming__ms_pedsLoaded[i]);
+    }
+    Log::Write("\n\n");
 
     if (enablePeds)
         PedVariations::UpdateVariations();
@@ -751,8 +757,10 @@ public:
                     auto mInfo = CModelInfo::GetModelInfo(i);
                     if (mInfo && mInfo->m_nRefCount > trackReferenceCounts && !referenceCountModels.contains(static_cast<unsigned short>(i)))
                     {
+                        auto modelType = (mInfo->GetModelType() == MODEL_INFO_VEHICLE) ? "(Vehicle) " : ((mInfo->GetModelType() == MODEL_INFO_PED) ? "(Ped) " : "");
+
                         char warning_string[256] = {};
-                        snprintf(warning_string, 255, "WARNING: model %d has a reference count of %d\n", i, mInfo->m_nRefCount);
+                        snprintf(warning_string, 255, "WARNING: model %d %shas a reference count of %d\n", i, modelType, mInfo->m_nRefCount);
                         Log::Write(warning_string);
 #ifdef _DEBUG
                         MessageBox(NULL, warning_string, "Model Variations", MB_ICONWARNING);

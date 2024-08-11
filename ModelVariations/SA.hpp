@@ -1,6 +1,7 @@
 #pragma once
 
 #include <CDirectory.h>
+#include <CLoadedCarGroup.h>
 #include <CPedModelInfo.h>
 
 
@@ -12,6 +13,7 @@
 
 #define CStreaming__ms_pExtraObjectsDir (**reinterpret_cast<CDirectory***>(0x409F6C))
 #define CStreaming__ms_pedsLoaded (*reinterpret_cast<int **>(0x40A5A0))
+#define CStreaming__ms_vehiclesLoaded (*reinterpret_cast<CLoadedCarGroup**>(0x40B997))
 
 #define CTheScripts__StreamedScripts reinterpret_cast<void*>(*(uintptr_t*)0x476D51)
 #define CExternalScripts__findByScmIndex reinterpret_cast<short(__thiscall*)(void*, short)>(injector::GetBranchDestination(0x476D56).as_int())

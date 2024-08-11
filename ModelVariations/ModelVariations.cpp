@@ -10,6 +10,7 @@
 #include "Vehicles.hpp"
 
 #include <plugin.h>
+#include <CLoadedCarGroup.h>
 #include <CModelInfo.h>
 #include <CPedModelInfo.h>
 #include <CPopulation.h>
@@ -392,6 +393,11 @@ void updateVariations()
     {
         Log::Write("%d ", CStreaming__ms_pedsLoaded[i]);
     }
+    Log::Write("\nCStreaming::ms_vehiclesLoaded: ");
+    for (unsigned i = 0; i < CStreaming__ms_vehiclesLoaded->CountMembers(); i++)
+    {
+        Log::Write("%d ", CStreaming__ms_vehiclesLoaded->m_members[i]);
+    }
     Log::Write("\n\n");
 
     if (enablePeds)
@@ -751,7 +757,7 @@ public:
             const CWanted* wanted = FindPlayerWanted(-1);
             const CPlayerPed* player = FindPlayerPed();
 
-            if (trackReferenceCounts && CModelInfo::GetModelInfo(0))
+            if (trackReferenceCounts > 0 && CModelInfo::GetModelInfo(0))
                 for (int i = 7; i < std::max<int>(flaMaxID, 20000); i++)
                 {
                     auto mInfo = CModelInfo::GetModelInfo(i);

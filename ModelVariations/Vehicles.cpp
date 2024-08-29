@@ -7,12 +7,14 @@
 #include "SA.hpp"
 
 #include <plugin.h>
+#include <CCarCtrl.h>
 #include <CCarGenerator.h>
 #include <CHeli.h>
 #include <CModelInfo.h>
 #include <CPlane.h>
 #include <CTheScripts.h>
 #include <CVector.h>
+#include <CWorld.h>
 
 #include <array>
 #include <set>
@@ -67,6 +69,8 @@ bool tuneParkedCar = false;
 
 int occupantModelIndex = -1;
 
+std::set<std::pair<CVehicle*, CVehicle*>> spawnedTrailers;
+
 std::uintptr_t x6ABCBE_Destination = 0;
 
 uint32_t asmNextInstr[4] = {};
@@ -94,6 +98,7 @@ struct tVehVars {
     std::map<unsigned short, std::vector<unsigned short>> currentTuning;
     std::unordered_map<unsigned short, std::string> vehModels;
     std::unordered_map<unsigned short, BYTE> tuningRarities;
+    std::unordered_map<unsigned short, std::vector<unsigned short>> trailers;
 
     std::vector<unsigned short> currentVariations[212];
 
@@ -504,6 +509,10 @@ void VehicleVariations::LoadData()
             vec = dataFile.ReadLine(section, "ParentModel", READ_VEHICLES);
             if (!vec.empty() && vec[0] >= 400)
                 vehVars->originalModels[i] = vec[0];
+
+            vec = dataFile.ReadLine(section, "Trailers", READ_VEHICLES);
+            if (!vec.empty())
+                vehVars->trailers.insert({ i, vec });
         }
     }
 
@@ -512,6 +521,18 @@ void VehicleVariations::LoadData()
 
 void VehicleVariations::Process()
 {
+    for (auto it = spawnedTrailers.begin(); it != spawnedTrailers.end(); )
+    {
+        if (IsVehiclePointerValid(it->first))
+        {
+            if (IsVehiclePointerValid(it->second) && it->first->m_pTractor == NULL && (CTimer::m_snTimeInMilliseconds - it->first->m_nCreationTime) < 500)
+                it->first->SetTowLink(it->second, 1);
+            it++;
+        }
+        else
+            it = spawnedTrailers.erase(it);
+    }
+
     while (!vehVars->tuningStack.empty())
     {
         auto it = vehVars->tuningStack.top();
@@ -553,18 +574,33 @@ void VehicleVariations::Process()
         {
             veh->m_nVehicleFlags.bFadeOut = 1;
         }
-        else if(vehVars->passengers.contains(veh->m_nModelIndex) && vehVars->passengers[veh->m_nModelIndex][0] == 0)
+        else
         {
-            for (int i = 0; i < 8; i++)
-            {
-                CPed* passenger = veh->m_apPassengers[i];
-                if (passenger != NULL && passenger->m_nModelIndex > 0 && passenger->m_nCreatedBy != 2)
+            if (vehVars->passengers.contains(veh->m_nModelIndex) && vehVars->passengers[veh->m_nModelIndex][0] == 0)
+                for (int i = 0; i < 8; i++)
                 {
-                    if (passenger->m_pIntelligence)
-                        passenger->m_pIntelligence->FlushImmediately(false);
-                    CTheScripts::RemoveThisPed(passenger);
+                    CPed* passenger = veh->m_apPassengers[i];
+                    if (passenger != NULL && passenger->m_nModelIndex > 0 && passenger->m_nCreatedBy != 2)
+                    {
+                        if (passenger->m_pIntelligence)
+                            passenger->m_pIntelligence->FlushImmediately(false);
+                        CTheScripts::RemoveThisPed(passenger);
+                    }
                 }
-            }
+
+            if (vehVars->trailers.contains(veh->m_nModelIndex))
+            {
+                unsigned short randTrailer = vectorGetRandom(vehVars->trailers[veh->m_nModelIndex]);
+                loadModels({randTrailer}, PRIORITY_REQUEST, true);
+                CVehicle* trailer = CCarCtrl::GetNewVehicleDependingOnCarModel(randTrailer, RANDOM_VEHICLE);
+                if (trailer && IsVehiclePointerValid(veh))
+                {
+                    CWorld::Add(trailer);
+                    CTheScripts::ClearSpaceForMissionEntity(veh->GetPosition(), trailer);
+                    trailer->SetTowLink(veh, 1);
+                    spawnedTrailers.insert({ trailer, veh });
+                }
+            }            
         }
     }
 }
@@ -1153,6 +1189,20 @@ void __cdecl PossiblyRemoveVehicleHooked(CVehicle* car)
 {
     if (car == NULL)
         return;
+
+    for (auto it = spawnedTrailers.begin(); it != spawnedTrailers.end(); )
+    {
+        if (!IsVehiclePointerValid(it->first))
+        {
+            it = spawnedTrailers.erase(it);
+            continue;
+        }
+
+        if (it->first == car && it->first->m_pTractor && !it->first->m_pTractor->m_nVehicleFlags.bFadeOut)
+            return;
+
+        it++;
+    }
 
     switch (getVariationOriginalModel(car->m_nModelIndex))
     {

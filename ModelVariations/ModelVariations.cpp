@@ -389,7 +389,7 @@ void updateVariations()
 
     Log::Write("CTheZones::m_CurrLevel = %d currentTown = %d\n", CTheZones::m_CurrLevel, currentTown);
     Log::Write("CStreaming::ms_pedsLoaded: ");
-    for (int i = 0; i < 8; i++)
+    for (int i = 0; i < CStreaming__ms_numPedsLoaded; i++)
     {
         Log::Write("%d ", CStreaming__ms_pedsLoaded[i]);
     }

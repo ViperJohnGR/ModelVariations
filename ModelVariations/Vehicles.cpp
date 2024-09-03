@@ -99,6 +99,8 @@ struct tVehVars {
     std::unordered_map<unsigned short, std::string> vehModels;
     std::unordered_map<unsigned short, BYTE> tuningRarities;
     std::unordered_map<unsigned short, std::vector<unsigned short>> trailers;
+    std::unordered_map<unsigned short, BYTE> trailersRarities;
+    std::unordered_map<unsigned short, unsigned short> trailersHealth;
 
     std::vector<unsigned short> currentVariations[212];
 
@@ -106,6 +108,7 @@ struct tVehVars {
     std::set<unsigned short> vehHasVariations;
     std::set<unsigned short> mergeZones;
     std::set<unsigned short> useOnlyGroups;
+    std::set<unsigned short> trailersSyncColors;
 
     std::stack<std::pair<CVehicle*, std::array<std::vector<unsigned short>, 18>>> tuningStack;
     std::stack<CVehicle*> stack;
@@ -513,6 +516,17 @@ void VehicleVariations::LoadData()
             vec = dataFile.ReadLine(section, "Trailers", READ_VEHICLES);
             if (!vec.empty())
                 vehVars->trailers.insert({ i, vec });
+
+            if (dataFile.ReadBoolean(section, "TrailersSyncColors", false))
+                vehVars->trailersSyncColors.insert(i);
+
+            const int trailersRarity = dataFile.ReadInteger(section, "TrailersRarity", -1);
+            if (trailersRarity > -1)
+                vehVars->trailersRarities.insert({ i, (BYTE)trailersRarity });
+
+            const unsigned short trailersHealth = (unsigned short)dataFile.ReadInteger(section, "TrailersHealth", -1);
+            if (trailersHealth > -1)
+                vehVars->trailersHealth.insert({ i, trailersHealth });
         }
     }
 
@@ -588,7 +602,13 @@ void VehicleVariations::Process()
                     }
                 }
 
-            if (vehVars->trailers.contains(veh->m_nModelIndex))
+            auto trailersRarity = vehVars->trailersRarities.find(veh->m_nModelIndex);
+            bool spawnTrailer = (rand<uint32_t>(0, 3) == 0 ? true : false);
+
+            if (trailersRarity != vehVars->trailersRarities.end())
+                spawnTrailer = (trailersRarity->second == 0) ? false : ((rand<uint32_t>(0, trailersRarity->second) == 0) ? true : false);
+
+            if (vehVars->trailers.contains(veh->m_nModelIndex) && veh->m_pDriver && spawnTrailer)
             {
                 unsigned short randTrailer = vectorGetRandom(vehVars->trailers[veh->m_nModelIndex]);
                 loadModels({randTrailer}, PRIORITY_REQUEST, true);
@@ -598,6 +618,17 @@ void VehicleVariations::Process()
                     CWorld::Add(trailer);
                     CTheScripts::ClearSpaceForMissionEntity(veh->GetPosition(), trailer);
                     trailer->SetTowLink(veh, 1);
+                    CCarCtrl::SwitchVehicleToRealPhysics(veh);
+                    if (vehVars->trailersHealth.contains(veh->m_nModelIndex))
+                        trailer->m_fHealth = (float)vehVars->trailersHealth[veh->m_nModelIndex];
+
+                    if (vehVars->trailersSyncColors.contains(veh->m_nModelIndex))
+                    {
+                        trailer->m_nPrimaryColor = veh->m_nPrimaryColor;
+                        trailer->m_nSecondaryColor = veh->m_nSecondaryColor;
+                        trailer->m_nTertiaryColor = veh->m_nTertiaryColor;
+                        trailer->m_nQuaternaryColor = veh->m_nQuaternaryColor;
+                    }
                     spawnedTrailers.insert({ trailer, veh });
                 }
             }            
@@ -1233,10 +1264,6 @@ template <std::uintptr_t address>
 void __fastcall CAutomobile__PreRenderHooked(CAutomobile* veh)
 {
     assert(veh != NULL);
-
-    //For some reason, this fixes cop car lights not working while having VehFuncs installed.
-    //They also work ok on the debug build (don't know why).
-    injector::ReadMemory<uint32_t>(0x006ACCCC, true); 
 
     unsigned short originalModel = veh->m_nModelIndex;
     lightsModel = veh->m_nModelIndex;

@@ -216,10 +216,10 @@ inline bool vectorHasId(const std::vector<unsigned short>& vec, int id)
     if (vec.size() < 1)
         return false;
 
-    if (std::find(vec.begin(), vec.end(), id) != vec.end())
-        return true;
+    if (vec.size() < 50)
+        return std::find(vec.begin(), vec.end(), id) != vec.end();
 
-    return false;
+    return std::binary_search(vec.begin(), vec.end(), id);
 }
 
 inline bool vectorPushUnique(std::vector<unsigned short>& vec, unsigned short value)

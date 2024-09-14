@@ -349,42 +349,46 @@ void updateVariations()
 {
     //zInfo->m_szTextKey = BLUEB | zInfo->m_szLabel = BLUEB1
 
-    auto isPlayerInZone = [](const char* zoneName)
+    CVector position = FindPlayerCoors(-1);
+
+    auto isPlayerInZone = [&position](const char* zoneName)
     {
-        if (FindPlayerPed() != NULL)
-        {
-            CVector position = FindPlayerCoors(-1);
-            return CTheZones::FindZone(&position, (*(int32_t*)zoneName), (*(int32_t*)(zoneName + 4)), ZONE_TYPE_NAVI);
-        }
-        return false;
+        return CTheZones::FindZone(&position, (*(int32_t*)zoneName), (*(int32_t*)(zoneName + 4)), ZONE_TYPE_NAVI);
     };
 
     currentTown = CTheZones::m_CurrLevel;
     if (currentTown == LEVEL_NAME_COUNTRY_SIDE)
     {
-        //COUNTRY_LA
-        if (isPlayerInZone("BLUEB"))
-            currentTown = 9;
-        else if (isPlayerInZone("MONT"))
-            currentTown = 10;
-        else if (isPlayerInZone("DILLI"))
-            currentTown = 11;
-        else if (isPlayerInZone("PALO"))
-            currentTown = 12;
-        else if (isPlayerInZone("RED"))
-            currentTown = 8;
-        //COUNTRY_SF
-        else if (isPlayerInZone("ANGPI"))
-            currentTown = 15;
-        else if (isPlayerInZone("FLINTC"))
-            currentTown = 13;
-        else if (isPlayerInZone("WHET"))
-            currentTown = 14;
-        //COUNTRY_LV
-        else if (isPlayerInZone("ROBAD"))
-            currentTown = 6;
-        else if (isPlayerInZone("BONE"))
-            currentTown = 7;
+        if (position.y > 595) //COUNTRY_LV
+        {
+            if (isPlayerInZone("ROBAD"))
+                currentTown = 6;
+            else if (isPlayerInZone("BONE"))
+                currentTown = 7;
+        }
+        else if (position.y > -770) //COUNTRY_LA
+        {
+            if (isPlayerInZone("BLUEB"))
+                currentTown = 9;
+            else if (isPlayerInZone("MONT"))
+                currentTown = 10;
+            else if (isPlayerInZone("DILLI"))
+                currentTown = 11;
+            else if (isPlayerInZone("PALO"))
+                currentTown = 12;
+            else if (isPlayerInZone("RED"))
+                currentTown = 8;
+        }
+
+        if (currentTown == LEVEL_NAME_COUNTRY_SIDE) //COUNTRY_SF
+        {
+            if (isPlayerInZone("ANGPI"))
+                currentTown = 15;
+            else if (isPlayerInZone("FLINTC"))
+                currentTown = 13;
+            else if (isPlayerInZone("WHET"))
+                currentTown = 14;
+        }
     }
 
     Log::Write("CTheZones::m_CurrLevel = %d currentTown = %d\n", CTheZones::m_CurrLevel, currentTown);
@@ -558,6 +562,15 @@ public:
                 RegCloseKey(hkey);
             }
 
+            SYSTEM_INFO nsi;
+            GetNativeSystemInfo(&nsi);
+
+            if (nsi.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_INTEL)
+                windowsVersion += " (32-bit processor)";
+            else if (nsi.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_AMD64)
+                windowsVersion += " (64-bit processor)";
+
+
             Log::Write("Model Variations %s\n%s\n%s\n\n%s\n", MOD_VERSION DEBUG_STRING, windowsVersion.c_str(), getDatetime(true, true, false).c_str(), exePath.c_str());
 
             if (GetGameVersion() == GAME_10US_HOODLUM)
@@ -621,7 +634,10 @@ public:
                 for (int i = 0; i < CTheZones::TotalNumberOfInfoZones; i++)
                 {
                     char zoneLabel[9] = {};
-                    memcpy(&zoneLabel[0], *(char**)(0x572BB6 + 1) + i * 0x20, 8);
+                    memcpy(&zoneLabel[0], (char*)(CTheZones__NavigationZoneArray) + i * 0x20, 8);
+
+                    //CZone* zone = reinterpret_cast<CZone*>((char*)(CTheZones__NavigationZoneArray)+i * 0x20);
+
                     zones.insert(zoneLabel);
                 }
                 zonesRead = true;
@@ -636,7 +652,7 @@ public:
             if (enableLog)
                 framesSinceCallsChecked = 900;
 
-            currentZone[0] = 0;
+            *reinterpret_cast<uint64_t*>(currentZone) = 0;
             lastInterior[0] = 0;
 
             reloadingSettings = true;
@@ -908,6 +924,7 @@ public:
             {
                 logVariationChange("Zone changed");
 
+                *reinterpret_cast<uint64_t*>(currentZone) = 0;
                 strncpy(currentZone, zInfo->m_szLabel, 7);
                 updateVariations();
             }

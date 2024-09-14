@@ -24,6 +24,7 @@ int16_t destroyedModelCounters[20000];
 struct tPedVars {
     std::array<std::vector<unsigned short>, 16> variations[MAX_PED_ID];
     std::array<std::vector<unsigned short>, 6> wantedVariations[MAX_PED_ID];
+    std::array<std::unordered_map<uint64_t, std::vector<unsigned short>>, MAX_PED_ID> zoneVariations;
 
     std::map<unsigned short, int> pedTimeSinceSpawn;
     std::unordered_map<unsigned short, std::vector<unsigned short>> originalModels;
@@ -31,14 +32,12 @@ struct tPedVars {
     std::unordered_map<unsigned short, bool> useParentVoice;
     std::unordered_map<unsigned short, std::vector<unsigned short>> voices;
 
-    std::set<unsigned short> drugDealers;
-    std::set<unsigned short> dontInheritBehaviourModels;
-    std::set<unsigned short> mergeZones;
-    std::set<unsigned short> pedHasVariations;
-
     std::stack<CPed*> stack;
 
     std::vector<unsigned short> currentVariations[MAX_PED_ID];
+    std::vector<unsigned short> dontInheritBehaviourModels;
+    std::vector<unsigned short> mergeZones;
+    std::vector<unsigned short> pedHasVariations;
 };
 
 std::unique_ptr<tPedVars> pedVars(new tPedVars);
@@ -177,7 +176,7 @@ void PedVariations::LoadData()
 
         if (isValidPedId(i))
         {
-            pedVars->pedHasVariations.insert((unsigned short)i);
+            pedVars->pedHasVariations.push_back((unsigned short)i);
 
             for (unsigned j = 0; j < 16; j++)
                 if (j < 6)
@@ -200,18 +199,28 @@ void PedVariations::LoadData()
             
             for (const auto& keyValue : iniData.second)
                 if (zones.contains(keyValue.first))
-                    for (auto variation : dataFile.ReadLine(section, keyValue.first, READ_PEDS))
+                {
+                    auto vec = dataFile.ReadLine(section, keyValue.first, READ_PEDS);
+                    if (!vec.empty())
+                    {
+                        char tmp[8] = {};
+                        strncpy(tmp, keyValue.first.c_str(), 7);
+                        pedVars->zoneVariations[(unsigned short)i][*reinterpret_cast<uint64_t*>(tmp)] = vec;
+                    }
+
+                    for (auto variation : vec)
                         if (variation > 0 && variation != i)
                             vectorPushUnique(pedVars->originalModels[variation], static_cast<unsigned short>(i));
+                }
 
             for (auto &it : pedVars->originalModels)
                 std::sort(it.second.begin(), it.second.end());
 
             if (dataFile.ReadBoolean(section, "MergeZonesWithCities", false))
-                pedVars->mergeZones.insert((unsigned short)i);
+                pedVars->mergeZones.push_back((unsigned short)i);
 
             if (dataFile.ReadBoolean(section, "DontInheritBehaviour", false))
-                pedVars->dontInheritBehaviourModels.insert((unsigned short)i);
+                pedVars->dontInheritBehaviourModels.push_back((unsigned short)i);
         }
 
         int parentVoice = dataFile.ReadInteger(section, "UseParentVoice", -1);
@@ -222,6 +231,10 @@ void PedVariations::LoadData()
         if (!vec.empty())
             pedVars->voices.insert({ (unsigned short)i, vec });
     }
+
+    std::sort(pedVars->dontInheritBehaviourModels.begin(), pedVars->dontInheritBehaviourModels.end());
+    std::sort(pedVars->mergeZones.begin(), pedVars->mergeZones.end());
+    std::sort(pedVars->pedHasVariations.begin(), pedVars->pedHasVariations.end());
 
     pedOptions->recursiveVariations = dataFile.ReadBoolean("Settings", "RecursiveVariations", true);
     pedOptions->useParentVoices = dataFile.ReadBoolean("Settings", "UseParentVoices", false);
@@ -348,7 +361,6 @@ void PedVariations::ProcessDrugDealers(bool reset)
     if (reset)
     {
         dealersFrames = 0;
-        pedVars->drugDealers.clear();
     }
     else
     {
@@ -368,8 +380,6 @@ void PedVariations::ProcessDrugDealers(bool reset)
                             auto findByScmIndex = CExternalScripts__findByScmIndex(CTheScripts__StreamedScripts, 19);
 
                             CScriptsForBrains__AddNewScriptBrain(CTheScripts__ScriptsForBrains, findByScmIndex, (short)it.first, 100, 0, -1, -1.0);
-
-                            pedVars->drugDealers.insert(it.first);
                             break;
                         }
 
@@ -389,13 +399,15 @@ void PedVariations::UpdateVariations()
 
         const std::string section = pedVars->pedModels.contains(modelid) ? pedVars->pedModels[modelid] : std::to_string(modelid);
 
-        std::vector<unsigned short> vec = dataFile.ReadLine(section, currentZone, READ_PEDS);
-        if (!vec.empty())
+        if (auto it = pedVars->zoneVariations[modelid].find(*reinterpret_cast<uint64_t*>(currentZone)); it != pedVars->zoneVariations[modelid].end())
         {
-            if (pedVars->mergeZones.contains(modelid))
-                pedVars->currentVariations[modelid] = vectorUnion(pedVars->currentVariations[modelid], vec);
-            else
-                pedVars->currentVariations[modelid] = vec;
+            if (!it->second.empty())
+            {
+                if (vectorHasId(pedVars->mergeZones, modelid))
+                    pedVars->currentVariations[modelid] = vectorUnion(pedVars->currentVariations[modelid], it->second);
+                else
+                    pedVars->currentVariations[modelid] = it->second;
+            }
         }
 
         pedVars->currentVariations[modelid] = vectorUnion(pedVars->currentVariations[modelid], dataFile.ReadLine(section, currentInterior, READ_PEDS));
@@ -495,7 +507,7 @@ int __fastcall SetModelIndexHooked(CEntity* _this, void*, int index)
             else 
                 callMethodOriginalAndReturn<int, address>(_this, variationModel);
 
-            if (!pedVars->dontInheritBehaviourModels.contains(originalModel))
+            if (!vectorHasId(pedVars->dontInheritBehaviourModels, originalModel))
                 _this->m_nModelIndex = originalModel;
             modelIndex = variationModel;
         }

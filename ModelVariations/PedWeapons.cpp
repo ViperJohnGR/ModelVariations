@@ -24,10 +24,10 @@ std::stack<CPed*> pedWepStack;
 
 std::vector<std::pair<CPed*, int>> weaponWatchers;
 
-bool isIdValidForWatcher(unsigned short id) //TODO: Add all scripted ped ids
+bool isIdValidForWatcher(unsigned short id)
 {
     for (auto i : PedVariations::GetVariationOriginalModels(id))
-        switch (i)  //TODO: drug dealers only work with WEAPONFORCE because they are initially unarmed
+        switch (i)  //NOTE: drug dealers only work with WEAPONFORCE because they are initially unarmed
         {
             case 28:
             case 29:
@@ -271,13 +271,19 @@ int16_t __fastcall CollectParametersHooked(CRunningScript * _this, void*, unsign
     if (!ScriptParams[1])
         return retVal;
 
-    for (auto& i : weaponWatchers)
+    for (auto it = weaponWatchers.begin(); it != weaponWatchers.end();)
     {
-        if (ScriptParams[0] == CPools::GetPedRef(i.first) && ScriptParams[1] == 22 /* TODO: add check based on ped model id, don't assume Pistol */)
+        if (IsPedPointerValid(it->first))
         {
-            ScriptParams[1] = i.second;
-            break;
+            if (ScriptParams[0] == CPools::GetPedRef(it->first) && ScriptParams[1] == 22)
+            {
+                ScriptParams[1] = it->second;
+                break;
+            }
+            it++;
         }
+        else
+            it = weaponWatchers.erase(it);
     }   
 
     return retVal;

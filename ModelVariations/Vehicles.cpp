@@ -219,7 +219,7 @@ void processTuning(CVehicle* veh)
             std::array<bool, 18> slotsToInstall = {};
             for (unsigned int i = 0; i < 18; i++)
                 if (tuningRarity != vehVars->tuningRarities.end())
-                    slotsToInstall[i] = (tuningRarity->second == 0) ? false : ((rand<uint32_t>(0, tuningRarity->second) == 0) ? true : false);
+                    slotsToInstall[i] = (tuningRarity->second == 0) ? false : ((rand<uint32_t>(tuningRarity->second-1, 100) == 99) ? true : false);
                 else
                     slotsToInstall[i] = (rand<uint32_t>(0, 3) == 0 ? true : false);
 
@@ -552,7 +552,7 @@ void VehicleVariations::LoadData()
 
             const int trailersRarity = dataFile.ReadInteger(section, "TrailersRarity", -1);
             if (trailersRarity > -1)
-                vehVars->trailersRarities.insert({ i, (BYTE)trailersRarity });
+                vehVars->trailersRarities.insert({ i, (BYTE)(trailersRarity > 100 ? 100 : trailersRarity) });
 
             const unsigned short trailersHealth = (unsigned short)dataFile.ReadInteger(section, "TrailersHealth", -1);
             if (trailersHealth > -1)
@@ -641,7 +641,7 @@ void VehicleVariations::Process()
             bool spawnTrailer = (rand<uint32_t>(0, 3) == 0 ? true : false);
 
             if (trailersRarity != vehVars->trailersRarities.end())
-                spawnTrailer = (trailersRarity->second == 0) ? false : ((rand<uint32_t>(0, trailersRarity->second) == 0) ? true : false);
+                spawnTrailer = (trailersRarity->second == 0) ? false : ((rand<uint32_t>(trailersRarity->second-1, 100) == 99) ? true : false);
 
             if (vehVars->trailers.contains(veh->m_nModelIndex) && veh->m_pDriver && spawnTrailer)
             {

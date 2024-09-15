@@ -106,7 +106,7 @@ struct tVehVars {
     std::vector<unsigned short> currentVariations[212];
     std::vector<unsigned short> mergeZones;
     std::vector<unsigned short> parkedCars;
-    std::vector<unsigned short> trailersSyncColors;
+    std::vector<unsigned short> trailersMatchColors;
     std::vector<unsigned short> useOnlyGroups;
 
     std::set<unsigned short> vehHasVariations;
@@ -547,8 +547,8 @@ void VehicleVariations::LoadData()
             if (!vec.empty())
                 vehVars->trailers.insert({ i, vec });
 
-            if (dataFile.ReadBoolean(section, "TrailersSyncColors", false))
-                vehVars->trailersSyncColors.push_back(i);
+            if (dataFile.ReadBoolean(section, "TrailersMatchColors", false))
+                vehVars->trailersMatchColors.push_back(i);
 
             const int trailersRarity = dataFile.ReadInteger(section, "TrailersRarity", -1);
             if (trailersRarity > -1)
@@ -562,7 +562,7 @@ void VehicleVariations::LoadData()
 
     std::sort(vehVars->mergeZones.begin(), vehVars->mergeZones.end());
     std::sort(vehVars->parkedCars.begin(), vehVars->parkedCars.end());
-    std::sort(vehVars->trailersSyncColors.begin(), vehVars->trailersSyncColors.end());
+    std::sort(vehVars->trailersMatchColors.begin(), vehVars->trailersMatchColors.end());
     std::sort(vehVars->useOnlyGroups.begin(), vehVars->useOnlyGroups.end());
 
     Log::Write("\n");
@@ -657,7 +657,7 @@ void VehicleVariations::Process()
                     if (vehVars->trailersHealth.contains(veh->m_nModelIndex))
                         trailer->m_fHealth = (float)vehVars->trailersHealth[veh->m_nModelIndex];
 
-                    if (vectorHasId(vehVars->trailersSyncColors, veh->m_nModelIndex))
+                    if (vectorHasId(vehVars->trailersMatchColors, veh->m_nModelIndex))
                     {
                         trailer->m_nPrimaryColor = veh->m_nPrimaryColor;
                         trailer->m_nSecondaryColor = veh->m_nSecondaryColor;

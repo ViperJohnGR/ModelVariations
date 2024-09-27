@@ -98,9 +98,9 @@ struct tVehVars {
     std::unordered_map<unsigned short, rgba> lightColors2;
     std::map<unsigned short, std::vector<unsigned short>> currentTuning;
     std::unordered_map<unsigned short, std::string> vehModels;
-    std::unordered_map<unsigned short, BYTE> tuningRarities;
+    std::unordered_map<unsigned short, BYTE> tuningChances;
     std::unordered_map<unsigned short, std::vector<unsigned short>> trailers;
-    std::unordered_map<unsigned short, BYTE> trailersRarities;
+    std::unordered_map<unsigned short, BYTE> trailersSpawnChances;
     std::unordered_map<unsigned short, unsigned short> trailersHealth;
 
     std::vector<unsigned short> currentVariations[212];
@@ -134,6 +134,68 @@ struct tVehOptions {
 
 std::unique_ptr<tVehOptions> vehOptions(new tVehOptions);
 
+
+bool isAnotherVehicleBehind(CVehicle* veh)
+{
+    auto isPointInPolygon = [](const std::vector<CVector2D>& polygon, const CVector2D& point)
+    {
+        //https://www.geeksforgeeks.org/point-in-polygon-in-cpp/
+        unsigned int n = polygon.size();
+        bool inside = false;
+
+        for (unsigned int i = 0; i < n; i++) {
+            CVector2D p1 = polygon[i];
+            CVector2D p2 = polygon[(i + 1) % n];
+
+            bool yCheck = (p1.y > point.y) != (p2.y > point.y);
+
+            double xIntersect = (p2.x - p1.x) * (point.y - p1.y) / (p2.y - p1.y) + (double)p1.x;
+
+            if (yCheck && point.x < xIntersect)
+                inside = !inside;
+        }
+
+        return inside;
+    };
+
+    auto* mInfo = CModelInfo::GetModelInfo(veh->m_nModelIndex);
+    if (mInfo == NULL)
+        return false;
+    
+    CVector vmin = mInfo->m_pColModel->m_boundBox.m_vecMin;
+    CVector vmax = mInfo->m_pColModel->m_boundBox.m_vecMax;
+
+    CVector bottom_left = veh->TransformFromObjectSpace({ vmin.x, vmin.y * 3.0f, 0.0f });
+    CVector bottom_right = veh->TransformFromObjectSpace({ -vmin.x, vmin.y * 3.0f, 0.0f });
+    CVector top_right = veh->TransformFromObjectSpace({ vmax.x, vmin.y, 0.0f });
+    CVector top_left = veh->TransformFromObjectSpace({ vmin.x, vmin.y, 0.0f });
+
+    std::vector<CVector2D> polygon = { { top_left.x, top_left.y }, { top_right.x, top_right.y }, { bottom_right.x, bottom_right.y }, { bottom_left.x, bottom_left.y } };
+
+    for (const auto& i : CPools::ms_pVehiclePool)
+    {
+        if (std::abs(i->GetPosition().z - veh->GetPosition().z) > 25.0f)
+            continue;
+
+        auto* mInfoTarget = CModelInfo::GetModelInfo(i->m_nModelIndex);
+        if (i != veh && mInfoTarget != NULL)
+        {
+            CVector vminTarget = mInfoTarget->m_pColModel->m_boundBox.m_vecMin;
+            CVector vmaxTarget = mInfoTarget->m_pColModel->m_boundBox.m_vecMax;
+
+            CVector2D top_rightTarget = convert3DVectorTo2D(i->TransformFromObjectSpace({ vmaxTarget.x, vminTarget.y, 0.0f }));
+            CVector2D top_leftTarget = convert3DVectorTo2D(i->TransformFromObjectSpace({ vminTarget.x, vminTarget.y, 0.0f }));
+
+            CVector2D top_centerTarget = convert3DVectorTo2D(i->TransformFromObjectSpace({ 0.0, vminTarget.y, 0.0f }));
+
+            if (isPointInPolygon(polygon, top_rightTarget) || isPointInPolygon(polygon, top_leftTarget) || isPointInPolygon(polygon, top_centerTarget))
+                return true;
+        }
+    }
+    
+
+    return false;
+}
 
 int getTuningPartSlot(int model)
 {
@@ -214,12 +276,12 @@ void processTuning(CVehicle* veh)
                 }
 
 
-            auto tuningRarity = vehVars->tuningRarities.find(veh->m_nModelIndex);
+            auto tuningChance = vehVars->tuningChances.find(veh->m_nModelIndex);
 
             std::array<bool, 18> slotsToInstall = {};
             for (unsigned int i = 0; i < 18; i++)
-                if (tuningRarity != vehVars->tuningRarities.end())
-                    slotsToInstall[i] = (tuningRarity->second == 0) ? false : ((rand<uint32_t>(tuningRarity->second-1, 100) == 99) ? true : false);
+                if (tuningChance != vehVars->tuningChances.end())
+                    slotsToInstall[i] = (tuningChance->second == 0) ? false : ((rand<uint32_t>(0, 100) < tuningChance->second) ? true : false);
                 else
                     slotsToInstall[i] = (rand<uint32_t>(0, 3) == 0 ? true : false);
 
@@ -454,9 +516,9 @@ void VehicleVariations::LoadData()
             }
 
 
-            const int tuningRarity = dataFile.ReadInteger(section, "TuningRarity", -1);
-            if (tuningRarity > -1)
-                vehVars->tuningRarities.insert({ i, (BYTE)tuningRarity });
+            const int tuningChance = dataFile.ReadInteger(section, "TuningChance", -1);
+            if (tuningChance > -1)
+                vehVars->tuningChances.insert({ i, (BYTE)tuningChance });
 
             if (dataFile.ReadBoolean(section, "UseOnlyGroups", false))
                 vehVars->useOnlyGroups.push_back(i);
@@ -550,9 +612,9 @@ void VehicleVariations::LoadData()
             if (dataFile.ReadBoolean(section, "TrailersMatchColors", false))
                 vehVars->trailersMatchColors.push_back(i);
 
-            const int trailersRarity = dataFile.ReadInteger(section, "TrailersRarity", -1);
-            if (trailersRarity > -1)
-                vehVars->trailersRarities.insert({ i, (BYTE)(trailersRarity > 100 ? 100 : trailersRarity) });
+            const int trailersSpawnChance = dataFile.ReadInteger(section, "TrailersSpawnChance", -1);
+            if (trailersSpawnChance > -1)
+                vehVars->trailersSpawnChances.insert({ i, (BYTE)(trailersSpawnChance > 100 ? 100 : trailersSpawnChance) });
 
             const unsigned short trailersHealth = (unsigned short)dataFile.ReadInteger(section, "TrailersHealth", -1);
             if (trailersHealth > -1)
@@ -574,8 +636,16 @@ void VehicleVariations::Process()
     {
         if (IsVehiclePointerValid(it->first))
         {
-            if (IsVehiclePointerValid(it->second) && it->first->m_pTractor == NULL && (CTimer::m_snTimeInMilliseconds - it->first->m_nCreationTime) < 500)
-                it->first->SetTowLink(it->second, 1);
+            if ((CTimer::m_snTimeInMilliseconds - it->first->m_nCreationTime) < 500)
+            {
+                if (IsVehiclePointerValid(it->second) && it->first->m_pTractor == NULL)
+                    it->first->SetTowLink(it->second, 1);
+            }
+            else if ((CTimer::m_snTimeInMilliseconds - it->first->m_nCreationTime) < 3900)
+            {
+                if (it->first->m_pTractor == NULL && !it->first->GetIsOnScreen())
+                    it->first->m_nVehicleFlags.bFadeOut = 1;
+            }
             it++;
         }
         else
@@ -637,13 +707,23 @@ void VehicleVariations::Process()
                     }
                 }
 
-            auto trailersRarity = vehVars->trailersRarities.find(veh->m_nModelIndex);
+            auto trailersSpawnChance = vehVars->trailersSpawnChances.find(veh->m_nModelIndex);
             bool spawnTrailer = (rand<uint32_t>(0, 3) == 0 ? true : false);
 
-            if (trailersRarity != vehVars->trailersRarities.end())
-                spawnTrailer = (trailersRarity->second == 0) ? false : ((rand<uint32_t>(trailersRarity->second-1, 100) == 99) ? true : false);
+            if (trailersSpawnChance != vehVars->trailersSpawnChances.end())
+                spawnTrailer = (trailersSpawnChance->second == 0) ? false : ((rand<uint32_t>(0, 100) < trailersSpawnChance->second) ? true : false);
 
-            if (vehVars->trailers.contains(veh->m_nModelIndex) && veh->m_pDriver && spawnTrailer)
+            for (auto& i : spawnedTrailers)
+            {
+                if (veh == i.first && veh->m_pTractor && isAnotherVehicleBehind(veh))
+                {
+                    veh->SetPosn({});
+                    veh->m_nVehicleFlags.bFadeOut = 1;
+                    break;
+                }
+            }
+
+            if (veh->m_pDriver && veh->m_pDriver != FindPlayerPed() && spawnTrailer && vehVars->trailers.contains(veh->m_nModelIndex))
             {
                 unsigned short randTrailer = vectorGetRandom(vehVars->trailers[veh->m_nModelIndex]);
                 loadModels({randTrailer}, PRIORITY_REQUEST, true);
@@ -1658,8 +1738,13 @@ int __fastcall CreateInstanceHooked(CVehicleModelInfo* _this)
     {
         int index = 0;
         CModelInfo::GetModelInfoFromHashKey(_this->m_nKey, &index);
-        Log::Write("Model %d has NULL vehicle struct.\n", index);
+        Log::Write("Model %d has NULL vehicle struct. Trying to load model... ", index);
         loadModels({ index }, PRIORITY_REQUEST, true);
+        if (_this->m_pVehicleStruct != NULL)
+            Log::Write("OK\n");
+        else
+            Log::Write("\nCouldn't load model %d! The game will crash.\n");
+
     }
 
     return callMethodOriginalAndReturn<int, address>(_this);

@@ -239,6 +239,25 @@ void PedWeaponVariations::LogDataFile()
 ///////////////////////////////////////////  CALL HOOKS    ////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
+template <std::uintptr_t address>
+void __fastcall GiveWeaponAtStartOfFightHooked(CPed* ped)
+{
+    assert(ped != NULL);
+
+    if (ped->m_nCreatedBy != 2 && ped->m_aWeapons[ped->m_nActiveWeaponSlot].m_eWeaponType == WEAPON_UNARMED)
+        switch (ped->m_nPedType)
+        {
+            case PED_TYPE_CRIMINAL:
+            case PED_TYPE_PROSTITUTE:
+                for (auto& i : weaponWatchers)
+                    if (i.first == ped)
+                        return callMethodOriginal<address>(ped);
+                
+                pedWepStack.push(ped);
+        }
+
+    return callMethodOriginal<address>(ped);
+}
 
 template <std::uintptr_t address>
 int __fastcall GiveWeaponHooked(CPed* ped, void*, int weaponID, int ammo, int a4)
@@ -291,6 +310,7 @@ int16_t __fastcall CollectParametersHooked(CRunningScript * _this, void*, unsign
 
 void PedWeaponVariations::InstallHooks()
 {
+    hookCall(0x62A12E, GiveWeaponAtStartOfFightHooked<0x62A12E>, "CPed::GiveWeaponAtStartOfFight");
     hookCall(0x47D335, GiveWeaponHooked<0x47D335>, "CPed::GiveWeapon");
     hookCall(0x47D4AC, CollectParametersHooked<0x47D4AC>, "CRunningScript::CollectParameters"); //SET_CURRENT_CHAR_WEAPON
     hookCall(0x48AE9E, CollectParametersHooked<0x48AE9E>, "CRunningScript::CollectParameters"); //HAS_CHAR_GOT_WEAPON

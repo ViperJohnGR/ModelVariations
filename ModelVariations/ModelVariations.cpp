@@ -140,12 +140,19 @@ bool checkForUpdate()
     }
 
     stream->Release();
-    str = str.substr(str.find("\"name\":\"v")+9, 10);
+    auto versionStringPos = str.find("\"name\":\"v") + 9;
+    if (versionStringPos >= str.size())
+    {
+        Log::Write("Check for updates failed. Invalid version string.\n");
+        return false;
+    }
+
+    str = str.substr(versionStringPos, 10);
     str.erase(str.find('"'));
     for (auto ch : str)
-        if (!((ch >= '0' && ch <= '9') || (ch == '.')))
+        if ((ch < '0' || ch > '9') && ch != '.')
         {
-            Log::Write("Check for updates failed. Invalid version string.\n");
+            Log::Write("Check for updates failed. Invalid version number.\n");
             return false;
         }
 

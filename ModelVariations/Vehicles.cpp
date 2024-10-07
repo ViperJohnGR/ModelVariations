@@ -185,10 +185,13 @@ bool isAnotherVehicleBehind(CVehicle* veh)
 
             CVector2D top_rightTarget = convert3DVectorTo2D(i->TransformFromObjectSpace({ vmaxTarget.x, vminTarget.y, 0.0f }));
             CVector2D top_leftTarget = convert3DVectorTo2D(i->TransformFromObjectSpace({ vminTarget.x, vminTarget.y, 0.0f }));
+            CVector2D bottom_leftTarget = convert3DVectorTo2D(i->TransformFromObjectSpace({ vminTarget.x, vminTarget.y * 2.0f, 0.0f }));
+            CVector2D bottom_rightTarget = convert3DVectorTo2D(i->TransformFromObjectSpace({ -vminTarget.x, vminTarget.y * 2.0f, 0.0f }));
 
             CVector2D top_centerTarget = convert3DVectorTo2D(i->TransformFromObjectSpace({ 0.0, vminTarget.y, 0.0f }));
 
-            if (isPointInPolygon(polygon, top_rightTarget) || isPointInPolygon(polygon, top_leftTarget) || isPointInPolygon(polygon, top_centerTarget))
+            if (isPointInPolygon(polygon, top_rightTarget) || isPointInPolygon(polygon, top_leftTarget) || isPointInPolygon(polygon, top_centerTarget) ||
+                isPointInPolygon(polygon, bottom_leftTarget) || isPointInPolygon(polygon, bottom_rightTarget))
                 return true;
         }
     }
@@ -1340,6 +1343,8 @@ void __cdecl PossiblyRemoveVehicleHooked(CVehicle* car)
     if (car == NULL)
         return;
 
+    CVehicle *trailerToCheck = NULL;
+
     for (auto it = spawnedTrailers.begin(); it != spawnedTrailers.end(); )
     {
         if (!IsVehiclePointerValid(it->first))
@@ -1350,6 +1355,9 @@ void __cdecl PossiblyRemoveVehicleHooked(CVehicle* car)
 
         if (it->first == car && it->first->m_pTractor && !it->first->m_pTractor->m_nVehicleFlags.bFadeOut)
             return;
+
+        if (it->second == car && it->first->m_pTractor == it->second)
+            trailerToCheck = it->first;
 
         it++;
     }
@@ -1363,6 +1371,12 @@ void __cdecl PossiblyRemoveVehicleHooked(CVehicle* car)
     }
 
     callOriginal<address>(car);
+
+    if (trailerToCheck != NULL && !IsVehiclePointerValid(car))
+    {
+        trailerToCheck->SetPosn({});
+        trailerToCheck->m_nVehicleFlags.bFadeOut = 1;
+    }
 }
 
 template <std::uintptr_t address>
@@ -2321,7 +2335,9 @@ void VehicleVariations::InstallHooks()
         hookASM(0x431D89, "66 8B 46 22 66 3D CF 01",          movReg16WordPtrReg<REG_AX, REG_ESI, 0x431D91, 4, 0x01CF3D66>, "CCarCtrl::GenerateOneRandomCar");
         hookASM(0x6B6C86, "66 81 7E 22 B0 01",                cmpWordPtrRegModel<REG_ESI, 0x6B6C8C, 0x1B0>, "CBike::DoBurstAndSoftGroundRatios");
         hookASM(0x6AF292, "66 81 7A 22 63 02",                cmpWordPtrRegModel<REG_EDX, 0x6AF298, 0x263>, "CAutomobile::GetTowBarPos");
-
+        hookASM(0x6AF35E, "66 81 78 22 62 02",                cmpWordPtrRegModel<REG_EAX, 0x6AF364, 0x262>, "CAutomobile::GetTowBarPos");
+        hookASM(0x6CF055, "66 81 7F 22 62 02",                cmpWordPtrRegModel<REG_EDI, 0x6CF05B, 0x262>, "CTrailer::ScanForTowLink");
+        hookASM(0x6CFC41, "66 81 7E 22 62 02",                cmpWordPtrRegModel<REG_ESI, 0x6CFC47, 0x262>, "CTrailer::PreRender");
         
         MakeInline<0x6D42FE, 6>("CVehicle::GetPlaneGunsPosition", "8D 81 57 FE FF FF", [](injector::reg_pack& regs)
         {

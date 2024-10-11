@@ -657,7 +657,7 @@ void VehicleVariations::Process()
 
     while (!vehVars->tuningStack.empty())
     {
-        auto it = vehVars->tuningStack.top();
+        const auto it = vehVars->tuningStack.top();
         vehVars->tuningStack.pop();
 
         if (IsVehiclePointerValid(it.first))
@@ -710,7 +710,7 @@ void VehicleVariations::Process()
                     }
                 }
 
-            auto trailersSpawnChance = vehVars->trailersSpawnChances.find(veh->m_nModelIndex);
+            const auto trailersSpawnChance = vehVars->trailersSpawnChances.find(veh->m_nModelIndex);
             bool spawnTrailer = (rand<uint32_t>(0, 3) == 0 ? true : false);
 
             if (trailersSpawnChance != vehVars->trailersSpawnChances.end())
@@ -760,7 +760,7 @@ void VehicleVariations::UpdateVariations()
     {
         std::vector<unsigned short> currentAreaTuning;
 
-        auto it = vehVars->tuning.find(i);
+        const auto it = vehVars->tuning.find(i);
         if (it != vehVars->tuning.end())
             currentAreaTuning = vectorUnion(it->second[4], it->second[currentTown]);
 
@@ -785,7 +785,7 @@ void VehicleVariations::UpdateVariations()
 
         const std::string section = vehVars->vehModels.contains(modelid + 400U) ? vehVars->vehModels[modelid + 400U] : std::to_string(modelid + 400);
 
-        auto it = vehVars->zoneVariations[modelid].find(*reinterpret_cast<uint64_t*>(currentZone));
+        const auto it = vehVars->zoneVariations[modelid].find(*reinterpret_cast<uint64_t*>(currentZone));
         if (it != vehVars->zoneVariations[modelid].end())
         {
             if (!it->second.empty())
@@ -1247,7 +1247,7 @@ CPed* __cdecl AddPedInCarHooked(CVehicle* veh, char driver, int a3, int a4, char
             occupantModelIndex = vectorGetRandom(vehVars->passengers[veh->m_nModelIndex]);
     }
 
-    unsigned short model = veh->m_nModelIndex;
+    const auto model = veh->m_nModelIndex;
     veh->m_nModelIndex = (unsigned short)getVariationOriginalModel(veh->m_nModelIndex);
     CPed* ped = callOriginalAndReturn<CPed*, address>(veh, driver, a3, a4, a5, a6);
     veh->m_nModelIndex = model;
@@ -1283,7 +1283,7 @@ void __cdecl RegisterCoronaHooked(void* _this, CEntity* a2, unsigned char a3, un
 {
     if (a7 && a2)
     {
-        auto it = vehVars->lightPositions.find(lightsModel);
+        const auto it = vehVars->lightPositions.find(lightsModel);
         if (it != vehVars->lightPositions.end())
         {
             if (it->second.second > -900.0)
@@ -1301,7 +1301,7 @@ void __cdecl RegisterCoronaHooked(void* _this, CEntity* a2, unsigned char a3, un
     {
         auto &lightsMap = (second ? vehVars->lightColors2 : vehVars->lightColors);
 
-        auto it = lightsMap.find(lightsModel);
+        const auto it = lightsMap.find(lightsModel);
         if (it != lightsMap.end())
         {
             a3 = it->second.r;
@@ -1320,7 +1320,7 @@ void __cdecl AddLightHooked(char type, float x, float y, float z, float dir_x, f
 {
     if (lightsModel > 0)
     {
-        auto it = vehVars->lightPositions.find(lightsModel);
+        const auto it = vehVars->lightPositions.find(lightsModel);
         if (it != vehVars->lightPositions.end())
         {
             if (it->second.second > -900.0f)
@@ -1560,7 +1560,7 @@ char __fastcall SetUpWheelColModelHooked(CAutomobile* automobile, void*, CColMod
     if (automobile == NULL)
         return 0;
 
-    auto originalModel = getVariationOriginalModel(automobile->m_nModelIndex);
+    const auto originalModel = getVariationOriginalModel(automobile->m_nModelIndex);
     if (originalModel == 531 || originalModel == 532 || originalModel == 571)
         return 0;
 
@@ -2100,6 +2100,7 @@ void VehicleVariations::InstallHooks()
     hookCall(0x6D1A7A, AddPedInCarHooked<0x6D1A7A>, "CPopulation::AddPedInCar"); //CVehicle::SetUpDriver
     hookCall(0x6D1B0E, AddPedInCarHooked<0x6D1B0E>, "CPopulation::AddPedInCar"); //CVehicle::SetupPassenger 
     hookCall(0x6F6986, AddPedInCarHooked<0x6F6986>, "CPopulation::AddPedInCar"); //CTrain::RemoveRandomPassenger
+    hookCall(0x6F786F, AddPedInCarHooked<0x6F786F>, "CPopulation::AddPedInCar"); //CTrain::CreateMissionTrain
     hookCall(0x613B7F, AddPedHooked<0x613B7F>, "CPopulation::AddPed"); //CPopulation::AddPedInCar
 
     hookCall(0x6B11C2, IsLawEnforcementVehicleHooked<0x6B11C2>, "CVehicle::IsLawEnforcementVehicle"); //CAutomobile::CAutomobile

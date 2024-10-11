@@ -21,6 +21,7 @@
 #include <future>
 #include <iomanip>
 #include <map>
+#include <regex>
 #include <set>
 #include <stack>
 
@@ -31,7 +32,7 @@
 #pragma comment (lib, "urlmon.lib")
 
 
-#define MOD_VERSION "9.6"
+#define MOD_VERSION "9.7"
 #ifdef _DEBUG
 #define MOD_NAME "ModelVariations_d.asi"
 #define DEBUG_STRING " DEBUG"
@@ -140,26 +141,19 @@ bool checkForUpdate()
     }
 
     stream->Release();
-    auto versionStringPos = str.find("\"name\":\"v") + 9;
-    if (versionStringPos >= str.size())
+    
+    std::regex versionRegex("\"v(\\d+(\\.\\d+)+)\"");
+    std::smatch match;
+    if (std::regex_search(str, match, versionRegex)) 
     {
-        Log::Write("Check for updates failed. Invalid version string.\n");
-        return false;
+        std::string newV = match[1].str();
+        std::string oldV = MOD_VERSION;
+
+        return std::lexicographical_compare(oldV.begin(), oldV.end(), newV.begin(), newV.end());
     }
 
-    str = str.substr(versionStringPos, 10);
-    str.erase(str.find('"'));
-    for (auto ch : str)
-        if ((ch < '0' || ch > '9') && ch != '.')
-        {
-            Log::Write("Check for updates failed. Invalid version number.\n");
-            return false;
-        }
-
-    const char *newV = str.c_str();
-    const char *oldV = MOD_VERSION;
-
-    return std::lexicographical_compare(oldV, oldV+strlen(oldV), newV, newV+strlen(newV));
+    Log::Write("Check for updates failed. Invalid version string.\n");
+    return false;
 }
 
 void detectExe()

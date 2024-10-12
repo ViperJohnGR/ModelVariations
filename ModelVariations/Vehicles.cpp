@@ -1757,7 +1757,7 @@ int __fastcall CreateInstanceHooked(CVehicleModelInfo* _this)
         if (_this->m_pVehicleStruct != NULL)
             Log::Write("OK\n");
         else
-            Log::Write("\nCouldn't load model %d! The game will crash.\n");
+            Log::Write("\nCouldn't load model %d! The game will crash.\n", index);
 
     }
 
@@ -2117,7 +2117,7 @@ void VehicleVariations::InstallHooks()
     x6ABCBE_Destination = injector::MakeJMP(0x6ABCBE, patch6ABCBE).as_int();
 
     if (vehOptions->changeScriptedCars)
-        hookCall(0x467B01, CreateCarForScriptHooked<0x467B01>, "CCarCtrl::CreateCarForScript");
+        hookCall(0x467B01, CreateCarForScriptHooked<0x467B01>, "CCarCtrl::CreateCarForScript"); //00A5: CREATE_CAR
     
     if (vehOptions->enableSpecialFeatures)
     {
@@ -2130,13 +2130,13 @@ void VehicleVariations::InstallHooks()
         hookCall(0x871214, SetTowLinkHooked<0x871214>, "CAutomobile::SetTowLink", true);
         hookCall(0x871D14, GetTowHitchPosHooked<0x871D14>, "CTrailer::GetTowHitchPos", true);
 
-        hookCall(0x6B3271, UpdateTrailerLinkHooked<0x6B3271>, "CVehicle::UpdateTrailerLink");
-        hookCall(0x6B329C, UpdateTrailerLinkHooked<0x6B329C>, "CVehicle::UpdateTrailerLink");
-        hookCall(0x6B45C7, UpdateTrailerLinkHooked<0x6B45C7>, "CVehicle::UpdateTrailerLink");
+        hookCall(0x6B3271, UpdateTrailerLinkHooked<0x6B3271>, "CVehicle::UpdateTrailerLink"); //CAutomobile::ProcessControl
+        hookCall(0x6B329C, UpdateTrailerLinkHooked<0x6B329C>, "CVehicle::UpdateTrailerLink"); //CAutomobile::ProcessControl
+        hookCall(0x6B45C7, UpdateTrailerLinkHooked<0x6B45C7>, "CVehicle::UpdateTrailerLink"); //CAutomobile::SetTowLink
 
-        hookCall(0x6B3266, UpdateTractorLinkHooked<0x6B3266>, "CVehicle::UpdateTractorLink");
-        hookCall(0x6B3291, UpdateTractorLinkHooked<0x6B3291>, "CVehicle::UpdateTractorLink");
-        hookCall(0x6CFFAC, UpdateTractorLinkHooked<0x6CFFAC>, "CVehicle::UpdateTractorLink");
+        hookCall(0x6B3266, UpdateTractorLinkHooked<0x6B3266>, "CVehicle::UpdateTractorLink"); //CAutomobile::ProcessControl
+        hookCall(0x6B3291, UpdateTractorLinkHooked<0x6B3291>, "CVehicle::UpdateTractorLink"); //CAutomobile::ProcessControl
+        hookCall(0x6CFFAC, UpdateTractorLinkHooked<0x6CFFAC>, "CVehicle::UpdateTractorLink"); //CTrailer::SetTowLink
 
         hookCall(0x8711CC, SetUpWheelColModelHooked<0x8711CC>, "CAutomobile::SetUpWheelColModel", true);
         hookCall(0x871B94, SetUpWheelColModelHooked<0x871B94>, "CAutomobile::SetUpWheelColModel", true);

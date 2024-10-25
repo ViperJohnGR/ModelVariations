@@ -174,6 +174,9 @@ void PedVariations::LoadData()
             pedVars->pedModels.insert({ (unsigned short)i, section });
         }
 
+        if (i <= 0)
+            continue;
+
         if (isValidPedId(i))
         {
             pedVars->pedHasVariations.push_back((unsigned short)i);
@@ -224,7 +227,7 @@ void PedVariations::LoadData()
         }
 
         int parentVoice = dataFile.ReadInteger(section, "UseParentVoice", -1);
-        if (parentVoice > 0)
+        if (parentVoice > -1)
             pedVars->useParentVoice[(unsigned short)i] = static_cast<bool>(parentVoice);
 
         auto vec = dataFile.ReadLine(section, "Voice", READ_PEDS);

@@ -574,6 +574,9 @@ void PedVariations::InstallHooks(bool enableSpecialPeds)
     //Count of killable model IDs
     if (enableSpecialPeds)
     {
+        if (*reinterpret_cast<uint32_t*>(0x5B8DE0) == 550)
+            *reinterpret_cast<uint32_t*>(0x5B8DE0) = 4000;
+
         bool gameHOODLUM = plugin::GetGameVersion() != GAME_10US_COMPACT;
         bool notModified = true;
 

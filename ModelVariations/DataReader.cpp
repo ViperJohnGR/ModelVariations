@@ -10,6 +10,8 @@
 
 #include <shlwapi.h>
 
+bool reachedMaxCapacity = false;
+
 int DataReader::ReadInteger(std::string_view szSection, std::string_view szKey, int iDefaultValue)
 {
 	try
@@ -129,9 +131,14 @@ std::vector<unsigned short> DataReader::ReadLine(std::string_view section, std::
 						retVector.push_back((unsigned short)modelid);
 				}
 			}
-			else if (parseType == READ_PEDS && !(token[0] >= '0' && token[0] <= '9') && CModelInfo::GetModelInfo(0))
+			else if (parseType == READ_PEDS && !(token[0] >= '0' && token[0] <= '9') && CModelInfo::GetModelInfo(0) && !reachedMaxCapacity)
 			{
-				if (CStreaming__ms_pExtraObjectsDir->FindItem(token.data()))
+				if (CStreaming__ms_pExtraObjectsDir->m_nNumEntries >= CStreaming__ms_pExtraObjectsDir->m_nCapacity)
+				{
+					reachedMaxCapacity = true;
+					Log::Write("WARNING: The number of extra object directory entries is has reached max capacity (%u)\n", CStreaming__ms_pExtraObjectsDir->m_nCapacity);
+				}
+				else if (CStreaming__ms_pExtraObjectsDir->FindItem(token.data()))
 				{
 					for (uint16_t i = 1326; i < maxPedID; i++)
 						if (CModelInfo::GetModelInfo(i) == NULL)

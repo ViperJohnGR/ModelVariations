@@ -202,24 +202,23 @@ std::string getDatetime(bool printDate, bool printTime, bool printMs)
     SYSTEMTIME systime;
     GetSystemTime(&systime);
     std::stringstream ss;
-    std::string ms;
-
-    if (printMs)
-        ms += "." + std::to_string(systime.wMilliseconds);
 
     if (printDate)
     {
         ss << systime.wDay << "/" << systime.wMonth << "/" << systime.wYear;
 
-        if (!printTime)
-            return ss.str();
-
-        ss << " ";
+        if (printTime)
+            ss << " ";
     }
 
-    ss << std::setfill('0') << std::setw(2) << systime.wHour << ":"
-       << std::setfill('0') << std::setw(2) << systime.wMinute << ":"
-       << std::setfill('0') << std::setw(2) << systime.wSecond << ms;
+    if (printTime)
+    {
+        ss << std::setfill('0') << std::setw(2) << systime.wHour << ":"
+            << std::setfill('0') << std::setw(2) << systime.wMinute << ":"
+            << std::setfill('0') << std::setw(2) << systime.wSecond;
+        if (printMs)
+            ss << "." << std::setfill('0') << std::setw(3) << systime.wMilliseconds;
+    }
 
     return ss.str();
 }
@@ -235,7 +234,7 @@ bool LoadPESection(const char* filePath, int section, std::vector<unsigned char>
 
     auto functionError = [&](const char* msg, int errorType)
     {
-        std::cerr << msg << std::endl;
+        Log::Write("Error logging jumps. %s.\n", msg);
         switch (errorType)
         {
             case 3:
@@ -250,11 +249,8 @@ bool LoadPESection(const char* filePath, int section, std::vector<unsigned char>
     };
 
     hFile = CreateFileA(filePath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-    if (hFile == INVALID_HANDLE_VALUE) 
-    {
-        std::cerr << "Failed to open file" << std::endl;
-        return false;
-    }
+    if (hFile == INVALID_HANDLE_VALUE)
+        return functionError("Failed to open file", 0);
 
     // Create a file mapping
     hFileMapping = CreateFileMapping(hFile, NULL, PAGE_READONLY, 0, 0, NULL);
@@ -853,6 +849,9 @@ public:
             {
                 for (auto &it : hookedCalls)
                 {
+                    if (it.second.name.empty())
+                        continue;
+
                     const std::uintptr_t functionAddress = (it.second.isVTableAddress == false) ? injector::GetBranchDestination(it.first).as_int() : *reinterpret_cast<unsigned int*>(it.first);
                     std::pair<std::string, MODULEINFO> moduleInfo = LoadedModules::GetModuleAtAddress(functionAddress);
                     std::string moduleName = moduleInfo.first.substr(moduleInfo.first.find_last_of("/\\") + 1);

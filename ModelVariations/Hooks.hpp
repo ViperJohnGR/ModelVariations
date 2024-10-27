@@ -67,7 +67,7 @@ inline void hookCall(std::uintptr_t address, void* pFunction, std::string name, 
 }
 
 template <std::uintptr_t address, typename... Args>
-inline void callOriginal(Args... args)
+void callOriginal(Args... args)
 {
     auto it = hookedCalls.find(address);
     if (it != hookedCalls.end())
@@ -75,7 +75,7 @@ inline void callOriginal(Args... args)
 }
 
 template <typename Ret, std::uintptr_t address, typename... Args>
-inline Ret callOriginalAndReturn(Args... args)
+Ret callOriginalAndReturn(Args... args)
 {
     auto it = hookedCalls.find(address);
     if (it != hookedCalls.end())
@@ -86,7 +86,7 @@ inline Ret callOriginalAndReturn(Args... args)
 
 
 template <std::uintptr_t address, typename C, typename... Args>
-inline void callMethodOriginal(C _this, Args... args)
+void callMethodOriginal(C _this, Args... args)
 {
     auto it = hookedCalls.find(address);
     if (it != hookedCalls.end())
@@ -94,7 +94,7 @@ inline void callMethodOriginal(C _this, Args... args)
 }
 
 template <typename Ret, std::uintptr_t address, typename C, typename... Args>
-inline Ret callMethodOriginalAndReturn(C _this, Args... args)
+Ret callMethodOriginalAndReturn(C _this, Args... args)
 {
     auto it = hookedCalls.find(address);
     if (it != hookedCalls.end())
@@ -105,7 +105,7 @@ inline Ret callMethodOriginalAndReturn(C _this, Args... args)
 
 
 template <std::uintptr_t at, std::uintptr_t len = 5, class FuncT>
-inline void MakeInline(const char *funcName, const char* originalData, FuncT func)
+void MakeInline(const char *funcName, const char* originalData, FuncT func)
 {
     if (forceEnable || memcmp(at, originalData))
         injector::MakeInline<at, at+len>(func);

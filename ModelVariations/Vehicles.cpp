@@ -1757,8 +1757,12 @@ int __fastcall CreateInstanceHooked(CVehicleModelInfo* _this)
         if (_this->m_pVehicleStruct != NULL)
             Log::Write("OK\n");
         else
-            Log::Write("\nCouldn't load model %d! The game will crash.\n", index);
-
+        {
+            char errorString[256] = {};
+            snprintf(errorString, 255, "Couldn't load model %d! The game will crash.\nLoad state: %u\nReference count: %u\nTimes used: %u\n", index, CStreaming__ms_aInfoForModel[index].m_nLoadState, _this->m_nRefCount, _this->m_nTimesUsed);
+            Log::Write("\n%s\n", errorString);
+            MessageBox(NULL, errorString, "Model Variations", MB_ICONERROR);
+        }
     }
 
     return callMethodOriginalAndReturn<int, address>(_this);

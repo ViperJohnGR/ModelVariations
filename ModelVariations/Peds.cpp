@@ -546,7 +546,7 @@ char __fastcall CAEPedSpeechAudioEntity__InitialiseHooked(CAEPedSpeechAudioEntit
         try {
             useParentVoice = pedVars->useParentVoice.at(ped->m_nModelIndex);
         }
-        catch (...) {
+        catch (std::out_of_range) {
             useParentVoice = pedOptions->useParentVoices;
         }
 

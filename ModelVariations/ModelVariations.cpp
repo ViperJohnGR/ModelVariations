@@ -388,18 +388,22 @@ void updateVariations()
         }
     }
 
-    Log::Write("CTheZones::m_CurrLevel = %d currentTown = %d\n", CTheZones::m_CurrLevel, currentTown);
-    Log::Write("CStreaming::ms_pedsLoaded: ");
-    for (int i = 0; i < CStreaming__ms_numPedsLoaded; i++)
+    if (Log::Write("CTheZones::m_CurrLevel = %d currentTown = %d\n", CTheZones::m_CurrLevel, currentTown))
     {
-        Log::Write("%d ", CStreaming__ms_pedsLoaded[i]);
+        Log::Write("CStreaming::ms_pedsLoaded: ");
+        for (int i = 0; i < CStreaming__ms_numPedsLoaded; i++)
+            Log::Write("%d ", CStreaming__ms_pedsLoaded[i]);
+
+        Log::Write("\nCStreaming::ms_vehiclesLoaded: ");
+        for (unsigned i = 0; i < CStreaming__ms_vehiclesLoaded->CountMembers(); i++)
+            Log::Write("%d ", CStreaming__ms_vehiclesLoaded->m_members[i]);
+
+        Log::Write("\nCPopulation::m_AppropriateLoadedCars: ");
+        for (unsigned i = 0; i < CPopulation__m_AppropriateLoadedCars->CountMembers(); i++)
+            Log::Write("%d ", CPopulation__m_AppropriateLoadedCars->m_members[i]);
+
+        Log::Write("\n\n");
     }
-    Log::Write("\nCStreaming::ms_vehiclesLoaded: ");
-    for (unsigned i = 0; i < CStreaming__ms_vehiclesLoaded->CountMembers(); i++)
-    {
-        Log::Write("%d ", CStreaming__ms_vehiclesLoaded->m_members[i]);
-    }
-    Log::Write("\n\n");
 
     if (enablePeds)
         PedVariations::UpdateVariations();

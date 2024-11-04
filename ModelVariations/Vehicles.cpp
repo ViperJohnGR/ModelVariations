@@ -1454,7 +1454,6 @@ CVehicle* __cdecl CreateCarForScriptHooked(int modelId, float posX, float posY, 
 template <std::uintptr_t address>
 CVehicle* __cdecl GetNewVehicleDependingOnCarModelHooked(int modelIndex, int createdBy)
 {
-    loadModels({ modelIndex }, PRIORITY_REQUEST, true);
     CVehicle *veh = callOriginalAndReturn<CVehicle*, address>(modelIndex, createdBy);
     processTuning(veh);
     return veh;

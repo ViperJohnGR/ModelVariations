@@ -537,10 +537,6 @@ char __fastcall CAEPedSpeechAudioEntity__InitialiseHooked(CAEPedSpeechAudioEntit
         const auto currentModel = ped->m_nModelIndex;
         unsigned short newModel = 0;
 
-        auto it = pedVars->voices.find(ped->m_nModelIndex);
-        if (it != pedVars->voices.end() && !it->second.empty())
-            newModel = vectorGetRandom(it->second);
-
         bool useParentVoice = false;
 
         try {
@@ -552,14 +548,18 @@ char __fastcall CAEPedSpeechAudioEntity__InitialiseHooked(CAEPedSpeechAudioEntit
 
         if (useParentVoice)
         {
-            it = pedVars->originalModels.find(ped->m_nModelIndex);
+            auto it = pedVars->originalModels.find(ped->m_nModelIndex);
             if (it != pedVars->originalModels.end() && !it->second.empty())
                 newModel = it->second[0];
         }
 
+        auto it = pedVars->voices.find(ped->m_nModelIndex);
+        if (it != pedVars->voices.end() && !it->second.empty())
+            newModel = vectorGetRandom(it->second);
+
         if (newModel > 0)
         {
-            ped->m_nModelIndex = it->second[0];
+            ped->m_nModelIndex = newModel;
             char retVal = callMethodOriginalAndReturn<char, address>(_this, ped);
             ped->m_nModelIndex = currentModel;
             return retVal;

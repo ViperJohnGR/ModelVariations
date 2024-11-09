@@ -15,16 +15,16 @@
 #include <array>
 #include <stack>
 
-constexpr int MAX_PED_ID = 300;
+constexpr int MAX_ORIGINAL_PED_ID = 300;
 
 static const char* dataFileName = "ModelVariations_Peds.ini";
 static DataReader dataFile(dataFileName);
 int16_t destroyedModelCounters[20000];
 
 struct tPedVars {
-    std::array<std::vector<unsigned short>, 16> variations[MAX_PED_ID];
-    std::array<std::vector<unsigned short>, 6> wantedVariations[MAX_PED_ID];
-    std::array<std::unordered_map<uint64_t, std::vector<unsigned short>>, MAX_PED_ID> zoneVariations;
+    std::array<std::vector<unsigned short>, 16> variations[MAX_ORIGINAL_PED_ID];
+    std::array<std::vector<unsigned short>, 6> wantedVariations[MAX_ORIGINAL_PED_ID];
+    std::array<std::unordered_map<uint64_t, std::vector<unsigned short>>, MAX_ORIGINAL_PED_ID> zoneVariations;
 
     std::map<unsigned short, int> pedTimeSinceSpawn;
     std::unordered_map<unsigned short, std::vector<unsigned short>> originalModels;
@@ -34,7 +34,7 @@ struct tPedVars {
 
     std::stack<CPed*> stack;
 
-    std::vector<unsigned short> currentVariations[MAX_PED_ID];
+    std::vector<unsigned short> currentVariations[MAX_ORIGINAL_PED_ID];
     std::vector<unsigned short> dontInheritBehaviourModels;
     std::vector<unsigned short> mergeZones;
     std::vector<unsigned short> pedHasVariations;
@@ -62,7 +62,7 @@ unsigned short modelIndex = 0;
 
 bool isValidPedId(int id)
 {
-    if (id <= 0 || id >= MAX_PED_ID)
+    if (id <= 0 || id >= MAX_ORIGINAL_PED_ID)
         return false;
     if (id >= 190 && id <= 195)
         return false;
@@ -375,7 +375,7 @@ void PedVariations::ProcessDrugDealers(bool reset)
             Log::Write("Applying drug dealer fix...\n");
          
             for (auto& it : pedVars->originalModels)
-                if (it.first > MAX_PED_ID)
+                if (it.first > MAX_ORIGINAL_PED_ID)
                     for (auto& originalModel : it.second)
                         if (originalModel == 28 || originalModel == 29 || originalModel == 30 || originalModel == 254)
                         {
@@ -431,7 +431,7 @@ void PedVariations::UpdateVariations()
 void PedVariations::LogCurrentVariations()
 {
     Log::Write("pedCurrentVariations\n");
-    for (int i = 0; i < MAX_PED_ID; i++)
+    for (int i = 0; i < MAX_ORIGINAL_PED_ID; i++)
         if (!pedVars->currentVariations[i].empty())
         {
             Log::Write("%d: ", i);
@@ -459,7 +459,7 @@ void PedVariations::LogDataFile()
 void PedVariations::LogVariations()
 {
     Log::Write("\nPed Variations:\n");
-    for (unsigned int i = 0; i < MAX_PED_ID; i++)
+    for (unsigned int i = 0; i < MAX_ORIGINAL_PED_ID; i++)
         for (unsigned int j = 0; j < 16; j++)
             if (!pedVars->variations[i][j].empty())
             {
@@ -571,15 +571,16 @@ char __fastcall CAEPedSpeechAudioEntity__InitialiseHooked(CAEPedSpeechAudioEntit
 
 void PedVariations::InstallHooks(bool enableSpecialPeds)
 {
-    //Count of killable model IDs
     if (enableSpecialPeds)
     {
+        //Extra objects directory
         if (*reinterpret_cast<uint32_t*>(0x5B8DE0) == 550)
             *reinterpret_cast<uint32_t*>(0x5B8DE0) = 4000;
 
         bool gameHOODLUM = plugin::GetGameVersion() != GAME_10US_COMPACT;
         bool notModified = true;
 
+        //Count of killable model IDs
         if (!memcmp(0x43DE6C, "66 FF 04 45 50 9A 96 00") ||
             !memcmp(0x43DF5B, "66 FF 04 45 50 9A 96 00") ||
             !memcmp((gameHOODLUM ? 0x1561634U : 0x43D6A4), "8D 04 45 50 9A 96 00") ||

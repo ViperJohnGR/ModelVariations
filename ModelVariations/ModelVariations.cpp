@@ -78,6 +78,7 @@ std::unordered_map<std::uintptr_t, hookinfo> hookedCalls;
 std::set<std::pair<std::uintptr_t, std::string>> callChecks;
 std::set<unsigned short> referenceCountModels;
 std::set<std::string> zones;
+std::set<unsigned short> addedIDsInGroups;
 
 std::vector<unsigned short> addedIDs;
 int maxPedID = 0;
@@ -93,10 +94,11 @@ unsigned int currentTown = 0;
 unsigned int currentWanted = 0;
 int isFLASpecialFeaturesEnabled = 0;
 
+bool cargrpRead = false;
 bool jumpsLogged = false;
-bool keyDown = false;
-
 bool zonesRead = false;
+
+bool keyDown = false;
 bool reloadingSettings = false;
 bool queuedReload = false;
 
@@ -447,6 +449,15 @@ void __cdecl CGame__ShutdownHooked()
     Log::Write("Shutdown ok.\n");
 }
 
+template <std::uintptr_t address>
+bool __cdecl AddToLoadedVehiclesListHooked(int model)
+{
+    if (model < 612 || addedIDsInGroups.contains((unsigned short)model))
+        return callOriginalAndReturn<bool, address>(model);
+
+    return 1;
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////  MAIN   ///////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -510,6 +521,8 @@ void initialize()
     }
 
     hookCall(0x748E6B, CGame__ShutdownHooked<0x748E6B>, "CGame::Shutdown");
+    hookCall(0x408D43, AddToLoadedVehiclesListHooked<0x408D43>, "CStreaming::AddToLoadedVehiclesList");
+    hookCall(0x40C858, AddToLoadedVehiclesListHooked<0x40C858>, "CStreaming::AddToLoadedVehiclesList");
 
     Log::Write("\nLoaded modules:\n");
 
@@ -645,6 +658,18 @@ public:
                 zonesRead = true;
 
                 Log::Write("Finished reading %u zones.\n", zones.size());
+            }
+
+            if (!cargrpRead)
+            {
+                for (int i = 0; i < 34; i++)
+                {
+                    for (int j = 0; j < CPopulation__m_nNumCarsInGroup[i]; j++)
+                        if (CPopulation::m_CarGroups[i][j] > 611)
+                            addedIDsInGroups.insert((unsigned short)CPopulation::m_CarGroups[i][j]);
+                }
+
+                cargrpRead = true;
             }
 
             clearEverything();

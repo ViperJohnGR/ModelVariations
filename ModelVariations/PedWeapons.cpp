@@ -138,7 +138,12 @@ void PedWeaponVariations::Process()
             return false;
         };
 
-        std::string section = wepPedModels.contains(ped->m_nModelIndex) ? wepPedModels[ped->m_nModelIndex] : std::to_string(ped->m_nModelIndex);
+        std::string section;
+        if (auto it = wepPedModels.find(ped->m_nModelIndex); it != wepPedModels.end())
+            section = it->second;
+        else
+            section = std::to_string(ped->m_nModelIndex);
+
         const bool mergeWeapons = dataFile.ReadBoolean(section, "MergeZonesWithGlobal", false);
 
         if (dataFile.ReadBoolean(section, "DisableOnMission", false) && CTheScripts::IsPlayerOnAMission())

@@ -400,7 +400,12 @@ void PedVariations::UpdateVariations()
     {
         pedVars->currentVariations[modelid] = vectorUnion(pedVars->variations[modelid][4], pedVars->variations[modelid][currentTown]);
 
-        const std::string section = pedVars->pedModels.contains(modelid) ? pedVars->pedModels[modelid] : std::to_string(modelid);
+        std::string section;
+        
+        if (auto it = pedVars->pedModels.find(modelid); it != pedVars->pedModels.end())
+            section = it->second;
+        else
+            section = std::to_string(modelid);
 
         if (auto it = pedVars->zoneVariations[modelid].find(*reinterpret_cast<uint64_t*>(currentZone)); it != pedVars->zoneVariations[modelid].end())
         {
@@ -413,11 +418,12 @@ void PedVariations::UpdateVariations()
             }
         }
 
-        pedVars->currentVariations[modelid] = vectorUnion(pedVars->currentVariations[modelid], dataFile.ReadLine(section, currentInterior, READ_PEDS));
+        if (currentInterior[0] != 0)
+            pedVars->currentVariations[modelid] = vectorUnion(pedVars->currentVariations[modelid], dataFile.ReadLine(section, currentInterior, READ_PEDS));
 
         if (wanted)
         {
-            const unsigned int wantedLevel = (wanted->m_nWantedLevel > 0) ? (wanted->m_nWantedLevel - 1) : (wanted->m_nWantedLevel);
+            const unsigned int wantedLevel = wanted->m_nWantedLevel - (wanted->m_nWantedLevel ? 1 : 0);
             if (!pedVars->wantedVariations[modelid][wantedLevel].empty() && !pedVars->currentVariations[modelid].empty())
                 vectorfilterVector(pedVars->currentVariations[modelid], pedVars->wantedVariations[modelid][wantedLevel]);
         }
@@ -575,7 +581,9 @@ void PedVariations::InstallHooks(bool enableSpecialPeds)
     {
         //Extra objects directory
         if (*reinterpret_cast<uint32_t*>(0x5B8DE0) == 550)
-            *reinterpret_cast<uint32_t*>(0x5B8DE0) = 4000;
+            WriteMemory<uint32_t>(0x5B8DE0, 4000);
+        else
+            Log::Write("Extra objects directory limit was not increased.\n");
 
         bool gameHOODLUM = plugin::GetGameVersion() != GAME_10US_COMPACT;
         bool notModified = true;
@@ -635,7 +643,7 @@ void PedVariations::InstallHooks(bool enableSpecialPeds)
             maxPedID = 20000;
         }
         else
-            Log::Write("Count of killable model IDs not increased. %s\n", (LoadedModules::IsModLoaded(MOD_FLA) ? "FLA is loaded." : "FLA is NOT loaded."));
+            Log::Write("Count of killable model IDs was not increased. %s\n", (LoadedModules::IsModLoaded(MOD_FLA) ? "FLA is loaded." : "FLA is NOT loaded."));
     }
 
 

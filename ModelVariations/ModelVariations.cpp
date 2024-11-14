@@ -103,12 +103,14 @@ bool enablePeds = false;
 bool enableSpecialPeds = false;
 bool enableVehicles = false;
 bool enablePedWeapons = false;
-bool forceEnable = false;
+bool forceEnableGlobal = false;
 bool loadSettingsImmediately = false;
 int loadStage = 1;
 int trackReferenceCounts = -1;
 unsigned int disableKey = 0;
 unsigned int reloadKey = 0;
+
+std::set<std::uintptr_t> forceEnable;
 
 bool modInitialized = false;
 
@@ -841,12 +843,28 @@ public:
 
         trackReferenceCounts = iniSettings.ReadInteger("Settings", "TrackReferenceCounts", -1);
         loadSettingsImmediately = iniSettings.ReadBoolean("Settings", "LoadSettingsImmediately", true);
-        forceEnable = iniSettings.ReadBoolean("Settings", "ForceEnable", false);
         loadStage = iniSettings.ReadInteger("Settings", "LoadStage", 1);
         disableKey = (unsigned int)iniSettings.ReadInteger("Settings", "DisableKey", 0);
         reloadKey = (unsigned int)iniSettings.ReadInteger("Settings", "ReloadKey", 0);
         enableLog = iniSettings.ReadBoolean("Settings", "EnableLog", false);
         logJumps = iniSettings.ReadBoolean("Settings", "LogJumps", false);
+
+        std::string checkForceEnabled = iniSettings.ReadString("Settings", "ForceEnable", "");
+        if (checkForceEnabled == "1")
+            forceEnableGlobal = true;
+        else
+        {
+            auto vec = splitString(checkForceEnabled, ',');
+            for (auto& s : vec)
+            {
+                try {
+                    std::uintptr_t address = (std::uintptr_t)std::stoi(s.c_str(), nullptr, 16);
+                    forceEnable.insert(address);
+                }
+                catch (std::invalid_argument) {}
+                catch (std::out_of_range) {}
+            }
+        }
 
         if (enableLog)
         {

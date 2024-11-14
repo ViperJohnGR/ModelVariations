@@ -867,7 +867,7 @@ void changeModel(const char* funcName, unsigned short oldModel, int newModel, st
         return isMethod ? callMethodOriginal<address>(args...) : callOriginal<address>(args...);
 
     for (auto& i : addresses)
-        if (*(uint16_t*)i != oldModel && forceEnable == false)
+        if (*(uint16_t*)i != oldModel && forceEnableGlobal == false && !forceEnable.contains(address))
         {
             Log::LogModifiedAddress(i, "Modified method detected: %s - 0x%08X is %u\n", funcName, i, *(uint16_t*)i);
             return isMethod ? callMethodOriginal<address>(args...) : callOriginal<address>(args...);
@@ -889,7 +889,7 @@ T changeModelAndReturn(const char* funcName, unsigned short oldModel, int newMod
         return isMethod ? callMethodOriginalAndReturn<T, address>(args...) : callOriginalAndReturn<T, address>(args...);
 
     for (auto& i : addresses)
-        if (*(uint16_t*)i != oldModel && forceEnable == false)
+        if (*(uint16_t*)i != oldModel && forceEnableGlobal == false && !forceEnable.contains(address))
         {
             Log::LogModifiedAddress(i, "Modified method detected: %s - 0x%08X is %u\n", funcName, i, *(uint16_t*)i);
             return isMethod ? callMethodOriginalAndReturn<T, address>(args...) : callOriginalAndReturn<T, address>(args...);
@@ -1117,7 +1117,7 @@ CCopPed* __fastcall CCopPedHooked(CCopPed* ped, void*, int copType)
                                                                {0x5DDE0F, "68 1F 01 00 00"} };
 
     for (const auto &i : originalData)
-        if (!memcmp(i.first, i.second.c_str()) && !forceEnable)
+        if (!memcmp(i.first, i.second.c_str()) && !forceEnableGlobal && !forceEnable.contains(i.first))
         {
             Log::LogModifiedAddress(i.first, "Modified address detected: 0x%08X is %u\n", i.first, *(uint16_t*)(i.first+1));
             return callMethodOriginalAndReturn<CCopPed*, address>(ped, copType);
@@ -2432,7 +2432,7 @@ void VehicleVariations::InstallHooks()
         hookCall(0x6ABA60, RegisterCoronaHooked<0x6ABA60>, "CCoronas::RegisterCorona"); //CAutomobile::PreRender
         hookCall(0x6ABB35, RegisterCoronaHooked<0x6ABB35>, "CCoronas::RegisterCorona"); //CAutomobile::PreRender
         hookCall(0x6ABC69, RegisterCoronaHooked<0x6ABC69>, "CCoronas::RegisterCorona"); //CAutomobile::PreRender
-        if (memcmp(0x6ABA56, "68 FF 00 00 00") || forceEnable)
+        if (memcmp(0x6ABA56, "68 FF 00 00 00") || forceEnableGlobal || forceEnable.contains(0x6ABA56))
             injector::MakeJMP(0x6ABA56, patchCoronas);
         else
             Log::LogModifiedAddress(0x6ABA56, "Modified method detected: CAutomobile::PreRender - 0x6ABA56 is %s\n", bytesToString(0x6ABA56, 5).c_str());

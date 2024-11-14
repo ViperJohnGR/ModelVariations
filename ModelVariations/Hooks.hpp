@@ -4,6 +4,7 @@
 #include "LoadedModules.hpp"
 
 #include <unordered_map>
+#include <set>
 #include <string>
 #include <memory>
 
@@ -19,7 +20,8 @@ struct hookinfo {
 
 extern std::unordered_map<std::uintptr_t, std::string> hooksASM;
 extern std::unordered_map<std::uintptr_t, hookinfo> hookedCalls;
-extern bool forceEnable;
+extern bool forceEnableGlobal;
+extern std::set<std::uintptr_t> forceEnable;
 
 bool hookASM(std::uintptr_t address, std::string_view originalData, injector::memory_pointer_raw hookDest, std::string_view funcName);
 void hookCall(std::uintptr_t address, void* pFunction, std::string name, bool isVTableAddress = false);
@@ -65,7 +67,7 @@ Ret callMethodOriginalAndReturn(C _this, Args... args)
 template <std::uintptr_t at, std::uintptr_t len = 5, class FuncT>
 void MakeInline(const char *funcName, const char* originalData, FuncT func)
 {
-    if (forceEnable || memcmp(at, originalData))
+    if (memcmp(at, originalData) || forceEnable.contains(at) || forceEnableGlobal)
         injector::MakeInline<at, at+len>(func);
     else
         Log::LogModifiedAddress(at, "Modified method detected: %s - 0x%08X is %s\n", funcName, at, bytesToString(at, len).c_str());

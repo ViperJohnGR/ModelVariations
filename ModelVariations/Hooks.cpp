@@ -11,7 +11,7 @@ bool hookASM(std::uintptr_t address, std::string_view originalData, injector::me
 {
     unsigned numBytes = originalData.size() / 3 + 1;
 
-    if (!memcmp(address, originalData.data()) && forceEnable == false)
+    if (!memcmp(address, originalData.data()) && forceEnableGlobal == false && !forceEnable.contains(address))
     {
         std::stringstream ss;
 

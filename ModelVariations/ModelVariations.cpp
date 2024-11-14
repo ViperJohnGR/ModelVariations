@@ -67,11 +67,6 @@ const std::pair<std::string, unsigned> areas[] = { {"Countryside", 0},
                                                    {"Whetstone", 0},
                                                    {"AngelPine", 14} };
 
-std::string exeHash;
-unsigned int exeFilesize = 0;
-std::string exePath;
-std::string exeName;
-
 std::unordered_map<std::uintptr_t, std::string> hooksASM;
 std::unordered_map<std::uintptr_t, hookinfo> hookedCalls;
 
@@ -94,9 +89,7 @@ unsigned int currentTown = 0;
 unsigned int currentWanted = 0;
 int isFLASpecialFeaturesEnabled = 0;
 
-bool cargrpRead = false;
 bool jumpsLogged = false;
-bool zonesRead = false;
 
 bool keyDown = false;
 bool reloadingSettings = false;
@@ -156,47 +149,6 @@ bool checkForUpdate()
 
     Log::Write("Check for updates failed. Invalid version string.\n");
     return false;
-}
-
-void detectExe()
-{
-    char path[256] = {};
-    GetModuleFileName(NULL, path, 255);
-    exePath = path;
-    exeName = getFilenameFromPath(path);
-
-    HANDLE hFile = CreateFile(path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-    if (hFile == INVALID_HANDLE_VALUE)
-        return;
-    
-    exeFilesize = GetFileSize(hFile, NULL);
-
-    if (exeFilesize != INVALID_FILE_SIZE)
-    {
-        DWORD lpNumberOfBytesRead = 0;
-        BCRYPT_ALG_HANDLE hProvider = NULL;
-        BCRYPT_HASH_HANDLE ctx = NULL;
-        auto filebuf = std::vector<BYTE>(exeFilesize + 1);
-
-        if (ReadFile(hFile, filebuf.data(), exeFilesize, &lpNumberOfBytesRead, NULL))
-            if (BCryptOpenAlgorithmProvider(&hProvider, BCRYPT_SHA256_ALGORITHM, NULL, 0) == STATUS_SUCCESS)
-                if (BCryptCreateHash(hProvider, &ctx, NULL, 0, NULL, 0, 0) == STATUS_SUCCESS && ctx != NULL)
-                {
-                    auto hash = std::vector<BYTE>(32);
-                    std::stringstream stream;
-                    BCryptHashData(ctx, filebuf.data(), exeFilesize, 0);
-                    BCryptFinishHash(ctx, hash.data(), 32, 0);
-                    BCryptDestroyHash(ctx);
-                    BCryptCloseAlgorithmProvider(hProvider, 0);
-
-                    for (auto& i : hash)
-                        stream << std::setfill('0') << std::setw(2) << std::hex << static_cast<int>(i);
-
-                    exeHash = stream.str();
-                }
-    }
-
-    CloseHandle(hFile);
 }
 
 std::string getDatetime(bool printDate, bool printTime, bool printMs)
@@ -427,39 +379,9 @@ void updateVariations()
     
 }
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////  CALL HOOKS    ////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////////////
-
-//Fix(?) for crash on game exit when adding special peds. Something related to m_pHitColModel.
-//This is needed if PedModels in OLA is set to unlimited. If set manually to a high number (e.g PedModels=5000) the game exits ok for some reason.
-template <std::uintptr_t address>
-void __cdecl CGame__ShutdownHooked() 
-{
-    Log::Write("Game shutting down...\n");
-
-    if (!addedIDs.empty())
-    {
-        for (unsigned int i = 0; i < pedsModelsCount; i++)
-            pedsModels[i].m_pHitColModel = NULL;
-    }
-
-    callOriginal<address>();
-
-    Log::Write("Shutdown ok.\n");
-}
-
-template <std::uintptr_t address>
-bool __cdecl AddToLoadedVehiclesListHooked(int model)
-{
-    if (model < 612 || addedIDsInGroups.contains((unsigned short)model))
-        return callOriginalAndReturn<bool, address>(model);
-
-    return 1;
-}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////  MAIN   ///////////////////////////////////////////////
+/////////////////////////////////////////   INITIALIZE   //////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void initialize()
@@ -520,10 +442,6 @@ void initialize()
         Log::Write("Vehicle hooks installed.\n");
     }
 
-    hookCall(0x748E6B, CGame__ShutdownHooked<0x748E6B>, "CGame::Shutdown");
-    hookCall(0x408D43, AddToLoadedVehiclesListHooked<0x408D43>, "CStreaming::AddToLoadedVehiclesList");
-    hookCall(0x40C858, AddToLoadedVehiclesListHooked<0x40C858>, "CStreaming::AddToLoadedVehiclesList");
-
     Log::Write("\nLoaded modules:\n");
 
     LoadedModules::Log();
@@ -532,6 +450,391 @@ void initialize()
 
     modInitialized = true;
 }
+
+void refreshOnGameRestart()
+{
+    if (!loadSettingsImmediately && reloadingSettings)
+    {
+        queuedReload = true;
+        return;
+    }
+
+    auto startTime = clock();
+
+    if (!modInitialized && loadStage == 2)
+        initialize();
+
+    assert(modInitialized);
+
+    Log::Write("-- Restarting (%s) --\n", getDatetime(false, true, true).c_str());
+
+    clearEverything();
+    PedVariations::ProcessDrugDealers(true);
+    LoadedModules::Refresh();
+
+    if (enableLog)
+        framesSinceCallsChecked = 900;
+
+    *reinterpret_cast<uint64_t*>(currentZone) = 0;
+    lastInterior[0] = 0;
+
+    reloadingSettings = true;
+    auto doAsyncStuff = [startTime] {
+        loadIniData();
+
+        if (enablePeds)
+            PedVariations::LogVariations();
+
+        if (enableVehicles)
+        {
+            Log::Write("\n");
+            VehicleVariations::LogVariations();
+        }
+
+        Log::Write("\n\n");
+
+        if (checkForUpdate())
+            timeUpdate = clock();
+        else
+            timeUpdate = -1;
+
+        auto finalTime = clock() - startTime;
+        if (finalTime < 1000)
+            Log::Write("Time spent loading: %dms.\n", finalTime);
+        else
+            Log::Write("Time spent loading: %gs.\n", finalTime / 1000.0);
+
+        reloadingSettings = false;
+        Log::Write("-- Restart Finished (%s) --\n", getDatetime(false, true, true).c_str());
+    };
+
+    if (loadSettingsImmediately)
+        doAsyncStuff();
+    else
+        future = std::async(std::launch::async, doAsyncStuff);
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////  CALL HOOKS    ////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+
+template <std::uintptr_t address>
+bool __cdecl AddToLoadedVehiclesListHooked(int model)
+{
+    if (model < 612 || addedIDsInGroups.contains((unsigned short)model))
+        return callOriginalAndReturn<bool, address>(model);
+
+    return 1;
+}
+
+template <std::uintptr_t address>
+void __cdecl CGame__ProcessHooked()
+{
+    callOriginal<address>();
+
+    if (reloadingSettings)
+        return;
+
+    if (queuedReload)
+    {
+        if (future.valid())
+            future.get();
+        queuedReload = false;
+        return;
+    }
+
+    if (!jumpsLogged && logJumps)
+    {
+        Log::Write("\nLogging JMP hooks...\n");
+        std::vector<unsigned char> buffer;
+
+        const std::vector<int> sections = (GetGameVersion() == GAME_10US_HOODLUM) ? std::vector<int> { 0, 1, 7, 8, 9, 10 } : std::vector<int>{ 0, 1 };
+        const std::vector<std::uintptr_t> validRanges = (GetGameVersion() == GAME_10US_HOODLUM) ? std::vector<std::uintptr_t> { 0x401000, 0x857000, 0xCB1000, 0x12FB000, 0x1301000, 0x1556000 } : std::vector<std::uintptr_t>{ 0x401000, 0x857000 };
+        std::unordered_map<std::string, std::vector<jumpInfo>> jumpsMap;
+
+        auto gta_saModule = LoadedModules::GetModule("gta_sa.exe");
+        std::uintptr_t gta_saEndAddress = ((std::uintptr_t)gta_saModule.second.lpBaseOfDll + gta_saModule.second.SizeOfImage);
+        unsigned int secCount = 0;
+
+        for (auto& rangeStart : validRanges)
+        {
+            unsigned int sectionSize;
+            LoadPESection("gta_sa.exe", sections[secCount++], buffer, &sectionSize);
+            for (unsigned int i = rangeStart; i < sectionSize + 0x400000; i++)
+            {
+                auto currentByte = *reinterpret_cast<unsigned char*>(i);
+                if (currentByte != buffer[i - rangeStart])
+                {
+                    auto destination = injector::GetBranchDestination(i).as_int();
+                    if (destination > gta_saEndAddress)
+                    {
+                        auto moduleInfo = LoadedModules::GetModuleAtAddress(destination);
+                        std::string moduleName = moduleInfo.first.substr(moduleInfo.first.find_last_of("/\\") + 1);
+
+                        if (!strcasestr(moduleInfo.first, "Windows") && _stricmp(moduleName.c_str(), MOD_NAME) != 0)
+                        {
+                            if (moduleName.empty())
+                                jumpsMap["unknown"].push_back({ i, destination, currentByte });
+                            else
+                                jumpsMap[moduleName].push_back({ i, destination, currentByte });
+                        }
+                        i += 3;
+                    }
+                }
+            }
+        }
+        for (auto& i : jumpsMap)
+        {
+            Log::Write("\n%s:\n", i.first.c_str());
+            for (auto& j : i.second)
+            {
+                Log::Write("0x%08X 0x%08X %X\n", j.address, j.destination, j.type);
+            }
+        }
+
+        jumpsLogged = true;
+    }
+
+    CVector pPos = FindPlayerCoors(-1);
+    CZone* zInfo = NULL;
+    CTheZones::GetZoneInfo(&pPos, &zInfo);
+    const CWanted* wanted = FindPlayerWanted(-1);
+    const CPlayerPed* player = FindPlayerPed();
+
+    if (trackReferenceCounts > 0 && CModelInfo::GetModelInfo(0))
+        for (int i = 7; i < std::max<int>(flaMaxID, 20000); i++)
+        {
+            auto mInfo = CModelInfo::GetModelInfo(i);
+            if (mInfo && mInfo->m_nRefCount > trackReferenceCounts && !referenceCountModels.contains(static_cast<unsigned short>(i)))
+            {
+                auto modelType = (mInfo->GetModelType() == MODEL_INFO_VEHICLE) ? "(Vehicle) " : ((mInfo->GetModelType() == MODEL_INFO_PED) ? "(Ped) " : "");
+
+                char warning_string[256] = {};
+                snprintf(warning_string, 255, "WARNING: model %d %shas a reference count of %d\n", i, modelType, mInfo->m_nRefCount);
+                Log::Write(warning_string);
+#ifdef _DEBUG
+                MessageBox(NULL, warning_string, "Model Variations", MB_ICONWARNING);
+#endif
+                referenceCountModels.insert(static_cast<unsigned short>(i));
+            }
+        }
+
+    auto logVariationChange = [zInfo, wanted](const char* msg)
+    {
+        Log::Write("\n%s (%s). Updating variations...\n", msg, getDatetime(false, true, true).c_str());
+        Log::Write("currentWanted = %u wanted->m_nWantedLevel = %u\n", currentWanted, wanted->m_nWantedLevel);
+        Log::Write("currentZone = %.8s zInfo->m_szLabel = %.8s\n", currentZone, zInfo->m_szLabel);
+
+        if (currentInterior[0] != 0 || lastInterior[0] != 0)
+            Log::Write("currentInterior = %.8s lastInterior = %.8s\n", currentInterior, lastInterior);
+    };
+
+    if (timeUpdate > -1 && ((clock() - timeUpdate) / CLOCKS_PER_SEC > 6))
+    {
+        printMessage("~y~Model Variations~s~: Update available.", 4000);
+        timeUpdate = -1;
+    }
+
+    if (disableKey > 0 && KeyPressed(disableKey))
+    {
+        if (!keyDown)
+        {
+            keyDown = true;
+            printMessage("~y~Model Variations~s~: Mod disabled.", 2000);
+            Log::Write("Disabling mod... ");
+            clearEverything();
+            Log::Write("OK\n");
+        }
+    }
+    else if (reloadKey > 0 && KeyPressed(reloadKey))
+    {
+        if (!keyDown)
+        {
+            keyDown = true;
+            reloadingSettings = true;
+            Log::Write("Reloading settings...\n");
+            clearEverything();
+            printMessage("~y~Model Variations~s~: Reloading settings...", 10000);
+            auto doAsyncStuff = [logVariationChange] {
+                loadIniData();
+                logVariationChange("Settings reloaded.");
+                updateVariations();
+                printMessage("~y~Model Variations~s~: Settings reloaded.", 2000);
+                reloadingSettings = false;
+            };
+
+            if (loadSettingsImmediately)
+                doAsyncStuff();
+            else
+                future = std::async(std::launch::async, doAsyncStuff);
+        }
+    }
+    else
+        keyDown = false;
+
+    if (framesSinceCallsChecked < 1000)
+        framesSinceCallsChecked++;
+
+    if (framesSinceCallsChecked == 1000)
+    {
+        for (auto& it : hookedCalls)
+        {
+            if (it.second.name.empty())
+                continue;
+
+            const std::uintptr_t functionAddress = (it.second.isVTableAddress == false) ? injector::GetBranchDestination(it.first).as_int() : *reinterpret_cast<unsigned int*>(it.first);
+            std::pair<std::string, MODULEINFO> moduleInfo = LoadedModules::GetModuleAtAddress(functionAddress);
+            std::string moduleName = moduleInfo.first.substr(moduleInfo.first.find_last_of("/\\") + 1);
+
+            if (_stricmp(moduleName.c_str(), MOD_NAME) != 0 && callChecks.insert({ it.first, moduleName }).second)
+            {
+                if (functionAddress > 0 && !moduleName.empty())
+                    Log::Write("Modified call detected: %s 0x%08X 0x%08X %s 0x%08X\n", it.second.name.data(), it.first, functionAddress, moduleName.c_str(), moduleInfo.second.lpBaseOfDll);
+                else
+                    Log::Write("Modified call detected: %s 0x%08X %s\n", it.second.name.data(), it.first, bytesToString(it.first, 5).c_str());
+            }
+
+            auto gta_saModule = LoadedModules::GetModule("gta_sa.exe");
+            std::uintptr_t gta_saEndAddress = ((std::uintptr_t)gta_saModule.second.lpBaseOfDll + gta_saModule.second.SizeOfImage);
+
+            if ((std::uintptr_t)it.second.originalFunction < gta_saEndAddress)
+            {
+                auto functionStartDestination = injector::GetBranchDestination(it.second.originalFunction).as_int();
+                if (functionStartDestination && functionStartDestination > gta_saEndAddress)
+                {
+                    auto functionStartModule = LoadedModules::GetModuleAtAddress(functionStartDestination);
+                    std::string functionStartModuleName = functionStartModule.first.substr(functionStartModule.first.find_last_of("/\\") + 1);
+
+                    if (_stricmp(functionStartModuleName.c_str(), MOD_NAME) != 0)
+                        Log::LogModifiedAddress((std::uintptr_t)it.second.originalFunction, "Modified function start detected: %s 0x%08X 0x%08X %s\n", it.second.name.c_str(), it.second.originalFunction, functionStartDestination, functionStartModuleName.c_str());
+                }
+            }
+        }
+
+        for (auto& it : hooksASM)
+        {
+            const auto currentDestination = injector::GetBranchDestination(it.first).as_int();
+
+            std::pair<std::string, MODULEINFO> moduleInfo = LoadedModules::GetModuleAtAddress(currentDestination);
+            std::string moduleName = moduleInfo.first.substr(moduleInfo.first.find_last_of("/\\") + 1);
+
+            if (_stricmp(moduleName.c_str(), MOD_NAME) != 0 && callChecks.insert({ it.first, moduleName }).second)
+            {
+                if (currentDestination > 0 && !moduleName.empty())
+                    Log::Write("Modified ASM hook detected: %s 0x%08X 0x%08X %s 0x%08X\n", it.second.c_str(), it.first, currentDestination, moduleName.c_str(), moduleInfo.second.lpBaseOfDll);
+                else
+                    Log::Write("Modified ASM hook detected: %s 0x%08X %s\n", it.second.c_str(), it.first, bytesToString(it.first, 5).c_str());
+            }
+        }
+
+        framesSinceCallsChecked = 0;
+    }
+
+    if (player && player->m_pEnex)
+        currentInterior = reinterpret_cast<const char*>(player->m_pEnex);
+    else
+        currentInterior = "";
+
+    if (strncmp(currentInterior, lastInterior, 7) != 0)
+    {
+        logVariationChange("Interior changed");
+
+        strncpy(lastInterior, currentInterior, 7);
+        updateVariations();
+    }
+
+    if (wanted && wanted->m_nWantedLevel != currentWanted)
+    {
+        logVariationChange("Wanted level changed");
+
+        currentWanted = wanted->m_nWantedLevel;
+        updateVariations();
+    }
+
+    if (zInfo && strncmp(zInfo->m_szLabel, currentZone, 7) != 0 && strncmp(zInfo->m_szLabel, "SAN_AND", 7) != 0)
+    {
+        logVariationChange("Zone changed");
+
+        *reinterpret_cast<uint64_t*>(currentZone) = 0;
+        strncpy(currentZone, zInfo->m_szLabel, 7);
+        updateVariations();
+    }
+
+    if (enablePeds) PedVariations::Process();
+    if (enablePedWeapons) PedWeaponVariations::Process();
+    if (enableVehicles) VehicleVariations::Process();
+}
+
+template <std::uintptr_t address>
+void __cdecl InitialiseGameHooked()
+{
+    callOriginal<address>();
+
+    Log::Write("-- InitialiseGame Start (%s) --\n", getDatetime(false, true, true).c_str());
+
+    Log::Write("\nReading zone data...\n");
+    for (int i = 0; i < CTheZones::TotalNumberOfInfoZones; i++)
+    {
+        char zoneLabel[9] = {};
+        memcpy(&zoneLabel[0], (char*)(CTheZones__NavigationZoneArray)+i * 0x20, 8);
+
+        //CZone* zone = reinterpret_cast<CZone*>((char*)(CTheZones__NavigationZoneArray)+i * 0x20);
+
+        zones.insert(zoneLabel);
+    }
+
+    Log::Write("Finished reading %u zones.\n", zones.size());
+
+    for (int i = 0; i < 34; i++)
+    {
+        for (int j = 0; j < CPopulation__m_nNumCarsInGroup[i]; j++)
+            if (CPopulation::m_CarGroups[i][j] > 611)
+                addedIDsInGroups.insert((unsigned short)CPopulation::m_CarGroups[i][j]);
+    }
+
+    Log::Write("-- InitialiseGame End (%s) --\n", getDatetime(false, true, true).c_str());
+
+    if (!FrontEndMenuManager->m_bWantToRestart)
+        refreshOnGameRestart();
+}
+
+template <std::uintptr_t address>
+void __cdecl InitialiseRenderWareHooked()
+{
+    callOriginal<address>();
+    if (loadStage == 1)
+        initialize();
+}
+
+template <std::uintptr_t address>
+void __cdecl ReInitGameObjectVariablesHooked()
+{
+    callOriginal<address>();
+    refreshOnGameRestart();
+}
+
+//Fix(?) for crash on game exit when adding special peds. Something related to m_pHitColModel.
+//This is needed if PedModels in OLA is set to unlimited. If set manually to a high number (e.g PedModels=5000) the game exits ok for some reason.
+template <std::uintptr_t address>
+void __cdecl CGame__ShutdownHooked() 
+{
+    Log::Write("Game shutting down...\n");
+
+    if (!addedIDs.empty())
+    {
+        for (unsigned int i = 0; i < pedsModelsCount; i++)
+            pedsModels[i].m_pHitColModel = NULL;
+    }
+
+    callOriginal<address>();
+
+    Log::Write("Shutdown ok.\n");
+    Log::Close();
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////  MAIN   ///////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////
 
 class ModelVariations {
 public:
@@ -550,9 +853,50 @@ public:
 
         if (enableLog)
         {
+            std::string exeHash;
+            unsigned int exeFilesize = 0;
+            std::string exePath;
+            std::string exeName;
+
             enableLog = Log::Open("ModelVariations.log");
 
-            detectExe();
+            char path[256] = {};
+            GetModuleFileName(NULL, path, 255);
+            exePath = path;
+            exeName = getFilenameFromPath(path);
+
+            HANDLE hFile = CreateFile(path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+            if (hFile == INVALID_HANDLE_VALUE)
+                return;
+
+            exeFilesize = GetFileSize(hFile, NULL);
+
+            if (exeFilesize != INVALID_FILE_SIZE)
+            {
+                DWORD lpNumberOfBytesRead = 0;
+                BCRYPT_ALG_HANDLE hProvider = NULL;
+                BCRYPT_HASH_HANDLE ctx = NULL;
+                auto filebuf = std::vector<BYTE>(exeFilesize + 1);
+
+                if (ReadFile(hFile, filebuf.data(), exeFilesize, &lpNumberOfBytesRead, NULL))
+                    if (BCryptOpenAlgorithmProvider(&hProvider, BCRYPT_SHA256_ALGORITHM, NULL, 0) == STATUS_SUCCESS)
+                        if (BCryptCreateHash(hProvider, &ctx, NULL, 0, NULL, 0, 0) == STATUS_SUCCESS && ctx != NULL)
+                        {
+                            auto hash = std::vector<BYTE>(32);
+                            std::stringstream stream;
+                            BCryptHashData(ctx, filebuf.data(), exeFilesize, 0);
+                            BCryptFinishHash(ctx, hash.data(), 32, 0);
+                            BCryptDestroyHash(ctx);
+                            BCryptCloseAlgorithmProvider(hProvider, 0);
+
+                            for (auto& i : hash)
+                                stream << std::setfill('0') << std::setw(2) << std::hex << static_cast<int>(i);
+
+                            exeHash = stream.str();
+                        }
+            }
+
+            CloseHandle(hFile);
 
             std::string windowsVersion;
             char str[255] = {};
@@ -615,354 +959,12 @@ public:
         if (loadStage == 0)
             initialize();
 
-        Events::initRwEvent += []
-        {
-            if (loadStage == 1)
-                initialize(); 
-        };
-
-        Events::shutdownRwEvent += []
-        {
-            Log::Close();
-        };
-
-        auto gameLoadEvent = []
-        {
-            if (!loadSettingsImmediately && reloadingSettings)
-            {
-                queuedReload = true;
-                return;
-            }
-
-            auto startTime = clock();
-
-            if (!modInitialized && loadStage == 2)
-                initialize();
-
-            assert(modInitialized);
-
-            Log::Write("-- gameLoadEvent (%s) --\n", getDatetime(false, true, true).c_str());
-
-            if (!zonesRead)
-            {
-                Log::Write("\nReading zone data...\n");
-                for (int i = 0; i < CTheZones::TotalNumberOfInfoZones; i++)
-                {
-                    char zoneLabel[9] = {};
-                    memcpy(&zoneLabel[0], (char*)(CTheZones__NavigationZoneArray) + i * 0x20, 8);
-
-                    //CZone* zone = reinterpret_cast<CZone*>((char*)(CTheZones__NavigationZoneArray)+i * 0x20);
-
-                    zones.insert(zoneLabel);
-                }
-                zonesRead = true;
-
-                Log::Write("Finished reading %u zones.\n", zones.size());
-            }
-
-            if (!cargrpRead)
-            {
-                for (int i = 0; i < 34; i++)
-                {
-                    for (int j = 0; j < CPopulation__m_nNumCarsInGroup[i]; j++)
-                        if (CPopulation::m_CarGroups[i][j] > 611)
-                            addedIDsInGroups.insert((unsigned short)CPopulation::m_CarGroups[i][j]);
-                }
-
-                cargrpRead = true;
-            }
-
-            clearEverything();
-            PedVariations::ProcessDrugDealers(true);
-            LoadedModules::Refresh();
-
-            if (enableLog)
-                framesSinceCallsChecked = 900;
-
-            *reinterpret_cast<uint64_t*>(currentZone) = 0;
-            lastInterior[0] = 0;
-
-            reloadingSettings = true;
-            auto doAsyncStuff = [startTime] {
-                loadIniData();
-
-                if (enablePeds)
-                    PedVariations::LogVariations();
-
-                if (enableVehicles)
-                {
-                    Log::Write("\n");
-                    VehicleVariations::LogVariations();
-                }
-
-                Log::Write("\n\n");
-
-                if (checkForUpdate())
-                    timeUpdate = clock();
-                else
-                    timeUpdate = -1;
-
-                auto finalTime = clock() - startTime;
-                if (finalTime < 1000)
-                    Log::Write("Time spent loading: %dms.\n", finalTime);
-                else
-                    Log::Write("Time spent loading: %gs.\n", finalTime / 1000.0);
-
-                reloadingSettings = false;
-            };
-
-            if (loadSettingsImmediately)
-                doAsyncStuff();
-            else
-                future = std::async(std::launch::async, doAsyncStuff);
-        };
-        Events::initGameEvent += gameLoadEvent;
-        Events::reInitGameEvent += gameLoadEvent;
-
-        Events::pedCtorEvent += [](CPed* ped)
-        {
-            PedVariations::AddToStack(ped);
-            PedWeaponVariations::AddToStack(ped);
-        };
-
-        Events::vehicleCtorEvent += [](CVehicle* veh)
-        {
-            VehicleVariations::AddToStack(veh);
-        };
-
-        Events::gameProcessEvent += [&gameLoadEvent]
-        {
-            if (reloadingSettings)
-                return;
-
-            if (queuedReload)
-            {
-                gameLoadEvent();
-                queuedReload = false;
-                return;
-            }
-
-            if (!jumpsLogged && logJumps)
-            {
-                Log::Write("\nLogging JMP hooks...\n");
-                std::vector<unsigned char> buffer;
-
-                const std::vector<int> sections = (GetGameVersion() == GAME_10US_HOODLUM) ? std::vector<int> { 0, 1, 7, 8, 9, 10 } : std::vector<int>{ 0, 1 };
-                const std::vector<std::uintptr_t> validRanges = (GetGameVersion() == GAME_10US_HOODLUM) ? std::vector<std::uintptr_t> { 0x401000, 0x857000, 0xCB1000, 0x12FB000, 0x1301000, 0x1556000 } : std::vector<std::uintptr_t>{ 0x401000, 0x857000 };
-                std::unordered_map<std::string, std::vector<jumpInfo>> jumpsMap;
-
-                auto gta_saModule = LoadedModules::GetModule("gta_sa.exe");
-                std::uintptr_t gta_saEndAddress = ((std::uintptr_t)gta_saModule.second.lpBaseOfDll + gta_saModule.second.SizeOfImage);
-                unsigned int secCount = 0;
-
-                for (auto& rangeStart : validRanges)
-                {
-                    unsigned int sectionSize;
-                    LoadPESection("gta_sa.exe", sections[secCount++], buffer, &sectionSize);
-                    for (unsigned int i = rangeStart; i < sectionSize+0x400000;i++)
-                    {
-                        auto currentByte = *reinterpret_cast<unsigned char*>(i);
-                        if (currentByte != buffer[i - rangeStart])
-                        {
-                            auto destination = injector::GetBranchDestination(i).as_int();
-                            if (destination > gta_saEndAddress)
-                            {
-                                auto moduleInfo = LoadedModules::GetModuleAtAddress(destination);
-                                std::string moduleName = moduleInfo.first.substr(moduleInfo.first.find_last_of("/\\") + 1);
-
-                                if (!strcasestr(moduleInfo.first, "Windows") && _stricmp(moduleName.c_str(), MOD_NAME) != 0)
-                                {
-                                    if (moduleName.empty())
-                                        jumpsMap["unknown"].push_back({ i, destination, currentByte });
-                                    else
-                                        jumpsMap[moduleName].push_back({ i, destination, currentByte });
-                                }
-                                i += 3;
-                            }
-                        }
-                    }
-                }
-                for (auto& i : jumpsMap)
-                {
-                    Log::Write("\n%s:\n", i.first.c_str());
-                    for (auto& j : i.second)
-                    {
-                        Log::Write("0x%08X 0x%08X %X\n", j.address, j.destination, j.type);
-                    }
-                }
-
-                jumpsLogged = true;
-            }
-
-            CVector pPos = FindPlayerCoors(-1);
-            CZone* zInfo = NULL;
-            CTheZones::GetZoneInfo(&pPos, &zInfo);
-            const CWanted* wanted = FindPlayerWanted(-1);
-            const CPlayerPed* player = FindPlayerPed();
-
-            if (trackReferenceCounts > 0 && CModelInfo::GetModelInfo(0))
-                for (int i = 7; i < std::max<int>(flaMaxID, 20000); i++)
-                {
-                    auto mInfo = CModelInfo::GetModelInfo(i);
-                    if (mInfo && mInfo->m_nRefCount > trackReferenceCounts && !referenceCountModels.contains(static_cast<unsigned short>(i)))
-                    {
-                        auto modelType = (mInfo->GetModelType() == MODEL_INFO_VEHICLE) ? "(Vehicle) " : ((mInfo->GetModelType() == MODEL_INFO_PED) ? "(Ped) " : "");
-
-                        char warning_string[256] = {};
-                        snprintf(warning_string, 255, "WARNING: model %d %shas a reference count of %d\n", i, modelType, mInfo->m_nRefCount);
-                        Log::Write(warning_string);
-#ifdef _DEBUG
-                        MessageBox(NULL, warning_string, "Model Variations", MB_ICONWARNING);
-#endif
-                        referenceCountModels.insert(static_cast<unsigned short>(i));
-                    }
-                }
-
-            auto logVariationChange = [zInfo, wanted](const char* msg)
-            {
-                Log::Write("\n%s (%s). Updating variations...\n", msg, getDatetime(false, true, true).c_str());
-                Log::Write("currentWanted = %u wanted->m_nWantedLevel = %u\n", currentWanted, wanted->m_nWantedLevel);
-                Log::Write("currentZone = %.8s zInfo->m_szLabel = %.8s\n", currentZone, zInfo->m_szLabel);
-
-                if (currentInterior[0] != 0 || lastInterior[0] != 0)
-                    Log::Write("currentInterior = %.8s lastInterior = %.8s\n", currentInterior, lastInterior);
-            };
-
-            if (timeUpdate > -1 && ((clock() - timeUpdate) / CLOCKS_PER_SEC > 6))
-            {
-                printMessage("~y~Model Variations~s~: Update available.", 4000);
-                timeUpdate = -1;
-            }
-
-            if (disableKey > 0 && KeyPressed(disableKey))
-            {
-                if (!keyDown)
-                {
-                    keyDown = true;
-                    printMessage("~y~Model Variations~s~: Mod disabled.", 2000);
-                    Log::Write("Disabling mod... ");
-                    clearEverything();
-                    Log::Write("OK\n");
-                }
-            }
-            else if (reloadKey > 0 && KeyPressed(reloadKey))
-            {
-                if (!keyDown)
-                {
-                    keyDown = true;
-                    reloadingSettings = true;
-                    Log::Write("Reloading settings...\n");
-                    clearEverything();
-                    printMessage("~y~Model Variations~s~: Reloading settings...", 10000);
-                    auto doAsyncStuff = [logVariationChange] {
-                        loadIniData();
-                        logVariationChange("Settings reloaded.");
-                        updateVariations();
-                        printMessage("~y~Model Variations~s~: Settings reloaded.", 2000);
-                        reloadingSettings = false;
-                    };
-
-                    if (loadSettingsImmediately)
-                        doAsyncStuff();
-                    else
-                        future = std::async(std::launch::async, doAsyncStuff);
-                }
-            }
-            else
-                keyDown = false;
-
-            if (framesSinceCallsChecked < 1000)
-                framesSinceCallsChecked++;
-
-            if (framesSinceCallsChecked == 1000)
-            {
-                for (auto &it : hookedCalls)
-                {
-                    if (it.second.name.empty())
-                        continue;
-
-                    const std::uintptr_t functionAddress = (it.second.isVTableAddress == false) ? injector::GetBranchDestination(it.first).as_int() : *reinterpret_cast<unsigned int*>(it.first);
-                    std::pair<std::string, MODULEINFO> moduleInfo = LoadedModules::GetModuleAtAddress(functionAddress);
-                    std::string moduleName = moduleInfo.first.substr(moduleInfo.first.find_last_of("/\\") + 1);
-
-                    if (_stricmp(moduleName.c_str(), MOD_NAME) != 0 && callChecks.insert({ it.first, moduleName }).second)
-                    {
-                        if (functionAddress > 0 && !moduleName.empty())
-                            Log::Write("Modified call detected: %s 0x%08X 0x%08X %s 0x%08X\n", it.second.name.data(), it.first, functionAddress, moduleName.c_str(), moduleInfo.second.lpBaseOfDll);
-                        else
-                            Log::Write("Modified call detected: %s 0x%08X %s\n", it.second.name.data(), it.first, bytesToString(it.first, 5).c_str());
-                    }
-
-                    auto gta_saModule = LoadedModules::GetModule("gta_sa.exe");
-                    std::uintptr_t gta_saEndAddress = ((std::uintptr_t)gta_saModule.second.lpBaseOfDll + gta_saModule.second.SizeOfImage);
-
-                    if ((std::uintptr_t)it.second.originalFunction < gta_saEndAddress)
-                    {
-                        auto functionStartDestination = injector::GetBranchDestination(it.second.originalFunction).as_int();
-                        if (functionStartDestination && functionStartDestination > gta_saEndAddress)
-                        {
-                            auto functionStartModule = LoadedModules::GetModuleAtAddress(functionStartDestination);
-                            std::string functionStartModuleName = functionStartModule.first.substr(functionStartModule.first.find_last_of("/\\") + 1);
-
-                            if (_stricmp(functionStartModuleName.c_str(), MOD_NAME) != 0)
-                                Log::LogModifiedAddress((std::uintptr_t)it.second.originalFunction, "Modified function start detected: %s 0x%08X 0x%08X %s\n", it.second.name.c_str(), it.second.originalFunction, functionStartDestination, functionStartModuleName.c_str());
-                        }
-                    }
-                }
-
-                for (auto& it : hooksASM)
-                {
-                    const auto currentDestination = injector::GetBranchDestination(it.first).as_int();
-
-                    std::pair<std::string, MODULEINFO> moduleInfo = LoadedModules::GetModuleAtAddress(currentDestination);
-                    std::string moduleName = moduleInfo.first.substr(moduleInfo.first.find_last_of("/\\") + 1);
-
-                    if (_stricmp(moduleName.c_str(), MOD_NAME) != 0 && callChecks.insert({ it.first, moduleName }).second)
-                    {
-                        if (currentDestination > 0 && !moduleName.empty())
-                            Log::Write("Modified ASM hook detected: %s 0x%08X 0x%08X %s 0x%08X\n", it.second.c_str(), it.first, currentDestination, moduleName.c_str(), moduleInfo.second.lpBaseOfDll);
-                        else
-                            Log::Write("Modified ASM hook detected: %s 0x%08X %s\n", it.second.c_str(), it.first, bytesToString(it.first, 5).c_str());
-                    }
-                }
-
-                framesSinceCallsChecked = 0;
-            }
-
-            if (player && player->m_pEnex)
-                currentInterior = reinterpret_cast<const char*>(player->m_pEnex);
-            else 
-                currentInterior = "";
-
-            if (strncmp(currentInterior, lastInterior, 7) != 0)
-            {
-                logVariationChange("Interior changed");
-
-                strncpy(lastInterior, currentInterior, 7);
-                updateVariations();
-            }
-
-            if (wanted && wanted->m_nWantedLevel != currentWanted)
-            {
-                logVariationChange("Wanted level changed");
-
-                currentWanted = wanted->m_nWantedLevel;
-                updateVariations();
-            }
-
-            if (zInfo && strncmp(zInfo->m_szLabel, currentZone, 7) != 0 && strncmp(zInfo->m_szLabel, "SAN_AND", 7) != 0)
-            {
-                logVariationChange("Zone changed");
-
-                *reinterpret_cast<uint64_t*>(currentZone) = 0;
-                strncpy(currentZone, zInfo->m_szLabel, 7);
-                updateVariations();
-            }
-
-            if (enablePeds) PedVariations::Process();
-            if (enablePedWeapons) PedWeaponVariations::Process();
-            if (enableVehicles) VehicleVariations::Process();
-        };
-
+        hookCall(0x408D43, AddToLoadedVehiclesListHooked<0x408D43>, "CStreaming::AddToLoadedVehiclesList"); //CStreaming::FinishLoadingLargeFile
+        hookCall(0x40C858, AddToLoadedVehiclesListHooked<0x40C858>, "CStreaming::AddToLoadedVehiclesList"); //CStreaming::ConvertBufferToObject
+        hookCall(0x53E981, CGame__ProcessHooked<0x53E981>, "CGame::Process"); //Idle
+        hookCall(0x748E6B, CGame__ShutdownHooked<0x748E6B>, "CGame::Shutdown"); //WinMain
+        hookCall(0x748CFB, InitialiseGameHooked<0x748CFB>, "InitialiseGame"); //WinMain
+        hookCall(0x5BF3A1, InitialiseRenderWareHooked<0x5BF3A1>, "CGame::InitialiseRenderWare"); //RwInitialize
+        hookCall(0x53C6DB, ReInitGameObjectVariablesHooked<0x53C6DB>, "CGame::ReInitGameObjectVariables"); //CGame::InitialiseWhenRestarting
     }
 } modelVariations;

@@ -44,11 +44,6 @@ bool isIdValidForWatcher(unsigned short id)
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void PedWeaponVariations::AddToStack(CPed* ped)
-{
-    pedWepStack.push(ped);
-}
-
 void PedWeaponVariations::ClearData()
 {
     wepPedModels.clear();
@@ -245,6 +240,14 @@ void PedWeaponVariations::LogDataFile()
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
 template <std::uintptr_t address>
+CPed* __fastcall CPedHooked(CPed* ped, void*, int pedType)
+{
+    CPed* retVal = callMethodOriginalAndReturn<CPed*, address>(ped, pedType);
+    pedWepStack.push(ped);
+    return retVal;
+}
+
+template <std::uintptr_t address>
 void __fastcall GiveWeaponAtStartOfFightHooked(CPed* ped)
 {
     assert(ped != NULL);
@@ -315,6 +318,10 @@ int16_t __fastcall CollectParametersHooked(CRunningScript * _this, void*, unsign
 
 void PedWeaponVariations::InstallHooks()
 {
+    hookCall(0x5DDB92, CPedHooked<0x5DDB92>, "CPed::CPed"); //CCivilianPed::CCivilianPed
+    hookCall(0x5DDC81, CPedHooked<0x5DDC81>, "CPed::CPed"); //CCop::CCop
+    hookCall(0x5DE362, CPedHooked<0x5DE362>, "CPed::CPed"); //CEmergencyPed::CEmergencyPed
+
     hookCall(0x62A12E, GiveWeaponAtStartOfFightHooked<0x62A12E>, "CPed::GiveWeaponAtStartOfFight"); //CTaskSimpleFightingControl::ProcessPed
     hookCall(0x47D335, GiveWeaponHooked<0x47D335>, "CPed::GiveWeapon"); //01B2: GIVE_WEAPON_TO_CHAR
     hookCall(0x47D4AC, CollectParametersHooked<0x47D4AC>, "CRunningScript::CollectParameters"); //01B9: SET_CURRENT_CHAR_WEAPON

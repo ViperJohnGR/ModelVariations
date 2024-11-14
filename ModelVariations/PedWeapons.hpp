@@ -8,7 +8,6 @@ extern const char* currentInterior;
 class PedWeaponVariations
 {
 public:
-	static void AddToStack(CPed* ped);
 	static void ClearData();
 	static void LoadData();
 	static void Process();

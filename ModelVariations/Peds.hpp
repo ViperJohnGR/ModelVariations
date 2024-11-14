@@ -14,7 +14,6 @@ extern std::set<std::string> zones;
 class PedVariations
 {
 public:
-	static void AddToStack(CPed* veh);
 	static void ClearData();
 	static void LoadData();
 	static void Process();

@@ -2,6 +2,7 @@
 
 #include <CDirectory.h>
 #include <CLoadedCarGroup.h>
+#include <CMenuManager.h>
 #include <CPedModelInfo.h>
 #include <CStreamingInfo.h>
 
@@ -9,6 +10,8 @@
 
 #define pedsModels reinterpret_cast<CPedModelInfo*>(*reinterpret_cast<unsigned int**>(0x4C6518)+1)
 #define pedsModelsCount **reinterpret_cast<unsigned int**>(0x4C6518)
+
+#define FrontEndMenuManager (*reinterpret_cast<CMenuManager**>(0x53C6C0))
 
 #define CModelInfo__AddPedModel reinterpret_cast<CPedModelInfo * (__cdecl*)(int)>(injector::GetBranchDestination(0x5B74A7).as_int())
 

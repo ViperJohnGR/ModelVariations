@@ -140,11 +140,6 @@ bool compareOriginalModels(unsigned short model1, unsigned short model2, bool in
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void PedVariations::AddToStack(CPed* ped)
-{
-    pedVars->stack.push(ped);
-}
-
 void PedVariations::ClearData()
 {
     pedVars.reset(new tPedVars);
@@ -575,6 +570,14 @@ char __fastcall CAEPedSpeechAudioEntity__InitialiseHooked(CAEPedSpeechAudioEntit
     return callMethodOriginalAndReturn<char, address>(_this, ped);
 }
 
+template <std::uintptr_t address>
+CPhysical* __fastcall CPhysicalHooked(CPed* _this)
+{
+    CPhysical* retVal = callMethodOriginalAndReturn<CPhysical*, address>(_this);
+    pedVars->stack.push(_this);
+    return retVal;
+}
+
 void PedVariations::InstallHooks(bool enableSpecialPeds)
 {
     if (enableSpecialPeds)
@@ -653,4 +656,6 @@ void PedVariations::InstallHooks(bool enableSpecialPeds)
     hookCall(0x5DDBB8, CAEPedSpeechAudioEntity__InitialiseHooked<0x5DDBB8>, "CAEPedSpeechAudioEntity::Initialise"); //CCivilianPed
     hookCall(0x5DDD24, CAEPedSpeechAudioEntity__InitialiseHooked<0x5DDD24>, "CAEPedSpeechAudioEntity::Initialise"); //CCopPed
     hookCall(0x5DE388, CAEPedSpeechAudioEntity__InitialiseHooked<0x5DE388>, "CAEPedSpeechAudioEntity::Initialise"); //CEmergencyPed
+
+    hookCall(0x5E8052, CPhysicalHooked<0x5E8052>, "CPhysical::CPhysical"); //CPed::CPed
 }

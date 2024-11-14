@@ -127,7 +127,6 @@ struct tVehOptions {
     bool enableSideMissions = false;
     bool enableSiren = false;
     bool enableSpecialFeatures = false;
-    bool loadAllVehicles = false;
     std::vector<unsigned short> carGenExclude;
     std::vector<unsigned short> inheritExclude;
 };
@@ -402,12 +401,6 @@ int getRandomVariation(const int modelid, bool parked = false)
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-
-void VehicleVariations::AddToStack(CVehicle* veh)
-{
-    vehVars->stack.push(veh);
-}
-
 void VehicleVariations::ClearData()
 {
     vehVars.reset(new tVehVars);
@@ -427,7 +420,6 @@ void VehicleVariations::LoadData()
     vehOptions->enableSideMissions    = dataFile.ReadBoolean("Settings", "EnableSideMissions", false);
     vehOptions->enableSiren           = dataFile.ReadBoolean("Settings", "EnableSiren", false);
     vehOptions->enableSpecialFeatures = dataFile.ReadBoolean("Settings", "EnableSpecialFeatures", false);
-    vehOptions->loadAllVehicles       = dataFile.ReadBoolean("Settings", "LoadAllVehicles", false);
     vehOptions->carGenExclude         = dataFile.ReadLine("Settings", "ExcludeCarGeneratorModels", READ_VEHICLES);
     vehOptions->inheritExclude        = dataFile.ReadLine("Settings", "ExcludeModelsFromInheritance", READ_VEHICLES);
 
@@ -1472,6 +1464,38 @@ CVehicle* __cdecl GetNewVehicleDependingOnCarModelHooked(int modelIndex, int cre
     return veh;
 }
 
+template <std::uintptr_t address>
+int __fastcall CreateInstanceHooked(CVehicleModelInfo* _this)
+{
+    if (_this->m_pVehicleStruct == NULL)
+    {
+        int index = 0;
+        CModelInfo::GetModelInfoFromHashKey(_this->m_nKey, &index);
+        Log::Write("Model %d has NULL vehicle struct. Trying to load model... ", index);
+        loadModels({ index }, PRIORITY_REQUEST, true);
+        if (_this->m_pVehicleStruct != NULL)
+            Log::Write("OK\n");
+        else
+        {
+            char errorString[256] = {};
+            snprintf(errorString, 255, "Couldn't load model %d! The game will crash.\nLoad state: %u\nReference count: %u\nTimes used: %u\n", index, CStreaming__ms_aInfoForModel[index].m_nLoadState, _this->m_nRefCount, _this->m_nTimesUsed);
+            Log::Write("\n%s\n", errorString);
+            MessageBox(NULL, errorString, "Model Variations", MB_ICONERROR);
+        }
+    }
+
+    return callMethodOriginalAndReturn<int, address>(_this);
+}
+
+template <std::uintptr_t address>
+CPhysical* __fastcall CPhysicalHooked(CVehicle* _this)
+{
+    CPhysical* retVal = callMethodOriginalAndReturn<CPhysical*, address>(_this);
+    vehVars->stack.push(_this);
+    return retVal;
+}
+
+
 ////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////  SPECIAL FEATURES  //////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1757,30 +1781,6 @@ CPed* __fastcall CPool__atHandleTaxiHooked(void* _this, void*, signed int h) //U
     return ped;
 }
 
-template <std::uintptr_t address>
-int __fastcall CreateInstanceHooked(CVehicleModelInfo* _this)
-{
-    if (_this->m_pVehicleStruct == NULL)
-    {
-        int index = 0;
-        CModelInfo::GetModelInfoFromHashKey(_this->m_nKey, &index);
-        Log::Write("Model %d has NULL vehicle struct. Trying to load model... ", index);
-        loadModels({ index }, PRIORITY_REQUEST, true);
-        if (_this->m_pVehicleStruct != NULL)
-            Log::Write("OK\n");
-        else
-        {
-            char errorString[256] = {};
-            snprintf(errorString, 255, "Couldn't load model %d! The game will crash.\nLoad state: %u\nReference count: %u\nTimes used: %u\n", index, CStreaming__ms_aInfoForModel[index].m_nLoadState, _this->m_nRefCount, _this->m_nTimesUsed);
-            Log::Write("\n%s\n", errorString);
-            MessageBox(NULL, errorString, "Model Variations", MB_ICONERROR);
-        }
-    }
-
-    return callMethodOriginalAndReturn<int, address>(_this);
-}
-
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////  ASM HOOKS  /////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -2045,12 +2045,6 @@ void VehicleVariations::InstallHooks()
         MessageBox(NULL, "Both Model Variations and FLA special features are enabled. Disable one of them.", "Model Variations", MB_ICONWARNING);
         vehOptions->enableSpecialFeatures = false;
     }
-
-    Events::initScriptsEvent.after += []
-    {
-        if (vehOptions->loadAllVehicles)
-            loadModels(400, 611, KEEP_IN_MEMORY, false);
-    };
 
     hookCall(0x43022A, ChooseModelHooked<0x43022A>, "CCarCtrl::ChooseModel"); //CCarCtrl::GenerateOneRandomCar
 
@@ -2462,6 +2456,8 @@ void VehicleVariations::InstallHooks()
     hookCall(0x85C5F4, CreateInstanceHooked<0x85C5F4>, "CVehicleModelInfo::CreateInstance", true);
 
     hookCall(0x4306A1, GetNewVehicleDependingOnCarModelHooked<0x4306A1>, "CCarCtrl::GetNewVehicleDependingOnCarModel"); ///CCarCtrl::GenerateOneRandomCar
+
+    hookCall(0x6D5F2F, CPhysicalHooked<0x6D5F2F>, "CPhysical::CPhysical"); //CVehicle::CVehicle
 
     //Tuning for parked cars
     MakeInline<0x6F3B88, 6>("CCarGenerator::DoInternalProcessing", "88 96 2A 04 00 00", [](injector::reg_pack& regs)

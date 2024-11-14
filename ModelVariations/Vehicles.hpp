@@ -17,7 +17,6 @@ extern std::set<std::string> zones;
 class VehicleVariations
 {
 public:
-	static void AddToStack(CVehicle * veh);
 	static void ClearData();
 	static void LoadData();
 	static void Process();

@@ -106,6 +106,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="DataReader.cpp" />
+    <ClCompile Include="Hooks.cpp" />
     <ClCompile Include="LoadedModules.cpp" />
     <ClCompile Include="Log.cpp" />
     <ClCompile Include="Peds.cpp" />

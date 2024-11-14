@@ -8,6 +8,7 @@
     <ClCompile Include="PedWeapons.cpp" />
     <ClCompile Include="Log.cpp" />
     <ClCompile Include="LoadedModules.cpp" />
+    <ClCompile Include="Hooks.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Vehicles.hpp" />

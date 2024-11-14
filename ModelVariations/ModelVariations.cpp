@@ -67,9 +67,6 @@ const std::pair<std::string, unsigned> areas[] = { {"Countryside", 0},
                                                    {"Whetstone", 0},
                                                    {"AngelPine", 14} };
 
-std::unordered_map<std::uintptr_t, std::string> hooksASM;
-std::unordered_map<std::uintptr_t, hookinfo> hookedCalls;
-
 std::set<std::pair<std::uintptr_t, std::string>> callChecks;
 std::set<unsigned short> referenceCountModels;
 std::set<std::string> zones;

@@ -1408,30 +1408,28 @@ void __fastcall CAutomobile__PreRenderHooked(CAutomobile* veh)
 
     if (vehOptions->enableSpecialFeatures)
     {
-        auto changeModelAtAddress = [veh](unsigned short oldModel, std::vector<std::uintptr_t> addresses) -> void {
-            changeModel<address>("CAutomobile::PreRender", oldModel, veh->m_nModelIndex, addresses, veh);
-        };
+        constexpr const char* funcName = "CAutomobile::PreRender";
 
-        switch (getVariationOriginalModel(veh->m_nModelIndex))
+        switch (getVariationOriginalModel(originalModel))
         {
-            case 407: return changeModelAtAddress(407, { 0x6ACA59 }); //Firetruck
-            case 424: return changeModelAtAddress(424, { 0x6AC2A1 }); //BF Injection
-            case 432: return changeModelAtAddress(432, { 0x6ABC83, 0x6ABD11, 0x6ABFCC, 0x6AC029, 0x6ACA4D }); //Rhino
-            case 434: return changeModelAtAddress(434, { 0x6ACA43 }); //Hotknife
-            case 443: return changeModelAtAddress(443, { 0x6AC4DB }); //Packer
-            case 471: return changeModelAtAddress(471, { 0x6ABCA9 }); //Quad
-            case 477: return changeModelAtAddress(477, { 0x6ACA8F }); //ZR-350
-            case 486: return changeModelAtAddress(486, { 0x6AC40E }); //Dozer
-            case 495: return changeModelAtAddress(495, { (GetGameVersion() != GAME_10US_COMPACT) ? 0x4064A0U : 0x6ACBCBU }); //Sandking
-            case 524: return changeModelAtAddress(524, { 0x6AC43D }); //Cement Truck
-            case 525: return changeModelAtAddress(525, { 0x6AC509 }); //Towtruck
-            case 530: return changeModelAtAddress(530, { 0x6AC71E }); //Forklift
-            case 531: return changeModelAtAddress(531, { 0x6AC6DB }); //Tractor
-            case 532: return changeModelAtAddress(532, { 0x6ABCA3, 0x6AC7AD }); //Combine Harverster
-            case 539: return changeModelAtAddress(539, { 0x6AAE27 }); //Vortex
-            case 544: return changeModelAtAddress(544, { 0x6AC0E3 }); //Firetruck LS
-            case 568: return changeModelAtAddress(568, { 0x6ACA39 }); //Bandito
-            case 601: return changeModelAtAddress(601, { 0x6ACA53 }); //SWAT Tank
+            case 407: return changeModel<address>(funcName, 407, originalModel, { 0x6ACA59 }, veh); // Firetruck
+            case 424: return changeModel<address>(funcName, 424, originalModel, { 0x6AC2A1 }, veh); // BF Injection
+            case 432: return changeModel<address>(funcName, 432, originalModel, { 0x6ABC83, 0x6ABD11, 0x6ABFCC, 0x6AC029, 0x6ACA4D }, veh); // Rhino
+            case 434: return changeModel<address>(funcName, 434, originalModel, { 0x6ACA43 }, veh); // Hotknife
+            case 443: return changeModel<address>(funcName, 443, originalModel, { 0x6AC4DB }, veh); // Packer
+            case 471: return changeModel<address>(funcName, 471, originalModel, { 0x6ABCA9 }, veh); // Quad
+            case 477: return changeModel<address>(funcName, 477, originalModel, { 0x6ACA8F }, veh); // ZR-350
+            case 486: return changeModel<address>(funcName, 486, originalModel, { 0x6AC40E }, veh); // Dozer
+            case 495: return changeModel<address>(funcName, 495, originalModel, { (GetGameVersion() != GAME_10US_COMPACT) ? 0x4064A0U : 0x6ACBCBU }, veh); // Sandking
+            case 524: return changeModel<address>(funcName, 524, originalModel, { 0x6AC43D }, veh); // Cement Truck
+            case 525: return changeModel<address>(funcName, 525, originalModel, { 0x6AC509 }, veh); // Towtruck
+            case 530: return changeModel<address>(funcName, 530, originalModel, { 0x6AC71E }, veh); // Forklift
+            case 531: return changeModel<address>(funcName, 531, originalModel, { 0x6AC6DB }, veh); // Tractor
+            case 532: return changeModel<address>(funcName, 532, originalModel, { 0x6ABCA3, 0x6AC7AD }, veh); // Combine Harvester
+            case 539: return changeModel<address>(funcName, 539, originalModel, { 0x6AAE27 }, veh); // Vortex
+            case 544: return changeModel<address>(funcName, 544, originalModel, { 0x6AC0E3 }, veh); // Firetruck LS
+            case 568: return changeModel<address>(funcName, 568, originalModel, { 0x6ACA39 }, veh); // Bandito
+            case 601: return changeModel<address>(funcName, 601, originalModel, { 0x6ACA53 }, veh); // SWAT Tank
         }
     }
 
@@ -1503,28 +1501,29 @@ CPhysical* __fastcall CPhysicalHooked(CVehicle* _this)
 template <std::uintptr_t address>
 void __fastcall ProcessControlHooked(CAutomobile* veh)
 {
-    auto changeModelAtAddress = [veh](unsigned short originalModel, std::vector<std::uintptr_t> addresses) -> void {
-        changeModel<address>("CAutomobile::ProcessControl", originalModel, veh->m_nModelIndex, addresses, veh);
-    };
+    assert(veh != NULL);
+
+    constexpr const char* funcName = "CAutomobile::ProcessControl";
+    const auto modelIndex = veh->m_nModelIndex;
 
     switch (getVariationOriginalModel(veh->m_nModelIndex))
     {
-        case 406: return changeModelAtAddress(406, { 0x6B1F9D }); //Dumper
-        case 407: return changeModelAtAddress(407, { 0x6B1F51 }); //Firetruck
-        case 417: return changeModelAtAddress(417, { 0x6B1E34 }); //Leviathan
-        case 423: return changeModelAtAddress(423, { 0x6B2BD8 }); //Mr. Whoopie
-        case 432: return changeModelAtAddress(432, { 0x6B1F7D, 0x6B36D8 }); //Rhino
-        case 443: return changeModelAtAddress(443, { 0x6B1F91 }); //Packer
-        case 447: return changeModelAtAddress(447, { 0x6B1E2D }); //Sea Sparrow
-        case 460: return changeModelAtAddress(460, { 0x6B2181 }); //Skimmer
-        case 486: return changeModelAtAddress(486, { 0x6B1F97 }); //Dozer
-        case 524: return changeModelAtAddress(524, { 0x6B1FA3 }); //Cement Truck
-        case 525: return changeModelAtAddress(525, { 0x6B1FB5 }); //Towtruck
-        case 530: return changeModelAtAddress(530, { 0x6B1FAF }); //Forklift
-        case 531: return changeModelAtAddress(531, { 0x6B1FBB }); //Tractor
-        case 532: return changeModelAtAddress(532, { 0x6B36C9 }); //Combine Harverster
-        case 539: return changeModelAtAddress(539, { 0x6B1E5C, 0x6B284F, 0x6B356E }); //Vortex
-        case 601: return changeModelAtAddress(601, { 0x6B1F57 }); //Swat Tank
+        case 406: return changeModel<address>(funcName, 406, modelIndex, { 0x6B1F9D }, veh); //Dumper
+        case 407: return changeModel<address>(funcName, 407, modelIndex, { 0x6B1F51 }, veh); //Firetruck
+        case 417: return changeModel<address>(funcName, 417, modelIndex, { 0x6B1E34 }, veh); //Leviathan
+        case 423: return changeModel<address>(funcName, 423, modelIndex, { 0x6B2BD8 }, veh); //Mr. Whoopie
+        case 432: return changeModel<address>(funcName, 432, modelIndex, { 0x6B1F7D, 0x6B36D8 }, veh); //Rhino
+        case 443: return changeModel<address>(funcName, 443, modelIndex, { 0x6B1F91 }, veh); //Packer
+        case 447: return changeModel<address>(funcName, 447, modelIndex, { 0x6B1E2D }, veh); //Sea Sparrow
+        case 460: return changeModel<address>(funcName, 460, modelIndex, { 0x6B2181 }, veh); //Skimmer
+        case 486: return changeModel<address>(funcName, 486, modelIndex, { 0x6B1F97 }, veh); //Dozer
+        case 524: return changeModel<address>(funcName, 524, modelIndex, { 0x6B1FA3 }, veh); //Cement Truck
+        case 525: return changeModel<address>(funcName, 525, modelIndex, { 0x6B1FB5 }, veh); //Towtruck
+        case 530: return changeModel<address>(funcName, 530, modelIndex, { 0x6B1FAF }, veh); //Forklift
+        case 531: return changeModel<address>(funcName, 531, modelIndex, { 0x6B1FBB }, veh); //Tractor
+        case 532: return changeModel<address>(funcName, 532, modelIndex, { 0x6B36C9 }, veh); //Combine Harvester
+        case 539: return changeModel<address>(funcName, 539, modelIndex, { 0x6B1E5C, 0x6B284F, 0x6B356E }, veh); //Vortex
+        case 601: return changeModel<address>(funcName, 601, modelIndex, { 0x6B1F57 }, veh); //Swat Tank
     }
 
     callMethodOriginal<address>(veh);

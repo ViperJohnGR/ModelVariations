@@ -37,6 +37,7 @@ struct tPedVars {
     std::vector<unsigned short> currentVariations[MAX_ORIGINAL_PED_ID];
     std::vector<unsigned short> dontInheritBehaviourModels;
     std::vector<unsigned short> mergeZones;
+    std::vector<unsigned short> mergeInteriors;
     std::vector<unsigned short> pedHasVariations;
 };
 
@@ -219,6 +220,9 @@ void PedVariations::LoadData()
 
             if (dataFile.ReadBoolean(section, "DontInheritBehaviour", false))
                 pedVars->dontInheritBehaviourModels.push_back((unsigned short)i);
+
+            if (dataFile.ReadBoolean(section, "MergeInteriorsWithCitiesAndZones", false))
+                pedVars->mergeInteriors.push_back((unsigned short)i);
         }
 
         int parentVoice = dataFile.ReadInteger(section, "UseParentVoice", -1);
@@ -414,7 +418,12 @@ void PedVariations::UpdateVariations()
         }
 
         if (currentInterior[0] != 0)
-            pedVars->currentVariations[modelid] = vectorUnion(pedVars->currentVariations[modelid], dataFile.ReadLine(section, currentInterior, READ_PEDS));
+        {
+            if (vectorHasId(pedVars->mergeInteriors, modelid))
+                pedVars->currentVariations[modelid] = vectorUnion(pedVars->currentVariations[modelid], dataFile.ReadLine(section, currentInterior, READ_PEDS));
+            else if (auto vec = dataFile.ReadLine(section, currentInterior, READ_PEDS); !vec.empty())
+                pedVars->currentVariations[modelid] = vec;
+        }
 
         if (wanted)
         {

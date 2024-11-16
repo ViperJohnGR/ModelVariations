@@ -764,6 +764,25 @@ void __cdecl CGame__ProcessHooked()
     if (enableVehicles) VehicleVariations::Process();
 }
 
+//Fix(?) for crash on game exit when adding special peds. Something related to m_pHitColModel.
+//This is needed if PedModels in OLA is set to unlimited. If set manually to a high number (e.g PedModels=5000) the game exits ok for some reason.
+template <std::uintptr_t address>
+void __cdecl CGame__ShutdownHooked()
+{
+    Log::Write("Game shutting down...\n");
+
+    if (!addedIDs.empty())
+    {
+        for (unsigned int i = 0; i < pedsModelsCount; i++)
+            pedsModels[i].m_pHitColModel = NULL;
+    }
+
+    callOriginal<address>();
+
+    Log::Write("Shutdown ok.\n");
+    Log::Close();
+}
+
 template <std::uintptr_t address>
 void __cdecl InitialiseGameHooked()
 {
@@ -812,25 +831,6 @@ void __cdecl ReInitGameObjectVariablesHooked()
     refreshOnGameRestart();
 }
 
-//Fix(?) for crash on game exit when adding special peds. Something related to m_pHitColModel.
-//This is needed if PedModels in OLA is set to unlimited. If set manually to a high number (e.g PedModels=5000) the game exits ok for some reason.
-template <std::uintptr_t address>
-void __cdecl CGame__ShutdownHooked() 
-{
-    Log::Write("Game shutting down...\n");
-
-    if (!addedIDs.empty())
-    {
-        for (unsigned int i = 0; i < pedsModelsCount; i++)
-            pedsModels[i].m_pHitColModel = NULL;
-    }
-
-    callOriginal<address>();
-
-    Log::Write("Shutdown ok.\n");
-    Log::Close();
-}
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////  MAIN   ///////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -852,7 +852,7 @@ public:
         std::string checkForceEnabled = iniSettings.ReadString("Settings", "ForceEnable", "");
         if (checkForceEnabled == "1")
             forceEnableGlobal = true;
-        else
+        else if (checkForceEnabled != "0")
         {
             auto vec = splitString(checkForceEnabled, ',');
             for (auto& s : vec)

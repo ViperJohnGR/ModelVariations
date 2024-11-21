@@ -31,6 +31,7 @@ struct tPedVars {
     std::unordered_map<unsigned short, std::string> pedModels;
     std::unordered_map<unsigned short, bool> useParentVoice;
     std::unordered_map<unsigned short, std::vector<unsigned short>> voices;
+    std::unordered_map<unsigned short, unsigned int> animGroups;
 
     std::stack<CPed*> stack;
 
@@ -58,8 +59,7 @@ struct tPedOptions {
 std::unique_ptr<tPedOptions> pedOptions(new tPedOptions);
 
 int dealersFrames = 0;
-unsigned short modelIndex = 0;
-
+unsigned short variationModel = 0;
 
 bool isValidPedId(int id)
 {
@@ -71,16 +71,16 @@ bool isValidPedId(int id)
     return true;
 }
 
-std::vector<unsigned short> PedVariations::GetVariationOriginalModels(const int index)
+std::vector<unsigned short> PedVariations::GetVariationOriginalModels(const int modelIndex)
 {
-    if (index < 400)
-        return { (unsigned short)index };
+    if (modelIndex < 400)
+        return { (unsigned short)modelIndex };
 
-    auto it = pedVars->originalModels.find((unsigned short)index);
+    auto it = pedVars->originalModels.find((unsigned short)modelIndex);
     if (it != pedVars->originalModels.end())
         return it->second;
 
-    return { (unsigned short)index };
+    return { (unsigned short)modelIndex };
 }
 
 bool pedDelaySpawn(unsigned short model, bool includeParentModels)
@@ -173,28 +173,30 @@ void PedVariations::LoadData()
         if (i <= 0)
             continue;
 
-        if (isValidPedId(i))
+        unsigned short modelIndex = static_cast<unsigned short>(i);
+
+        if (isValidPedId(modelIndex))
         {
-            pedVars->pedHasVariations.push_back((unsigned short)i);
+            pedVars->pedHasVariations.push_back(modelIndex);
 
             for (unsigned j = 0; j < 16; j++)
                 if (j < 6)
-                    pedVars->variations[i][j] = dataFile.ReadLine(section, areas[j].first, READ_PEDS);
+                    pedVars->variations[modelIndex][j] = dataFile.ReadLine(section, areas[j].first, READ_PEDS);
                 else
-                    pedVars->variations[i][j] = vectorUnion(dataFile.ReadLine(section, areas[j].first, READ_PEDS), pedVars->variations[i][areas[j].second]);
+                    pedVars->variations[modelIndex][j] = vectorUnion(dataFile.ReadLine(section, areas[j].first, READ_PEDS), pedVars->variations[modelIndex][areas[j].second]);
 
-            pedVars->wantedVariations[i][0] = dataFile.ReadLine(section, "Wanted1", READ_PEDS);
-            pedVars->wantedVariations[i][1] = dataFile.ReadLine(section, "Wanted2", READ_PEDS);
-            pedVars->wantedVariations[i][2] = dataFile.ReadLine(section, "Wanted3", READ_PEDS);
-            pedVars->wantedVariations[i][3] = dataFile.ReadLine(section, "Wanted4", READ_PEDS);
-            pedVars->wantedVariations[i][4] = dataFile.ReadLine(section, "Wanted5", READ_PEDS);
-            pedVars->wantedVariations[i][5] = dataFile.ReadLine(section, "Wanted6", READ_PEDS);
+            pedVars->wantedVariations[modelIndex][0] = dataFile.ReadLine(section, "Wanted1", READ_PEDS);
+            pedVars->wantedVariations[modelIndex][1] = dataFile.ReadLine(section, "Wanted2", READ_PEDS);
+            pedVars->wantedVariations[modelIndex][2] = dataFile.ReadLine(section, "Wanted3", READ_PEDS);
+            pedVars->wantedVariations[modelIndex][3] = dataFile.ReadLine(section, "Wanted4", READ_PEDS);
+            pedVars->wantedVariations[modelIndex][4] = dataFile.ReadLine(section, "Wanted5", READ_PEDS);
+            pedVars->wantedVariations[modelIndex][5] = dataFile.ReadLine(section, "Wanted6", READ_PEDS);
 
 
-            for (const auto& j : pedVars->variations[i])
+            for (const auto& j : pedVars->variations[modelIndex])
                 for (const auto& k : j)
                     if (k > 0 && k != i)
-                        vectorPushUnique(pedVars->originalModels[k], static_cast<unsigned short>(i));
+                        vectorPushUnique(pedVars->originalModels[k], modelIndex);
             
             for (const auto& keyValue : iniData.second)
                 if (zones.contains(keyValue.first))
@@ -204,34 +206,46 @@ void PedVariations::LoadData()
                     {
                         char tmp[8] = {};
                         strncpy(tmp, keyValue.first.c_str(), 7);
-                        pedVars->zoneVariations[(unsigned short)i][*reinterpret_cast<uint64_t*>(tmp)] = vec;
+                        pedVars->zoneVariations[modelIndex][*reinterpret_cast<uint64_t*>(tmp)] = vec;
                     }
 
                     for (auto variation : vec)
-                        if (variation > 0 && variation != i)
-                            vectorPushUnique(pedVars->originalModels[variation], static_cast<unsigned short>(i));
+                        if (variation > 0 && variation != modelIndex)
+                            vectorPushUnique(pedVars->originalModels[variation], modelIndex);
                 }
 
             for (auto &it : pedVars->originalModels)
                 std::sort(it.second.begin(), it.second.end());
 
             if (dataFile.ReadBoolean(section, "MergeZonesWithCities", false))
-                pedVars->mergeZones.push_back((unsigned short)i);
+                pedVars->mergeZones.push_back(modelIndex);
 
             if (dataFile.ReadBoolean(section, "DontInheritBehaviour", false))
-                pedVars->dontInheritBehaviourModels.push_back((unsigned short)i);
+                pedVars->dontInheritBehaviourModels.push_back(modelIndex);
 
             if (dataFile.ReadBoolean(section, "MergeInteriorsWithCitiesAndZones", false))
-                pedVars->mergeInteriors.push_back((unsigned short)i);
+                pedVars->mergeInteriors.push_back(modelIndex);
         }
 
         int parentVoice = dataFile.ReadInteger(section, "UseParentVoice", -1);
         if (parentVoice > -1)
-            pedVars->useParentVoice[(unsigned short)i] = static_cast<bool>(parentVoice);
+            pedVars->useParentVoice[modelIndex] = static_cast<bool>(parentVoice);
+
+        std::string animGroupString = dataFile.ReadString(section, "AnimGroup", "");
+        if (!animGroupString.empty() && CAnimManager__ms_numAnimAssocDefinitions > 0)
+            for (int j = CAnimManager__ms_numAnimAssocDefinitions - 1; j >= 0; j--)
+            {
+                char* animString = CAnimManager__GetAnimGroupName(j);
+                if (strcmp(animGroupString.c_str(), animString) == 0)
+                {
+                    pedVars->animGroups[modelIndex] = (unsigned)j;
+                    break;
+                }
+            }
 
         auto vec = dataFile.ReadLine(section, "Voice", READ_PEDS);
         if (!vec.empty())
-            pedVars->voices.insert({ (unsigned short)i, vec });
+            pedVars->voices.insert({ modelIndex, vec });
     }
 
     std::sort(pedVars->dontInheritBehaviourModels.begin(), pedVars->dontInheritBehaviourModels.end());
@@ -508,21 +522,21 @@ int __fastcall SetModelIndexHooked(CEntity* _this, void*, int index)
 
     if (isValidPedId(_this->m_nModelIndex) && !pedVars->currentVariations[_this->m_nModelIndex].empty())
     {
-        const unsigned short variationModel = vectorGetRandom(pedVars->currentVariations[_this->m_nModelIndex]);
-        if (variationModel > 0 && variationModel != _this->m_nModelIndex)
+        const unsigned short newModel = vectorGetRandom(pedVars->currentVariations[_this->m_nModelIndex]);
+        if (newModel > 0 && newModel != _this->m_nModelIndex)
         {
-            loadModels({ variationModel }, PRIORITY_REQUEST, true);
+            loadModels({ newModel }, PRIORITY_REQUEST, true);
             const unsigned short originalModel = _this->m_nModelIndex;
             _this->DeleteRwObject();
 
             if (pedOptions->recursiveVariations)
-                _this->SetModelIndex(variationModel);
+                _this->SetModelIndex(newModel);
             else 
-                callMethodOriginalAndReturn<int, address>(_this, variationModel);
+                callMethodOriginalAndReturn<int, address>(_this, newModel);
 
             if (!vectorHasId(pedVars->dontInheritBehaviourModels, originalModel))
                 _this->m_nModelIndex = originalModel;
-            modelIndex = variationModel;
+            variationModel = newModel;
         }
     }
 
@@ -530,13 +544,16 @@ int __fastcall SetModelIndexHooked(CEntity* _this, void*, int index)
 }
 
 template <std::uintptr_t address>
-void __fastcall UpdateRpHAnimHooked(CEntity* entity)
+void __fastcall UpdateRpHAnimHooked(CPed* entity)
 {
     callMethodOriginal<address>(entity);
 
-    if (modelIndex > 0)
-        entity->m_nModelIndex = modelIndex;
-    modelIndex = 0;
+    if (auto it = pedVars->animGroups.find(variationModel > 0 ? variationModel : entity->m_nModelIndex); it != pedVars->animGroups.end())
+        entity->m_nAnimGroup = it->second;
+
+    if (variationModel > 0)
+        entity->m_nModelIndex = variationModel;
+    variationModel = 0;
 }
 
 template <std::uintptr_t address>

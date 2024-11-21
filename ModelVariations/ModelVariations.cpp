@@ -32,7 +32,7 @@
 #pragma comment (lib, "urlmon.lib")
 
 
-#define MOD_VERSION "9.8"
+#define MOD_VERSION "9.9"
 #ifdef _DEBUG
 #define MOD_NAME "ModelVariations_d.asi"
 #define DEBUG_STRING " DEBUG"
@@ -656,7 +656,7 @@ void __cdecl CGame__ProcessHooked()
             printMessage("~y~Model Variations~s~: Reloading settings...", 10000);
             auto doAsyncStuff = [logVariationChange] {
                 loadIniData();
-                logVariationChange("Settings reloaded.");
+                logVariationChange("Settings reloaded");
                 updateVariations();
                 printMessage("~y~Model Variations~s~: Settings reloaded.", 2000);
                 reloadingSettings = false;

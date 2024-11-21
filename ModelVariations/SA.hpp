@@ -13,6 +13,9 @@
 
 #define FrontEndMenuManager (*reinterpret_cast<CMenuManager**>(0x53C6C0))
 
+#define CAnimManager__ms_numAnimAssocDefinitions (**reinterpret_cast<int**>(0x4D5674))
+#define CAnimManager__GetAnimGroupName (reinterpret_cast<char * (__cdecl*)(int)>(injector::GetBranchDestination(0x5B7516).as_int()))
+
 #define CModelInfo__AddPedModel reinterpret_cast<CPedModelInfo * (__cdecl*)(int)>(injector::GetBranchDestination(0x5B74A7).as_int())
 
 #define CPopulation__m_AppropriateLoadedCars (*reinterpret_cast<CLoadedCarGroup**>(0x40AFAB))

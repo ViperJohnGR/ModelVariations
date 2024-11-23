@@ -411,7 +411,7 @@ void VehicleVariations::ClearData()
 
 void VehicleVariations::LoadData()
 {
-    dataFile.SetIniPath(dataFileName);
+    dataFile.Load(dataFileName);
 
     vehOptions->changeCarGenerators   = dataFile.ReadBoolean("Settings", "ChangeCarGenerators", false);
     vehOptions->changeScriptedCars    = dataFile.ReadBoolean("Settings", "ChangeScriptedCars", false);

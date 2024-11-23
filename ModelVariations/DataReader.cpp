@@ -8,57 +8,109 @@
 #include <CStreaming.h>
 #include <CWeaponInfo.h>
 
-#include <shlwapi.h>
-
 bool reachedMaxCapacity = false;
 
-int DataReader::ReadInteger(std::string_view szSection, std::string_view szKey, int iDefaultValue)
+DataReader::DataReader(std::string_view filename)
 {
-	try
-	{
-		return this->CIniReader::ReadInteger(szSection, szKey, iDefaultValue);
-	}
-	catch (...)
-	{
-		return iDefaultValue;
-	}
+	Load(filename);
 }
 
-float DataReader::ReadFloat(std::string_view szSection, std::string_view szKey, float fltDefaultValue)
+bool DataReader::Load(std::string_view filename)
 {
-	try
+	std::stringstream ss;
+	std::ifstream file(filename.data());
+
+	if (file.is_open())
+		ss << file.rdbuf();
+
+	std::vector<std::string> sections;
+	std::string key, value, line;
+
+	while (std::getline(ss, line)) 
 	{
-		return this->CIniReader::ReadFloat(szSection, szKey, fltDefaultValue);
+		if (size_t pos = line.find(';'); pos != std::string::npos)
+			line = line.substr(0, pos);
+
+		if (size_t pos = line.find('#'); pos != std::string::npos)
+			line = line.substr(0, pos);
+
+		if (size_t pos = line.find("//"); pos != std::string::npos)
+			line = line.substr(0, pos);
+
+		size_t sectionStart = line.find('[');
+		size_t sectionEnd = line.find(']');
+		if (sectionStart != sectionEnd && sectionEnd != std::string::npos)
+		{
+			sections.clear();
+
+			auto section = line.substr(sectionStart + 1, sectionEnd - sectionStart - 1);
+			for (auto i : splitString(section, ','))
+				sections.push_back(trimString(i));
+		}
+		else if (size_t pos = line.find('='); pos != std::string::npos)
+		{
+			key = trimString(line.substr(0, pos));
+			value = trimString(line.substr(pos + 1));
+
+			if (!key.empty() && !value.empty())
+				for (auto &i : sections)
+					if (!i.empty())
+						data[i][key] = value;
+		}
 	}
-	catch (...)
-	{
-		return fltDefaultValue;
-	}
+
+	return true;
 }
 
-bool DataReader::ReadBoolean(std::string_view szSection, std::string_view szKey, bool bolDefaultValue)
+int DataReader::ReadInteger(std::string_view section, std::string_view key, int defaultValue)
 {
 	try
 	{
-		return this->CIniReader::ReadInteger(szSection, szKey, bolDefaultValue) != 0;
+		if (auto itSection = data.find((std::string)section); itSection != data.end())
+			if (auto itKey = itSection->second.find((std::string)key); itKey != itSection->second.end())
+				return std::stoi(itKey->second);
 	}
-	catch (...)
-	{
-		return bolDefaultValue;
-	}
+	catch (std::invalid_argument&) {}
+	catch (std::out_of_range&) {}
+
+	return defaultValue;
 }
 
-std::string DataReader::ReadString(std::string_view szSection, std::string_view szKey, std::string_view szDefaultValue)
+float DataReader::ReadFloat(std::string_view section, std::string_view key, float defaultValue)
 {
 	try
 	{
-		return this->CIniReader::ReadString(szSection, szKey, szDefaultValue);
+		if (auto itSection = data.find((std::string)section); itSection != data.end())
+			if (auto itKey = itSection->second.find((std::string)key); itKey != itSection->second.end())
+				return std::stof(itKey->second);
 	}
-	catch (...)
+	catch (std::invalid_argument&) {}
+	catch (std::out_of_range&) {}
+
+	return defaultValue;
+}
+
+bool DataReader::ReadBoolean(std::string_view section, std::string_view key, bool defaultValue)
+{
+	try
 	{
-		std::string retString(szDefaultValue);
-		return retString;
+		if (auto itSection = data.find((std::string)section); itSection != data.end())
+			if (auto itKey = itSection->second.find((std::string)key); itKey != itSection->second.end())
+				return /*(itKey->second == "true") || */(std::stoi(itKey->second) != 0);
 	}
+	catch (std::invalid_argument&) {}
+	catch (std::out_of_range&) {}
+
+	return defaultValue;
+}
+
+std::string DataReader::ReadString(std::string_view section, std::string_view key, std::string defaultValue)
+{
+	if (auto itSection = data.find((std::string)section); itSection != data.end())
+		if (auto itKey = itSection->second.find((std::string)key); itKey != itSection->second.end())
+			return itKey->second;
+
+	return defaultValue;
 }
 
 std::vector<unsigned short> DataReader::ReadLine(std::string_view section, std::string_view key, modelTypeToRead parseType)

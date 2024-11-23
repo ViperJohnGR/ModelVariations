@@ -1,6 +1,7 @@
 #pragma once
 
-#include <IniReader.h>
+#include <map>
+#include <string>
 #include <vector>
 
 extern std::vector<unsigned short> addedIDs;
@@ -15,16 +16,19 @@ enum modelTypeToRead
 	READ_TUNING
 };
 
-class DataReader : public CIniReader
+class DataReader
 {
 public:
-	DataReader() : CIniReader() {};
-	explicit DataReader(std::string_view szFileName) : CIniReader(szFileName) {};
+	DataReader(std::string_view filename);
 
-	int ReadInteger(std::string_view szSection, std::string_view szKey, int iDefaultValue);
-	float ReadFloat(std::string_view szSection, std::string_view szKey, float fltDefaultValue);
-	bool ReadBoolean(std::string_view szSection, std::string_view szKey, bool bolDefaultValue);
-	std::string ReadString(std::string_view szSection, std::string_view szKey, std::string_view szDefaultValue);
+	bool Load(std::string_view filename);
+
+	int ReadInteger(std::string_view section, std::string_view key, int defaultValue);
+	float ReadFloat(std::string_view section, std::string_view key, float defaultValue);
+	bool ReadBoolean(std::string_view section, std::string_view key, bool defaultValue);
+	std::string ReadString(std::string_view section, std::string_view key, std::string defaultValue);
 	std::vector<unsigned short> ReadLine(std::string_view section, std::string_view key, modelTypeToRead parseType);
 	std::vector<unsigned short> ReadLineUnique(std::string_view section, std::string_view key, modelTypeToRead parseType);
+
+	std::map<std::string, std::map<std::string, std::string>> data;
 };

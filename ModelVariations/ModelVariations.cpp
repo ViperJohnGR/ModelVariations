@@ -264,7 +264,7 @@ void clearEverything()
 
 void loadIniData()
 {
-    iniSettings.SetIniPath(dataFileName);
+    iniSettings.Load(dataFileName);
 
     enablePeds = iniSettings.ReadBoolean("Settings", "EnablePeds", false);
     enableVehicles = iniSettings.ReadBoolean("Settings", "EnableVehicles", false);
@@ -839,7 +839,7 @@ class ModelVariations {
 public:
     ModelVariations() {
 
-        iniSettings.SetIniPath(dataFileName);
+        iniSettings.Load(dataFileName);
 
         trackReferenceCounts = iniSettings.ReadInteger("Settings", "TrackReferenceCounts", -1);
         loadSettingsImmediately = iniSettings.ReadBoolean("Settings", "LoadSettingsImmediately", true);
@@ -861,8 +861,8 @@ public:
                     std::uintptr_t address = (std::uintptr_t)std::stoi(s.c_str(), nullptr, 16);
                     forceEnable.insert(address);
                 }
-                catch (std::invalid_argument) {}
-                catch (std::out_of_range) {}
+                catch (std::invalid_argument&) {}
+                catch (std::out_of_range&) {}
             }
         }
 

@@ -54,7 +54,7 @@ void PedWeaponVariations::ClearData()
 
 void PedWeaponVariations::LoadData()
 {
-    dataFile.SetIniPath(dataFileName);
+    dataFile.Load(dataFileName);
 
     Log::Write("\nReading ped weapon data...\n");
 

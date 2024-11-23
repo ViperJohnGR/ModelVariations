@@ -236,7 +236,7 @@ void PedVariations::LoadData()
             for (int j = CAnimManager__ms_numAnimAssocDefinitions - 1; j >= 0; j--)
             {
                 char* animString = CAnimManager__GetAnimGroupName(j);
-                if (strcmp(animGroupString.c_str(), animString) == 0)
+                if (animString != NULL && strcmp(animGroupString.c_str(), animString) == 0)
                 {
                     pedVars->animGroups[modelIndex] = (unsigned)j;
                     break;

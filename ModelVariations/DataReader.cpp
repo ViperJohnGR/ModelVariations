@@ -17,33 +17,28 @@ DataReader::DataReader(std::string_view filename)
 
 bool DataReader::Load(std::string_view filename)
 {
-	std::stringstream ss;
 	std::ifstream file(filename.data());
 
-	if (file.is_open())
-		ss << file.rdbuf();
+	if (!file.is_open())
+		return false;
 
 	std::vector<std::string> sections;
 	std::string key, value, line;
 
-	while (std::getline(ss, line)) 
+	while (std::getline(file, line)) 
 	{
-		if (size_t pos = line.find(';'); pos != std::string::npos)
-			line = line.substr(0, pos);
+		if (size_t pos = line.find_first_of(";#"); pos != std::string::npos)
+			line.resize(pos);
+		else if (pos = line.find("//"); pos != std::string::npos)
+			line.resize(pos);
 
-		if (size_t pos = line.find('#'); pos != std::string::npos)
-			line = line.substr(0, pos);
+		line = trimString(line);
 
-		if (size_t pos = line.find("//"); pos != std::string::npos)
-			line = line.substr(0, pos);
-
-		size_t sectionStart = line.find('[');
-		size_t sectionEnd = line.find(']');
-		if (sectionStart != sectionEnd && sectionEnd != std::string::npos)
+		if (!line.empty() && line.front() == '[' && line.back() == ']')
 		{
 			sections.clear();
 
-			auto section = line.substr(sectionStart + 1, sectionEnd - sectionStart - 1);
+			auto section = line.substr(1, line.size()-2);
 			for (auto i : splitString(section, ','))
 				sections.push_back(trimString(i));
 		}

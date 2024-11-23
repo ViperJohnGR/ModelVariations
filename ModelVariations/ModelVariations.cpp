@@ -71,6 +71,8 @@ std::set<unsigned short> referenceCountModels;
 std::set<std::string> zones;
 std::set<unsigned short> addedIDsInGroups;
 
+std::string exeName;
+
 std::vector<unsigned short> addedIDs;
 int maxPedID = 0;
 
@@ -539,7 +541,7 @@ void __cdecl CGame__ProcessHooked()
         return;
     }
 
-    if (!jumpsLogged && logJumps)
+    if (enableLog && !jumpsLogged && logJumps)
     {
         Log::Write("\nLogging JMP hooks...\n");
         std::vector<unsigned char> buffer;
@@ -548,14 +550,14 @@ void __cdecl CGame__ProcessHooked()
         const std::vector<std::uintptr_t> validRanges = (GetGameVersion() == GAME_10US_HOODLUM) ? std::vector<std::uintptr_t> { 0x401000, 0x857000, 0xCB1000, 0x12FB000, 0x1301000, 0x1556000 } : std::vector<std::uintptr_t>{ 0x401000, 0x857000 };
         std::unordered_map<std::string, std::vector<jumpInfo>> jumpsMap;
 
-        auto gta_saModule = LoadedModules::GetModule("gta_sa.exe");
+        auto gta_saModule = LoadedModules::GetModule(exeName);
         std::uintptr_t gta_saEndAddress = ((std::uintptr_t)gta_saModule.second.lpBaseOfDll + gta_saModule.second.SizeOfImage);
         unsigned int secCount = 0;
 
         for (auto& rangeStart : validRanges)
         {
             unsigned int sectionSize;
-            LoadPESection("gta_sa.exe", sections[secCount++], buffer, &sectionSize);
+            LoadPESection(exeName.c_str(), sections[secCount++], buffer, &sectionSize);
             for (unsigned int i = rangeStart; i < sectionSize + 0x400000; i++)
             {
                 auto currentByte = *reinterpret_cast<unsigned char*>(i);
@@ -690,7 +692,7 @@ void __cdecl CGame__ProcessHooked()
                     Log::Write("Modified call detected: %s 0x%08X %s\n", it.second.name.data(), it.first, bytesToString(it.first, 5).c_str());
             }
 
-            auto gta_saModule = LoadedModules::GetModule("gta_sa.exe");
+            auto gta_saModule = LoadedModules::GetModule(exeName);
             std::uintptr_t gta_saEndAddress = ((std::uintptr_t)gta_saModule.second.lpBaseOfDll + gta_saModule.second.SizeOfImage);
 
             if ((std::uintptr_t)it.second.originalFunction < gta_saEndAddress)
@@ -868,7 +870,6 @@ public:
             std::string exeHash;
             unsigned int exeFilesize = 0;
             std::string exePath;
-            std::string exeName;
 
             enableLog = Log::Open("ModelVariations.log");
 

@@ -21,7 +21,6 @@
 #include <future>
 #include <iomanip>
 #include <map>
-#include <regex>
 #include <set>
 #include <stack>
 
@@ -135,16 +134,14 @@ bool checkForUpdate()
     }
 
     stream->Release();
-    
-    std::regex versionRegex("\"v(\\d+(\\.\\d+)+)\"");
-    std::smatch match;
-    if (std::regex_search(str, match, versionRegex)) 
-    {
-        std::string newV = match[1].str();
-        std::string oldV = MOD_VERSION;
 
-        return std::lexicographical_compare(oldV.begin(), oldV.end(), newV.begin(), newV.end());
-    }
+    if (auto start = str.find("\"v"); start != std::string::npos)
+        if (auto end = str.find_first_of('"', start+1); end != std::string::npos && end > start + 2)
+        {
+            std::string newV = str.substr(start+2, end - start - 2);
+            std::string oldV = MOD_VERSION;
+            return std::lexicographical_compare(oldV.begin(), oldV.end(), newV.begin(), newV.end());
+        }
 
     Log::Write("Check for updates failed. Invalid version string.\n");
     return false;

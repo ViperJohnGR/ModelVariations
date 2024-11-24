@@ -9,7 +9,7 @@ extern int maxPedID;
 extern char currentZone[8];
 extern unsigned int currentTown;
 extern const char* currentInterior;
-extern std::set<std::string> zones;
+extern std::set<std::string> zoneNames;
 
 class PedVariations
 {

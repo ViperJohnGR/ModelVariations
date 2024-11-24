@@ -199,7 +199,7 @@ void PedVariations::LoadData()
                         vectorPushUnique(pedVars->originalModels[k], modelIndex);
             
             for (const auto& keyValue : iniData.second)
-                if (zones.contains(keyValue.first))
+                if (zoneNames.contains(keyValue.first))
                 {
                     auto vec = dataFile.ReadLine(section, keyValue.first, READ_PEDS);
                     if (!vec.empty())

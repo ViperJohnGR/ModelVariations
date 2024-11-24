@@ -12,7 +12,7 @@ extern const std::pair<std::string, unsigned> areas[];
 extern bool forceEnableGlobal;
 extern char currentZone[8];
 extern unsigned int currentTown;
-extern std::set<std::string> zones;
+extern std::set<std::string> zoneNames;
 
 class VehicleVariations
 {

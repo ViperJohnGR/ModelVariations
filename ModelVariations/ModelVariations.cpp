@@ -66,9 +66,11 @@ const std::pair<std::string, unsigned> areas[] = { {"Countryside", 0},
                                                    {"Whetstone", 0},
                                                    {"AngelPine", 14} };
 
+std::vector<std::pair<CZone*, int>> presetZones;
+
 std::set<std::pair<std::uintptr_t, std::string>> callChecks;
 std::set<unsigned short> referenceCountModels;
-std::set<std::string> zones;
+std::set<std::string> zoneNames;
 std::set<unsigned short> addedIDsInGroups;
 
 std::string exeName;
@@ -300,45 +302,15 @@ void updateVariations()
 
     CVector position = FindPlayerCoors(-1);
 
-    auto isPlayerInZone = [&position](const char* zoneName)
-    {
-        return CTheZones::FindZone(&position, (*(int32_t*)zoneName), (*(int32_t*)(zoneName + 4)), ZONE_TYPE_NAVI);
-    };
-
     currentTown = CTheZones::m_CurrLevel;
-    if (currentTown == LEVEL_NAME_COUNTRY_SIDE)
-    {
-        if (position.y > 595) //COUNTRY_LV
-        {
-            if (isPlayerInZone("ROBAD"))
-                currentTown = 6;
-            else if (isPlayerInZone("BONE"))
-                currentTown = 7;
-        }
-        else if (position.y > -770) //COUNTRY_LA
-        {
-            if (isPlayerInZone("BLUEB"))
-                currentTown = 9;
-            else if (isPlayerInZone("MONT"))
-                currentTown = 10;
-            else if (isPlayerInZone("DILLI"))
-                currentTown = 11;
-            else if (isPlayerInZone("PALO"))
-                currentTown = 12;
-            else if (isPlayerInZone("RED"))
-                currentTown = 8;
-        }
 
-        if (currentTown == LEVEL_NAME_COUNTRY_SIDE) //COUNTRY_SF
-        {
-            if (isPlayerInZone("ANGPI"))
-                currentTown = 15;
-            else if (isPlayerInZone("FLINTC"))
-                currentTown = 13;
-            else if (isPlayerInZone("WHET"))
-                currentTown = 14;
-        }
-    }
+    if (currentTown == LEVEL_NAME_COUNTRY_SIDE)
+        for (auto zone : presetZones)
+            if (CTheZones__PointLiesWithinZone(&position, zone.first))
+            {
+                currentTown = (unsigned int)zone.second;
+                break;
+            }
 
     if (Log::Write("CTheZones::m_CurrLevel = %d currentTown = %d\n", CTheZones::m_CurrLevel, currentTown))
     {
@@ -794,13 +766,17 @@ void __cdecl InitialiseGameHooked()
     {
         char zoneLabel[9] = {};
         memcpy(&zoneLabel[0], (char*)(CTheZones__NavigationZoneArray)+i * 0x20, 8);
+        CZone* zone = reinterpret_cast<CZone*>((char*)(CTheZones__NavigationZoneArray)+i * 0x20);
 
-        //CZone* zone = reinterpret_cast<CZone*>((char*)(CTheZones__NavigationZoneArray)+i * 0x20);
+        std::pair<const char*, int> presetZoneDta[10] = { {"ROBAD", 6}, {"BONE", 7}, {"BLUEB", 9}, {"MONT", 10}, {"DILLI", 11}, {"PALO", 12}, {"RED", 8}, {"ANGPI", 15}, {"FLINTC", 13}, {"WHET", 14} };
+        for (std::pair<const char*, int> preset : presetZoneDta)
+            if (strncmp(preset.first, zone->m_szLabel, 8) == 0)
+                presetZones.push_back({ zone, preset.second });
 
-        zones.insert(zoneLabel);
+        zoneNames.insert(zoneLabel);
     }
 
-    Log::Write("Finished reading %u zones.\n", zones.size());
+    Log::Write("Finished reading %u zones.\n", zoneNames.size());
 
     for (int i = 0; i < 34; i++)
     {

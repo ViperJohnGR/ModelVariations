@@ -19,16 +19,16 @@ enum modelTypeToRead
 class DataReader
 {
 public:
-	DataReader(std::string_view filename);
+	DataReader(const char* filename);
 
-	bool Load(std::string_view filename);
+	bool Load(const char* filename);
 
-	int ReadInteger(std::string_view section, std::string_view key, int defaultValue);
-	float ReadFloat(std::string_view section, std::string_view key, float defaultValue);
-	bool ReadBoolean(std::string_view section, std::string_view key, bool defaultValue);
-	std::string ReadString(std::string_view section, std::string_view key, std::string defaultValue);
-	std::vector<unsigned short> ReadLine(std::string_view section, std::string_view key, modelTypeToRead parseType);
-	std::vector<unsigned short> ReadLineUnique(std::string_view section, std::string_view key, modelTypeToRead parseType);
+	int ReadInteger(const std::string& section, const std::string& key, int defaultValue);
+	float ReadFloat(const std::string& section, const std::string& key, float defaultValue);
+	bool ReadBoolean(const std::string& section, const std::string& key, bool defaultValue);
+	std::string ReadString(const std::string& section, const std::string& key, std::string defaultValue);
+	std::vector<unsigned short> ReadLine(const std::string& section, const std::string& key, modelTypeToRead parseType);
+	std::vector<unsigned short> ReadLineUnique(const std::string& section, const std::string& key, modelTypeToRead parseType);
 
 	std::map<std::string, std::map<std::string, std::string>> data;
 };

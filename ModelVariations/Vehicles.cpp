@@ -470,7 +470,7 @@ void VehicleVariations::LoadData()
                             vehVars->originalModels.insert({ k, i });
 
                 for (const auto& keyValue : iniData.second)
-                    if (zoneNames.contains(keyValue.first))
+                    if (std::binary_search(zoneNames.begin(), zoneNames.end(), keyValue.first))
                     {
                         std::vector<unsigned short> vec = dataFile.ReadLine(section, keyValue.first, READ_VEHICLES);
                         if (!vec.empty())

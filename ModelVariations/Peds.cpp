@@ -199,7 +199,7 @@ void PedVariations::LoadData()
                         vectorPushUnique(pedVars->originalModels[k], modelIndex);
             
             for (const auto& keyValue : iniData.second)
-                if (zoneNames.contains(keyValue.first))
+                if (std::binary_search(zoneNames.begin(), zoneNames.end(), keyValue.first))
                 {
                     auto vec = dataFile.ReadLine(section, keyValue.first, READ_PEDS);
                     if (!vec.empty())
@@ -566,12 +566,10 @@ char __fastcall CAEPedSpeechAudioEntity__InitialiseHooked(CAEPedSpeechAudioEntit
 
         bool useParentVoice = false;
 
-        try {
-            useParentVoice = pedVars->useParentVoice.at(ped->m_nModelIndex);
-        }
-        catch (std::out_of_range) {
+        if (auto it = pedVars->useParentVoice.find(ped->m_nModelIndex); it != pedVars->useParentVoice.end())
+            useParentVoice = it->second;
+        else
             useParentVoice = pedOptions->useParentVoices;
-        }
 
         if (useParentVoice)
         {

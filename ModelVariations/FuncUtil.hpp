@@ -24,6 +24,21 @@ inline void printMessage(const char* message, unsigned int time)
     CMessages::AddMessageJumpQ(const_cast<char*>(message), time, 0, false);
 }
 
+inline int integerPow(int x, int power)
+{
+    for (int i = 1; i < power; i++)
+        x *= x;
+
+    return x;
+}
+
+inline int integerPow(int x, unsigned int power)
+{
+    for (unsigned int i = 1; i < power; i++)
+        x *= x;
+
+    return x;
+}
 
 /////////////
 // Loading //
@@ -177,7 +192,8 @@ inline std::vector<std::string> splitString(std::string_view sv, const char sepe
     return result;
 }
 
-inline std::string trimString(const std::string& str) {
+inline std::string trimString(const std::string& str) 
+{
     size_t first = str.find_first_not_of(" \t\n\r");
     size_t last = str.find_last_not_of(" \t\n\r");
 
@@ -185,6 +201,58 @@ inline std::string trimString(const std::string& str) {
         return "";
 
     return str.substr(first, (last - first + 1));
+}
+
+//https://stackoverflow.com/questions/16826422/c-most-efficient-way-to-convert-string-to-int-faster-than-atoi
+inline int fast_atoi(const char* str, bool returnAtInvalidChar = false)
+{
+    int val = 0;
+    bool negative = (*str == '-') ? true : false;
+    if (negative)
+        str++;
+
+    while (*str) 
+    {
+        if (*str < '0' || *str > '9')
+        {
+            if (returnAtInvalidChar)
+                return negative ? -val : val;
+            return INT_MAX;
+        }
+        val = val * 10 + (*str++ - '0');
+    }
+    return negative ? -val : val;
+}
+
+inline float strtof(const char *str)
+{
+    const char* dot = str;
+
+    while (1)
+    {
+        if (*dot == '.' || *dot == 0)
+            break;
+        dot++;
+    }
+
+    bool negative = str[0] == '-' ? true : false;
+    if (negative)
+        str++;
+
+    int integerPart = fast_atoi(str, true);
+    //if (integerPart == INT_MAX)
+        //return NAN;
+
+    if (*dot == 0)
+        return static_cast<float>(integerPart);
+
+    int decimalPart = fast_atoi(dot+1);
+    if (decimalPart == INT_MAX)
+        return NAN;
+
+    auto finalFloat = (float)integerPart + (float)decimalPart / (float)integerPow(10, strlen(dot + 1));
+
+    return negative ? -finalFloat : finalFloat;
 }
 
 

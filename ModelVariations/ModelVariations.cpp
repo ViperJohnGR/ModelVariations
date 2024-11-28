@@ -68,9 +68,9 @@ const std::pair<std::string, unsigned> areas[] = { {"Countryside", 0},
 
 std::vector<std::pair<CZone*, int>> presetZones;
 
-std::set<std::pair<std::uintptr_t, std::string>> callChecks;
+std::set<std::uintptr_t> callChecks;
 std::set<unsigned short> referenceCountModels;
-std::set<std::string> zoneNames;
+std::vector<std::string> zoneNames;
 std::set<unsigned short> addedIDsInGroups;
 
 std::string exeName;
@@ -364,7 +364,7 @@ void initialize()
         std::string flaIniPath = flaModule.first;
         flaIniPath.replace(flaIniPath.find_last_of("\\/"), std::string::npos, "\\fastman92limitAdjuster_GTASA.ini");
 
-        DataReader flaIni(flaIniPath);
+        DataReader flaIni(flaIniPath.c_str());
         flaMaxID = flaIni.ReadInteger("ID LIMITS", "Count of killable model IDs", -1);
         if (maxPedID == 0)
             maxPedID = flaMaxID;
@@ -385,7 +385,7 @@ void initialize()
         std::string olaIniPath = olaModule.first;
         olaIniPath.replace(olaIniPath.find_last_of("\\/"), std::string::npos, "\\III.VC.SA.LimitAdjuster.ini");
 
-        DataReader olaIni(olaIniPath);
+        DataReader olaIni(olaIniPath.c_str());
         Log::Write("PedModels limit in OLA is %s\n\n", olaIni.ReadString("SALIMITS", "PedModels", "").c_str());
     }
 
@@ -656,7 +656,7 @@ void __cdecl CGame__ProcessHooked()
             std::pair<std::string, MODULEINFO> moduleInfo = LoadedModules::GetModuleAtAddress(functionAddress);
             std::string moduleName = moduleInfo.first.substr(moduleInfo.first.find_last_of("/\\") + 1);
 
-            if (_stricmp(moduleName.c_str(), MOD_NAME) != 0 && callChecks.insert({ it.first, moduleName }).second)
+            if (_stricmp(moduleName.c_str(), MOD_NAME) != 0 && callChecks.insert(it.first).second)
             {
                 if (functionAddress > 0 && !moduleName.empty())
                     Log::Write("Modified call detected: %s 0x%08X 0x%08X %s 0x%08X\n", it.second.name.data(), it.first, functionAddress, moduleName.c_str(), moduleInfo.second.lpBaseOfDll);
@@ -688,7 +688,7 @@ void __cdecl CGame__ProcessHooked()
             std::pair<std::string, MODULEINFO> moduleInfo = LoadedModules::GetModuleAtAddress(currentDestination);
             std::string moduleName = moduleInfo.first.substr(moduleInfo.first.find_last_of("/\\") + 1);
 
-            if (_stricmp(moduleName.c_str(), MOD_NAME) != 0 && callChecks.insert({ it.first, moduleName }).second)
+            if (_stricmp(moduleName.c_str(), MOD_NAME) != 0 && callChecks.insert(it.first).second)
             {
                 if (currentDestination > 0 && !moduleName.empty())
                     Log::Write("Modified ASM hook detected: %s 0x%08X 0x%08X %s 0x%08X\n", it.second.c_str(), it.first, currentDestination, moduleName.c_str(), moduleInfo.second.lpBaseOfDll);
@@ -761,7 +761,7 @@ void __cdecl InitialiseGameHooked()
 
     Log::Write("-- InitialiseGame Start (%s) --\n", getDatetime(false, true, true).c_str());
 
-    Log::Write("\nReading zone data...\n");
+    Log::Write("Reading zone data...\n");
     for (int i = 0; i < CTheZones::TotalNumberOfInfoZones; i++)
     {
         char zoneLabel[9] = {};
@@ -773,10 +773,12 @@ void __cdecl InitialiseGameHooked()
             if (strncmp(preset.first, zone->m_szLabel, 8) == 0)
                 presetZones.push_back({ zone, preset.second });
 
-        zoneNames.insert(zoneLabel);
+        zoneNames.push_back(zoneLabel);
     }
 
+    std::sort(zoneNames.begin(), zoneNames.end());
     Log::Write("Finished reading %u zones.\n", zoneNames.size());
+    Log::Write("Reading cargrp...\n");
 
     for (int i = 0; i < 34; i++)
     {
@@ -784,7 +786,7 @@ void __cdecl InitialiseGameHooked()
             if (CPopulation::m_CarGroups[i][j] > 611)
                 addedIDsInGroups.insert((unsigned short)CPopulation::m_CarGroups[i][j]);
     }
-
+    Log::Write("Found %u added IDs in cargrp.\n", addedIDsInGroups.size());
     Log::Write("-- InitialiseGame End (%s) --\n", getDatetime(false, true, true).c_str());
 
     if (!FrontEndMenuManager->m_bWantToRestart)
@@ -824,20 +826,19 @@ public:
         enableLog = iniSettings.ReadBoolean("Settings", "EnableLog", false);
         logJumps = iniSettings.ReadBoolean("Settings", "LogJumps", false);
 
+        zoneNames.reserve(379);
+
         std::string checkForceEnabled = iniSettings.ReadString("Settings", "ForceEnable", "");
         if (checkForceEnabled == "1")
             forceEnableGlobal = true;
         else if (checkForceEnabled != "0")
         {
-            auto vec = splitString(checkForceEnabled, ',');
-            for (auto& s : vec)
+            for (const auto& s : splitString(checkForceEnabled, ','))
             {
-                try {
-                    std::uintptr_t address = (std::uintptr_t)std::stoi(s.c_str(), nullptr, 16);
-                    forceEnable.insert(address);
-                }
-                catch (std::invalid_argument&) {}
-                catch (std::out_of_range&) {}
+                char* endptr = NULL;
+                std::uintptr_t value = strtoul(s.c_str(), &endptr, 16);
+                if (*endptr == 0)
+                    forceEnable.insert(value);
             }
         }
 
@@ -888,27 +889,19 @@ public:
             CloseHandle(hFile);
 
             std::string windowsVersion;
-            char str[255] = {};
-            DWORD cbData = 254;
-            HKEY hkey;
-
-            if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", 0, KEY_QUERY_VALUE, &hkey) == ERROR_SUCCESS)
+            char str[64] = {};
+            DWORD cbData = 63;
+    
+            if (RegGetValue(HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", "CurrentBuild", RRF_RT_REG_SZ, NULL, str, &cbData) == ERROR_SUCCESS)
             {
-                if (RegQueryValueEx(hkey, "CurrentBuild", NULL, NULL, (LPBYTE)str, &cbData) == ERROR_SUCCESS)
-                {
-                    windowsVersion += "OS build ";
-                    windowsVersion += str;
-                    windowsVersion += " ";
-                }
-                RegCloseKey(hkey);
+                windowsVersion += "OS build ";
+                windowsVersion += str;
+                windowsVersion += " ";
             }
 
-            if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, "SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Environment", 0, KEY_QUERY_VALUE, &hkey) == ERROR_SUCCESS)
-            {
-                if (RegQueryValueEx(hkey, "PROCESSOR_ARCHITECTURE", NULL, NULL, (LPBYTE)str, &cbData) == ERROR_SUCCESS)
+            cbData = 63;
+            if (RegGetValue(HKEY_LOCAL_MACHINE, "SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Environment", "PROCESSOR_ARCHITECTURE", RRF_RT_REG_SZ, NULL, str, &cbData) == ERROR_SUCCESS)
                     windowsVersion += str;
-                RegCloseKey(hkey);
-            }
 
             SYSTEM_INFO nsi;
             GetNativeSystemInfo(&nsi);

@@ -98,7 +98,7 @@ void PedWeaponVariations::Process()
         if (!IsPedPointerValid(ped) || FindPlayerPed() == ped)
             continue;
 
-        const auto changeWeapon = [ped](std::string_view section, std::string_view key, eWeaponType originalWeaponId = WEAPON_UNARMED) -> bool
+        const auto changeWeapon = [ped](std::string section, std::string key, eWeaponType originalWeaponId = WEAPON_UNARMED) -> bool
         {
             std::vector<unsigned short> vec = dataFile.ReadLine(section, key, READ_WEAPONS);
             if (!vec.empty())

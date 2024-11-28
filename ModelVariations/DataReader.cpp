@@ -10,17 +10,19 @@
 
 bool reachedMaxCapacity = false;
 
-DataReader::DataReader(std::string_view filename)
+DataReader::DataReader(const char* filename)
 {
 	Load(filename);
 }
 
-bool DataReader::Load(std::string_view filename)
+bool DataReader::Load(const char* filename)
 {
-	std::ifstream file(filename.data());
+	std::ifstream file(filename);
 
 	if (!file.is_open())
 		return false;
+
+	data.clear();
 
 	std::vector<std::string> sections;
 	std::string key, value, line;
@@ -39,7 +41,7 @@ bool DataReader::Load(std::string_view filename)
 			sections.clear();
 
 			auto section = line.substr(1, line.size()-2);
-			for (auto i : splitString(section, ','))
+			for (const auto &i : splitString(section, ','))
 				sections.push_back(trimString(i));
 		}
 		else if (size_t pos = line.find('='); pos != std::string::npos)
@@ -57,58 +59,44 @@ bool DataReader::Load(std::string_view filename)
 	return true;
 }
 
-int DataReader::ReadInteger(std::string_view section, std::string_view key, int defaultValue)
+int DataReader::ReadInteger(const std::string &section, const std::string &key, int defaultValue)
 {
-	try
-	{
-		if (auto itSection = data.find((std::string)section); itSection != data.end())
-			if (auto itKey = itSection->second.find((std::string)key); itKey != itSection->second.end())
-				return std::stoi(itKey->second);
-	}
-	catch (std::invalid_argument&) {}
-	catch (std::out_of_range&) {}
+	int value = defaultValue;
+	if (auto itSection = data.find(section); itSection != data.end())
+		if (auto itKey = itSection->second.find(key); itKey != itSection->second.end())
+			value = fast_atoi(itKey->second.c_str());
+	
+	return (value == INT_MAX) ? defaultValue : value;
+}
+
+float DataReader::ReadFloat(const std::string& section, const std::string& key, float defaultValue)
+{
+	if (auto itSection = data.find(section); itSection != data.end())
+		if (auto itKey = itSection->second.find(key); itKey != itSection->second.end())
+		{
+			float value = strtof(itKey->second.c_str());
+			if (value != NAN)
+				return value;
+		}
 
 	return defaultValue;
 }
 
-float DataReader::ReadFloat(std::string_view section, std::string_view key, float defaultValue)
+bool DataReader::ReadBoolean(const std::string &section, const std::string &key, bool defaultValue)
 {
-	try
-	{
-		if (auto itSection = data.find((std::string)section); itSection != data.end())
-			if (auto itKey = itSection->second.find((std::string)key); itKey != itSection->second.end())
-				return std::stof(itKey->second);
-	}
-	catch (std::invalid_argument&) {}
-	catch (std::out_of_range&) {}
-
-	return defaultValue;
+	return this->ReadInteger(section, key, defaultValue) != 0;
 }
 
-bool DataReader::ReadBoolean(std::string_view section, std::string_view key, bool defaultValue)
+std::string DataReader::ReadString(const std::string& section, const std::string& key, std::string defaultValue)
 {
-	try
-	{
-		if (auto itSection = data.find((std::string)section); itSection != data.end())
-			if (auto itKey = itSection->second.find((std::string)key); itKey != itSection->second.end())
-				return /*(itKey->second == "true") || */(std::stoi(itKey->second) != 0);
-	}
-	catch (std::invalid_argument&) {}
-	catch (std::out_of_range&) {}
-
-	return defaultValue;
-}
-
-std::string DataReader::ReadString(std::string_view section, std::string_view key, std::string defaultValue)
-{
-	if (auto itSection = data.find((std::string)section); itSection != data.end())
-		if (auto itKey = itSection->second.find((std::string)key); itKey != itSection->second.end())
+	if (auto itSection = data.find(section); itSection != data.end())
+		if (auto itKey = itSection->second.find(key); itKey != itSection->second.end())
 			return itKey->second;
 
 	return defaultValue;
 }
 
-std::vector<unsigned short> DataReader::ReadLine(std::string_view section, std::string_view key, modelTypeToRead parseType)
+std::vector<unsigned short> DataReader::ReadLine(const std::string& section, const std::string& key, modelTypeToRead parseType)
 {
 	std::vector<unsigned short> retVector;
 
@@ -214,7 +202,7 @@ std::vector<unsigned short> DataReader::ReadLine(std::string_view section, std::
 	return retVector;
 }
 
-std::vector<unsigned short> DataReader::ReadLineUnique(std::string_view section, std::string_view key, modelTypeToRead parseType)
+std::vector<unsigned short> DataReader::ReadLineUnique(const std::string& section, const std::string& key, modelTypeToRead parseType)
 {
 	auto vec = ReadLine(section, key, parseType);
 	vec.erase(unique(vec.begin(), vec.end()), vec.end());

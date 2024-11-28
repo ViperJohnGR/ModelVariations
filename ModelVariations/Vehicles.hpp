@@ -2,7 +2,6 @@
 
 #include <CVehicle.h>
 
-#include <set>
 #include <string>
 #include <vector>
 
@@ -12,7 +11,7 @@ extern const std::pair<std::string, unsigned> areas[];
 extern bool forceEnableGlobal;
 extern char currentZone[8];
 extern unsigned int currentTown;
-extern std::set<std::string> zoneNames;
+extern std::vector<std::string> zoneNames;
 
 class VehicleVariations
 {

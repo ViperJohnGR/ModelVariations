@@ -62,13 +62,3 @@ Ret callMethodOriginalAndReturn(C _this, Args... args)
 
     return 0;
 }
-
-
-template <std::uintptr_t at, std::uintptr_t len = 5, class FuncT>
-void MakeInline(const char *funcName, const char* originalData, FuncT func)
-{
-    if (memcmp(at, originalData) || forceEnable.contains(at) || forceEnableGlobal)
-        injector::MakeInline<at, at+len>(func);
-    else
-        Log::LogModifiedAddress(at, "Modified method detected: %s - 0x%08X is %s\n", funcName, at, bytesToString(at, len).c_str());
-}

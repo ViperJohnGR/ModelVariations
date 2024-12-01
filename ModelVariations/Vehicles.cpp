@@ -976,15 +976,9 @@ void __fastcall DoInternalProcessingHooked(CCarGenerator* park) //for non-random
 
         if (vehOptions->changeCarGenerators)
         {
-            if (vectorHasId(vehOptions->carGenExclude, park->m_nModelId))
-            {
-                callMethodOriginal<address>(park);
-                return;
-            }
-
-            park->m_nModelId = (short)getRandomVariation(park->m_nModelId, true);
+            if (!vectorHasId(vehOptions->carGenExclude, park->m_nModelId))
+                park->m_nModelId = (short)getRandomVariation(park->m_nModelId, true);
             callMethodOriginal<address>(park);
-            //park->m_nModelId = model;
             return;
         }
 
@@ -1455,14 +1449,6 @@ CVehicle* __cdecl CreateCarForScriptHooked(int modelId, float posX, float posY, 
 }
 
 template <std::uintptr_t address>
-CVehicle* __cdecl GetNewVehicleDependingOnCarModelHooked(int modelIndex, int createdBy)
-{
-    CVehicle *veh = callOriginalAndReturn<CVehicle*, address>(modelIndex, createdBy);
-    processTuning(veh);
-    return veh;
-}
-
-template <std::uintptr_t address>
 int __fastcall CreateInstanceHooked(CVehicleModelInfo* _this)
 {
     if (_this->m_pVehicleStruct == NULL)
@@ -1486,11 +1472,30 @@ int __fastcall CreateInstanceHooked(CVehicleModelInfo* _this)
 }
 
 template <std::uintptr_t address>
+CVehicle* __cdecl GetNewVehicleDependingOnCarModelHooked(int modelIndex, int createdBy)
+{
+    CVehicle *veh = callOriginalAndReturn<CVehicle*, address>(modelIndex, createdBy);
+    processTuning(veh);
+    return veh;
+}
+
+template <std::uintptr_t address>
 CPhysical* __fastcall CPhysicalHooked(CVehicle* _this)
 {
     CPhysical* retVal = callMethodOriginalAndReturn<CPhysical*, address>(_this);
     vehVars->stack.push(_this);
     return retVal;
+}
+
+template <std::uintptr_t address>
+void __cdecl CWorld__AddHooked(CVehicle* a1)
+{
+    if (tuneParkedCar)
+    {
+        processTuning(a1);
+        tuneParkedCar = false;
+    }
+    callOriginal<address>(a1);
 }
 
 
@@ -1836,6 +1841,79 @@ jmpOriginal:
         push edi
         push 0xFFFFFFFF
         mov asmJmpAddress, 0x6ABCC3
+        jmp asmJmpAddress
+    }
+}
+
+void __declspec(naked) patch6D42FE()
+{
+    __asm {
+        push ecx
+        call getVariationOriginalModel
+        sub eax, 0x1A9
+        mov asmJmpAddress, 0x6D4304
+        jmp asmJmpAddress
+    }
+}
+
+void __declspec(naked) patch6AC730()
+{
+    __asm {
+        movsx ecx, ax
+        mov eax, 0x403DA7
+        mov eax, dword ptr [eax] //CModelInfo::ms_modelInfoPtrs
+        mov eax, [eax + ecx*4]
+        mov asmJmpAddress, 0x6AC735
+        jmp asmJmpAddress
+    }
+}
+
+void __declspec(naked) patch6D474B()
+{
+    __asm {
+        push edi
+        call getVariationOriginalModel
+        lea eax, [eax-0x1A9]
+        mov asmJmpAddress, 0x6D4751
+        jmp asmJmpAddress
+    }
+}
+
+void __declspec(naked) patch729B76()
+{
+    __asm {
+        pushfd
+        xor ebx, ebx
+        movsx eax, word ptr [esi+0x22]
+        push eax
+        call getVariationOriginalModel
+        cmp eax, 0x259
+        jne isNotSWAT
+        mov bx, word ptr [esi+0x22]
+isNotSWAT:
+        popfd
+        mov asmJmpAddress, 0x729B7B
+        jmp asmJmpAddress
+    }
+}
+
+void __declspec(naked) patch6DD218()
+{
+    __asm {
+        push ecx
+        push edx
+        push eax
+        movsx eax, word ptr [esi+0x22]
+        push eax
+        call getVariationOriginalModel
+        cmp eax, 0x1CC
+        jne isNotSkimmer
+        movsx edi, word ptr [esi+0x22]
+isNotSkimmer:
+        pop eax
+        pop edx
+        pop ecx
+        mov asmJmpAddress, 0x6DD21D
         jmp asmJmpAddress
     }
 }
@@ -2348,42 +2426,12 @@ void VehicleVariations::InstallHooks()
         hookASM(0x6AF35E, "66 81 78 22 62 02",                cmpWordPtrRegModel<REG_EAX, 0x6AF364, 0x262>, "CAutomobile::GetTowBarPos");
         hookASM(0x6CF055, "66 81 7F 22 62 02",                cmpWordPtrRegModel<REG_EDI, 0x6CF05B, 0x262>, "CTrailer::ScanForTowLink");
         hookASM(0x6CFC41, "66 81 7E 22 62 02",                cmpWordPtrRegModel<REG_ESI, 0x6CFC47, 0x262>, "CTrailer::PreRender");
-        
-        MakeInline<0x6D42FE, 6>("CVehicle::GetPlaneGunsPosition", "8D 81 57 FE FF FF", [](injector::reg_pack& regs)
-        {
-            regs.eax = (uint32_t)getVariationOriginalModel((int)regs.ecx) - 0x1A9;
-        });
+        hookASM(0x6D42FE, "8D 81 57 FE FF FF",                patch6D42FE, "CVehicle::GetPlaneGunsPosition");
+        hookASM(0x6AC730, "A1 10 B9 A9 00",                   patch6AC730, "CAutomobile::PreRender");
+        hookASM(0x6D474B, "8D 87 57 FE FF FF",                patch6D474B, "CVehicle::GetPlaneOrdnancePosition");
+        hookASM(0x729B76U, (GetGameVersion() != GAME_10US_COMPACT) ? "E9 18 D7 CD FF" : "BB 59 02 00 00", patch729B76, "CAutomobile::FireTruckControl");
+        hookASM(0x6DD218, "BF CC 01 00 00",                   patch6DD218, "CVehicle::DoBoatSplashes");
 
-        MakeInline<0x6AC730>("CAutomobile::PreRender", "A1 10 B9 A9 00", [](injector::reg_pack& regs)
-        {
-            regs.eax = reinterpret_cast<uint32_t>(CModelInfo::GetModelInfo((int)regs.eax & 0xFFFF));
-        });
-
-        MakeInline<0x6D46E5, 11>("CVehicle::GetPlaneOrdnancePosition", "0F BF 79 22 8B 04 BD C8 B0 A9 00", [](injector::reg_pack& regs)
-        {
-            int modelIndex = reinterpret_cast<CEntity*>(regs.ecx)->m_nModelIndex;
-
-            regs.eax = reinterpret_cast<uint32_t>(CModelInfo::GetModelInfo(modelIndex));
-            regs.edi = (uint32_t)getVariationOriginalModel(modelIndex);
-        });
-
-        MakeInline<0x729B76U>("CAutomobile::FireTruckControl", (GetGameVersion() != GAME_10US_COMPACT) ? "E9 18 D7 CD FF" : "BB 59 02 00 00", [](injector::reg_pack& regs)
-        {
-            if (getVariationOriginalModel(reinterpret_cast<CEntity*>(regs.esi)->m_nModelIndex) == 601)
-                regs.ebx = reinterpret_cast<CEntity*>(regs.esi)->m_nModelIndex;
-        });
-
-        MakeInline<0x6DD218>("CVehicle::DoBoatSplashes", "BF CC 01 00 00", [](injector::reg_pack& regs)
-        {
-            if (getVariationOriginalModel(reinterpret_cast<CEntity*>(regs.esi)->m_nModelIndex) == 460)
-                regs.edi = reinterpret_cast<CEntity*>(regs.esi)->m_nModelIndex;
-        });
-
-        MakeInline<0x6CD78B>("CPlane::DoPlaneGenerationAndRemoval", "B8 08 02 00 00", [](injector::reg_pack& regs)
-        {
-            if (getVariationOriginalModel(CPlane::GenPlane_ModelIndex) == 520)
-                regs.eax = (uint32_t)CPlane::GenPlane_ModelIndex;
-        });
 
         hookCall(0x8711E0, SetupSuspensionLinesHooked<0x8711E0>, "CAutomobile::SetupSuspensionLines", true);
         hookCall(0x6B119E, SetupSuspensionLinesHooked<0x6B119E>, "CAutomobile::SetupSuspensionLines");
@@ -2459,15 +2507,7 @@ void VehicleVariations::InstallHooks()
     hookCall(0x6D5F2F, CPhysicalHooked<0x6D5F2F>, "CPhysical::CPhysical"); //CVehicle::CVehicle
 
     //Tuning for parked cars
-    MakeInline<0x6F3B88, 6>("CCarGenerator::DoInternalProcessing", "88 96 2A 04 00 00", [](injector::reg_pack& regs)
-    {
-        *reinterpret_cast<uint8_t*>(regs.esi + 0x42A) = (uint8_t)(regs.edx & 0xFF);
-        if (tuneParkedCar)
-        {
-            processTuning(reinterpret_cast<CVehicle*>(regs.esi));
-            tuneParkedCar = false;
-        }
-    });
+    hookCall(0x6F3C8C, CWorld__AddHooked<0x6F3C8C>, "CWorld::Add");
 
     DWORD oldProtect;
     if (VirtualProtect(asmNextInstr, 16, PAGE_EXECUTE_READWRITE, &oldProtect) == 0)

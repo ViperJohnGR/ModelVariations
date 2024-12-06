@@ -17,41 +17,55 @@ DataReader::DataReader(const char* filename)
 
 bool DataReader::Load(const char* filename)
 {
-	std::ifstream file(filename);
-
-	if (!file.is_open())
-		return false;
+	std::string file = fileToString(filename);
 
 	data.clear();
 
-	std::vector<std::string> sections;
-	std::string key, value, line;
+	std::vector<char*> sections;
+	std::string key, value;
+	size_t token_length = 0;
 
-	while (std::getline(file, line)) 
-	{
-		if (size_t pos = line.find_first_of(";#"); pos != std::string::npos)
-			line.resize(pos);
-		else if (pos = line.find("//"); pos != std::string::npos)
-			line.resize(pos);
+	for (char* line = strtok(file.data(), "\r\n", &token_length); line != NULL; line = strtok(NULL, "\r\n", &token_length))
+	{		 
+		for (auto pos = line; *pos;)
+		{
+			if (*pos == ';' || *pos == '#')
+				*pos = 0;
+			else if (*pos == '/' && *(pos + 1) == '/')
+				*pos = 0;
+			else
+				pos++;
+		}
 
-		line = trimString(line);
+		token_length = trim(&line, 0);
 
-		if (!line.empty() && line.front() == '[' && line.back() == ']')
+		if (line[0] == '[' && line[token_length-1] == ']')
 		{
 			sections.clear();
 
-			auto section = line.substr(1, line.size()-2);
-			for (const auto &i : splitString(section, ','))
-				sections.push_back(trimString(i));
+			line++;
+			token_length--;
+			line[token_length - 1] = 0;
+
+			for (char* token = strtok(line, ","); token != NULL; token = strtok(NULL, ","))
+			{
+				trim(&token, 0);
+				sections.push_back(token);
+			}
 		}
-		else if (size_t pos = line.find('='); pos != std::string::npos)
+		else if (auto pos = strchr(line, '='); pos)
 		{
-			key = trimString(line.substr(0, pos));
-			value = trimString(line.substr(pos + 1));
+			*pos = 0;
+			trim(&line, 0);
+			key = line;
+
+			line = pos + 1;
+			trim(&line, 0);
+			value = line;
 
 			if (!key.empty() && !value.empty())
-				for (auto &i : sections)
-					if (!i.empty())
+				for (auto& i : sections)
+					if (i[0] != 0)
 						data[i][key] = value;
 		}
 	}

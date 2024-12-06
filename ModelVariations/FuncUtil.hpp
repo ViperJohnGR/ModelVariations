@@ -1,12 +1,10 @@
 #pragma once
 
 #include <algorithm>
-#include <fstream>
 #include <iomanip>
 #include <iterator>
 #include <charconv>
 #include <type_traits>
-#include <sstream>
 #include <vector>
 
 #include <CGeneral.h>
@@ -24,15 +22,7 @@ inline void printMessage(const char* message, unsigned int time)
     CMessages::AddMessageJumpQ(const_cast<char*>(message), time, 0, false);
 }
 
-inline int integerPow(int x, int power)
-{
-    for (int i = 1; i < power; i++)
-        x *= x;
-
-    return x;
-}
-
-inline int integerPow(int x, unsigned int power)
+inline unsigned int integerPow(unsigned int x, unsigned int power)
 {
     for (unsigned int i = 1; i < power; i++)
         x *= x;
@@ -136,26 +126,44 @@ bool rand()
 // Strings //
 /////////////
 
-inline std::string bytesToString(std::uintptr_t address, int nBytes)
+inline std::string bytesToString(std::uintptr_t address, unsigned int nBytes)
 {
-    std::stringstream ss;
     const unsigned char* c = reinterpret_cast<unsigned char*>(address);
+    std::string result;
+    char buffer[4] = {};
 
-    for (int i = 0; i < nBytes; i++, ss << " ")
-        ss << std::setfill('0') << std::uppercase << std::setw(2) << std::hex << static_cast<unsigned int>(c[i]);
+    for (unsigned int i = 0; i < nBytes; ++i)
+    {
+        if (i > 0)
+            result += ' ';
+        std::snprintf(buffer, sizeof(buffer), "%02X", c[i]);
+        result += buffer;
+    }
 
-    return ss.str();
+    return result;
 }
 
 inline std::string fileToString(std::string_view filename)
 {
-    std::stringstream ss;
-    std::ifstream file(filename.data());
+    std::string str;
 
-    if (file.is_open())
-        ss << file.rdbuf();
+    HANDLE hFile = CreateFile(filename.data(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (hFile == INVALID_HANDLE_VALUE)
+        return str;
 
-    return ss.str();
+    auto filesize = GetFileSize(hFile, NULL);
+    if (filesize == INVALID_FILE_SIZE)
+    {
+        CloseHandle(hFile);
+        return str;
+    }
+
+    str.resize(filesize+1);
+    DWORD lpNumberOfBytesRead = 0;
+    ReadFile(hFile, &str[0], filesize, &lpNumberOfBytesRead, NULL);
+
+    CloseHandle(hFile);
+    return str;
 }
 
 inline std::string getFilenameFromPath(std::string_view path)
@@ -180,14 +188,23 @@ inline bool strcasestr(std::string src, std::string sub)
     return false;
 }
 
-inline std::vector<std::string> splitString(std::string_view sv, const char seperator)
+inline std::vector<std::string> splitString(const std::string &sv, const char separator)
 {
     std::vector<std::string> result;
-    std::istringstream iss(sv.data());
-    std::string token;
 
-    while (std::getline(iss, token, seperator))
-        result.push_back(token);  
+    size_t start = 0;
+
+    for(size_t i = 0;; i++)
+    {
+        if (sv[i] == separator || sv[i] == 0)
+        {
+            result.push_back(sv.substr(start, i - start));
+            if (sv[i] == 0)
+                break;
+            else
+                start = i + 1;
+        }
+    }
 
     return result;
 }
@@ -255,6 +272,79 @@ inline float strtof(const char *str)
     return negative ? -finalFloat : finalFloat;
 }
 
+inline size_t ltrim(char** str, size_t n)
+{
+    size_t len = (n > 0) ? n : strlen(*str);
+    size_t i = 0;
+
+    while (i < len && isspace((*str)[i]))
+        i++;
+
+    *str += i;
+
+    return len - i;
+}
+
+inline size_t rtrim(char** str, size_t n)
+{
+    size_t len = (n > 0) ? n : strlen(*str);
+
+    if (len == 0)
+        return 0;
+
+    for (size_t i = len - 1; isspace((*str)[i]); i--)
+    {
+        (*str)[i] = 0;
+        len--;
+    }
+
+    return len;
+}
+
+inline size_t trim(char** str, size_t n)
+{
+    size_t len = ltrim(str, n);
+    len = rtrim(str, len);
+    return len;
+}
+
+inline char* strtok(char* str, const char* delim, size_t* token_length) {
+    static char* next_token = NULL;
+    if (str != NULL)
+        next_token = str;
+    else if (next_token == NULL)
+        return NULL; // No more tokens
+
+    // Skip leading delimiters
+    char* start = next_token;
+    while (*start && strchr(delim, *start))
+        start++;
+
+    if (*start == '\0') 
+    {
+        next_token = NULL; // End of string reached
+        return NULL;
+    }
+
+    // Find the end of the token
+    char* end = start;
+    while (*end && !strchr(delim, *end))
+        end++;
+
+    // If a token is found, update `next_token`
+    if (*end) 
+    {
+        *end = '\0';        // Null-terminate the token
+        next_token = end + 1; // Move to the next character after the delimiter
+    }
+    else
+        next_token = NULL; // End of the string
+
+    if (token_length)
+        *token_length = (size_t)(end - start);
+
+    return start;
+}
 
 /////////////
 // Vectors //

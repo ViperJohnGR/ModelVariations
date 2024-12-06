@@ -110,8 +110,8 @@ bool forceEnableGlobal = false;
 bool loadSettingsImmediately = false;
 int loadStage = 1;
 int trackReferenceCounts = -1;
-unsigned int disableKey = 0;
-unsigned int reloadKey = 0;
+int disableKey = 0;
+int reloadKey = 0;
 
 std::set<std::uintptr_t> forceEnable;
 
@@ -155,28 +155,26 @@ std::string getDatetime(bool printDate, bool printTime, bool printMs)
 {
     SYSTEMTIME systime;
     GetSystemTime(&systime);
-    std::stringstream ss;
+    char str[255] = {};
+    int i = 0;
 
     if (printDate)
     {
-        ss << systime.wDay << "/" << systime.wMonth << "/" << systime.wYear;
-
+        i += snprintf(str, 254, "%d/%d/%d", systime.wDay, systime.wMonth, systime.wYear);
         if (printTime)
-            ss << " ";
+            i += snprintf(str + i, 254U - i, " ");
     }
 
     if (printTime)
     {
-        ss << std::setfill('0') << std::setw(2) << systime.wHour << ":"
-            << std::setfill('0') << std::setw(2) << systime.wMinute << ":"
-            << std::setfill('0') << std::setw(2) << systime.wSecond;
+        i += snprintf(str + i, 254U - i, "%02d:%02d:%02d", systime.wHour, systime.wMinute, systime.wSecond);
+
         if (printMs)
-            ss << "." << std::setfill('0') << std::setw(3) << systime.wMilliseconds;
+            i += snprintf(str + i, 254U - i, ".%03d", systime.wMilliseconds);
     }
 
-    return ss.str();
+    return str;
 }
-
 
 bool LoadPESection(const char* filePath, int section, std::vector<unsigned char>& buffer, unsigned int* size) {
     HANDLE hFile;
@@ -605,7 +603,7 @@ void __cdecl CGame__ProcessHooked()
         timeUpdate = -1;
     }
 
-    if (disableKey > 0 && KeyPressed(disableKey))
+    if (disableKey > 0 && (GetKeyState(disableKey) & 0x8000) != 0)
     {
         if (!keyDown)
         {
@@ -616,7 +614,7 @@ void __cdecl CGame__ProcessHooked()
             Log::Write("OK\n");
         }
     }
-    else if (reloadKey > 0 && KeyPressed(reloadKey))
+    else if (reloadKey > 0 && (GetKeyState(reloadKey) & 0x8000) != 0)
     {
         if (!keyDown)
         {
@@ -821,8 +819,8 @@ public:
         trackReferenceCounts = iniSettings.ReadInteger("Settings", "TrackReferenceCounts", -1);
         loadSettingsImmediately = iniSettings.ReadBoolean("Settings", "LoadSettingsImmediately", true);
         loadStage = iniSettings.ReadInteger("Settings", "LoadStage", 1);
-        disableKey = (unsigned int)iniSettings.ReadInteger("Settings", "DisableKey", 0);
-        reloadKey = (unsigned int)iniSettings.ReadInteger("Settings", "ReloadKey", 0);
+        disableKey = iniSettings.ReadInteger("Settings", "DisableKey", 0);
+        reloadKey = iniSettings.ReadInteger("Settings", "ReloadKey", 0);
         enableLog = iniSettings.ReadBoolean("Settings", "EnableLog", false);
         logJumps = iniSettings.ReadBoolean("Settings", "LogJumps", false);
 
@@ -845,7 +843,6 @@ public:
         if (enableLog)
         {
             std::string exeHash;
-            unsigned int exeFilesize = 0;
             std::string exePath;
 
             enableLog = Log::Open("ModelVariations.log");
@@ -856,12 +853,10 @@ public:
             exeName = getFilenameFromPath(path);
 
             HANDLE hFile = CreateFile(path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-            if (hFile == INVALID_HANDLE_VALUE)
-                return;
 
-            exeFilesize = GetFileSize(hFile, NULL);
+            unsigned int exeFilesize = GetFileSize(hFile, NULL);
 
-            if (exeFilesize != INVALID_FILE_SIZE)
+            if (hFile != INVALID_HANDLE_VALUE && exeFilesize > 0)
             {
                 DWORD lpNumberOfBytesRead = 0;
                 BCRYPT_ALG_HANDLE hProvider = NULL;
@@ -873,16 +868,15 @@ public:
                         if (BCryptCreateHash(hProvider, &ctx, NULL, 0, NULL, 0, 0) == STATUS_SUCCESS && ctx != NULL)
                         {
                             auto hash = std::vector<BYTE>(32);
-                            std::stringstream stream;
+                            exeHash.resize(65);
                             BCryptHashData(ctx, filebuf.data(), exeFilesize, 0);
                             BCryptFinishHash(ctx, hash.data(), 32, 0);
                             BCryptDestroyHash(ctx);
                             BCryptCloseAlgorithmProvider(hProvider, 0);
+                            int hashLen = 0;
 
                             for (auto& i : hash)
-                                stream << std::setfill('0') << std::setw(2) << std::hex << static_cast<int>(i);
-
-                            exeHash = stream.str();
+                                hashLen += snprintf(exeHash.data() + hashLen, 65U - hashLen, "%02x", i);
                         }
             }
 

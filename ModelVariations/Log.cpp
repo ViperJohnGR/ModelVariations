@@ -1,7 +1,6 @@
 #include "Log.hpp"
 
 #include <cstdarg>
-#include <sstream>
 
 HANDLE Log::logfile = INVALID_HANDLE_VALUE;
 std::set<std::uintptr_t> Log::modifiedAddresses;

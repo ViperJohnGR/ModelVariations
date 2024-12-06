@@ -75,11 +75,12 @@ void LoadedModules::Refresh()
                 MODULEINFO mInfo;
                 GetModuleInformation(hProcess, modules[i], &mInfo, sizeof(MODULEINFO));
                 loadedModules.push_back({ szModName, mInfo });
-                std::sort(loadedModules.begin(), loadedModules.end(), [](std::pair<std::string, MODULEINFO> a, std::pair<std::string, MODULEINFO> b)
-                {
-                    return a.second.lpBaseOfDll < b.second.lpBaseOfDll;
-                });
             }
         }
+
+    std::sort(loadedModules.begin(), loadedModules.end(), [](std::pair<std::string, MODULEINFO> a, std::pair<std::string, MODULEINFO> b)
+    {
+        return a.second.lpBaseOfDll < b.second.lpBaseOfDll;
+    });
 }
 

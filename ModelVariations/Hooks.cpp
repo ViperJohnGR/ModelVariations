@@ -13,12 +13,7 @@ bool hookASM(std::uintptr_t address, std::string_view originalData, injector::me
 
     if (!memcmp(address, originalData.data()) && forceEnableGlobal == false && !forceEnable.contains(address))
     {
-        std::stringstream ss;
-
-        for (unsigned j = 0; j < numBytes; j++)
-            ss << std::setfill('0') << std::setw(2) << std::uppercase << std::hex << static_cast<unsigned int>(reinterpret_cast<unsigned char*>(address)[j]) << " ";
-
-        std::string bytes = ss.str();
+        std::string bytes = bytesToString(address, numBytes);
         auto branchDestination = injector::GetBranchDestination(address).as_int();
         std::string moduleName = LoadedModules::GetModuleAtAddress(branchDestination).first;
         std::string funcType = (funcName.find("::") != std::string::npos) ? "Modified method" : "Modified function";

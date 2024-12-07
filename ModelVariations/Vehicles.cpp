@@ -735,6 +735,7 @@ void VehicleVariations::Process()
                 {
                     CWorld::Add(trailer);
                     CTheScripts::ClearSpaceForMissionEntity(veh->GetPosition(), trailer);
+                    spawnedTrailers.push_back({ trailer, veh });
                     trailer->SetTowLink(veh, 1);
                     CCarCtrl::SwitchVehicleToRealPhysics(veh);
                     if (vehVars->trailersHealth.contains(veh->m_nModelIndex))
@@ -747,7 +748,6 @@ void VehicleVariations::Process()
                         trailer->m_nTertiaryColor = veh->m_nTertiaryColor;
                         trailer->m_nQuaternaryColor = veh->m_nQuaternaryColor;
                     }
-                    spawnedTrailers.push_back({ trailer, veh });
                 }
             }            
         }
@@ -1485,6 +1485,15 @@ CPhysical* __fastcall CPhysicalHooked(CVehicle* _this)
     CPhysical* retVal = callMethodOriginalAndReturn<CPhysical*, address>(_this);
     vehVars->stack.push(_this);
     return retVal;
+}
+
+template <std::uintptr_t address>
+void __fastcall AddAudioEventHooked(CAEVehicleAudioEntity* audio, void*, int audioEvent, float fVolume)
+{
+    //https://github.com/JuniorDjjr/TruckTrailer
+    CVehicle* vehicle = static_cast<CVehicle*>(audio->m_pEntity);
+    if ((CTimer::m_snTimeInMilliseconds - vehicle->m_nCreationTime) > 2000)
+        callMethodOriginal<address>(audio, audioEvent, fVolume);
 }
 
 template <std::uintptr_t address>
@@ -2505,6 +2514,9 @@ void VehicleVariations::InstallHooks()
     hookCall(0x4306A1, GetNewVehicleDependingOnCarModelHooked<0x4306A1>, "CCarCtrl::GetNewVehicleDependingOnCarModel"); ///CCarCtrl::GenerateOneRandomCar
 
     hookCall(0x6D5F2F, CPhysicalHooked<0x6D5F2F>, "CPhysical::CPhysical"); //CVehicle::CVehicle
+
+    hookCall(0x6CFFBB, AddAudioEventHooked<0x6CFFBB>, "CAEVehicleAudioEntity::AddAudioEvent"); //CTrailer::SetTowLink
+    hookCall(0x6CEFCE, AddAudioEventHooked<0x6CEFCE>, "CAEVehicleAudioEntity::AddAudioEvent"); //CTrailer::BreakTowLink
 
     //Tuning for parked cars
     hookCall(0x6F3C8C, CWorld__AddHooked<0x6F3C8C>, "CWorld::Add");

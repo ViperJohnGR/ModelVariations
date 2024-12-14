@@ -119,7 +119,7 @@ std::vector<unsigned short> DataReader::ReadLine(const std::string& section, con
 	if (iniString.empty())
 		return retVector;
 
-	for (char* token = strtok(iniString.data(), ","); token != NULL; token = strtok(NULL, ",")) //TODO: test this
+	for (char* token = strtok(iniString.data(), ","); token != NULL; token = strtok(NULL, ","))
 	{
 		int modelid = 0;
 		trim(&token, 0);

@@ -73,6 +73,7 @@ std::set<unsigned short> referenceCountModels;
 std::vector<std::string> zoneNames;
 std::set<unsigned short> addedIDsInGroups;
 
+std::string exePath;
 std::string exeName;
 
 std::vector<unsigned short> addedIDs;
@@ -523,33 +524,34 @@ void __cdecl CGame__ProcessHooked()
         auto gta_saModule = LoadedModules::GetModule(exeName);
         std::uintptr_t gta_saEndAddress = ((std::uintptr_t)gta_saModule.second.lpBaseOfDll + gta_saModule.second.SizeOfImage);
         unsigned int secCount = 0;
+        const unsigned int base = (unsigned int)gta_saModule.second.lpBaseOfDll;
 
         for (auto& rangeStart : validRanges)
         {
             unsigned int sectionSize;
-            LoadPESection(exeName.c_str(), sections[secCount++], buffer, &sectionSize);
-            for (unsigned int i = rangeStart; i < sectionSize + 0x400000; i++)
-            {
-                auto currentByte = *reinterpret_cast<unsigned char*>(i);
-                if (currentByte != buffer[i - rangeStart])
+            if (LoadPESection(exePath.c_str(), sections[secCount++], buffer, &sectionSize))
+                for (unsigned int i = rangeStart; i < sectionSize + base; i++)
                 {
-                    auto destination = injector::GetBranchDestination(i).as_int();
-                    if (destination > gta_saEndAddress)
+                    auto currentByte = *reinterpret_cast<unsigned char*>(i);
+                    if (currentByte != buffer[i - rangeStart])
                     {
-                        auto moduleInfo = LoadedModules::GetModuleAtAddress(destination);
-                        std::string moduleName = moduleInfo.first.substr(moduleInfo.first.find_last_of("/\\") + 1);
-
-                        if (!strcasestr(moduleInfo.first, "Windows") && _stricmp(moduleName.c_str(), MOD_NAME) != 0)
+                        auto destination = injector::GetBranchDestination(i).as_int();
+                        if (destination > gta_saEndAddress)
                         {
-                            if (moduleName.empty())
-                                jumpsMap["unknown"].push_back({ i, destination, currentByte });
-                            else
-                                jumpsMap[moduleName].push_back({ i, destination, currentByte });
+                            auto moduleInfo = LoadedModules::GetModuleAtAddress(destination);
+                            std::string moduleName = moduleInfo.first.substr(moduleInfo.first.find_last_of("/\\") + 1);
+
+                            if (!strcasestr(moduleInfo.first, "Windows") && _stricmp(moduleName.c_str(), MOD_NAME) != 0)
+                            {
+                                if (moduleName.empty())
+                                    jumpsMap["unknown"].push_back({ i, destination, currentByte });
+                                else
+                                    jumpsMap[moduleName].push_back({ i, destination, currentByte });
+                            }
+                            i += 3;
                         }
-                        i += 3;
                     }
                 }
-            }
         }
         for (auto& i : jumpsMap)
         {
@@ -843,7 +845,6 @@ public:
         if (enableLog)
         {
             std::string exeHash;
-            std::string exePath;
 
             enableLog = Log::Open("ModelVariations.log");
 

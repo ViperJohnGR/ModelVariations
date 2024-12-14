@@ -119,35 +119,34 @@ std::vector<unsigned short> DataReader::ReadLine(const std::string& section, con
 	if (iniString.empty())
 		return retVector;
 
-	auto line = splitString(iniString, ',');
-	for (auto &token : line)
+	for (char* token = strtok(iniString.data(), ","); token != NULL; token = strtok(NULL, ",")) //TODO: test this
 	{
 		int modelid = 0;
-		token = trimString(token);
+		trim(&token, 0);
 
 		if (parseType == READ_WEAPONS)
 		{
 			int weaponType = -1;
 			if (token[0] >= '0' && token[0] <= '9')
-				weaponType = atoi(token.data());
+				weaponType = atoi(token);
 
 			if (weaponType > -1 && weaponType < 1000 && CWeaponInfo::GetWeaponInfo((eWeaponType)weaponType, 1) != NULL)
 				retVector.push_back((unsigned short)weaponType);
 		}
 		else if (parseType == READ_GROUPS)
 		{
-			if (strncmp(token.data(), "Group", 5) == 0)
+			if (strncmp(token, "Group", 5) == 0)
 				retVector.push_back((unsigned short)(token[5] - '0'));
 		}
 		else if (parseType == READ_TUNING)
 		{
-			if (_strnicmp(token.data(), "paintjob", 8) == 0)
+			if (_strnicmp(token, "paintjob", 8) == 0)
 			{
-				retVector.push_back((unsigned short)atoi(token.data()+8)-1U);
+				retVector.push_back((unsigned short)atoi(token+8)-1U);
 			}
 			else if (token[0] != 'G')
 			{
-				auto mInfo = CModelInfo::GetModelInfo(token.data(), &modelid);
+				auto mInfo = CModelInfo::GetModelInfo(token, &modelid);
 				if (mInfo != NULL)
 				{
 					const auto modelType = mInfo->GetModelType();
@@ -161,11 +160,11 @@ std::vector<unsigned short> DataReader::ReadLine(const std::string& section, con
 			CBaseModelInfo* mInfo = NULL;
 			if (token[0] >= '0' && token[0] <= '9')
 			{
-				modelid = atoi(token.data());
+				modelid = atoi(token);
 				mInfo = CModelInfo::GetModelInfo(modelid);
 			}
 			else
-				mInfo = CModelInfo::GetModelInfo(token.data(), &modelid);
+				mInfo = CModelInfo::GetModelInfo(token, &modelid);
 
 			if (mInfo != NULL)
 			{
@@ -187,7 +186,7 @@ std::vector<unsigned short> DataReader::ReadLine(const std::string& section, con
 					reachedMaxCapacity = true;
 					Log::Write("WARNING: The number of extra object directory entries is has reached max capacity (%u)\n", CStreaming__ms_pExtraObjectsDir->m_nCapacity);
 				}
-				else if (CStreaming__ms_pExtraObjectsDir->FindItem(token.data()))
+				else if (CStreaming__ms_pExtraObjectsDir->FindItem(token))
 				{
 					for (uint16_t i = 1326; i < maxPedID; i++)
 						if (CModelInfo::GetModelInfo(i) == NULL)
@@ -197,7 +196,7 @@ std::vector<unsigned short> DataReader::ReadLine(const std::string& section, con
 							if (pedInfo)
 							{
 								pedInfo->SetColModel((CColModel*)0x968DF0, false);
-								CStreaming::RequestSpecialModel(i, token.data(), 0);
+								CStreaming::RequestSpecialModel(i, token, 0);
 								retVector.push_back(i);
 								addedIDs.push_back(i);
 								pedInfo->m_nPedType = 4;
@@ -207,7 +206,7 @@ std::vector<unsigned short> DataReader::ReadLine(const std::string& section, con
 						}
 				}
 				else
-					Log::Write("Could not find model %s\n", token.data());
+					Log::Write("Could not find model %s\n", token);
 			}
 		}
 	}

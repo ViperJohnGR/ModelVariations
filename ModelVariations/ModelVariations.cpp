@@ -856,7 +856,7 @@ public:
 
             unsigned int exeFilesize = GetFileSize(hFile, NULL);
 
-            if (hFile != INVALID_HANDLE_VALUE && exeFilesize > 0)
+            if (hFile != INVALID_HANDLE_VALUE && exeFilesize != INVALID_FILE_SIZE)
             {
                 DWORD lpNumberOfBytesRead = 0;
                 BCRYPT_ALG_HANDLE hProvider = NULL;

@@ -33,7 +33,7 @@
 #define CScriptsForBrains__AddNewScriptBrain reinterpret_cast<void(__thiscall*)(void*, short, short, short, char, char, float)>(injector::GetBranchDestination(0x476D86).as_int())
 
 #define CTheZones__PointLiesWithinZone reinterpret_cast<bool(__cdecl*)(void*, void*)>(injector::GetBranchDestination(0x572BCE).as_int())
-#define CTheZones__NavigationZoneArray (*reinterpret_cast<CZone**>(0x572BB6 + 1))
+#define CTheZones__NavigationZoneArray (*reinterpret_cast<CZone**>(0x572BB7))
 
 #define CVehicleModelInfo__CLinkedUpgradeList__FindOtherUpgrade reinterpret_cast<short(__thiscall*)(uint32_t, uint16_t)>(injector::GetBranchDestination(0x4986BB).as_int())
 #define CVehicleModelInfo__ms_linkedUpgrades (*reinterpret_cast<unsigned*>(0x4986B7))

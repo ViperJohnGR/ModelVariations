@@ -18,8 +18,11 @@
 
 #define CModelInfo__AddPedModel reinterpret_cast<CPedModelInfo * (__cdecl*)(int)>(injector::GetBranchDestination(0x5B74A7).as_int())
 
-#define CPopulation__m_AppropriateLoadedCars (*reinterpret_cast<CLoadedCarGroup**>(0x40AFAB))
+#define CPopulation__m_iCarsPerGroup *reinterpret_cast<int*>(0x40ADB8)
+
+#define CPopulation__m_AppropriateLoadedCars (*reinterpret_cast<CLoadedCarGroup**>(0x421383))
 #define CPopulation__m_nNumCarsInGroup (*reinterpret_cast<short**>(0x406F48))
+#define CPopulation__m_CarGroups (*reinterpret_cast<short**>(0x421948))
 
 #define CStreaming__ms_pExtraObjectsDir (**reinterpret_cast<CDirectory***>(0x409F6C))
 #define CStreaming__ms_pedsLoaded (*reinterpret_cast<int **>(0x40A5A0))

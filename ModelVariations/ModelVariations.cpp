@@ -781,11 +781,10 @@ void __cdecl InitialiseGameHooked()
     Log::Write("Reading cargrp...\n");
 
     for (int i = 0; i < 34; i++)
-    {
         for (int j = 0; j < CPopulation__m_nNumCarsInGroup[i]; j++)
-            if (CPopulation::m_CarGroups[i][j] > 611)
-                addedIDsInGroups.insert((unsigned short)CPopulation::m_CarGroups[i][j]);
-    }
+            if (CPopulation__m_CarGroups[i * CPopulation__m_iCarsPerGroup + j] > 611)
+                addedIDsInGroups.insert((unsigned short)CPopulation__m_CarGroups[i * CPopulation__m_iCarsPerGroup + j]);
+
     Log::Write("Found %u added IDs in cargrp.\n", addedIDsInGroups.size());
     Log::Write("-- InitialiseGame End (%s) --\n", getDatetime(false, true, true).c_str());
 
@@ -852,36 +851,37 @@ public:
             GetModuleFileName(NULL, path, 255);
             exePath = path;
             exeName = getFilenameFromPath(path);
+            unsigned int exeFilesize = 0;
 
             HANDLE hFile = CreateFile(path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-
-            unsigned int exeFilesize = GetFileSize(hFile, NULL);
-
-            if (hFile != INVALID_HANDLE_VALUE && exeFilesize != INVALID_FILE_SIZE)
+            if (hFile != INVALID_HANDLE_VALUE)
             {
-                DWORD lpNumberOfBytesRead = 0;
-                BCRYPT_ALG_HANDLE hProvider = NULL;
-                BCRYPT_HASH_HANDLE ctx = NULL;
-                auto filebuf = std::vector<BYTE>(exeFilesize + 1);
+                exeFilesize = GetFileSize(hFile, NULL);
+                if (exeFilesize != INVALID_FILE_SIZE)
+                {
+                    DWORD lpNumberOfBytesRead = 0;
+                    BCRYPT_ALG_HANDLE hProvider = NULL;
+                    BCRYPT_HASH_HANDLE ctx = NULL;
+                    auto filebuf = std::vector<BYTE>(exeFilesize + 1);
 
-                if (ReadFile(hFile, filebuf.data(), exeFilesize, &lpNumberOfBytesRead, NULL))
-                    if (BCryptOpenAlgorithmProvider(&hProvider, BCRYPT_SHA256_ALGORITHM, NULL, 0) == STATUS_SUCCESS)
-                        if (BCryptCreateHash(hProvider, &ctx, NULL, 0, NULL, 0, 0) == STATUS_SUCCESS && ctx != NULL)
-                        {
-                            auto hash = std::vector<BYTE>(32);
-                            exeHash.resize(65);
-                            BCryptHashData(ctx, filebuf.data(), exeFilesize, 0);
-                            BCryptFinishHash(ctx, hash.data(), 32, 0);
-                            BCryptDestroyHash(ctx);
-                            BCryptCloseAlgorithmProvider(hProvider, 0);
-                            int hashLen = 0;
+                    if (ReadFile(hFile, filebuf.data(), exeFilesize, &lpNumberOfBytesRead, NULL))
+                        if (BCryptOpenAlgorithmProvider(&hProvider, BCRYPT_SHA256_ALGORITHM, NULL, 0) == STATUS_SUCCESS)
+                            if (BCryptCreateHash(hProvider, &ctx, NULL, 0, NULL, 0, 0) == STATUS_SUCCESS && ctx != NULL)
+                            {
+                                auto hash = std::vector<BYTE>(32);
+                                exeHash.resize(65);
+                                BCryptHashData(ctx, filebuf.data(), exeFilesize, 0);
+                                BCryptFinishHash(ctx, hash.data(), 32, 0);
+                                BCryptDestroyHash(ctx);
+                                BCryptCloseAlgorithmProvider(hProvider, 0);
+                                int hashLen = 0;
 
-                            for (auto& i : hash)
-                                hashLen += snprintf(exeHash.data() + hashLen, 65U - hashLen, "%02x", i);
-                        }
+                                for (auto& i : hash)
+                                    hashLen += snprintf(exeHash.data() + hashLen, 65U - hashLen, "%02x", i);
+                            }
+                }
+                CloseHandle(hFile);
             }
-
-            CloseHandle(hFile);
 
             std::string windowsVersion;
             char str[64] = {};

@@ -301,7 +301,7 @@ inline size_t rtrim(char** str, size_t n)
     return len;
 }
 
-inline size_t trim(char** str, size_t n)
+inline size_t trim(char** str, size_t n = 0)
 {
     size_t len = ltrim(str, n);
     len = rtrim(str, len);
@@ -352,6 +352,9 @@ inline char* strtok(char* str, const char* delim, size_t* token_length) {
 
 inline void vectorfilterVector(std::vector<unsigned short>& vec, std::vector<unsigned short>& filterVec)
 {
+    if (filterVec.empty())
+        return;
+
     bool matchFound = false;
     std::vector<unsigned short> vec2 = vec;
 

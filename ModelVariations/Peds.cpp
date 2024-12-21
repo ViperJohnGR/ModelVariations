@@ -15,7 +15,7 @@
 #include <array>
 #include <stack>
 
-constexpr int MAX_ORIGINAL_PED_ID = 300;
+constexpr int MAX_ORIGINAL_PED_ID = 289;
 
 static const char* dataFileName = "ModelVariations_Peds.ini";
 static DataReader dataFile(dataFileName);

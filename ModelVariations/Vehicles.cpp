@@ -329,7 +329,6 @@ void processOccupantGroups(const CVehicle* veh)
         {
             const CWanted* wanted = FindPlayerWanted(-1);
             const unsigned int wantedLevel = wanted->m_nWantedLevel - (wanted->m_nWantedLevel ? 1 : 0);
-            currentOccupantsModel = veh->m_nModelIndex;
 
             std::string section;
             if (auto it = vehVars->vehModels.find(veh->m_nModelIndex); it != vehVars->vehModels.end())
@@ -343,21 +342,16 @@ void processOccupantGroups(const CVehicle* veh)
             if (auto it = vehVars->occupantGroups.find(veh->m_nModelIndex); it != vehVars->occupantGroups.end())
             {
                 if (vectorHasId(vehVars->mergeZones, veh->m_nModelIndex))
-                    zoneGroups = vectorUnion(zoneGroups, it->second[currentTown]);
+                    zoneGroups = vectorUnion(zoneGroups, vectorUnion(it->second[4], it->second[currentTown]));
                 else if (zoneGroups.empty())
-                    zoneGroups = it->second[currentTown];
+                    zoneGroups = vectorUnion(it->second[4], it->second[currentTown]);
             }
 
-            if (zoneGroups.empty() && !vehVars->groupWantedVariations[veh->m_nModelIndex][wantedLevel].empty())
-                currentOccupantsGroup = vectorGetRandom(vehVars->groupWantedVariations[veh->m_nModelIndex][wantedLevel]) - 1;
-            else
+            if (!zoneGroups.empty())
             {
-                if (!vehVars->groupWantedVariations[veh->m_nModelIndex][wantedLevel].empty())
-                    vectorfilterVector(zoneGroups, vehVars->groupWantedVariations[veh->m_nModelIndex][wantedLevel]);
-                if (!zoneGroups.empty())
-                    currentOccupantsGroup = vectorGetRandom(zoneGroups) - 1;
-                else
-                    currentOccupantsGroup = rand<int32_t>(0, modelNumGroups->second);
+                currentOccupantsModel = veh->m_nModelIndex;
+                vectorfilterVector(zoneGroups, vehVars->groupWantedVariations[veh->m_nModelIndex][wantedLevel]);
+                currentOccupantsGroup = vectorGetRandom(zoneGroups) - 1;
             }
         }
     }
@@ -574,8 +568,10 @@ void VehicleVariations::LoadData()
                         vehVars->passengerGroups[j].insert({ i, vecPassengers });
                         vehVars->driverGroups[j].insert({ i, vecDrivers });
                         numGroups++;
+                        continue;
                     }
                 }             
+                break;
             }
 
             if (numGroups > 0)

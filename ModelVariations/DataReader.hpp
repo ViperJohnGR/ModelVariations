@@ -13,7 +13,8 @@ enum modelTypeToRead
 	READ_PEDS,
 	READ_WEAPONS,
 	READ_GROUPS,
-	READ_TUNING
+	READ_TUNING,
+	READ_TRAILERS
 };
 
 class DataReader
@@ -28,6 +29,7 @@ public:
 	bool ReadBoolean(const std::string& section, const std::string& key, bool defaultValue);
 	std::string ReadString(const std::string& section, const std::string& key, std::string defaultValue);
 	std::vector<unsigned short> ReadLine(const std::string& section, const std::string& key, modelTypeToRead parseType);
+	std::vector<std::vector<unsigned short>> ReadTrailerLine(const std::string& section, const std::string& key);
 	std::vector<unsigned short> ReadLineUnique(const std::string& section, const std::string& key, modelTypeToRead parseType);
 
 	std::map<std::string, std::map<std::string, std::string>> data;

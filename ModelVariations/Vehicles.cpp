@@ -69,10 +69,10 @@ bool tuneParkedCar = false;
 
 int occupantModelIndex = -1;
 
-std::vector<std::pair<CVehicle*, CVehicle*>> spawnedTrailers;
+std::map<CVehicle*, std::vector<CVehicle*>> spawnedTrailers;  //<veh, <trailers>>
 
 std::uintptr_t x6ABCBE_Destination = 0;
-
+char msg[255] = {};
 uint32_t asmNextInstr[4] = {};
 uint16_t asmModel16 = 0;
 uint32_t asmModel32 = 0;
@@ -85,6 +85,7 @@ struct tVehVars {
     std::array<std::unordered_map<uint64_t, std::vector<unsigned short>>, 212> zoneVariations;
 
     std::unordered_map<unsigned short, std::array<std::vector<unsigned short>, 16>> occupantGroups;
+    std::unordered_map<unsigned short, std::array<std::vector<unsigned short>, 16>> trailerAreas;
     std::unordered_map<unsigned short, std::array<std::vector<unsigned short>, 16>> tuning;
     std::unordered_map<unsigned short, std::array<std::vector<unsigned short>, 6>> groupWantedVariations;
     std::unordered_map<unsigned short, unsigned short> originalModels;
@@ -92,14 +93,15 @@ struct tVehVars {
     std::unordered_map<unsigned short, std::vector<unsigned short>> passengers;
     std::unordered_map<unsigned short, std::vector<unsigned short>> driverGroups[9];
     std::unordered_map<unsigned short, std::vector<unsigned short>> passengerGroups[9];
+    std::unordered_map<unsigned short, std::vector<std::vector<unsigned short>>> trailerModels[9];
     std::unordered_map<unsigned short, BYTE> modelNumGroups;
+    std::unordered_map<unsigned short, BYTE> trailersNums;
     std::unordered_map<unsigned short, std::pair<CVector, float>> lightPositions;
     std::unordered_map<unsigned short, rgba> lightColors;
     std::unordered_map<unsigned short, rgba> lightColors2;
     std::map<unsigned short, std::vector<unsigned short>> currentTuning;
     std::unordered_map<unsigned short, std::string> vehModels;
     std::unordered_map<unsigned short, BYTE> tuningChances;
-    std::unordered_map<unsigned short, std::vector<unsigned short>> trailers;
     std::unordered_map<unsigned short, BYTE> trailersSpawnChances;
     std::unordered_map<unsigned short, unsigned short> trailersHealth;
 
@@ -134,7 +136,7 @@ struct tVehOptions {
 std::unique_ptr<tVehOptions> vehOptions(new tVehOptions);
 
 
-bool isAnotherVehicleBehind(CVehicle* veh)
+bool isAnotherVehicleBehind(CVehicle* veh, const std::vector<CVehicle*> &exceptions)
 {
     auto isPointInPolygon = [](const std::vector<CVector2D>& polygon, const CVector2D& point)
     {
@@ -174,6 +176,16 @@ bool isAnotherVehicleBehind(CVehicle* veh)
     for (const auto& i : CPools::ms_pVehiclePool)
     {
         if (std::abs(i->GetPosition().z - veh->GetPosition().z) > 25.0f)
+            continue;
+
+        bool exceptionFound = false;
+        for (auto j : exceptions)
+            if (j == i)
+            {
+                exceptionFound = true;
+                break;
+            }
+        if (exceptionFound)
             continue;
 
         auto* mInfoTarget = CModelInfo::GetModelInfo(i->m_nModelIndex);
@@ -512,6 +524,20 @@ void VehicleVariations::LoadData()
                 }
             }
 
+            //Trailers
+            for (unsigned j = 0; j < 16; j++)
+            {
+                std::vector<unsigned short> vec = dataFile.ReadLine(section, areas[j].first, READ_TRAILERS);
+
+                if (!vec.empty())
+                {
+                    if (j < 6)
+                        vehVars->trailerAreas[i][j] = vec;
+                    else
+                        vehVars->trailerAreas[i][j] = vectorUnion(vec, vehVars->trailerAreas[i][areas[j].second]);
+                }
+            }
+
 
             const int tuningChance = dataFile.ReadInteger(section, "TuningChance", -1);
             if (tuningChance > -1)
@@ -556,6 +582,24 @@ void VehicleVariations::LoadData()
             if (dataFile.ReadBoolean(section, "MergeZonesWithCities", false))
                 vehVars->mergeZones.push_back(i);
 
+            uint8_t trailersNum = 0;
+            for (int j = 0; j < 9; j++)
+            {
+                auto vec = dataFile.ReadTrailerLine(section, "Trailers" + std::to_string(j + 1));
+                if (!vec.empty())
+                {
+                    vehVars->trailerModels[j].insert({ i, vec });
+                    trailersNum++;
+                }                    
+            }
+
+            if (trailersNum > 0)
+                vehVars->trailersNums[i] = trailersNum;
+
+            if (auto it = vehVars->trailerAreas.find(i); it != vehVars->trailerAreas.end())
+                for (auto& j : it->second)
+                    checkNumGroups(j, trailersNum);
+
             uint8_t numGroups = 0;
             for (int j = 0; j < 9; j++)
             {
@@ -570,7 +614,7 @@ void VehicleVariations::LoadData()
                         numGroups++;
                         continue;
                     }
-                }             
+                }        
                 break;
             }
 
@@ -604,10 +648,6 @@ void VehicleVariations::LoadData()
             if (!vec.empty() && vec[0] >= 400)
                 vehVars->originalModels[i] = vec[0];
 
-            vec = dataFile.ReadLine(section, "Trailers", READ_VEHICLES);
-            if (!vec.empty())
-                vehVars->trailers.insert({ i, vec });
-
             if (dataFile.ReadBoolean(section, "TrailersMatchColors", false))
                 vehVars->trailersMatchColors.push_back(i);
 
@@ -633,24 +673,54 @@ void VehicleVariations::Process()
 {
     for (auto it = spawnedTrailers.begin(); it != spawnedTrailers.end(); )
     {
-        if (IsVehiclePointerValid(it->first))
+        CVehicle* veh = it->first;
+        if (IsVehiclePointerValid(veh))
         {
-            if ((CTimer::m_snTimeInMilliseconds - it->first->m_nCreationTime) < 500)
+            if ((CTimer::m_snTimeInMilliseconds - veh->m_nCreationTime) < 500)
             {
-                if (IsVehiclePointerValid(it->second) && it->first->m_pTractor == NULL)
-                    it->first->SetTowLink(it->second, 1);
+                bool trailerAttached = false;
+
+                for (unsigned i = 0; i < it->second.size(); i++)
+                    if (IsVehiclePointerValid(it->second[i]) && it->second[i]->m_pTractor == NULL)
+                    {
+                        if (i == 0)
+                            trailerAttached = it->second[i]->SetTowLink(veh, 1);
+                        else if (IsVehiclePointerValid(it->second[i - 1]))
+                            trailerAttached = it->second[i]->SetTowLink(it->second[i - 1], 1);
+                    }
+
+                if (trailerAttached)
+                    for (auto trailer : it->second)
+                        if (trailer->m_pTractor && isAnotherVehicleBehind(trailer, it->second))
+                        {
+                            for (auto& j : it->second)
+                            {
+                                CWorld::Remove(j);
+                                j->Remove();
+                            }
+                            it->second.clear();
+                            break;
+                        }
             }
-            else if ((CTimer::m_snTimeInMilliseconds - it->first->m_nCreationTime) < 3900)
+            if ((CTimer::m_snTimeInMilliseconds - veh->m_nCreationTime) < 3900)
             {
-                if (it->first->m_pTractor == NULL && !it->first->GetIsOnScreen())
-                    it->first->m_nVehicleFlags.bFadeOut = 1;
+                for (auto trailer : it->second)
+                    if (IsVehiclePointerValid(trailer) && trailer->m_pTractor == NULL && !trailer->IsVisible())
+                    {
+                        for (auto i : it->second)
+                        {
+                            //i->SetPosn({});
+                            //i->m_nVehicleFlags.bFadeOut = 1;
+                        }
+                        break;
+                    }
             }
             it++;
         }
         else
             it = spawnedTrailers.erase(it);
     }
-
+    
     while (!vehVars->tuningStack.empty())
     {
         const auto it = vehVars->tuningStack.top();
@@ -712,40 +782,82 @@ void VehicleVariations::Process()
             if (trailersSpawnChance != vehVars->trailersSpawnChances.end())
                 spawnTrailer = (trailersSpawnChance->second == 0) ? false : ((rand<uint32_t>(0, 100) < trailersSpawnChance->second) ? true : false);
 
-            for (auto& i : spawnedTrailers)
-            {
-                if (veh == i.first && veh->m_pTractor && isAnotherVehicleBehind(veh))
-                {
-                    veh->SetPosn({});
-                    veh->m_nVehicleFlags.bFadeOut = 1;
-                    break;
-                }
-            }
-
-            if (veh->m_pDriver && veh->m_pDriver != FindPlayerPed() && spawnTrailer && vehVars->trailers.contains(veh->m_nModelIndex))
-            {
-                unsigned short randTrailer = vectorGetRandom(vehVars->trailers[veh->m_nModelIndex]);
-                loadModels({randTrailer}, PRIORITY_REQUEST, true);
-                CVehicle* trailer = CCarCtrl::GetNewVehicleDependingOnCarModel(randTrailer, RANDOM_VEHICLE);
-                if (trailer && IsVehiclePointerValid(veh))
-                {
-                    CWorld::Add(trailer);
-                    CTheScripts::ClearSpaceForMissionEntity(veh->GetPosition(), trailer);
-                    spawnedTrailers.push_back({ trailer, veh });
-                    trailer->SetTowLink(veh, 1);
-                    CCarCtrl::SwitchVehicleToRealPhysics(veh);
-                    if (vehVars->trailersHealth.contains(veh->m_nModelIndex))
-                        trailer->m_fHealth = (float)vehVars->trailersHealth[veh->m_nModelIndex];
-
-                    if (vectorHasId(vehVars->trailersMatchColors, veh->m_nModelIndex))
+            for (auto i : spawnedTrailers)
+                    if (i.second[0] == veh && veh->m_pTractor && isAnotherVehicleBehind(veh, i.second))
                     {
-                        trailer->m_nPrimaryColor = veh->m_nPrimaryColor;
-                        trailer->m_nSecondaryColor = veh->m_nSecondaryColor;
-                        trailer->m_nTertiaryColor = veh->m_nTertiaryColor;
-                        trailer->m_nQuaternaryColor = veh->m_nQuaternaryColor;
+                        for (auto& j : i.second)
+                        {
+                            CWorld::Remove(j);
+                            j->Remove();
+                        }
+                        i.second.clear();
+                        break;
+                    }
+            
+            if (veh->m_pDriver && veh->m_pDriver != FindPlayerPed() && spawnTrailer && vehVars->trailersNums.contains(veh->m_nModelIndex))
+            {
+                if (auto trailersNum = vehVars->trailersNums.find(veh->m_nModelIndex); trailersNum != vehVars->trailersNums.end())
+                {
+                    std::string section;
+                    if (auto it = vehVars->vehModels.find(veh->m_nModelIndex); it != vehVars->vehModels.end())
+                        section = it->second;
+                    else
+                        section = std::to_string(veh->m_nModelIndex);
+
+                    std::vector<unsigned short> zoneTrailers = dataFile.ReadLine(section, currentZone, READ_TRAILERS);
+                    checkNumGroups(zoneTrailers, trailersNum->second);
+
+                    if (auto it = vehVars->trailerAreas.find(veh->m_nModelIndex); it != vehVars->trailerAreas.end())
+                    {
+                        if (vectorHasId(vehVars->mergeZones, veh->m_nModelIndex))
+                            zoneTrailers = vectorUnion(zoneTrailers, vectorUnion(it->second[4], it->second[currentTown]));
+                        else if (zoneTrailers.empty())
+                            zoneTrailers = vectorUnion(it->second[4], it->second[currentTown]);
+                    }
+
+                    if (zoneTrailers.empty())
+                        return;
+
+                    auto trailerConfigSelected = vectorGetRandom(zoneTrailers) - 1;
+                    auto it = vehVars->trailerModels[trailerConfigSelected].find(veh->m_nModelIndex);
+                    if (it == vehVars->trailerModels[trailerConfigSelected].end())
+                        return;
+
+                    CVehicle* previous = veh;
+                    CCarCtrl::SwitchVehicleToRealPhysics(veh);
+
+                    for (auto randTrailer : it->second[CGeneral::GetRandomNumberInRange(0, (int)it->second.size())])
+                    {
+                        loadModels({ randTrailer }, PRIORITY_REQUEST, true);
+                        CVehicle* trailer = CCarCtrl::GetNewVehicleDependingOnCarModel(randTrailer, RANDOM_VEHICLE);
+
+                        if (trailer && IsVehiclePointerValid(veh))
+                        {
+                            auto newPos = previous->GetPosition();
+                            newPos.z = CWorld::FindGroundZForCoord(newPos.x, newPos.y) - 5.0f;
+
+                            CWorld::Add(trailer);
+                            //CTheScripts::ClearSpaceForMissionEntity(previous->GetPosition(), trailer);
+                            spawnedTrailers[veh].push_back(trailer);
+                            trailer->SetPosn(newPos);
+                            if (previous == veh)
+                                assert(trailer->SetTowLink(previous, 1));
+
+                            previous = trailer;
+                            if (vehVars->trailersHealth.contains(veh->m_nModelIndex))
+                                trailer->m_fHealth = (float)vehVars->trailersHealth[veh->m_nModelIndex];
+
+                            if (vectorHasId(vehVars->trailersMatchColors, veh->m_nModelIndex))
+                            {
+                                trailer->m_nPrimaryColor = veh->m_nPrimaryColor;
+                                trailer->m_nSecondaryColor = veh->m_nSecondaryColor;
+                                trailer->m_nTertiaryColor = veh->m_nTertiaryColor;
+                                trailer->m_nQuaternaryColor = veh->m_nQuaternaryColor;
+                            }
+                        }
                     }
                 }
-            }            
+            }
         }
     }
 }
@@ -1338,25 +1450,36 @@ void __cdecl PossiblyRemoveVehicleHooked(CVehicle* car)
     if (car == NULL)
         return;
 
-    CVehicle *trailerToCheck = NULL;
-
+    std::vector<CVehicle*> trailersToCheck;
+    
     for (auto it = spawnedTrailers.begin(); it != spawnedTrailers.end(); )
     {
-        if (!IsVehiclePointerValid(it->first))
+        if (!it->second.empty())
+            for (auto trailer = it->second.back(); !IsVehiclePointerValid(trailer); trailer = it->second.back())
+            {
+                it->second.pop_back();
+                if (it->second.empty())
+                    break;
+            }
+
+        if (it->second.empty() || !IsVehiclePointerValid(it->first))
         {
             it = spawnedTrailers.erase(it);
             continue;
         }
 
-        if (it->first == car && it->first->m_pTractor && !it->first->m_pTractor->m_nVehicleFlags.bFadeOut)
-            return;
-
-        if (it->second == car && it->first->m_pTractor == it->second)
-            trailerToCheck = it->first;
-
+        for (auto trailer : it->second)
+            if (trailer == car && (((CTimer::m_snTimeInMilliseconds - trailer->m_nCreationTime) < 300) || (trailer->m_pTractor && (!trailer->m_pTractor->m_nVehicleFlags.bFadeOut))))
+                return;
+          
+        if (it->first == car)
+            for (auto trailer : it->second)
+                if (IsVehiclePointerValid(trailer) && trailer->m_pTractor)
+                    trailersToCheck = it->second;
+        
         it++;
     }
-
+    
     switch (getVariationOriginalModel(car->m_nModelIndex))
     {
         case 407: //Firetruck
@@ -1367,11 +1490,18 @@ void __cdecl PossiblyRemoveVehicleHooked(CVehicle* car)
 
     callOriginal<address>(car);
 
-    if (trailerToCheck != NULL && !IsVehiclePointerValid(car))
-    {
-        trailerToCheck->SetPosn({});
-        trailerToCheck->m_nVehicleFlags.bFadeOut = 1;
-    }
+    if (!trailersToCheck.empty())
+        if (!IsVehiclePointerValid(car) || (IsVehiclePointerValid(car) && car->m_nVehicleFlags.bFadeOut))
+        {
+            spawnedTrailers.erase(car);
+            for (auto& trailer : trailersToCheck)
+            {
+                if (trailer->m_pTractor)
+                    trailer->m_nVehicleFlags.bFadeOut = 1;
+                else
+                    break;
+            }
+        }
 }
 
 template <std::uintptr_t address>

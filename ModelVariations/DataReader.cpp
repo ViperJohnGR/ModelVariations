@@ -37,7 +37,7 @@ bool DataReader::Load(const char* filename)
 				pos++;
 		}
 
-		token_length = trim(&line, 0);
+		token_length = trim(&line);
 
 		if (line[0] == '[' && line[token_length-1] == ']')
 		{
@@ -49,18 +49,18 @@ bool DataReader::Load(const char* filename)
 
 			for (char* token = strtok(line, ","); token != NULL; token = strtok(NULL, ","))
 			{
-				trim(&token, 0);
+				trim(&token);
 				sections.push_back(token);
 			}
 		}
 		else if (auto pos = strchr(line, '='); pos)
 		{
 			*pos = 0;
-			trim(&line, 0);
+			trim(&line);
 			key = line;
 
 			line = pos + 1;
-			trim(&line, 0);
+			trim(&line);
 			value = line;
 
 			if (!key.empty() && !value.empty())
@@ -122,7 +122,7 @@ std::vector<unsigned short> DataReader::ReadLine(const std::string& section, con
 	for (char* token = strtok(iniString.data(), ","); token != NULL; token = strtok(NULL, ","))
 	{
 		int modelid = 0;
-		trim(&token, 0);
+		trim(&token);
 
 		if (parseType == READ_WEAPONS)
 		{
@@ -154,6 +154,11 @@ std::vector<unsigned short> DataReader::ReadLine(const std::string& section, con
 						retVector.push_back((unsigned short)modelid);
 				}
 			}
+		}
+		else if (parseType == READ_TRAILERS)
+		{
+			if (strncmp(token, "Trailers", 8) == 0)
+				retVector.push_back((unsigned short)(token[8] - '0'));
 		}
 		else
 		{
@@ -212,6 +217,71 @@ std::vector<unsigned short> DataReader::ReadLine(const std::string& section, con
 	}
 	
 	std::sort(retVector.begin(), retVector.end());
+	return retVector;
+}
+
+std::vector<std::vector<unsigned short>> DataReader::ReadTrailerLine(const std::string& section, const std::string& key)
+{
+	std::vector<std::vector<unsigned short>> retVector;
+
+	std::string iniString = this->ReadString(section, key, "");
+
+	if (iniString.empty())
+		return retVector;
+
+	for (char* token = strtok(iniString.data(), ","); token != NULL; token = strtok(NULL, ","))
+	{
+		int modelid = 0;
+		trim(&token);
+
+		if (token[0] != '[')
+		{
+			CBaseModelInfo* mInfo = NULL;
+			if (token[0] >= '0' && token[0] <= '9')
+			{
+				modelid = atoi(token);
+				mInfo = CModelInfo::GetModelInfo(modelid);
+			}
+			else
+				mInfo = CModelInfo::GetModelInfo(token, &modelid);
+
+
+			if (mInfo != NULL && mInfo->GetModelType() == MODEL_INFO_VEHICLE)
+				retVector.push_back({ (unsigned short)modelid });
+		}
+		else
+		{
+			token++;
+			retVector.push_back({});
+			char model[9] = {};
+			for (int i = 0; *token; token++)
+			{
+				if (*token == '-' || *token == ']')
+				{
+					char* trimmedModel = model;
+					trim(&trimmedModel);
+
+					CBaseModelInfo* mInfo = NULL;
+					if (trimmedModel[0] >= '0' && trimmedModel[0] <= '9')
+					{
+						modelid = atoi(trimmedModel);
+						mInfo = CModelInfo::GetModelInfo(modelid);
+					}
+					else
+						mInfo = CModelInfo::GetModelInfo(trimmedModel, &modelid);
+
+					if (mInfo != NULL && mInfo->GetModelType() == MODEL_INFO_VEHICLE)
+						retVector.back().push_back((unsigned short)modelid);
+
+					memset(model, 0, 9);
+					i = 0;
+				}
+				else
+					model[i++] = *token;
+			}
+		}
+	}
+
 	return retVector;
 }
 

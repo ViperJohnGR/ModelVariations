@@ -2565,6 +2565,7 @@ void VehicleVariations::InstallHooks()
         hookASM(0x6D474B, "8D 87 57 FE FF FF",                patch6D474B, "CVehicle::GetPlaneOrdnancePosition");
         hookASM(0x729B76U, (GetGameVersion() != GAME_10US_COMPACT) ? "E9 18 D7 CD FF" : "BB 59 02 00 00", patch729B76, "CAutomobile::FireTruckControl");
         hookASM(0x6DD218, "BF CC 01 00 00",                   patch6DD218, "CVehicle::DoBoatSplashes");
+        hookASM(0x6E1786, "66 8B 46 22 66 3D B7 01",          movReg16WordPtrReg<REG_AX, REG_ESI, 0x6E178E, 4, 0x01B73D66>, "CVehicle::DoTailLightEffect");
 
 
         hookCall(0x8711E0, SetupSuspensionLinesHooked<0x8711E0>, "CAutomobile::SetupSuspensionLines", true);

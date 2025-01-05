@@ -10,7 +10,6 @@
 #include <CModelInfo.h>
 #include <CPedModelInfo.h>
 #include <CPed.h>
-#include <CTheScripts.h>
 
 #include <array>
 #include <stack>
@@ -36,6 +35,7 @@ struct tPedVars {
     std::stack<CPed*> stack;
 
     std::vector<unsigned short> currentVariations[MAX_ORIGINAL_PED_ID];
+    std::vector<unsigned short> disableOnMission;
     std::vector<unsigned short> dontInheritBehaviourModels;
     std::vector<unsigned short> mergeZones;
     std::vector<unsigned short> mergeInteriors;
@@ -225,6 +225,9 @@ void PedVariations::LoadData()
 
             if (dataFile.ReadBoolean(section, "MergeInteriorsWithCitiesAndZones", false))
                 pedVars->mergeInteriors.push_back(modelIndex);
+
+            if (dataFile.ReadBoolean(section, "DisableOnMission", false))
+                pedVars->disableOnMission.push_back(modelIndex);
         }
 
         int parentVoice = dataFile.ReadInteger(section, "UseParentVoice", -1);
@@ -286,7 +289,7 @@ void PedVariations::Process()
             {
                 if (ped->m_pIntelligence)
                     ped->m_pIntelligence->FlushImmediately(false);
-                CTheScripts::RemoveThisPed(ped);
+                CTheScripts__RemoveThisPed(ped);
             }
         };
 
@@ -330,7 +333,7 @@ void PedVariations::Process()
             }
 
         if (IsPedPointerValid(ped) && pedOptions->enableCloneRemover && ped->m_nCreatedBy != 2 && CPools::ms_pPedPool && 
-            !(pedOptions->cloneRemoverDisableOnMission && CTheScripts::IsPlayerOnAMission())) //Clone remover
+            !(pedOptions->cloneRemoverDisableOnMission && CTheScripts__IsPlayerOnAMission())) //Clone remover
         {
             bool includeVariations = std::find(pedOptions->cloneRemoverIncludeVariations.begin(), pedOptions->cloneRemoverIncludeVariations.end(), ped->m_nModelIndex) != pedOptions->cloneRemoverIncludeVariations.end();
             if (pedDelaySpawn(ped->m_nModelIndex, includeVariations)) //Delete peds spawned before SpawnTime
@@ -519,6 +522,9 @@ template<std::uintptr_t address>
 int __fastcall SetModelIndexHooked(CEntity* _this, void*, int index)
 {
     int retVal = callMethodOriginalAndReturn<int, address>(_this, index);
+
+    if (vectorHasId(pedVars->disableOnMission, index) && CTheScripts__IsPlayerOnAMission())
+        return retVal;
 
     if (isValidPedId(_this->m_nModelIndex) && !pedVars->currentVariations[_this->m_nModelIndex].empty())
     {

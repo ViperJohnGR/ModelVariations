@@ -201,7 +201,7 @@ std::vector<unsigned short> DataReader::ReadLine(const std::string& section, con
 							if (pedInfo)
 							{
 								pedInfo->SetColModel((CColModel*)0x968DF0, false);
-								CStreaming::RequestSpecialModel(i, token, 0);
+								CStreaming__RequestSpecialModel(i, token, 0);
 								retVector.push_back(i);
 								addedIDs.push_back(i);
 								pedInfo->m_nPedType = 4;

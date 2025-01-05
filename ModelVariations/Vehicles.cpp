@@ -12,7 +12,6 @@
 #include <CHeli.h>
 #include <CModelInfo.h>
 #include <CPlane.h>
-#include <CTheScripts.h>
 #include <CVector.h>
 #include <CWorld.h>
 
@@ -738,14 +737,14 @@ void VehicleVariations::Process()
                     }
                     else
                     {
-                        CStreaming::RequestVehicleUpgrade(slot[i], PRIORITY_REQUEST);
-                        CStreaming::LoadAllRequestedModels(false);
+                        CStreaming__RequestVehicleUpgrade(slot[i], PRIORITY_REQUEST);
+                        CStreaming__LoadAllRequestedModels(false);
 
                         it.first->AddVehicleUpgrade(slot[i]);
-                        CStreaming::SetMissionDoesntRequireModel(slot[i]);
+                        CStreaming__SetMissionDoesntRequireModel(slot[i]);
                         short otherUpgrade = CVehicleModelInfo__CLinkedUpgradeList__FindOtherUpgrade(CVehicleModelInfo__ms_linkedUpgrades, slot[i]);
                         if (otherUpgrade > -1)
-                            CStreaming::SetMissionDoesntRequireModel(otherUpgrade);
+                            CStreaming__SetMissionDoesntRequireModel(otherUpgrade);
                     }
                 }
     }
@@ -772,7 +771,7 @@ void VehicleVariations::Process()
                     {
                         if (passenger->m_pIntelligence)
                             passenger->m_pIntelligence->FlushImmediately(false);
-                        CTheScripts::RemoveThisPed(passenger);
+                        CTheScripts__RemoveThisPed(passenger);
                     }
                 }
 
@@ -1119,7 +1118,7 @@ void __fastcall DoInternalProcessingHooked(CCarGenerator* park) //for non-random
 template <std::uintptr_t address>
 void* __fastcall CTrainHooked(void* train, void*, int modelIndex, int createdBy)
 {
-    return callMethodOriginalAndReturn<void*, address>(train, CTheScripts::IsPlayerOnAMission() ? modelIndex : getRandomVariation(modelIndex), createdBy);
+    return callMethodOriginalAndReturn<void*, address>(train, CTheScripts__IsPlayerOnAMission() ? modelIndex : getRandomVariation(modelIndex), createdBy);
 }
 
 template <std::uintptr_t address>

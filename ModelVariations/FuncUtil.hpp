@@ -1,5 +1,7 @@
 #pragma once
 
+#include "SA.hpp"
+
 #include <algorithm>
 #include <iomanip>
 #include <iterator>
@@ -37,19 +39,19 @@ inline unsigned int integerPow(unsigned int x, unsigned int power)
 inline void loadModels(std::vector<int> vec, int Streamingflags, bool loadImmediately)
 {
     for (auto& i : vec)
-        CStreaming::RequestModel(i, Streamingflags);
+        CStreaming__RequestModel(i, Streamingflags);
 
     if (loadImmediately)
-        CStreaming::LoadAllRequestedModels(false);
+        CStreaming__LoadAllRequestedModels(false);
 }
 
 inline void loadModels(int rangeMin, int rangeMax, int Streamingflags, bool loadImmediately)
 {
     for (int i = rangeMin; i <= rangeMax; i++)
-        CStreaming::RequestModel(i, Streamingflags);
+        CStreaming__RequestModel(i, Streamingflags);
 
     if (loadImmediately)
-        CStreaming::LoadAllRequestedModels(false);
+        CStreaming__LoadAllRequestedModels(false);
 }
 
 

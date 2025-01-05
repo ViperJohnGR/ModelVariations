@@ -4,11 +4,11 @@
 #include "FuncUtil.hpp"
 #include "Hooks.hpp"
 #include "Log.hpp"
+#include "SA.hpp"
 
 #include <plugin.h>
 #include <CModelInfo.h>
 #include <CPed.h>
-#include <CTheScripts.h>
 
 #include <stack>
 #include <string>
@@ -141,7 +141,7 @@ void PedWeaponVariations::Process()
 
         const bool mergeWeapons = dataFile.ReadBoolean(section, "MergeZonesWithGlobal", false);
 
-        if (dataFile.ReadBoolean(section, "DisableOnMission", false) && CTheScripts::IsPlayerOnAMission())
+        if (dataFile.ReadBoolean(section, "DisableOnMission", false) && CTheScripts__IsPlayerOnAMission())
             continue;
 
         eWeaponType originalWeapons[13];
@@ -291,7 +291,7 @@ int __fastcall GiveWeaponHooked(CPed* ped, void*, int weaponID, int ammo, int a4
 }
 
 template <std::uintptr_t address>
-int16_t __fastcall CollectParametersHooked(CRunningScript * _this, void*, unsigned __int16 a2)
+int16_t __fastcall CollectParametersHooked(void* _this, void*, unsigned __int16 a2)
 {
     auto retVal = callMethodOriginalAndReturn<int16_t, address>(_this, a2);
 

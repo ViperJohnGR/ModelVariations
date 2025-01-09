@@ -73,7 +73,7 @@ std::set<unsigned short> referenceCountModels;
 std::vector<std::string> zoneNames;
 std::set<unsigned short> addedIDsInGroups;
 
-std::string exePath;
+std::string exePath(256, 0);
 std::string exeName;
 
 std::vector<unsigned short> addedIDs;
@@ -299,6 +299,7 @@ void updateVariations()
 {
     //zInfo->m_szTextKey = BLUEB | zInfo->m_szLabel = BLUEB1
 
+    auto player = FindPlayerPed();
     CVector position = FindPlayerCoors(-1);
 
     currentTown = CTheZones::m_CurrLevel;
@@ -324,6 +325,9 @@ void updateVariations()
         Log::Write("\nCPopulation::m_AppropriateLoadedCars: ");
         for (unsigned i = 0; i < CPopulation__m_AppropriateLoadedCars->CountMembers(); i++)
             Log::Write("%d ", CPopulation__m_AppropriateLoadedCars->m_members[i]);
+
+        if (player->m_nPedFlags.bInVehicle)
+            Log::Write("\nPlayer is in vehicle 0x%X with model id %u\n", player->m_pVehicle, player->m_pVehicle->m_nModelIndex);
 
         Log::Write("\n\n");
     }
@@ -589,9 +593,10 @@ void __cdecl CGame__ProcessHooked()
             }
         }
 
-    auto logVariationChange = [zInfo, wanted](const char* msg)
+    auto logVariationChange = [&](const char* msg)
     {
         Log::Write("\n%s (%s). Updating variations...\n", msg, getDatetime(false, true, true).c_str());
+        Log::Write("pPos = {%f, %f, %f}\n", pPos.x, pPos.y, pPos.z);
         Log::Write("currentWanted = %u wanted->m_nWantedLevel = %u\n", currentWanted, wanted->m_nWantedLevel);
         Log::Write("currentZone = %.8s zInfo->m_szLabel = %.8s\n", currentZone, zInfo->m_szLabel);
 
@@ -765,8 +770,8 @@ void __cdecl InitialiseGameHooked()
     for (int i = 0; i < CTheZones::TotalNumberOfInfoZones; i++)
     {
         char zoneLabel[9] = {};
-        memcpy(&zoneLabel[0], (char*)(CTheZones__NavigationZoneArray)+i * 0x20, 8);
-        CZone* zone = reinterpret_cast<CZone*>((char*)(CTheZones__NavigationZoneArray)+i * 0x20);
+        memcpy(&zoneLabel[0], CTheZones__NavigationZoneArray + i * 0x20, 8);
+        CZone* zone = reinterpret_cast<CZone*>(CTheZones__NavigationZoneArray + i * 0x20);
 
         std::pair<const char*, int> presetZoneDta[10] = { {"ROBAD", 6}, {"BONE", 7}, {"BLUEB", 9}, {"MONT", 10}, {"DILLI", 11}, {"PALO", 12}, {"RED", 8}, {"ANGPI", 15}, {"FLINTC", 13}, {"WHET", 14} };
         for (std::pair<const char*, int> preset : presetZoneDta)
@@ -822,7 +827,7 @@ public:
         loadStage = iniSettings.ReadInteger("Settings", "LoadStage", 1);
         disableKey = iniSettings.ReadInteger("Settings", "DisableKey", 0);
         reloadKey = iniSettings.ReadInteger("Settings", "ReloadKey", 0);
-        enableLog = iniSettings.ReadBoolean("Settings", "EnableLog", false);
+        enableLog = iniSettings.ReadBoolean("Settings", "EnableLog", false) && Log::Open("ModelVariations.log");
         logJumps = iniSettings.ReadBoolean("Settings", "LogJumps", false);
 
         zoneNames.reserve(379);
@@ -844,16 +849,11 @@ public:
         if (enableLog)
         {
             std::string exeHash;
-
-            enableLog = Log::Open("ModelVariations.log");
-
-            char path[256] = {};
-            GetModuleFileName(NULL, path, 255);
-            exePath = path;
-            exeName = getFilenameFromPath(path);
+            GetModuleFileName(NULL, &exePath[0], 255);
+            exeName = getFilenameFromPath(exePath);
             unsigned int exeFilesize = 0;
 
-            HANDLE hFile = CreateFile(path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+            HANDLE hFile = CreateFile(exePath.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
             if (hFile != INVALID_HANDLE_VALUE)
             {
                 exeFilesize = GetFileSize(hFile, NULL);

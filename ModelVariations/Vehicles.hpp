@@ -1,7 +1,5 @@
 #pragma once
 
-#include <CVehicle.h>
-
 #include <string>
 #include <vector>
 

@@ -13,6 +13,7 @@
 #include <CModelInfo.h>
 #include <CPlane.h>
 #include <CVector.h>
+#include <CVehicle.h>
 #include <CWorld.h>
 
 #include <array>
@@ -703,16 +704,28 @@ void VehicleVariations::Process()
             }
             if ((CTimer::m_snTimeInMilliseconds - veh->m_nCreationTime) < 3900)
             {
+                bool deleteTrailers = false;
+                bool trailersClose = false;
+
                 for (auto trailer : it->second)
-                    if (IsVehiclePointerValid(trailer) && trailer->m_pTractor == NULL && !trailer->IsVisible())
-                    {
-                        for (auto i : it->second)
+                {
+                    if (IsVehiclePointerValid(trailer) && trailer->m_pTractor == NULL)
+                        deleteTrailers = true;
+
+                    if ((veh->GetPosition() - trailer->GetPosition()).Magnitude() < 50.0)
+                        trailersClose = true;
+                }
+
+                if (deleteTrailers && !trailersClose)
+                {
+                    for (auto trailer : it->second)
+                        if (IsVehiclePointerValid(trailer))
                         {
-                            //i->SetPosn({});
-                            //i->m_nVehicleFlags.bFadeOut = 1;
+                            CWorld::Remove(trailer);
+                            trailer->Remove();
                         }
-                        break;
-                    }
+                    it->second.clear();
+                }
             }
             it++;
         }
@@ -782,16 +795,16 @@ void VehicleVariations::Process()
                 spawnTrailer = (trailersSpawnChance->second == 0) ? false : ((rand<uint32_t>(0, 100) < trailersSpawnChance->second) ? true : false);
 
             for (auto i : spawnedTrailers)
-                    if (i.second[0] == veh && veh->m_pTractor && isAnotherVehicleBehind(veh, i.second))
+                if (!i.second.empty() && i.second[0] == veh && veh->m_pTractor && isAnotherVehicleBehind(veh, i.second))
+                {
+                    for (auto& j : i.second)
                     {
-                        for (auto& j : i.second)
-                        {
-                            CWorld::Remove(j);
-                            j->Remove();
-                        }
-                        i.second.clear();
-                        break;
+                        CWorld::Remove(j);
+                        j->Remove();
                     }
+                    i.second.clear();
+                    break;
+                }
             
             if (veh->m_pDriver && veh->m_pDriver != FindPlayerPed() && spawnTrailer && vehVars->trailersNums.contains(veh->m_nModelIndex))
             {
@@ -840,7 +853,8 @@ void VehicleVariations::Process()
                             spawnedTrailers[veh].push_back(trailer);
                             trailer->SetPosn(newPos);
                             if (previous == veh)
-                                assert(trailer->SetTowLink(previous, 1));
+                                if (!trailer->SetTowLink(previous, 1))
+                                    Log::Write("SetTowLink() failed for vehicle %d and trailer %d.\n", veh->m_nModelIndex, trailer->m_nModelIndex);
 
                             previous = trailer;
                             if (vehVars->trailersHealth.contains(veh->m_nModelIndex))
@@ -1492,14 +1506,14 @@ void __cdecl PossiblyRemoveVehicleHooked(CVehicle* car)
     if (!trailersToCheck.empty())
         if (!IsVehiclePointerValid(car) || (IsVehiclePointerValid(car) && car->m_nVehicleFlags.bFadeOut))
         {
-            spawnedTrailers.erase(car);
             for (auto& trailer : trailersToCheck)
             {
                 if (trailer->m_pTractor)
                     trailer->m_nVehicleFlags.bFadeOut = 1;
-                else
+                else if ((CTimer::m_snTimeInMilliseconds - trailer->m_nCreationTime) > 1500)
                     break;
             }
+            spawnedTrailers.erase(car);
         }
 }
 

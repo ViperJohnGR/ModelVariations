@@ -5,6 +5,7 @@
 #include <CMenuManager.h>
 #include <CPedModelInfo.h>
 #include <CStreamingInfo.h>
+#include <CZone.h>
 
 template <typename Ret, std::uintptr_t address, typename C, typename... Args>
 Ret getDynamicMethod(C _this, Args... args)
@@ -63,7 +64,7 @@ inline void CTheScripts__RemoveThisPed(void* ped) { getDynamicFunction<void, 0x4
 inline void CScriptsForBrains__AddNewScriptBrain(void* _this, short index, short model, short chanceOfInit, char attachType, char type, float radius) { getDynamicMethod<void, 0x476D86>(_this, index, model, chanceOfInit, attachType, type, radius); }
 
 inline bool CTheZones__PointLiesWithinZone(void* point, void* zone) { return getDynamicFunction<bool, 0x572BCE>(point, zone); }
-#define CTheZones__NavigationZoneArray (*reinterpret_cast<CZone**>(0x572BB7))
+#define CTheZones__NavigationZoneArray (*reinterpret_cast<unsigned char**>(0x572BB7))
 
 inline short CVehicleModelInfo__CLinkedUpgradeList__FindOtherUpgrade(uint32_t _this, uint16_t a2) { return getDynamicMethod<short, 0x4986BB>(_this, a2); }
 #define CVehicleModelInfo__ms_linkedUpgrades (*reinterpret_cast<unsigned*>(0x4986B7))

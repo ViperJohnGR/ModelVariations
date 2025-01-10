@@ -491,7 +491,7 @@ void VehicleVariations::LoadData()
 
                         for (auto variation : vec)
                             if (variation > 0 && variation != i && !(vectorHasId(vehOptions->inheritExclude, variation)))
-                                vehVars->originalModels[variation] = i;
+                                vehVars->originalModels.insert({ variation, i });
                     }
             }
 

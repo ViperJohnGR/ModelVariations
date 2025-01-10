@@ -8,23 +8,15 @@
 #include <CZone.h>
 
 template <typename Ret, std::uintptr_t address, typename C, typename... Args>
-Ret getDynamicMethod(C _this, Args... args)
+constexpr Ret getDynamicMethod(C _this, Args... args)
 {
-	static Ret(__thiscall * pMethod)(C, Args...) = NULL;
-	if (pMethod == NULL)
-		pMethod = reinterpret_cast<Ret(__thiscall*)(C, Args...)>(injector::GetBranchDestination(address).as_int());
-
-	return reinterpret_cast<Ret(__thiscall*)(C, Args...)>(pMethod)(_this, args...);
+	return reinterpret_cast<Ret(__thiscall*)(C, Args...)>(injector::GetBranchDestination(address).as_int())(_this, args...);
 }
 
 template <typename Ret, std::uintptr_t address, typename... Args>
-Ret getDynamicFunction(Args... args)
+constexpr Ret getDynamicFunction(Args... args)
 {
-	static Ret(__cdecl * pMethod)(Args...) = NULL;
-	if (pMethod == NULL)
-		pMethod = reinterpret_cast<Ret(__cdecl*)(Args...)>(injector::GetBranchDestination(address).as_int());
-
-	return reinterpret_cast<Ret(__cdecl*)(Args...)>(pMethod)(args...);
+	return reinterpret_cast<Ret(__cdecl*)(Args...)>(injector::GetBranchDestination(address).as_int())(args...);
 }
 
 #define pedsModels reinterpret_cast<CPedModelInfo*>(*reinterpret_cast<unsigned int**>(0x4C6518)+1)

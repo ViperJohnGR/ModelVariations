@@ -3,8 +3,6 @@
 #include <string>
 #include <vector>
 
-extern int isFLASpecialFeaturesEnabled;
-
 extern const std::pair<std::string, unsigned> areas[];
 extern bool forceEnableGlobal;
 extern char currentZone[8];

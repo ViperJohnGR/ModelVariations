@@ -981,52 +981,6 @@ void VehicleVariations::LogVariations()
 ///////////////////////////////////////////  CALL HOOKS    ////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
-template <std::uintptr_t address, bool isMethod = true, typename... Args>
-void changeModel(const char* funcName, unsigned short oldModel, int newModel, std::vector<std::uintptr_t> addresses, Args... args)
-{
-    if (newModel < 400 || newModel > 65535)
-        return isMethod ? callMethodOriginal<address>(args...) : callOriginal<address>(args...);
-
-    for (auto& i : addresses)
-        if (*(uint16_t*)i != oldModel && forceEnableGlobal == false && !forceEnable.contains(address))
-        {
-            Log::LogModifiedAddress(i, "Modified method detected: %s - 0x%08X is %u\n", funcName, i, *(uint16_t*)i);
-            return isMethod ? callMethodOriginal<address>(args...) : callOriginal<address>(args...);
-        }
-
-    for (auto& i : addresses)
-        WriteMemory<uint16_t>(i, newModel);
-
-    isMethod ? callMethodOriginal<address>(args...) : callOriginal<address>(args...);
-
-    for (auto& i : addresses)
-        WriteMemory<uint16_t>(i, oldModel);
-}
-
-template <typename T, std::uintptr_t address, bool isMethod = true, typename... Args>
-T changeModelAndReturn(const char* funcName, unsigned short oldModel, int newModel, std::vector<std::uintptr_t> addresses, Args... args)
-{
-    if (newModel < 400 || newModel > 65535)
-        return isMethod ? callMethodOriginalAndReturn<T, address>(args...) : callOriginalAndReturn<T, address>(args...);
-
-    for (auto& i : addresses)
-        if (*(uint16_t*)i != oldModel && forceEnableGlobal == false && !forceEnable.contains(address))
-        {
-            Log::LogModifiedAddress(i, "Modified method detected: %s - 0x%08X is %u\n", funcName, i, *(uint16_t*)i);
-            return isMethod ? callMethodOriginalAndReturn<T, address>(args...) : callOriginalAndReturn<T, address>(args...);
-        }
-
-    for (auto& i : addresses)
-        WriteMemory<uint16_t>(i, newModel);
-    
-    T retValue = isMethod ? callMethodOriginalAndReturn<T, address>(args...) : callOriginalAndReturn<T, address>(args...);
-
-    for (auto& i : addresses)
-        WriteMemory<uint16_t>(i, oldModel);
-
-    return retValue;
-}
-
 template <std::uintptr_t address>
 int __cdecl ChooseModelHooked(int* a1)
 {
@@ -1148,6 +1102,35 @@ CAutomobile* __fastcall CHeliHooked(CHeli* heli, void*, int a2, char usageType)
 }
 
 template <std::uintptr_t address>
+CHeli* __cdecl GenerateHeliHooked(CPed* ped, char newsHeli)
+{
+    if (FindPlayerWanted(-1)->m_nWantedLevel < 4)
+        return callOriginalAndReturn<CHeli*, address>(ped, 0);
+    //return CHeli::GenerateHeli(ped, 0);
+
+    if (CHeli::pHelis)
+    {
+        loadModels({ 488, 497 }, GAME_REQUIRED, true);
+        newsHeli = 1;
+        if (CHeli::pHelis[0] && getVariationOriginalModel(CHeli::pHelis[0]->m_nModelIndex) == 488)
+            newsHeli = 0;
+
+        if (CHeli::pHelis[1] && getVariationOriginalModel(CHeli::pHelis[1]->m_nModelIndex) == 488)
+            newsHeli = 0;
+    }
+
+    return callOriginalAndReturn<CHeli*, address>(ped, newsHeli);
+    //return CHeli::GenerateHeli(ped, newsHeli);
+}
+
+
+template <std::uintptr_t address>
+CPlane* __fastcall CPlaneHooked(CPlane* plane, void*, int a2, char a3)
+{
+    return callMethodOriginalAndReturn<CPlane*, address>(plane, getRandomVariation(a2), a3);
+}
+
+template <std::uintptr_t address>
 char __fastcall IsLawEnforcementVehicleHooked(CVehicle* veh)
 {
     assert(veh != NULL);
@@ -1158,32 +1141,6 @@ char __fastcall IsLawEnforcementVehicleHooked(CVehicle* veh)
     veh->m_nModelIndex = modelIndex;
 
     return isLawEnforcement;
-}
-
-template <std::uintptr_t address>
-bool __fastcall UsesSirenHooked(CVehicle* veh)
-{
-    assert(veh != NULL);
-
-    const unsigned short modelIndex = veh->m_nModelIndex;
-    veh->m_nModelIndex = (unsigned short)getVariationOriginalModel(veh->m_nModelIndex);
-    bool usesSiren = callMethodOriginalAndReturn<bool, address>(veh);
-    veh->m_nModelIndex = modelIndex;
-
-    return usesSiren;
-}
-
-template <std::uintptr_t address>
-bool __cdecl IsCarSprayableHooked(CVehicle* veh)
-{
-    assert(veh != NULL);
-
-    const unsigned short modelIndex = veh->m_nModelIndex;
-    veh->m_nModelIndex = (unsigned short)getVariationOriginalModel(veh->m_nModelIndex);
-    bool isCarSprayable = callOriginalAndReturn<bool, address>(veh);
-    veh->m_nModelIndex = modelIndex;
-
-    return isCarSprayable;
 }
 
 template <std::uintptr_t address>
@@ -1301,34 +1258,6 @@ CCopPed* __fastcall CCopPedHooked(CCopPed* ped, void*, int copType)
 }
 
 template <std::uintptr_t address>
-CHeli* __cdecl GenerateHeliHooked(CPed* ped, char newsHeli)
-{
-    if (FindPlayerWanted(-1)->m_nWantedLevel < 4)
-        return callOriginalAndReturn<CHeli*, address>(ped, 0);
-        //return CHeli::GenerateHeli(ped, 0);
-
-    if (CHeli::pHelis)
-    {
-        loadModels({ 488, 497 }, GAME_REQUIRED, true);
-        newsHeli = 1;
-        if (CHeli::pHelis[0] && getVariationOriginalModel(CHeli::pHelis[0]->m_nModelIndex) == 488)
-            newsHeli = 0;
-
-        if (CHeli::pHelis[1] && getVariationOriginalModel(CHeli::pHelis[1]->m_nModelIndex) == 488)
-            newsHeli = 0;
-    }
-
-    return callOriginalAndReturn<CHeli*, address>(ped, newsHeli);
-    //return CHeli::GenerateHeli(ped, newsHeli);
-}
-
-template <std::uintptr_t address>
-CPlane* __fastcall CPlaneHooked(CPlane* plane, void*, int a2, char a3)
-{
-    return callMethodOriginalAndReturn<CPlane*, address>(plane, getRandomVariation(a2), a3);
-}
-
-template <std::uintptr_t address>
 CPed* __cdecl AddPedInCarHooked(CVehicle* veh, char driver, int a3, int a4, char a5, char a6)
 {
     assert(veh != NULL);
@@ -1396,67 +1325,6 @@ CPed* __cdecl AddPedHooked(int pedType, int modelIndex, CVector* posn, bool unkn
     return callOriginalAndReturn<CPed*, address>(pedType, modelIndex, posn, unknown);
 }
 
-template <std::uintptr_t address, bool second = false>
-void __cdecl RegisterCoronaHooked(void* _this, CEntity* a2, unsigned char a3, unsigned char a4, unsigned char a5, unsigned char a6, CVector* a7, const CVector* a8,
-                                  float a9, void* texture, unsigned char a11, unsigned char a12, unsigned char a13, int a14, float a15, float a16, float a17, float a18,
-                                  float a19, float a20, bool a21)
-{
-    if (a7 && a2)
-    {
-        const auto it = vehVars->lightPositions.find(lightsModel);
-        if (it != vehVars->lightPositions.end())
-        {
-            if (it->second.second > -900.0)
-                a7->x *= it->second.second;
-            if (it->second.first.x != 0.0)
-                a7->x += it->second.first.x;
-            if (it->second.first.y != 0.0)
-                a7->y += it->second.first.y;
-            if (it->second.first.z != 0.0)
-                a7->z += it->second.first.z;
-        }
-    }
-
-    if (a2)
-    {
-        auto &lightsMap = (second ? vehVars->lightColors2 : vehVars->lightColors);
-
-        const auto it = lightsMap.find(lightsModel);
-        if (it != lightsMap.end())
-        {
-            a3 = it->second.r;
-            a4 = it->second.g;
-            a5 = it->second.b;
-            a6 = it->second.a;
-        }
-    }
-
-    callOriginal<address>(_this, a2, a3, a4, a5, a6, a7, a8, a9, texture, a11, a12, a13, a14, a15, a16, a17, a18, a19, a20, a21);
-}
-
-template <std::uintptr_t address>
-void __cdecl AddLightHooked(char type, float x, float y, float z, float dir_x, float dir_y, float dir_z, float radius, float r, float g, float b, 
-                            char fogType, char generateExtraShadows, int attachedTo)
-{
-    if (lightsModel > 0)
-    {
-        const auto it = vehVars->lightPositions.find(lightsModel);
-        if (it != vehVars->lightPositions.end())
-        {
-            if (it->second.second > -900.0f)
-                x *= it->second.second;
-            if (it->second.first.x != 0.0f)
-                x += it->second.first.x;
-            if (it->second.first.y != 0.0f)
-                y += it->second.first.y;
-            if (it->second.first.z != 0.0f)
-                z += it->second.first.z;
-        }
-    }
-
-    callOriginal<address>(type, x, y, z, dir_x, dir_y, dir_z, radius, r, g, b, fogType, generateExtraShadows, attachedTo);
-}
-
 template <std::uintptr_t address>
 void __cdecl PossiblyRemoveVehicleHooked(CVehicle* car) 
 {
@@ -1491,14 +1359,6 @@ void __cdecl PossiblyRemoveVehicleHooked(CVehicle* car)
                     trailersToCheck = it->second;
         
         it++;
-    }
-    
-    switch (getVariationOriginalModel(car->m_nModelIndex))
-    {
-        case 407: //Firetruck
-            return changeModel<address, false>("CCarCtrl::PossiblyRemoveVehicle", 407, car->m_nModelIndex, { 0x4250B2 }, car);
-        case 416: //Ambulance
-            return changeModel<address, false>("CCarCtrl::PossiblyRemoveVehicle", 416, car->m_nModelIndex, { 0x4250AC }, car);
     }
 
     callOriginal<address>(car);
@@ -1539,32 +1399,6 @@ void __fastcall CAutomobile__PreRenderHooked(CAutomobile* veh)
     unsigned short originalModel = veh->m_nModelIndex;
     lightsModel = veh->m_nModelIndex;
 
-    if (vehOptions->enableSpecialFeatures)
-    {
-        constexpr const char* funcName = "CAutomobile::PreRender";
-
-        switch (getVariationOriginalModel(originalModel))
-        {
-            case 407: return changeModel<address>(funcName, 407, originalModel, { 0x6ACA59 }, veh); // Firetruck
-            case 424: return changeModel<address>(funcName, 424, originalModel, { 0x6AC2A1 }, veh); // BF Injection
-            case 432: return changeModel<address>(funcName, 432, originalModel, { 0x6ABC83, 0x6ABD11, 0x6ABFCC, 0x6AC029, 0x6ACA4D }, veh); // Rhino
-            case 434: return changeModel<address>(funcName, 434, originalModel, { 0x6ACA43 }, veh); // Hotknife
-            case 443: return changeModel<address>(funcName, 443, originalModel, { 0x6AC4DB }, veh); // Packer
-            case 471: return changeModel<address>(funcName, 471, originalModel, { 0x6ABCA9 }, veh); // Quad
-            case 477: return changeModel<address>(funcName, 477, originalModel, { 0x6ACA8F }, veh); // ZR-350
-            case 486: return changeModel<address>(funcName, 486, originalModel, { 0x6AC40E }, veh); // Dozer
-            case 495: return changeModel<address>(funcName, 495, originalModel, { (GetGameVersion() != GAME_10US_COMPACT) ? 0x4064A0U : 0x6ACBCBU }, veh); // Sandking
-            case 524: return changeModel<address>(funcName, 524, originalModel, { 0x6AC43D }, veh); // Cement Truck
-            case 525: return changeModel<address>(funcName, 525, originalModel, { 0x6AC509 }, veh); // Towtruck
-            case 530: return changeModel<address>(funcName, 530, originalModel, { 0x6AC71E }, veh); // Forklift
-            case 531: return changeModel<address>(funcName, 531, originalModel, { 0x6AC6DB }, veh); // Tractor
-            case 532: return changeModel<address>(funcName, 532, originalModel, { 0x6ABCA3, 0x6AC7AD }, veh); // Combine Harvester
-            case 539: return changeModel<address>(funcName, 539, originalModel, { 0x6AAE27 }, veh); // Vortex
-            case 544: return changeModel<address>(funcName, 544, originalModel, { 0x6AC0E3 }, veh); // Firetruck LS
-            case 568: return changeModel<address>(funcName, 568, originalModel, { 0x6ACA39 }, veh); // Bandito
-            case 601: return changeModel<address>(funcName, 601, originalModel, { 0x6ACA53 }, veh); // SWAT Tank
-        }
-    }
 
     callMethodOriginal<address>(veh);
     veh->m_nModelIndex = originalModel;
@@ -1579,12 +1413,6 @@ int __fastcall GetVehicleAppearanceHooked(CVehicle* veh)
 
     lightsModel = 0;
     return callMethodOriginalAndReturn<int, address>(veh);
-}
-
-template <std::uintptr_t address>
-CVehicle* __cdecl CreateCarForScriptHooked(int modelId, float posX, float posY, float posZ, char doMissionCleanup)
-{
-    return callOriginalAndReturn<CVehicle*, address>(getRandomVariation(modelId), posX, posY, posZ, doMissionCleanup);
 }
 
 template <std::uintptr_t address>
@@ -1613,7 +1441,7 @@ int __fastcall CreateInstanceHooked(CVehicleModelInfo* _this)
 template <std::uintptr_t address>
 CVehicle* __cdecl GetNewVehicleDependingOnCarModelHooked(int modelIndex, int createdBy)
 {
-    CVehicle *veh = callOriginalAndReturn<CVehicle*, address>(modelIndex, createdBy);
+    CVehicle* veh = callOriginalAndReturn<CVehicle*, address>(modelIndex, createdBy);
     processTuning(veh);
     return veh;
 }
@@ -1646,40 +1474,87 @@ void __cdecl CWorld__AddHooked(CVehicle* a1)
     callOriginal<address>(a1);
 }
 
-
-////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////  SPECIAL FEATURES  //////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////
-
+//changeScriptedCars
 template <std::uintptr_t address>
-void __fastcall ProcessControlHooked(CAutomobile* veh)
+CVehicle* __cdecl CreateCarForScriptHooked(int modelId, float posX, float posY, float posZ, char doMissionCleanup)
+{
+    return callOriginalAndReturn<CVehicle*, address>(getRandomVariation(modelId), posX, posY, posZ, doMissionCleanup);
+}
+
+//enableSiren
+template <std::uintptr_t address>
+bool __fastcall UsesSirenHooked(CVehicle* veh)
 {
     assert(veh != NULL);
 
-    constexpr const char* funcName = "CAutomobile::ProcessControl";
-    const auto modelIndex = veh->m_nModelIndex;
+    const unsigned short modelIndex = veh->m_nModelIndex;
+    veh->m_nModelIndex = (unsigned short)getVariationOriginalModel(veh->m_nModelIndex);
+    bool usesSiren = callMethodOriginalAndReturn<bool, address>(veh);
+    veh->m_nModelIndex = modelIndex;
 
-    switch (getVariationOriginalModel(veh->m_nModelIndex))
+    return usesSiren;
+}
+
+//enableLights
+template <std::uintptr_t address, bool second = false>
+void __cdecl RegisterCoronaHooked(void* _this, CEntity* a2, unsigned char a3, unsigned char a4, unsigned char a5, unsigned char a6, CVector* a7, const CVector* a8,
+                                  float a9, void* texture, unsigned char a11, unsigned char a12, unsigned char a13, int a14, float a15, float a16, float a17, float a18,
+                                  float a19, float a20, bool a21)
+{
+    if (a7 && a2)
     {
-        case 406: return changeModel<address>(funcName, 406, modelIndex, { 0x6B1F9D }, veh); //Dumper
-        case 407: return changeModel<address>(funcName, 407, modelIndex, { 0x6B1F51 }, veh); //Firetruck
-        case 417: return changeModel<address>(funcName, 417, modelIndex, { 0x6B1E34 }, veh); //Leviathan
-        case 423: return changeModel<address>(funcName, 423, modelIndex, { 0x6B2BD8 }, veh); //Mr. Whoopie
-        case 432: return changeModel<address>(funcName, 432, modelIndex, { 0x6B1F7D, 0x6B36D8 }, veh); //Rhino
-        case 443: return changeModel<address>(funcName, 443, modelIndex, { 0x6B1F91 }, veh); //Packer
-        case 447: return changeModel<address>(funcName, 447, modelIndex, { 0x6B1E2D }, veh); //Sea Sparrow
-        case 460: return changeModel<address>(funcName, 460, modelIndex, { 0x6B2181 }, veh); //Skimmer
-        case 486: return changeModel<address>(funcName, 486, modelIndex, { 0x6B1F97 }, veh); //Dozer
-        case 524: return changeModel<address>(funcName, 524, modelIndex, { 0x6B1FA3 }, veh); //Cement Truck
-        case 525: return changeModel<address>(funcName, 525, modelIndex, { 0x6B1FB5 }, veh); //Towtruck
-        case 530: return changeModel<address>(funcName, 530, modelIndex, { 0x6B1FAF }, veh); //Forklift
-        case 531: return changeModel<address>(funcName, 531, modelIndex, { 0x6B1FBB }, veh); //Tractor
-        case 532: return changeModel<address>(funcName, 532, modelIndex, { 0x6B36C9 }, veh); //Combine Harvester
-        case 539: return changeModel<address>(funcName, 539, modelIndex, { 0x6B1E5C, 0x6B284F, 0x6B356E }, veh); //Vortex
-        case 601: return changeModel<address>(funcName, 601, modelIndex, { 0x6B1F57 }, veh); //Swat Tank
+        const auto it = vehVars->lightPositions.find(lightsModel);
+        if (it != vehVars->lightPositions.end())
+        {
+            if (it->second.second > -900.0)
+                a7->x *= it->second.second;
+            if (it->second.first.x != 0.0)
+                a7->x += it->second.first.x;
+            if (it->second.first.y != 0.0)
+                a7->y += it->second.first.y;
+            if (it->second.first.z != 0.0)
+                a7->z += it->second.first.z;
+        }
     }
 
-    callMethodOriginal<address>(veh);
+    if (a2)
+    {
+        auto& lightsMap = (second ? vehVars->lightColors2 : vehVars->lightColors);
+
+        const auto it = lightsMap.find(lightsModel);
+        if (it != lightsMap.end())
+        {
+            a3 = it->second.r;
+            a4 = it->second.g;
+            a5 = it->second.b;
+            a6 = it->second.a;
+        }
+    }
+
+    callOriginal<address>(_this, a2, a3, a4, a5, a6, a7, a8, a9, texture, a11, a12, a13, a14, a15, a16, a17, a18, a19, a20, a21);
+}
+
+template <std::uintptr_t address>
+void __cdecl AddLightHooked(char type, float x, float y, float z, float dir_x, float dir_y, float dir_z, float radius, float r, float g, float b,
+                            char fogType, char generateExtraShadows, int attachedTo)
+{
+    if (lightsModel > 0)
+    {
+        const auto it = vehVars->lightPositions.find(lightsModel);
+        if (it != vehVars->lightPositions.end())
+        {
+            if (it->second.second > -900.0f)
+                x *= it->second.second;
+            if (it->second.first.x != 0.0f)
+                x += it->second.first.x;
+            if (it->second.first.y != 0.0f)
+                y += it->second.first.y;
+            if (it->second.first.z != 0.0f)
+                z += it->second.first.z;
+        }
+    }
+
+    callOriginal<address>(type, x, y, z, dir_x, dir_y, dir_z, radius, r, g, b, fogType, generateExtraShadows, attachedTo);
 }
 
 template <std::uintptr_t address>
@@ -1690,213 +1565,21 @@ void __fastcall AddDamagedVehicleParticlesHooked(CVehicle* veh)
         veh->m_nModelIndex = (unsigned short)getVariationOriginalModel(veh->m_nModelIndex);
 }
 
+//disablePayAndSpray
 template <std::uintptr_t address>
-char __fastcall SetTowLinkHooked(CAutomobile* automobile, void*, CVehicle* vehicle, char a3)
+bool __cdecl IsCarSprayableHooked(CVehicle* veh)
 {
-    if (vehicle != NULL)
-    {
-        if (getVariationOriginalModel(vehicle->m_nModelIndex) == 525) //Towtruck
-            return changeModelAndReturn<char, address>("CAutomobile::SetTowLink", 525, vehicle->m_nModelIndex, { 0x6B44B0 }, automobile, vehicle, a3);
-        else if (getVariationOriginalModel(vehicle->m_nModelIndex) == 531) //Tractor
-            return changeModelAndReturn<char, address>("CAutomobile::SetTowLink", 531, vehicle->m_nModelIndex, { 0x6B44E6 }, automobile, vehicle, a3);
-    }
+    assert(veh != NULL);
 
-    return callMethodOriginalAndReturn<char, address>(automobile, vehicle, a3);
+    const unsigned short modelIndex = veh->m_nModelIndex;
+    veh->m_nModelIndex = (unsigned short)getVariationOriginalModel(veh->m_nModelIndex);
+    bool isCarSprayable = callOriginalAndReturn<bool, address>(veh);
+    veh->m_nModelIndex = modelIndex;
+
+    return isCarSprayable;
 }
 
-template <std::uintptr_t address>
-char __fastcall GetTowHitchPosHooked(void* trailer, void*, CVector* point, char a3, CVehicle* a4)
-{
-    if (a4 != NULL)
-        if (getVariationOriginalModel(a4->m_nModelIndex) == 525) //Towtruck
-            return changeModelAndReturn<char, address>("CTrailer::GetTowHitchPos", 525, a4->m_nModelIndex, { 0x6CEED9 }, trailer, point, a3, a4);
-
-    return callMethodOriginalAndReturn<char, address>(trailer, point, a3, a4);
-}
-
-template <std::uintptr_t address>
-void __fastcall UpdateTrailerLinkHooked(CVehicle* veh, void*, char a2, char a3)
-{
-    if (veh != NULL && veh->m_pTractor != NULL)
-    {
-        if (getVariationOriginalModel(veh->m_pTractor->m_nModelIndex) == 525) //Towtruck
-            return changeModel<address>("CVehicle::UpdateTrailerLink", 525, veh->m_pTractor->m_nModelIndex, { 0x6DFDB8 }, veh, a2, a3);
-        else if (getVariationOriginalModel(veh->m_pTractor->m_nModelIndex) == 531) //Tractor
-            return changeModel<address>("CVehicle::UpdateTrailerLink", 531, veh->m_pTractor->m_nModelIndex, { 0x6DFDBE }, veh, a2, a3);
-    }
-
-    callMethodOriginal<address>(veh, a2, a3);
-}
-
-template <std::uintptr_t address>
-void __fastcall UpdateTractorLinkHooked(CVehicle* veh, void*, bool a3, bool a4)
-{
-    if (veh != NULL)
-    {
-        if (getVariationOriginalModel(veh->m_nModelIndex) == 525) //Towtruck
-            return changeModel<address>("CVehicle::UpdateTractorLink", 525, veh->m_nModelIndex, { 0x6E00D6 }, veh, a3, a4);
-        else if (getVariationOriginalModel(veh->m_nModelIndex) == 531) //Tractor
-            return changeModel<address>("CVehicle::UpdateTractorLink", 531, veh->m_nModelIndex, { 0x6E00FC }, veh, a3, a4);
-    }
-    
-    callMethodOriginal<address>(veh, a3, a4);
-}
-
-template <std::uintptr_t address>
-char __fastcall SetUpWheelColModelHooked(CAutomobile* automobile, void*, CColModel* colModel)
-{
-    if (automobile == NULL)
-        return 0;
-
-    const auto originalModel = getVariationOriginalModel(automobile->m_nModelIndex);
-    if (originalModel == 531 || originalModel == 532 || originalModel == 571)
-        return 0;
-
-    return callMethodOriginalAndReturn<char, address>(automobile, colModel);
-}
-
-template <std::uintptr_t address>
-void __fastcall SetupSuspensionLinesHooked(CAutomobile* veh)
-{
-    if (getVariationOriginalModel(veh->m_nModelIndex) == 432) //Rhino
-        return changeModel<address>("CAutomobile::SetupSuspensionLines", 432, veh->m_nModelIndex, { 0x6A6606, 0x6A6999 }, veh);
-    if (getVariationOriginalModel(veh->m_nModelIndex) == 571) //Kart
-        return changeModel<address>("CAutomobile::SetupSuspensionLines", 571, veh->m_nModelIndex, { 0x6A6907 }, veh);
-
-    callMethodOriginal<address>(veh);
-}
-
-template <std::uintptr_t address>
-void __fastcall DoBurstAndSoftGroundRatiosHooked(CAutomobile* a1)
-{
-    if (getVariationOriginalModel(a1->m_nModelIndex) == 432) //Rhino
-        return changeModel<address>("CAutomobile::DoBurstAndSoftGroundRatios", 432, a1->m_nModelIndex, { 0x6A4917 }, a1);
-
-    callMethodOriginal<address>(a1);
-}
-
-template <std::uintptr_t address>
-char __fastcall BurstTyreHooked(CAutomobile* veh, void*, char componentId, char a3)
-{
-    if (getVariationOriginalModel(veh->m_nModelIndex) == 432) //Rhino
-        return 0;
-
-    return callMethodOriginalAndReturn<char, address>(veh, componentId, a3);
-}
-
-template <std::uintptr_t address>
-void __fastcall CAutomobile__RenderHooked(CAutomobile* veh)
-{
-    if (getVariationOriginalModel(veh->m_nModelIndex) == 432) //Rhino
-        return changeModel<address>("CAutomobile::Render", 432, veh->m_nModelIndex, { 0x6A2C2D, 0x6A2EAD }, veh);
-
-    callMethodOriginal<address>(veh);
-}
-
-template <std::uintptr_t address>
-int __fastcall ProcessEntityCollisionHooked(CAutomobile* _this, void*, CVehicle* collEntity, CColPoint* colPoint)
-{
-    if (_this && getVariationOriginalModel(_this->m_nModelIndex) == 432) //Rhino
-        return changeModelAndReturn<int, address>("CAutomobile::ProcessEntityCollision", 432, _this->m_nModelIndex, { 0x6ACEE9, 0x6AD242 }, _this, collEntity, colPoint);
-    
-    return callMethodOriginalAndReturn<int, address>(_this, collEntity, colPoint);
-}
-
-template <std::uintptr_t address>
-void __cdecl RegisterCarBlownUpByPlayerHooked(CVehicle* vehicle, int a2)
-{
-    if (vehicle != NULL)
-    {
-        const auto model = vehicle->m_nModelIndex;
-        vehicle->m_nModelIndex = (unsigned short)getVariationOriginalModel(vehicle->m_nModelIndex);
-        callOriginal<address>(vehicle, a2);
-        vehicle->m_nModelIndex = model;
-    }
-}
-
-template <std::uintptr_t address>
-void __fastcall TankControlHooked(CAutomobile* veh)
-{
-    if (getVariationOriginalModel(veh->m_nModelIndex) == 432) //Rhino
-        return changeModel<address>("CAutomobile::TankControl", 432, veh->m_nModelIndex, { 0x6AE9CB }, veh);
-
-    callMethodOriginal<address>(veh);
-}
-
-template <std::uintptr_t address>
-void __fastcall DoSoftGroundResistanceHooked(CAutomobile* veh, void*, unsigned int *a3)
-{
-    if (getVariationOriginalModel(veh->m_nModelIndex) == 432) //Rhino
-        return changeModel<address>("CAutomobile::DoSoftGroundResistance", 432, veh->m_nModelIndex, { 0x6A4BBA, 0x6A4E0E }, veh, a3);
-
-    callMethodOriginal<address>(veh, a3);
-}
-
-template <std::uintptr_t address>
-int __cdecl GetMaximumNumberOfPassengersFromNumberOfDoorsHooked(int modelIndex)
-{
-    switch (getVariationOriginalModel(modelIndex))
-    {
-        case 407: //Firetruck
-            return changeModelAndReturn<int, address, false>("CVehicleModelInfo::GetMaximumNumberOfPassengersFromNumberOfDoors", 407, modelIndex, { 0x4C8A17 }, modelIndex);
-        case 425: //Hunter
-            return changeModelAndReturn<int, address, false>("CVehicleModelInfo::GetMaximumNumberOfPassengersFromNumberOfDoors", 425, modelIndex, { 0x4C8A27 }, modelIndex);
-        case 431: //Bus
-            return changeModelAndReturn<int, address, false>("CVehicleModelInfo::GetMaximumNumberOfPassengersFromNumberOfDoors", 431, modelIndex, { 0x4C8ADB }, modelIndex);
-        case 437: //Coach
-            return changeModelAndReturn<int, address, false>("CVehicleModelInfo::GetMaximumNumberOfPassengersFromNumberOfDoors", 437, modelIndex, { 0x4C8AD3 }, modelIndex);
-        case 508: //Journey
-            return changeModelAndReturn<int, address, false>("CVehicleModelInfo::GetMaximumNumberOfPassengersFromNumberOfDoors", 508, modelIndex, { 0x4C8A1F }, modelIndex);
-    }
-
-    return callOriginalAndReturn<int, address>(modelIndex);
-}
-
-template <std::uintptr_t address>
-void __fastcall DoHeadLightReflectionHooked(CVehicle* veh, void*, RwMatrixTag* matrix, char twin, char left, char right)
-{
-    if (veh != NULL && getVariationOriginalModel(veh->m_nModelIndex) == 532) //Combine Harvester
-        return changeModel<address>("CVehicle::DoHeadLightReflection", 532, veh->m_nModelIndex, { 0x6E176A }, veh, matrix, twin, left, right);
-
-    callMethodOriginal<address>(veh, matrix, twin, left, right);
-}
-
-template <std::uintptr_t address>
-void __fastcall ProcessControlInputsHooked(CPlane* _this, void*, unsigned char a2)
-{
-    if (_this == NULL)
-        return;
-
-    unsigned short modelIndex = _this->m_nModelIndex;
-    _this->m_nModelIndex = (unsigned short)getVariationOriginalModel(_this->m_nModelIndex);
-    callMethodOriginal<address>(_this, a2);
-    _this->m_nModelIndex = modelIndex;
-}
-
-template <std::uintptr_t address>
-void __fastcall DoHeliDustEffectHooked(CAutomobile* _this, void*, float a3, float a4)
-{
-    if (_this == NULL)
-        return;
-
-    if (getVariationOriginalModel(_this->m_nModelIndex) == 520)
-        return changeModel<address>("CAutomobile::DoHeliDustEffect", 520, _this->m_nModelIndex, { 0x6B0845 }, _this, a3, a4);
-
-    callMethodOriginal<address>(_this, a3, a4);
-}
-
-template <std::uintptr_t address>
-void __fastcall ProcessWeaponsHooked(CEntity* _this)
-{
-    if (_this == NULL)
-        return;
-
-    if (getVariationOriginalModel(_this->m_nModelIndex) == 520)
-        return changeModel<address>("CVehicle::ProcessWeapons", 520, _this->m_nModelIndex, { 0x6E39BC }, _this);
-
-    callMethodOriginal<address>(_this);
-}
-
+//enableSideMissions
 template <std::uintptr_t address>
 CPed* __fastcall CPool__atHandleHooked(void* _this, void*, signed int h)
 {
@@ -1931,6 +1614,57 @@ CPed* __fastcall CPool__atHandleTaxiHooked(void* _this, void*, signed int h) //U
         return pTaxiPed;
     }
     return ped;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////  SPECIAL FEATURES  //////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
+
+template <std::uintptr_t address>
+char __fastcall SetUpWheelColModelHooked(CAutomobile* automobile, void*, CColModel* colModel)
+{
+    if (automobile == NULL)
+        return 0;
+
+    const auto originalModel = getVariationOriginalModel(automobile->m_nModelIndex);
+    if (originalModel == 531 || originalModel == 532 || originalModel == 571) //Tractor || Combine Harvester || Kart
+        return 0;
+
+    return callMethodOriginalAndReturn<char, address>(automobile, colModel);
+}
+
+template <std::uintptr_t address>
+char __fastcall BurstTyreHooked(CAutomobile* veh, void*, char componentId, char a3)
+{
+    if (getVariationOriginalModel(veh->m_nModelIndex) == 432) //Rhino
+        return 0;
+
+    return callMethodOriginalAndReturn<char, address>(veh, componentId, a3);
+}
+
+template <std::uintptr_t address>
+void __cdecl RegisterCarBlownUpByPlayerHooked(CVehicle* vehicle, int a2)
+{
+    if (vehicle != NULL)
+    {
+        const auto model = vehicle->m_nModelIndex;
+        vehicle->m_nModelIndex = (unsigned short)getVariationOriginalModel(vehicle->m_nModelIndex);
+        callOriginal<address>(vehicle, a2);
+        vehicle->m_nModelIndex = model;
+    }
+}
+
+template <std::uintptr_t address>
+void __fastcall ProcessControlInputsHooked(CPlane* _this, void*, unsigned char a2)
+{
+    if (_this == NULL)
+        return;
+
+    unsigned short modelIndex = _this->m_nModelIndex;
+    _this->m_nModelIndex = (unsigned short)getVariationOriginalModel(_this->m_nModelIndex);
+    callMethodOriginal<address>(_this, a2);
+    _this->m_nModelIndex = modelIndex;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -2110,7 +1844,7 @@ void __declspec(naked) cmpWordPtrRegModel()
     }
 }
 
-template <eRegs16 reg, std::uintptr_t jmpAddress, unsigned int model>
+template <eRegs16 reg, std::uintptr_t jmpAddress, unsigned int model, uint8_t nextInstrSize = 0, uint32_t nextInstr = 0x90909090, uint32_t nextInstr2 = 0x90909090>
 void __declspec(naked) cmpReg16Model()
 {
     __asm {
@@ -2119,6 +1853,19 @@ void __declspec(naked) cmpReg16Model()
 
     asmModel32 = model;
     asmJmpAddress = jmpAddress;
+
+    if constexpr (nextInstrSize > 0)
+    {
+        asmNextInstr[0] = nextInstr;
+        asmNextInstr[1] = nextInstr2;
+        reinterpret_cast<uint8_t*>(asmNextInstr)[nextInstrSize] = 0xE9;
+        *(uint32_t*)((uint8_t*)asmNextInstr + nextInstrSize + 1) = jmpAddress - (uintptr_t)((uint8_t*)asmNextInstr + nextInstrSize + 5);
+
+        __asm {
+            popad
+            pushad
+        }
+    }
 
     if constexpr (reg == REG_AX) { __asm { movsx eax, ax } }
     else if constexpr (reg == REG_CX) { __asm { movsx eax, cx } }
@@ -2134,8 +1881,11 @@ void __declspec(naked) cmpReg16Model()
         call getVariationOriginalModel
         cmp eax, asmModel32
         popad
-        jmp asmJmpAddress
     }
+
+    if constexpr (nextInstrSize > 0) { __asm {jmp jmpDest} }
+
+    __asm { jmp asmJmpAddress }
 }
 
 template <eRegs32 reg, std::uintptr_t jmpAddress, unsigned int model>
@@ -2265,12 +2015,6 @@ void __declspec(naked) movsxReg32WordPtrReg()
 
 void VehicleVariations::InstallHooks()
 {
-    if (isFLASpecialFeaturesEnabled == 1 && vehOptions->enableSpecialFeatures)
-    {
-        MessageBox(NULL, "Both Model Variations and FLA special features are enabled. Disable one of them.", "Model Variations", MB_ICONWARNING);
-        vehOptions->enableSpecialFeatures = false;
-    }
-
     hookCall(0x43022A, ChooseModelHooked<0x43022A>, "CCarCtrl::ChooseModel"); //CCarCtrl::GenerateOneRandomCar
 
     hookCall(0x42C320, ChoosePoliceCarModelHooked<0x42C320>, "CCarCtrl::ChoosePoliceCarModel"); //CCarCtrl::CreatePoliceChase
@@ -2300,10 +2044,7 @@ void VehicleVariations::InstallHooks()
     hookASM(0x6F3B94, "66 8B 46 22 66 3D 13 02", movReg16WordPtrReg<REG_AX, REG_ESI, 0x6F3B9C, 4, 0x02133D66>, "CCarGenerator::DoInternalProcessing");
 
     //Trains
-    //patch::RedirectCall(0x4214DC, CTrainHooked); //CCarCtrl::GetNewVehicleDependingOnCarModel
-    //patch::RedirectCall(0x5D2B15, CTrainHooked); //CPools::LoadVehiclePool
     hookCall(0x6F7634, CTrainHooked<0x6F7634>, "CTrain::CTrain"); //CTrain::CreateMissionTrain 
-
     hookASM(0x64475D, "66 81 78 22 3A 02", cmpWordPtrRegModel<REG_EAX, 0x644763, 0x23A>, "CTaskSimpleCarDrive::ProcessPed");
     hookASM(0x6F60D9, "66 81 7E 22 3A 02", cmpWordPtrRegModel<REG_ESI, 0x6F60DF, 0x23A>, "CTrain::CTrain");
     hookASM(0x6F6576, "66 81 7F 22 3A 02", cmpWordPtrRegModel<REG_EDI, 0x6F657C, 0x23A>, "CTrain::OpenDoor");
@@ -2338,6 +2079,19 @@ void VehicleVariations::InstallHooks()
     hookCall(0x6F786F, AddPedInCarHooked<0x6F786F>, "CPopulation::AddPedInCar"); //CTrain::CreateMissionTrain
     hookCall(0x613B7F, AddPedHooked<0x613B7F>, "CPopulation::AddPed"); //CPopulation::AddPedInCar
 
+    hookCall(0x42DC19, IsLawEnforcementVehicleHooked<0x42DC19>, "CVehicle::IsLawEnforcementVehicle"); //CCarCtrl::IsThisAnAppropriateNode
+    hookCall(0x42DD23, IsLawEnforcementVehicleHooked<0x42DD23>, "CVehicle::IsLawEnforcementVehicle"); //CCarCtrl::IsThisAnAppropriateNode
+    hookCall(0x43DFCA, IsLawEnforcementVehicleHooked<0x43DFCA>, "CVehicle::IsLawEnforcementVehicle"); //CDarkel::RegisterCarBlownUpByPlayer
+    hookCall(0x478635, IsLawEnforcementVehicleHooked<0x478635>, "CVehicle::IsLawEnforcementVehicle"); //IS_EMERGENCY_SERVICES_VEHICLE
+    hookCall(0x479A28, IsLawEnforcementVehicleHooked<0x479A28>, "CVehicle::IsLawEnforcementVehicle"); //IS_COP_VEHICLE_IN_AREA_3D_NO_SAVE
+    hookCall(0x4862B8, IsLawEnforcementVehicleHooked<0x4862B8>, "CVehicle::IsLawEnforcementVehicle"); //CTheScripts::RemoveThisPed
+    hookCall(0x562D97, IsLawEnforcementVehicleHooked<0x562D97>, "CVehicle::IsLawEnforcementVehicle"); //CWanted::Update
+    hookCall(0x63E6BA, IsLawEnforcementVehicleHooked<0x63E6BA>, "CVehicle::IsLawEnforcementVehicle"); //CTaskComplexEnterCar::CreateSubTask
+    hookCall(0x6445FC, IsLawEnforcementVehicleHooked<0x6445FC>, "CVehicle::IsLawEnforcementVehicle"); //CTaskSimpleCarDrive::ProcessPed
+    hookCall(0x647E48, IsLawEnforcementVehicleHooked<0x647E48>, "CVehicle::IsLawEnforcementVehicle"); //CTaskSimpleCarSetPedOut::ProcessPed
+    hookCall(0x64BD61, IsLawEnforcementVehicleHooked<0x64BD61>, "CVehicle::IsLawEnforcementVehicle"); //CTaskSimpleCarSetPedInAsDriver::ProcessPed
+    hookCall(0x64C29F, IsLawEnforcementVehicleHooked<0x64C29F>, "CVehicle::IsLawEnforcementVehicle"); //CTaskSimpleCarSetPedSlowDraggedOut::ProcessPed
+    hookCall(0x651145, IsLawEnforcementVehicleHooked<0x651145>, "CVehicle::IsLawEnforcementVehicle"); //CCarEnterExit::IsVehicleStealable
     hookCall(0x6B11C2, IsLawEnforcementVehicleHooked<0x6B11C2>, "CVehicle::IsLawEnforcementVehicle"); //CAutomobile::CAutomobile
 
     hookCall(0x60C4E8, PossiblyRemoveVehicleHooked<0x60C4E8>, "CCarCtrl::PossiblyRemoveVehicle"); //CPlayerPed::KeepAreaAroundPlayerClear
@@ -2351,28 +2105,62 @@ void VehicleVariations::InstallHooks()
     hookCall(0x6ABC93, GetVehicleAppearanceHooked<0x6ABC93>, "CVehicle::GetVehicleAppearance"); //CAutomobile::PreRender
     x6ABCBE_Destination = injector::MakeJMP(0x6ABCBE, patch6ABCBE).as_int();
 
+    hookCall(0x85C5F4, CreateInstanceHooked<0x85C5F4>, "CVehicleModelInfo::CreateInstance", true);
+
+    hookCall(0x4306A1, GetNewVehicleDependingOnCarModelHooked<0x4306A1>, "CCarCtrl::GetNewVehicleDependingOnCarModel"); ///CCarCtrl::GenerateOneRandomCar
+
+    hookCall(0x6D5F2F, CPhysicalHooked<0x6D5F2F>, "CPhysical::CPhysical"); //CVehicle::CVehicle
+
+    hookCall(0x6CFFBB, AddAudioEventHooked<0x6CFFBB>, "CAEVehicleAudioEntity::AddAudioEvent"); //CTrailer::SetTowLink
+    hookCall(0x6CEFCE, AddAudioEventHooked<0x6CEFCE>, "CAEVehicleAudioEntity::AddAudioEvent"); //CTrailer::BreakTowLink
+
+    //Tuning for parked cars
+    hookCall(0x6F3C8C, CWorld__AddHooked<0x6F3C8C>, "CWorld::Add"); //CCarGenerator::DoInternalProcessing
+
     if (vehOptions->changeScriptedCars)
         hookCall(0x467B01, CreateCarForScriptHooked<0x467B01>, "CCarCtrl::CreateCarForScript"); //00A5: CREATE_CAR
-    
+
+    if (vehOptions->enableSiren)
+    {
+        hookCall(0x41DC74, UsesSirenHooked<0x41DC74>, "CVehicle::UsesSiren"); //CCarAI::UpdateCarAI
+        hookCall(0x41E05F, UsesSirenHooked<0x41E05F>, "CVehicle::UsesSiren"); //CCarAI::UpdateCarAI
+        hookCall(0x41E874, UsesSirenHooked<0x41E874>, "CVehicle::UsesSiren"); //CCarAI::UpdateCarAI
+        hookCall(0x41F10F, UsesSirenHooked<0x41F10F>, "CVehicle::UsesSiren"); //CCarAI::UpdateCarAI
+        hookCall(0x462344, UsesSirenHooked<0x462344>, "CVehicle::UsesSiren"); //CRoadBlocks::CreateRoadBlockBetween2Points
+        hookCall(0x4F77DA, UsesSirenHooked<0x4F77DA>, "CVehicle::UsesSiren"); //CAEVehicleAudioEntity::Initialise
+        hookCall(0x61369D, UsesSirenHooked<0x61369D>, "CVehicle::UsesSiren"); //CPopulation::CreateWaitingCoppers
+        hookCall(0x6B2BCB, UsesSirenHooked<0x6B2BCB>, "CVehicle::UsesSiren"); //CAutomobile::ProcessControl
+        hookCall(0x6E0954, UsesSirenHooked<0x6E0954>, "CVehicle::UsesSiren"); //CVehicle::ProcessSirenAndHorn
+    }
+
+    if (vehOptions->enableLights)
+    {
+        hookCall(0x6ABA60, RegisterCoronaHooked<0x6ABA60>, "CCoronas::RegisterCorona"); //CAutomobile::PreRender
+        hookCall(0x6ABB35, RegisterCoronaHooked<0x6ABB35>, "CCoronas::RegisterCorona"); //CAutomobile::PreRender
+        hookCall(0x6ABC69, RegisterCoronaHooked<0x6ABC69>, "CCoronas::RegisterCorona"); //CAutomobile::PreRender
+        if (memcmp(0x6ABA56, "68 FF 00 00 00") || forceEnableGlobal || forceEnable.contains(0x6ABA56))
+            injector::MakeJMP(0x6ABA56, patchCoronas);
+        else
+            Log::LogModifiedAddress(0x6ABA56, "Modified method detected: CAutomobile::PreRender - 0x6ABA56 is %s\n", bytesToString(0x6ABA56, 5).c_str());
+
+        hookCall(0x6AB80F, AddLightHooked<0x6AB80F>, "CPointLights::AddLight"); //CAutomobile::PreRender
+        hookCall(0x6ABBA6, AddLightHooked<0x6ABBA6>, "CPointLights::AddLight"); //CAutomobile::PreRender
+
+        hookCall(0x6AB34B, AddDamagedVehicleParticlesHooked<0x6AB34B>, "CVehicle::AddDamagedVehicleParticles"); //CAutomobile::PreRender
+    }
+
+    if (vehOptions->disablePayAndSpray)
+        hookCall(0x44AC75, IsCarSprayableHooked<0x44AC75>, "CGarages::IsCarSprayable"); //CGarage::Update
+
+    if (vehOptions->enableSideMissions)
+    {
+        hookCall(0x48DA81, IsLawEnforcementVehicleHooked<0x48DA81>, "CVehicle::IsLawEnforcementVehicle"); //056C: IS_CHAR_IN_ANY_POLICE_VEHICLE
+        hookCall(0x469624, CPool__atHandleHooked<0x469624>, "CPool<CPed>::atHandle"); //00DD: IS_CHAR_IN_MODEL
+        hookCall(0x4912AD, CPool__atHandleTaxiHooked<0x4912AD>, "CPool<CPed>::atHandle"); //0602: IS_CHAR_IN_TAXI
+    }	
+	
     if (vehOptions->enableSpecialFeatures)
     {
-        hookCall(0x871148, ProcessControlHooked<0x871148>, "CAutomobile::ProcessControl", true);
-        hookCall(0x6C7059, ProcessControlHooked<0x6C7059>, "CAutomobile::ProcessControl"); //CHeli::ProcessControl
-        hookCall(0x6C82B4, ProcessControlHooked<0x6C82B4>, "CAutomobile::ProcessControl"); //CMonsterTruck::ProcessControl
-        hookCall(0x6C9313, ProcessControlHooked<0x6C9313>, "CAutomobile::ProcessControl"); //CPlane::ProcessControl
-        hookCall(0x6CE005, ProcessControlHooked<0x6CE005>, "CAutomobile::ProcessControl"); //CQuadBike::ProcessControl
-        hookCall(0x6CED23, ProcessControlHooked<0x6CED23>, "CAutomobile::ProcessControl"); //CTrailer::ProcessControl
-        hookCall(0x871214, SetTowLinkHooked<0x871214>, "CAutomobile::SetTowLink", true);
-        hookCall(0x871D14, GetTowHitchPosHooked<0x871D14>, "CTrailer::GetTowHitchPos", true);
-
-        hookCall(0x6B3271, UpdateTrailerLinkHooked<0x6B3271>, "CVehicle::UpdateTrailerLink"); //CAutomobile::ProcessControl
-        hookCall(0x6B329C, UpdateTrailerLinkHooked<0x6B329C>, "CVehicle::UpdateTrailerLink"); //CAutomobile::ProcessControl
-        hookCall(0x6B45C7, UpdateTrailerLinkHooked<0x6B45C7>, "CVehicle::UpdateTrailerLink"); //CAutomobile::SetTowLink
-
-        hookCall(0x6B3266, UpdateTractorLinkHooked<0x6B3266>, "CVehicle::UpdateTractorLink"); //CAutomobile::ProcessControl
-        hookCall(0x6B3291, UpdateTractorLinkHooked<0x6B3291>, "CVehicle::UpdateTractorLink"); //CAutomobile::ProcessControl
-        hookCall(0x6CFFAC, UpdateTractorLinkHooked<0x6CFFAC>, "CVehicle::UpdateTractorLink"); //CTrailer::SetTowLink
-
         hookCall(0x8711CC, SetUpWheelColModelHooked<0x8711CC>, "CAutomobile::SetUpWheelColModel", true);
         hookCall(0x871B94, SetUpWheelColModelHooked<0x871B94>, "CAutomobile::SetUpWheelColModel", true);
         hookCall(0x871CD4, SetUpWheelColModelHooked<0x871CD4>, "CAutomobile::SetUpWheelColModel", true);
@@ -2580,86 +2368,77 @@ void VehicleVariations::InstallHooks()
         hookASM(0x729B76U, (GetGameVersion() != GAME_10US_COMPACT) ? "E9 18 D7 CD FF" : "BB 59 02 00 00", patch729B76, "CAutomobile::FireTruckControl");
         hookASM(0x6DD218, "BF CC 01 00 00",                   patch6DD218, "CVehicle::DoBoatSplashes");
         hookASM(0x6E1786, "66 8B 46 22 66 3D B7 01",          movReg16WordPtrReg<REG_AX, REG_ESI, 0x6E178E, 4, 0x01B73D66>, "CVehicle::DoTailLightEffect");
+        hookASM(0x6A6602, "66 81 7F 22 B0 01",                cmpWordPtrRegModel<REG_EDI, 0x6A6608, 0x1B0>, "CAutomobile::SetupSuspensionLines");
+        hookASM(0x6A6995, "66 81 7F 22 B0 01",                cmpWordPtrRegModel<REG_EDI, 0x6A699B, 0x1B0>, "CAutomobile::SetupSuspensionLines");
+        hookASM(0x6A6903, "66 81 7F 22 3B 02",                cmpWordPtrRegModel<REG_EDI, 0x6A6909, 0x23B>, "CAutomobile::SetupSuspensionLines");
+        hookASM(0x6A4913, "66 81 7E 22 B0 01",                cmpWordPtrRegModel<REG_ESI, 0x6A4919, 0x1B0>, "CAutomobile::DoBurstAndSoftGroundRatios");
+        hookASM(0x6A2C29, "66 81 7E 22 B0 01",                cmpWordPtrRegModel<REG_ESI, 0x6A2C2F, 0x1B0>, "CAutomobile::Render");
+        hookASM(0x6A2E98, "66 8B 46 22 83 C4 08",             movReg16WordPtrReg<REG_AX, REG_ESI, 0x6A2E9F, 3, 0x9008C483>, "CAutomobile::Render");
+        hookASM(0x6B1F77, "66 8B 46 22 66 3D B0 01",          movReg16WordPtrReg<REG_AX, REG_ESI, 0x6B1F7F, 4, 0x01B03D66>, "CAutomobile::ProcessControl");
+        hookASM(0x6B1F4B, "66 8B 46 22 66 3D 97 01",          movReg16WordPtrReg<REG_AX, REG_ESI, 0x6B1F53, 4, 0x01973D66>, "CAutomobile::ProcessControl");
+        hookASM(0x6B1E26, "66 8B 4E 22 66 81 F9 BF 01",       movReg16WordPtrReg<REG_CX, REG_ESI, 0x6B1E2F, 5, 0xBFF98166, 0x90909001>, "CAutomobile::ProcessControl");
+        hookASM(0x6B2BD4, "66 81 7E 22 A7 01",                cmpWordPtrRegModel<REG_ESI, 0x6B2BDA, 0x1A7>, "CAutomobile::ProcessControl");
+        hookASM(0x6B36D4, "66 81 7E 22 B0 01",                cmpWordPtrRegModel<REG_ESI, 0x6B36DA, 0x1B0>, "CAutomobile::ProcessControl");
+        hookASM(0x6B217D, "66 81 7E 22 CC 01",                cmpWordPtrRegModel<REG_ESI, 0x6B2183, 0x1CC>, "CAutomobile::ProcessControl");
+        hookASM(0x6B36C5, "66 81 7E 22 14 02",                cmpWordPtrRegModel<REG_ESI, 0x6B36CB, 0x214>, "CAutomobile::ProcessControl");
+        hookASM(0x6B1E59, "66 81 F9 1B 02",                   cmpReg16Model<REG_CX, 0x6B1E5E, 0x21B>, "CAutomobile::ProcessControl");
+        hookASM(0x6B284B, "66 81 7E 22 1B 02",                cmpWordPtrRegModel<REG_ESI, 0x6B2851, 0x21B>, "CAutomobile::ProcessControl");
+        hookASM(0x6B356A, "66 81 7E 22 1B 02",                cmpWordPtrRegModel<REG_ESI, 0x6B3570, 0x21B>, "CAutomobile::ProcessControl");
+        hookASM(0x6B44AA, "66 8B 43 22 66 3D 0D 02",          movReg16WordPtrReg<REG_AX, REG_EBX, 0x6B44B2, 4, 0x22438B66>, "CAutomobile::SetTowLink");
+        hookASM(0x6CEED5, "66 81 78 22 0D 02",                cmpWordPtrRegModel<REG_EAX, 0x6CEEDB, 0x20D>, "CTrailer::GetTowHitchPos");
+        hookASM(0x6DFDB2, "66 8B 43 22 66 3D 0D 02",          movReg16WordPtrReg<REG_AX, REG_EBX, 0x6DFDBA, 4, 0x020D3D66>, "CVehicle::UpdateTrailerLink");
+        hookASM(0x6E00D0, "66 8B 46 22 66 3D 0D 02",          movReg16WordPtrReg<REG_AX, REG_ESI, 0x6E00D8, 4, 0x020D3D66>, "CVehicle::UpdateTractorLink");
+        hookASM(0x6ACEE1, "66 8B 46 22 33 D2",                movReg16WordPtrReg<REG_AX, REG_ESI, 0x6ACEE7, 2, 0x9090D233>, "CAutomobile::ProcessEntityCollision");
+        hookASM(0x6AD23E, "66 81 7E 22 B0 01",                cmpWordPtrRegModel<REG_ESI, 0x6AD244, 0x1B0>, "CAutomobile::ProcessEntityCollision");
+        hookASM(0x6AE859, "66 8B 46 22 66 3D 34 02",          movReg16WordPtrReg<REG_AX, REG_ESI, 0x6AE861, 4, 0x02343D66>, "CAutomobile::TankControl");
+        hookASM(0x6A4BAA, "66 8B 46 22 66 3D B9 01",          movReg16WordPtrReg<REG_AX, REG_ESI, 0x6A4BB2, 4, 0x01B93D66>, "CAutomobile::DoSoftGroundResistance");
+        hookASM(0x6A4DFE, "66 8B 46 22 66 3D B9 01",          movReg16WordPtrReg<REG_AX, REG_ESI, 0x6A4E06, 4, 0x01B93D66>, "CAutomobile::DoSoftGroundResistance");
+        hookASM(0x4C8A15, "81 FE 97 01 00 00",                cmpReg32Model<REG_ESI, 0x4C8A1B, 0x197>, "CVehicleModelInfo::GetMaximumNumberOfPassengersFromNumberOfDoors");
+        hookASM(0x4C8A25, "81 FE A9 01 00 00",                cmpReg32Model<REG_ESI, 0x4C8A2B, 0x1A9>, "CVehicleModelInfo::GetMaximumNumberOfPassengersFromNumberOfDoors");
+        hookASM(0x4C8AD9, "81 FE AF 01 00 00",                cmpReg32Model<REG_ESI, 0x4C8ADF, 0x1AF>, "CVehicleModelInfo::GetMaximumNumberOfPassengersFromNumberOfDoors");
+        hookASM(0x4C8AD1, "81 FE B5 01 00 00",                cmpReg32Model<REG_ESI, 0x4C8AD7, 0x1B5>, "CVehicleModelInfo::GetMaximumNumberOfPassengersFromNumberOfDoors");
+        hookASM(0x4C8A1D, "81 FE FC 01 00 00",                cmpReg32Model<REG_ESI, 0x4C8A23, 0x1FC>, "CVehicleModelInfo::GetMaximumNumberOfPassengersFromNumberOfDoors");
+        hookASM(0x6E1766, "66 81 79 22 14 02",                cmpWordPtrRegModel<REG_ECX, 0x6E176C, 0x214>, "CVehicle::DoHeadLightReflection");
+        hookASM(0x6B078E, "66 8B 7E 22 D9 05 A4 8C 85 00",    movReg16WordPtrReg<REG_DI, REG_ESI, 0x6B0798, 6, 0x8CA405D9, 0x90900085>, "CAutomobile::DoHeliDustEffect");
+        hookASM(0x6E39B8, "66 81 7E 22 08 02",                cmpWordPtrRegModel<REG_ESI, 0x6E39BE, 0x208>, "CVehicle::ProcessWeapons");
+        hookASM(0x4250A6, "66 8B 46 22 66 3D A0 01",          movReg16WordPtrReg<REG_AX, REG_ESI, 0x4250AE, 4, 0x01A03D66>, "CCarCtrl::PossiblyRemoveVehicle");
+        hookASM(0x6AADE6, "66 8B 46 22 66 3D FE FF",          movReg16WordPtrReg<REG_AX, REG_ESI, 0x6AADEE, 4, 0xFFFE3D66>, "CAutomobile::PreRender");
+        //hookASM(0x6AB350, "0F BF 46 22 8D B8 69 FE FF FF",    movsxReg32WordPtrReg<REG_EAX, REG_ESI, 0x6AB35A, 6, 0xFE69B88D, 0x9090FFFF>, "CAutomobile::PreRender")
+        hookASM(0x6ABC71, "66 8B 46 22 66 3D B9 01",          movReg16WordPtrReg<REG_AX, REG_ESI, 0x6ABC79, 4, 0x01B93D66>, "CAutomobile::PreRender");
+        hookASM(0x6ABC9D, "66 8B 46 22 66 3D 14 02",          movReg16WordPtrReg<REG_AX, REG_ESI, 0x6ABCA5, 4, 0x02143D66>, "CAutomobile::PreRender");
+        hookASM(0x6ABD0F, "66 3D B0 01 0F BF C8",             cmpReg16Model<REG_AX, 0x6ABD16, 0x1B0, 3, 0x90C8BF0F>, "CAutomobile::PreRender");
+        hookASM(0x6ABFC8, "66 81 7E 22 B0 01",                cmpWordPtrRegModel<REG_ESI, 0x6ABFCE, 0x1B0>, "CAutomobile::PreRender");
+        hookASM(0x6AC025, "66 81 7E 22 B0 01",                cmpWordPtrRegModel<REG_ESI, 0x6AC02B, 0x1B0>, "CAutomobile::PreRender");
+        hookASM(0x6AC297, "66 8B 46 22 D9 5C 24 34",          movReg16WordPtrReg<REG_AX, REG_ESI, 0x6AC29F, 4, 0x34245CD9>, "CAutomobile::PreRender");
+        hookASM(0x6ACBC7, "66 81 7E 22 EF 01",                cmpWordPtrRegModel<REG_ESI, 0x6ACBCD, 0x1EF>, "CAutomobile::PreRender");
+        hookASM(0x6BD40F, "66 81 7E 22 0B 02",                cmpWordPtrRegModel<REG_ESI, 0x6BD415, 0x20B>, "CBike::PreRender");
+        hookASM(0x6D7E11, "66 81 7E 22 0B 02",                cmpWordPtrRegModel<REG_ESI, 0x6D7E17, 0x20B>, "CVehicle::InflictDamage");
+        hookASM(0x70BF09, "0F BF 5F 22 DD D8",                movsxReg32WordPtrReg<REG_EBX, REG_EDI, 0x70BF0F, 2, 0x9090D8DD>, "CShadows::StoreShadowForVehicle");
+        
+        MakeInline<0x6AC0E2>("CAutomobile::PreRender", "BF 20 02 00 00", [](injector::reg_pack& regs)
+        {
+            auto model = reinterpret_cast<CVehicle*>(regs.esi)->m_nModelIndex;
 
+            if (getVariationOriginalModel(model) == 544)
+                regs.edi = model;
+        });
 
-        hookCall(0x8711E0, SetupSuspensionLinesHooked<0x8711E0>, "CAutomobile::SetupSuspensionLines", true);
-        hookCall(0x6B119E, SetupSuspensionLinesHooked<0x6B119E>, "CAutomobile::SetupSuspensionLines");
-        hookCall(0x8711F0, DoBurstAndSoftGroundRatiosHooked<0x8711F0>, "CAutomobile::DoBurstAndSoftGroundRatios", true);
+        MakeInline<0x41F2A2>("CCarAI::UpdateCarAI", "BF 0B 02 00 00", [](injector::reg_pack& regs)
+        {
+            auto model = reinterpret_cast<CVehicle*>(regs.esi)->m_nModelIndex;
+
+            if (getVariationOriginalModel(model) == 523)
+                regs.edi = model;
+        });
+
         hookCall(0x8711D0, BurstTyreHooked<0x8711D0>, "CAutomobile::BurstTyre", true);
-        hookCall(0x871168, CAutomobile__RenderHooked<0x871168>, "CAutomobile::Render", true);
-        hookCall(0x871178, ProcessEntityCollisionHooked<0x871178>, "CAutomobile::ProcessEntityCollision", true);
-
 
         hookCall(0x6B39E6, RegisterCarBlownUpByPlayerHooked<0x6B39E6>, "CDarkel::RegisterCarBlownUpByPlayer"); //CAutomobile::BlowUpCar
         hookCall(0x6B3DEA, RegisterCarBlownUpByPlayerHooked<0x6B3DEA>, "CDarkel::RegisterCarBlownUpByPlayer"); //CAutomobile::BlowUpCarCutSceneNoExtras
         hookCall(0x6E2D14, RegisterCarBlownUpByPlayerHooked<0x6E2D14>, "CDarkel::RegisterCarBlownUpByPlayer"); //CVehicle::~CVehicle
 
-        hookCall(0x6B2028, TankControlHooked<0x6B2028>, "CAutomobile::TankControl"); //CAutomobile::ProcessControl
-        hookCall(0x6B51B8, DoSoftGroundResistanceHooked<0x6B51B8>, "CAutomobile::DoSoftGroundResistance"); //CAutomobile::ProcessAI
-
-        hookCall(0x6D6A76, GetMaximumNumberOfPassengersFromNumberOfDoorsHooked<0x6D6A76>, "CVehicleModelInfo::GetMaximumNumberOfPassengersFromNumberOfDoors"); //CVehicle::SetModelIndex
-
-        hookCall(0x6E2730, DoHeadLightReflectionHooked<0x6E2730>, "CVehicle::DoHeadLightReflection"); //CVehicle::DoVehicleLights
-
         hookCall(0x8719A8, ProcessControlInputsHooked<0x8719A8>, "CPlane::ProcessControlInputs", true);
-
-        hookCall(0x6C5600, DoHeliDustEffectHooked<0x6C5600>, "CAutomobile::DoHeliDustEffect"); //CHeli::PreRender
-        hookCall(0x6C9FB7, DoHeliDustEffectHooked<0x6C9FB7>, "CAutomobile::DoHeliDustEffect"); //CPlane::PreRender
-
-        hookCall(0x6C7917, ProcessWeaponsHooked<0x6C7917>, "CVehicle::ProcessWeapons"); //CHeli::ProcessControl
-        hookCall(0x6C9348, ProcessWeaponsHooked<0x6C9348>, "CVehicle::ProcessWeapons"); //CPlane::ProcessControl
     }
-
-    if (vehOptions->enableSiren)
-    {
-        hookCall(0x41DC74, UsesSirenHooked<0x41DC74>, "CVehicle::UsesSiren"); //CCarAI::UpdateCarAI
-        hookCall(0x41E05F, UsesSirenHooked<0x41E05F>, "CVehicle::UsesSiren"); //CCarAI::UpdateCarAI
-        hookCall(0x41E874, UsesSirenHooked<0x41E874>, "CVehicle::UsesSiren"); //CCarAI::UpdateCarAI
-        hookCall(0x41F10F, UsesSirenHooked<0x41F10F>, "CVehicle::UsesSiren"); //CCarAI::UpdateCarAI
-        hookCall(0x462344, UsesSirenHooked<0x462344>, "CVehicle::UsesSiren"); //CRoadBlocks::CreateRoadBlockBetween2Points
-        hookCall(0x4F77DA, UsesSirenHooked<0x4F77DA>, "CVehicle::UsesSiren"); //CAEVehicleAudioEntity::Initialise
-        hookCall(0x61369D, UsesSirenHooked<0x61369D>, "CVehicle::UsesSiren"); //CPopulation::CreateWaitingCoppers
-        hookCall(0x6B2BCB, UsesSirenHooked<0x6B2BCB>, "CVehicle::UsesSiren"); //CAutomobile::ProcessControl
-        hookCall(0x6E0954, UsesSirenHooked<0x6E0954>, "CVehicle::UsesSiren"); //CVehicle::ProcessSirenAndHorn
-    }
-
-    if (vehOptions->enableLights)
-    {
-        hookCall(0x6ABA60, RegisterCoronaHooked<0x6ABA60>, "CCoronas::RegisterCorona"); //CAutomobile::PreRender
-        hookCall(0x6ABB35, RegisterCoronaHooked<0x6ABB35>, "CCoronas::RegisterCorona"); //CAutomobile::PreRender
-        hookCall(0x6ABC69, RegisterCoronaHooked<0x6ABC69>, "CCoronas::RegisterCorona"); //CAutomobile::PreRender
-        if (memcmp(0x6ABA56, "68 FF 00 00 00") || forceEnableGlobal || forceEnable.contains(0x6ABA56))
-            injector::MakeJMP(0x6ABA56, patchCoronas);
-        else
-            Log::LogModifiedAddress(0x6ABA56, "Modified method detected: CAutomobile::PreRender - 0x6ABA56 is %s\n", bytesToString(0x6ABA56, 5).c_str());
-
-        hookCall(0x6AB80F, AddLightHooked<0x6AB80F>, "CPointLights::AddLight"); //CAutomobile::PreRender
-        hookCall(0x6ABBA6, AddLightHooked<0x6ABBA6>, "CPointLights::AddLight"); //CAutomobile::PreRender
-
-        hookCall(0x6AB34B, AddDamagedVehicleParticlesHooked<0x6AB34B>, "CVehicle::AddDamagedVehicleParticles"); //CAutomobile::PreRender
-    }
-
-    if (vehOptions->disablePayAndSpray)
-        hookCall(0x44AC75, IsCarSprayableHooked<0x44AC75>, "CGarages::IsCarSprayable"); //CGarage::Update
-
-    if (vehOptions->enableSideMissions)
-    {
-        hookCall(0x48DA81, IsLawEnforcementVehicleHooked<0x48DA81>, "CVehicle::IsLawEnforcementVehicle"); //056C: IS_CHAR_IN_ANY_POLICE_VEHICLE
-        hookCall(0x469624, CPool__atHandleHooked<0x469624>, "CPool<CPed>::atHandle"); //00DD: IS_CHAR_IN_MODEL
-        hookCall(0x4912AD, CPool__atHandleTaxiHooked<0x4912AD>, "CPool<CPed>::atHandle"); //0602: IS_CHAR_IN_TAXI
-    }
-
-    hookCall(0x85C5F4, CreateInstanceHooked<0x85C5F4>, "CVehicleModelInfo::CreateInstance", true);
-
-    hookCall(0x4306A1, GetNewVehicleDependingOnCarModelHooked<0x4306A1>, "CCarCtrl::GetNewVehicleDependingOnCarModel"); ///CCarCtrl::GenerateOneRandomCar
-
-    hookCall(0x6D5F2F, CPhysicalHooked<0x6D5F2F>, "CPhysical::CPhysical"); //CVehicle::CVehicle
-
-    hookCall(0x6CFFBB, AddAudioEventHooked<0x6CFFBB>, "CAEVehicleAudioEntity::AddAudioEvent"); //CTrailer::SetTowLink
-    hookCall(0x6CEFCE, AddAudioEventHooked<0x6CEFCE>, "CAEVehicleAudioEntity::AddAudioEvent"); //CTrailer::BreakTowLink
-
-    //Tuning for parked cars
-    hookCall(0x6F3C8C, CWorld__AddHooked<0x6F3C8C>, "CWorld::Add");
 
     DWORD oldProtect;
     if (VirtualProtect(asmNextInstr, 16, PAGE_EXECUTE_READWRITE, &oldProtect) == 0)

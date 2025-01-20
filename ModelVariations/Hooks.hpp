@@ -72,5 +72,5 @@ void MakeInline(std::string_view funcName, const char* originalData, FuncT func)
     if (memcmp(at, originalData) || forceEnable.contains(at) || forceEnableGlobal)
         injector::MakeInline<at, at + len>(func);
     else
-        Log::LogModifiedAddress(at, "Modified method detected: %s - 0x%08X is %s\n", funcName, at, bytesToString(at, len).c_str());
+        Log::LogModifiedAddress(at, "%s detected: %s - 0x%08X is %s\n", funcType.c_str(), funcName, at, bytesToString(at, len).c_str());
 }

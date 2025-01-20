@@ -1429,7 +1429,17 @@ int __fastcall CreateInstanceHooked(CVehicleModelInfo* _this)
         else
         {
             char errorString[256] = {};
-            snprintf(errorString, 255, "Couldn't load model %d! The game will crash.\nLoad state: %u\nReference count: %u\nTimes used: %u\n", index, CStreaming__ms_aInfoForModel[index].m_nLoadState, _this->m_nRefCount, _this->m_nTimesUsed);
+            snprintf(errorString, 255, "Couldn't load model %d! The game will crash.\n"
+                                       "Load state: %u\n"
+                                       "Reference count: %u\n"
+                                       "Times used: %u\n"
+                                       "Vehicles: %u/%u\n"
+                                       "VehicleStructs: %u/%u\n"
+                                       "Streaming memory: %u/%u MB", index, CStreaming__ms_aInfoForModel[index].m_nLoadState, _this->m_nRefCount, _this->m_nTimesUsed,
+                                                                     CPools::ms_pVehiclePool->GetNoOfUsedSpaces(), CPools::ms_pVehiclePool->m_nSize, 
+                                                                     CVehicleModelInfo__CVehicleStructure__m_pInfoPool->GetNoOfUsedSpaces(),
+                                                                     CVehicleModelInfo__CVehicleStructure__m_pInfoPool->m_nSize,
+                                                                     CStreaming__ms_memoryUsed/1024/1024, CStreaming__ms_memoryAvailable/1024/1024);
             Log::Write("\n%s\n", errorString);
             MessageBox(NULL, errorString, "Model Variations", MB_ICONERROR);
         }

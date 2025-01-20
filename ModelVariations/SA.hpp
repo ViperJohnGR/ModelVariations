@@ -38,8 +38,10 @@ inline CPedModelInfo* CModelInfo__AddPedModel(int id) { return getDynamicFunctio
 #define CPopulation__m_CarGroups (*reinterpret_cast<short**>(0x421948))
 
 #define CStreaming__ms_pExtraObjectsDir (**reinterpret_cast<CDirectory***>(0x409F6C))
-#define CStreaming__ms_pedsLoaded (*reinterpret_cast<int **>(0x40A5A0))
-#define CStreaming__ms_numPedsLoaded (**reinterpret_cast<int **>(0x40A71F))
+#define CStreaming__ms_pedsLoaded (*reinterpret_cast<int**>(0x40A5A0))
+#define CStreaming__ms_memoryAvailable (**reinterpret_cast<uint32_t**>(0x40E146))
+#define CStreaming__ms_memoryUsed (**reinterpret_cast<uint32_t**>(0x408ACA))
+#define CStreaming__ms_numPedsLoaded (**reinterpret_cast<int**>(0x40A71F))
 #define CStreaming__ms_vehiclesLoaded (*reinterpret_cast<CLoadedCarGroup**>(0x40B997))
 #define CStreaming__ms_aInfoForModel (*reinterpret_cast<CStreamingInfo**>(0x5B8AE8))
 inline void CStreaming__LoadAllRequestedModels(bool bOnlyPriorityRequests) { getDynamicFunction<void, 0x49B421>(bOnlyPriorityRequests); }
@@ -59,6 +61,7 @@ inline bool CTheZones__PointLiesWithinZone(void* point, void* zone) { return get
 #define CTheZones__NavigationZoneArray (*reinterpret_cast<unsigned char**>(0x572BB7))
 
 inline short CVehicleModelInfo__CLinkedUpgradeList__FindOtherUpgrade(uint32_t _this, uint16_t a2) { return getDynamicMethod<short, 0x4986BB>(_this, a2); }
+#define CVehicleModelInfo__CVehicleStructure__m_pInfoPool (**reinterpret_cast<CPool<CVehicleModelInfo::CVehicleStructure>***>(0x5B8FF9))
 #define CVehicleModelInfo__ms_linkedUpgrades (*reinterpret_cast<unsigned*>(0x4986B7))
 
 #define ScriptParams (*reinterpret_cast<int**>(0x46408A))

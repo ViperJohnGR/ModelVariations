@@ -500,13 +500,13 @@ void VehicleVariations::LoadData()
             {
                 std::vector<unsigned short> vec = dataFile.ReadLine(section, areas[j].first, READ_GROUPS);
 
-                if (!vec.empty())
+                if (j < 6)
                 {
-                    if (j < 6)
+                    if (!vec.empty())
                         vehVars->occupantGroups[i][j] = vec;
-                    else
-                        vehVars->occupantGroups[i][j] = vectorUnion(vec, vehVars->occupantGroups[i][areas[j].second]);
                 }
+                else if (vehVars->occupantGroups.contains(i))
+                    vehVars->occupantGroups[i][j] = vectorUnion(vec, vehVars->occupantGroups[i][areas[j].second]);
             }
 
             //Tuning
@@ -515,13 +515,15 @@ void VehicleVariations::LoadData()
                 std::vector<unsigned short> vec = dataFile.ReadLine(section, areas[j].first, READ_TUNING);
 
                 if (!vec.empty())
-                {
                     vehVars->vehHasTuning.insert(i);
-                    if (j < 6)
+
+                if (j < 6)
+                {
+                    if (!vec.empty())
                         vehVars->tuning[i][j] = vec;
-                    else
-                        vehVars->tuning[i][j] = vectorUnion(vec, vehVars->tuning[i][areas[j].second]);
                 }
+                else if (vehVars->tuning.contains(i))
+                    vehVars->tuning[i][j] = vectorUnion(vec, vehVars->tuning[i][areas[j].second]);
             }
 
             //Trailers
@@ -529,13 +531,13 @@ void VehicleVariations::LoadData()
             {
                 std::vector<unsigned short> vec = dataFile.ReadLine(section, areas[j].first, READ_TRAILERS);
 
-                if (!vec.empty())
+                if (j < 6)
                 {
-                    if (j < 6)
+                    if (!vec.empty())
                         vehVars->trailerAreas[i][j] = vec;
-                    else
-                        vehVars->trailerAreas[i][j] = vectorUnion(vec, vehVars->trailerAreas[i][areas[j].second]);
                 }
+                else if (vehVars->trailerAreas.contains(i))
+                    vehVars->trailerAreas[i][j] = vectorUnion(vec, vehVars->trailerAreas[i][areas[j].second]);
             }
 
 

@@ -774,7 +774,8 @@ void VehicleVariations::Process()
 
         if (veh->m_nModelIndex >= 400 && veh->m_nModelIndex < 612 && !vehVars->currentVariations[veh->m_nModelIndex - 400].empty() && vehVars->currentVariations[veh->m_nModelIndex - 400][0] == 0)
         {
-            veh->m_nVehicleFlags.bFadeOut = 1;
+            CWorld::Remove(veh);
+            veh->Remove();
         }
         else
         {

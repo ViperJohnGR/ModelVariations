@@ -2250,7 +2250,7 @@ void VehicleVariations::InstallHooks()
         hookASM(0x427790, "66 81 7E 22 1B 02",                cmpWordPtrRegModel<REG_ESI, 0x427796, 0x21B>, "CCarCtrl::PickNextNodeToFollowPath");
         hookASM(0x42DB2E, "66 81 7F 22 1B 02",                cmpWordPtrRegModel<REG_EDI, 0x42DB34, 0x21B>, "CCarCtrl::IsThisAnAppropriateNode");
         
-        if (GetGameVersion() == GAME_10US_COMPACT)
+        if (isGameCompact())
             hookASM(0x42F8A7, "66 81 7E 22 1B 02",            cmpWordPtrRegModel<REG_ESI, 0x42F8AD, 0x21B>, "CCarCtrl::JoinCarWithRoadSystem");
         else
             hookASM(0x156A4D7, "66 81 7E 22 1B 02",           cmpWordPtrRegModel<REG_ESI, 0x156A4DD, 0x21B>, "CCarCtrl::JoinCarWithRoadSystem");
@@ -2330,7 +2330,7 @@ void VehicleVariations::InstallHooks()
         hookASM(0x6C8FCB, "81 FF 1B 02 00 00",                cmpReg32Model<REG_EDI, 0x6C8FD1, 0x21B>, "CPlane::CPlane");
         hookASM(0x6C8FFA, "81 FF 01 02 00 00",                cmpReg32Model<REG_EDI, 0x6C9000, 0x201>, "CPlane::CPlane");
 
-        hookASM((GetGameVersion() != GAME_10US_COMPACT) ? 0x407A15 : 0x6D444EU, "66 81 FA DC 01", cmpReg16Model<REG_DX, 0x6D4453, 0x1DC>, "CVehicle::GetPlaneGunsPosition");
+        hookASM((!isGameCompact()) ? 0x407A15 : 0x6D444EU, "66 81 FA DC 01", cmpReg16Model<REG_DX, 0x6D4453, 0x1DC>, "CVehicle::GetPlaneGunsPosition");
 
         hookASM(0x6D6A7B, "0F BF 4E 22 88 86 88 04 00 00",    movsxReg32WordPtrReg<REG_ECX, REG_ESI, 0x6D6A85, 6, 0x04888688, 0x90900000>, "CVehicle::SetModelIndex");
         hookASM(0x429051, "66 81 7E 22 AE 01",                cmpWordPtrRegModel<REG_ESI, 0x429057, 0x1AE>, "CCarCtrl::SteerAIBoatWithPhysicsAttackingPlayer");
@@ -2378,7 +2378,7 @@ void VehicleVariations::InstallHooks()
         hookASM(0x6D42FE, "8D 81 57 FE FF FF",                patch6D42FE, "CVehicle::GetPlaneGunsPosition");
         hookASM(0x6AC730, "A1 10 B9 A9 00",                   patch6AC730, "CAutomobile::PreRender");
         hookASM(0x6D474B, "8D 87 57 FE FF FF",                patch6D474B, "CVehicle::GetPlaneOrdnancePosition");
-        hookASM(0x729B76U, (GetGameVersion() != GAME_10US_COMPACT) ? "E9 18 D7 CD FF" : "BB 59 02 00 00", patch729B76, "CAutomobile::FireTruckControl");
+        hookASM(0x729B76U, isGameHOODLUM() ? "E9 18 D7 CD FF" : "BB 59 02 00 00", patch729B76, "CAutomobile::FireTruckControl");
         hookASM(0x6DD218, "BF CC 01 00 00",                   patch6DD218, "CVehicle::DoBoatSplashes");
         hookASM(0x6E1786, "66 8B 46 22 66 3D B7 01",          movReg16WordPtrReg<REG_AX, REG_ESI, 0x6E178E, 4, 0x01B73D66>, "CVehicle::DoTailLightEffect");
         hookASM(0x6A6602, "66 81 7F 22 B0 01",                cmpWordPtrRegModel<REG_EDI, 0x6A6608, 0x1B0>, "CAutomobile::SetupSuspensionLines");
@@ -2423,10 +2423,9 @@ void VehicleVariations::InstallHooks()
         hookASM(0x6ABFC8, "66 81 7E 22 B0 01",                cmpWordPtrRegModel<REG_ESI, 0x6ABFCE, 0x1B0>, "CAutomobile::PreRender");
         hookASM(0x6AC025, "66 81 7E 22 B0 01",                cmpWordPtrRegModel<REG_ESI, 0x6AC02B, 0x1B0>, "CAutomobile::PreRender");
         hookASM(0x6AC297, "66 8B 46 22 D9 5C 24 34",          movReg16WordPtrReg<REG_AX, REG_ESI, 0x6AC29F, 4, 0x34245CD9>, "CAutomobile::PreRender");
-        hookASM(0x6ACBC7, "66 81 7E 22 EF 01",                cmpWordPtrRegModel<REG_ESI, 0x6ACBCD, 0x1EF>, "CAutomobile::PreRender");
+        hookASM(isGameCompact() ? 0x6ACBC7U : 0x40649C, "66 81 7E 22 EF 01", cmpWordPtrRegModel<REG_ESI, 0x6ACBCD, 0x1EF>, "CAutomobile::PreRender");
         hookASM(0x6BD40F, "66 81 7E 22 0B 02",                cmpWordPtrRegModel<REG_ESI, 0x6BD415, 0x20B>, "CBike::PreRender");
         hookASM(0x6D7E11, "66 81 7E 22 0B 02",                cmpWordPtrRegModel<REG_ESI, 0x6D7E17, 0x20B>, "CVehicle::InflictDamage");
-        hookASM(0x70BF09, "0F BF 5F 22 DD D8",                movsxReg32WordPtrReg<REG_EBX, REG_EDI, 0x70BF0F, 2, 0x9090D8DD>, "CShadows::StoreShadowForVehicle");
         
         MakeInline<0x6AC0E2>("CAutomobile::PreRender", "BF 20 02 00 00", [](injector::reg_pack& regs)
         {

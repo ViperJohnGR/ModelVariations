@@ -14,6 +14,16 @@
 #include <CStreaming.h>
 
 
+inline bool isGameHOODLUM()
+{
+    return (plugin::GetGameVersion() == GAME_10US_HOODLUM);
+}
+
+inline bool isGameCompact()
+{
+    return (plugin::GetGameVersion() == GAME_10US_COMPACT);
+}
+
 inline CVector2D convert3DVectorTo2D(const CVector vec)
 {
     return { vec.x, vec.y };

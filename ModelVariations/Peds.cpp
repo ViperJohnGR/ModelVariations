@@ -618,7 +618,7 @@ void PedVariations::InstallHooks(bool enableSpecialPeds)
         else
             Log::Write("Extra objects directory limit was not increased.\n");
 
-        bool gameHOODLUM = plugin::GetGameVersion() != GAME_10US_COMPACT;
+        bool gameHOODLUM = isGameHOODLUM();
         bool notModified = true;
 
         //Count of killable model IDs

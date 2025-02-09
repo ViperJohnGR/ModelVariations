@@ -521,8 +521,8 @@ void __cdecl CGame__ProcessHooked()
         Log::Write("\nLogging JMP hooks...\n");
         std::vector<unsigned char> buffer;
 
-        const std::vector<int> sections = (GetGameVersion() == GAME_10US_HOODLUM) ? std::vector<int> { 0, 1, 7, 8, 9, 10 } : std::vector<int>{ 0, 1 };
-        const std::vector<std::uintptr_t> validRanges = (GetGameVersion() == GAME_10US_HOODLUM) ? std::vector<std::uintptr_t> { 0x401000, 0x857000, 0xCB1000, 0x12FB000, 0x1301000, 0x1556000 } : std::vector<std::uintptr_t>{ 0x401000, 0x857000 };
+        const std::vector<int> sections = isGameHOODLUM() ? std::vector<int> { 0, 1, 7, 8, 9, 10 } : std::vector<int>{ 0, 1 };
+        const std::vector<std::uintptr_t> validRanges = isGameHOODLUM() ? std::vector<std::uintptr_t> { 0x401000, 0x857000, 0xCB1000, 0x12FB000, 0x1301000, 0x1556000 } : std::vector<std::uintptr_t>{ 0x401000, 0x857000 };
         std::unordered_map<std::string, std::vector<jumpInfo>> jumpsMap;
 
         auto gta_saModule = LoadedModules::GetModule(exeName);
@@ -909,9 +909,9 @@ public:
 
             Log::Write("Model Variations %s\n%s\n%s\n\n%s\n", MOD_VERSION DEBUG_STRING, windowsVersion.c_str(), getDatetime(true, true, false).c_str(), exePath.c_str());
 
-            if (GetGameVersion() == GAME_10US_HOODLUM)
+            if (isGameHOODLUM())
                 Log::Write("Supported exe detected: 1.0 US HOODLUM | %u bytes | %s\n", exeFilesize, exeHash.c_str());
-            else if (GetGameVersion() == GAME_10US_COMPACT)
+            else if (isGameCompact())
                 Log::Write("Supported exe detected: 1.0 US Compact | %u bytes | %s\n", exeFilesize, exeHash.c_str());
             else
                 Log::Write("Unsupported exe detected: %u bytes | %s\n", exeFilesize, exeHash.c_str());

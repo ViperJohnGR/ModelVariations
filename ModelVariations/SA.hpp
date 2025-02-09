@@ -64,4 +64,4 @@ inline short CVehicleModelInfo__CLinkedUpgradeList__FindOtherUpgrade(uint32_t _t
 #define CVehicleModelInfo__CVehicleStructure__m_pInfoPool (**reinterpret_cast<CPool<CVehicleModelInfo::CVehicleStructure>***>(0x5B8FF9))
 #define CVehicleModelInfo__ms_linkedUpgrades (*reinterpret_cast<unsigned*>(0x4986B7))
 
-#define ScriptParams (*reinterpret_cast<int**>(0x46408A))
+#define ScriptParams (reinterpret_cast<int*>(0xA43C78))

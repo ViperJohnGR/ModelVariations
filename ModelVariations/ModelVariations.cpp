@@ -41,8 +41,6 @@
 #endif
 
 
-using namespace plugin;
-
 struct jumpInfo {
     std::uintptr_t address;
     std::uintptr_t destination;

@@ -1594,7 +1594,7 @@ bool __cdecl IsCarSprayableHooked(CVehicle* veh)
 
 //enableSideMissions
 template <std::uintptr_t address>
-CPed* __fastcall CPool__atHandleHooked(void* _this, void*, signed int h)
+CPed* __fastcall CPool__atHandleHooked(void* _this, void*, int h)
 {
     CPed* ped = callMethodOriginalAndReturn<CPed*, address>(_this, h);
     if (IsPedPointerValid(ped) && IsVehiclePointerValid(ped->m_pVehicle))
@@ -1607,7 +1607,7 @@ CPed* __fastcall CPool__atHandleHooked(void* _this, void*, signed int h)
 }
 
 template <std::uintptr_t address>
-CPed* __fastcall CPool__atHandleTaxiHooked(void* _this, void*, signed int h) //Unnecessarily complicated function to avoid incompatibility with FLA
+CPed* __fastcall CPool__atHandleTaxiHooked(void* _this, void*, int h) //Unnecessarily complicated function to avoid incompatibility with FLA
 {
     static uint8_t taxiPed[sizeof(CPed)];
     static uint8_t taxiVeh[sizeof(CVehicle)];

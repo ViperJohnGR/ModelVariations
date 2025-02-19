@@ -7,6 +7,7 @@
 
 std::map<loadedModNames, bool> loadedMods;
 std::vector<std::pair<std::string, MODULEINFO>> loadedModules;
+std::string modDirectory;
 
 
 std::pair<std::string, MODULEINFO> LoadedModules::GetModuleAtAddress(std::uintptr_t address)
@@ -35,6 +36,18 @@ std::pair<std::string, MODULEINFO> LoadedModules::GetModule(std::string_view nam
             return i;
 
     return {};
+}
+
+std::string LoadedModules::GetSelfDirectory()
+{
+    if (modDirectory.empty())
+    {
+        std::string fullPath = LoadedModules::GetModule(MOD_NAME).first;
+
+        size_t pos = fullPath.find_last_of("/\\");
+        modDirectory = (pos != std::string::npos) ? fullPath.substr(0, pos) : "";
+    }
+    return modDirectory;
 }
 
 bool LoadedModules::IsModLoaded(loadedModNames mod)

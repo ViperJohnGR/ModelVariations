@@ -1,5 +1,6 @@
 #include "DataReader.hpp"
 #include "FuncUtil.hpp"
+#include "LoadedModules.hpp"
 #include "Log.hpp"
 #include "SA.hpp"
 
@@ -17,7 +18,7 @@ DataReader::DataReader(const char* filename)
 
 bool DataReader::Load(const char* filename)
 {
-	std::string file = fileToString(filename);
+	std::string file = fileToString(LoadedModules::GetSelfDirectory() + '\\' + filename);
 
 	data.clear();
 

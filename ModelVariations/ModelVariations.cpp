@@ -31,15 +31,7 @@
 #pragma comment (lib, "urlmon.lib")
 
 
-#define MOD_VERSION "9.9"
-#ifdef _DEBUG
-#define MOD_NAME "ModelVariations_d.asi"
-#define DEBUG_STRING " DEBUG"
-#else
-#define MOD_NAME "ModelVariations.asi"
-#define DEBUG_STRING ""
-#endif
-
+#define MOD_VERSION "9.9.1"
 
 struct jumpInfo {
     std::uintptr_t address;
@@ -818,6 +810,7 @@ class ModelVariations {
 public:
     ModelVariations() {
 
+        LoadedModules::Refresh();
         iniSettings.Load(dataFileName);
 
         trackReferenceCounts = iniSettings.ReadInteger("Settings", "TrackReferenceCounts", -1);
@@ -905,7 +898,7 @@ public:
                 windowsVersion += " (64-bit processor)";
 
 
-            Log::Write("Model Variations %s\n%s\n%s\n\n%s\n", MOD_VERSION DEBUG_STRING, windowsVersion.c_str(), getDatetime(true, true, false).c_str(), exePath.c_str());
+            Log::Write("Model Variations %s %s\n%s\n%s\n\n%s\n", MOD_VERSION, IS_DEBUG ? "DEBUG" : "", windowsVersion.c_str(), getDatetime(true, true, false).c_str(), exePath.c_str());
 
             if (isGameHOODLUM())
                 Log::Write("Supported exe detected: 1.0 US HOODLUM | %u bytes | %s\n", exeFilesize, exeHash.c_str());

@@ -10,36 +10,34 @@
 #include <CModelInfo.h>
 #include <CPedModelInfo.h>
 #include <CPed.h>
+#include <CTheZones.h>
 
 #include <array>
 #include <stack>
-
-constexpr int MAX_ORIGINAL_PED_ID = 300;
 
 static const char* dataFileName = "ModelVariations_Peds.ini";
 static DataReader dataFile(dataFileName);
 int16_t destroyedModelCounters[20000];
 
 struct tPedVars {
-    std::array<std::vector<unsigned short>, 16> variations[MAX_ORIGINAL_PED_ID];
-    std::array<std::vector<unsigned short>, 6> wantedVariations[MAX_ORIGINAL_PED_ID];
-    std::array<std::unordered_map<uint64_t, std::vector<unsigned short>>, MAX_ORIGINAL_PED_ID> zoneVariations;
+    std::unordered_map<uint64_t, std::unordered_map<unsigned short, std::vector<unsigned short>>> variations;
+    std::unordered_map<unsigned short, std::array<std::vector<unsigned short>, 6>> wantedVariations;
+    std::map<unsigned short, std::vector<unsigned short>> currentVariations;
 
     std::map<unsigned short, int> pedTimeSinceSpawn;
     std::unordered_map<unsigned short, std::vector<unsigned short>> originalModels;
-    std::unordered_map<unsigned short, std::string> pedModels;
     std::unordered_map<unsigned short, bool> useParentVoice;
     std::unordered_map<unsigned short, std::vector<unsigned short>> voices;
     std::unordered_map<unsigned short, unsigned int> animGroups;
 
+    std::set<unsigned short> pedHasVariations;
+
     std::stack<CPed*> stack;
 
-    std::vector<unsigned short> currentVariations[MAX_ORIGINAL_PED_ID];
     std::vector<unsigned short> disableOnMission;
     std::vector<unsigned short> dontInheritBehaviourModels;
     std::vector<unsigned short> mergeZones;
     std::vector<unsigned short> mergeInteriors;
-    std::vector<unsigned short> pedHasVariations;
 };
 
 std::unique_ptr<tPedVars> pedVars(new tPedVars);
@@ -63,7 +61,7 @@ unsigned short variationModel = 0;
 
 bool isValidPedId(int id)
 {
-    if (id <= 0 || id >= MAX_ORIGINAL_PED_ID)
+    if (id < 1)
         return false;
     if (id >= 190 && id <= 195)
         return false;
@@ -143,8 +141,8 @@ bool compareOriginalModels(unsigned short model1, unsigned short model2, bool in
 
 void PedVariations::ClearData()
 {
-    pedVars.reset(new tPedVars);
-    pedOptions.reset(new tPedOptions);
+    pedVars.reset(new tPedVars());
+    pedOptions.reset(new tPedOptions());
 
     dataFile.data.clear();
 }
@@ -165,60 +163,70 @@ void PedVariations::LoadData()
         if (section[0] >= '0' && section[0] <= '9')
             i = std::stoi(iniData.first);
         else
-        {
             CModelInfo::GetModelInfo(section.data(), &i);
-            pedVars->pedModels.insert({ (unsigned short)i, section });
-        }
 
         if (i <= 0)
             continue;
 
         unsigned short modelIndex = static_cast<unsigned short>(i);
-
         if (isValidPedId(modelIndex))
         {
-            pedVars->pedHasVariations.push_back(modelIndex);
-
-            for (unsigned j = 0; j < 16; j++)
-                if (j < 6)
-                    pedVars->variations[modelIndex][j] = dataFile.ReadLine(section, areas[j].first, READ_PEDS);
-                else
-                    pedVars->variations[modelIndex][j] = vectorUnion(dataFile.ReadLine(section, areas[j].first, READ_PEDS), pedVars->variations[modelIndex][areas[j].second]);
-
-            pedVars->wantedVariations[modelIndex][0] = dataFile.ReadLine(section, "Wanted1", READ_PEDS);
-            pedVars->wantedVariations[modelIndex][1] = dataFile.ReadLine(section, "Wanted2", READ_PEDS);
-            pedVars->wantedVariations[modelIndex][2] = dataFile.ReadLine(section, "Wanted3", READ_PEDS);
-            pedVars->wantedVariations[modelIndex][3] = dataFile.ReadLine(section, "Wanted4", READ_PEDS);
-            pedVars->wantedVariations[modelIndex][4] = dataFile.ReadLine(section, "Wanted5", READ_PEDS);
-            pedVars->wantedVariations[modelIndex][5] = dataFile.ReadLine(section, "Wanted6", READ_PEDS);
-
-
-            for (const auto& j : pedVars->variations[modelIndex])
-                for (const auto& k : j)
-                    if (k > 0 && k != i)
-                        vectorPushUnique(pedVars->originalModels[k], modelIndex);
-            
-            for (const auto& keyValue : iniData.second)
-                if (std::binary_search(zoneNames.begin(), zoneNames.end(), keyValue.first))
+            for (auto& kvp : iniData.second)
+                if (auto it = presetAllZones.find(kvp.first); it != presetAllZones.end())
                 {
-                    auto vec = dataFile.ReadLine(section, keyValue.first, READ_PEDS);
+                    auto vec = dataFile.ReadLine(section, kvp.first, READ_PEDS);
+
                     if (!vec.empty())
                     {
-                        char tmp[8] = {};
-                        strncpy(tmp, keyValue.first.c_str(), 7);
-                        pedVars->zoneVariations[modelIndex][*reinterpret_cast<uint64_t*>(tmp)] = vec;
+                        pedVars->pedHasVariations.insert(modelIndex);
+                        if (it->second.empty()) //Global
+                        {
+                            for (int k = 0; k < CTheZones::TotalNumberOfInfoZones; k++)
+                            {
+                                CZone* zone = reinterpret_cast<CZone*>(CTheZones__NavigationZoneArray + k * 0x20);
+                                pedVars->variations[*(uint64_t*)zone->m_szLabel][modelIndex] = vectorUnion(pedVars->variations[*(uint64_t*)zone->m_szLabel][modelIndex], vec);
+                            }
+                        }
+                        else for (auto zone : it->second)
+                        {
+                            pedVars->variations[*(uint64_t*)zone->m_szLabel][modelIndex] = vectorUnion(pedVars->variations[*(uint64_t*)zone->m_szLabel][modelIndex], vec);
+                        }
                     }
+                }
 
-                    for (auto variation : vec)
+            bool mergeZones = dataFile.ReadBoolean(section, "MergeZonesWithCities", false);
+
+            for (auto& kvp : iniData.second)
+            {
+                if (isupper(kvp.first[1])) //also includes interiors
+                {
+                    auto vec = dataFile.ReadLine(section, kvp.first, READ_PEDS);
+                    if (!vec.empty())
+                    {
+                        pedVars->pedHasVariations.insert(modelIndex);
+                        char zoneName[9] = {};
+                        strncpy(zoneName, kvp.first.c_str(), 8);
+                        pedVars->variations[*(uint64_t*)zoneName][modelIndex] = mergeZones ? vectorUnion(pedVars->variations[*(uint64_t*)zoneName][modelIndex], vec) : vec;
+                    }
+                }
+            }
+
+            for (unsigned j = 0; j < 6; j++)
+            {
+                auto vec = dataFile.ReadLine(section, "Wanted" + std::to_string(j), READ_PEDS);
+                if (vec.empty())
+                    continue;
+                pedVars->wantedVariations[modelIndex][j] = vec;
+            }
+
+            for (const auto& j : pedVars->variations)
+                if (auto it = j.second.find(modelIndex); it != j.second.end())
+                    for (auto variation : it->second)
                         if (variation > 0 && variation != modelIndex)
                             vectorPushUnique(pedVars->originalModels[variation], modelIndex);
-                }
 
             for (auto &it : pedVars->originalModels)
                 std::sort(it.second.begin(), it.second.end());
-
-            if (dataFile.ReadBoolean(section, "MergeZonesWithCities", false))
-                pedVars->mergeZones.push_back(modelIndex);
 
             if (dataFile.ReadBoolean(section, "DontInheritBehaviour", false))
                 pedVars->dontInheritBehaviourModels.push_back(modelIndex);
@@ -229,7 +237,7 @@ void PedVariations::LoadData()
             if (dataFile.ReadBoolean(section, "DisableOnMission", false))
                 pedVars->disableOnMission.push_back(modelIndex);
         }
-
+        
         int parentVoice = dataFile.ReadInteger(section, "UseParentVoice", -1);
         if (parentVoice > -1)
             pedVars->useParentVoice[modelIndex] = static_cast<bool>(parentVoice);
@@ -253,7 +261,6 @@ void PedVariations::LoadData()
 
     std::sort(pedVars->dontInheritBehaviourModels.begin(), pedVars->dontInheritBehaviourModels.end());
     std::sort(pedVars->mergeZones.begin(), pedVars->mergeZones.end());
-    std::sort(pedVars->pedHasVariations.begin(), pedVars->pedHasVariations.end());
 
     pedOptions->recursiveVariations = dataFile.ReadBoolean("Settings", "RecursiveVariations", true);
     pedOptions->useParentVoices = dataFile.ReadBoolean("Settings", "UseParentVoices", false);
@@ -391,7 +398,7 @@ void PedVariations::ProcessDrugDealers(bool reset)
             Log::Write("Applying drug dealer fix...\n");
          
             for (auto& it : pedVars->originalModels)
-                if (it.first > MAX_ORIGINAL_PED_ID)
+                if (it.first > 300)
                     for (auto& originalModel : it.second)
                         if (originalModel == 28 || originalModel == 29 || originalModel == 30 || originalModel == 254)
                         {
@@ -411,42 +418,36 @@ void PedVariations::ProcessDrugDealers(bool reset)
 void PedVariations::UpdateVariations()
 {
     const CWanted* wanted = FindPlayerWanted(-1);
+    pedVars->currentVariations.clear();
 
+    auto interiorVariations = (currentInterior[0] != 0) ? pedVars->variations.find(*reinterpret_cast<const uint64_t*>(currentInterior)) : pedVars->variations.end();
+    auto zoneVariations = pedVars->variations.find(*reinterpret_cast<const uint64_t*>(currentZone));
+    
     for (auto& modelid : pedVars->pedHasVariations)
     {
-        pedVars->currentVariations[modelid] = vectorUnion(pedVars->variations[modelid][4], pedVars->variations[modelid][currentTown]);
+        bool modelHasInteriorVariations = false;
 
-        std::string section;
-        
-        if (auto it = pedVars->pedModels.find(modelid); it != pedVars->pedModels.end())
-            section = it->second;
-        else
-            section = std::to_string(modelid);
-
-        if (auto it = pedVars->zoneVariations[modelid].find(*reinterpret_cast<uint64_t*>(currentZone)); it != pedVars->zoneVariations[modelid].end())
-        {
-            if (!it->second.empty())
+        if (interiorVariations != pedVars->variations.end())
+            if (auto it = interiorVariations->second.find(modelid); it != interiorVariations->second.end())
             {
-                if (vectorHasId(pedVars->mergeZones, modelid))
-                    pedVars->currentVariations[modelid] = vectorUnion(pedVars->currentVariations[modelid], it->second);
-                else
-                    pedVars->currentVariations[modelid] = it->second;
+                pedVars->currentVariations[modelid] = it->second;
+                modelHasInteriorVariations = true;
             }
-        }
 
-        if (currentInterior[0] != 0)
+        if ((!modelHasInteriorVariations || vectorHasId(pedVars->mergeInteriors, modelid)) && zoneVariations != pedVars->variations.end())
         {
-            if (vectorHasId(pedVars->mergeInteriors, modelid))
-                pedVars->currentVariations[modelid] = vectorUnion(pedVars->currentVariations[modelid], dataFile.ReadLine(section, currentInterior, READ_PEDS));
-            else if (auto vec = dataFile.ReadLine(section, currentInterior, READ_PEDS); !vec.empty())
-                pedVars->currentVariations[modelid] = vec;
+            if (auto it = zoneVariations->second.find(modelid); it != zoneVariations->second.end())
+                pedVars->currentVariations[modelid] = vectorUnion(it->second, pedVars->currentVariations[modelid]);
         }
 
         if (wanted)
         {
             const unsigned int wantedLevel = wanted->m_nWantedLevel - (wanted->m_nWantedLevel ? 1 : 0);
-            if (!pedVars->wantedVariations[modelid][wantedLevel].empty() && !pedVars->currentVariations[modelid].empty())
-                vectorfilterVector(pedVars->currentVariations[modelid], pedVars->wantedVariations[modelid][wantedLevel]);
+            if (auto it = pedVars->wantedVariations.find(modelid); it != pedVars->wantedVariations.end())
+            {
+                if (!it->second[wantedLevel].empty() && !pedVars->currentVariations[modelid].empty())
+                    vectorfilterVector(pedVars->currentVariations[modelid], it->second[wantedLevel]);
+            }
         }
     }
 }
@@ -458,11 +459,11 @@ void PedVariations::UpdateVariations()
 void PedVariations::LogCurrentVariations()
 {
     Log::Write("pedCurrentVariations\n");
-    for (int i = 0; i < MAX_ORIGINAL_PED_ID; i++)
-        if (!pedVars->currentVariations[i].empty())
+    for (auto it : pedVars->currentVariations)
+        if (!it.second.empty())
         {
-            Log::Write("%d: ", i);
-            for (auto j : pedVars->currentVariations[i])
+            Log::Write("%d: ", it.first);
+            for (auto j : it.second)
             {
                 const char* suffix = " ";
                 if (std::find(addedIDs.begin(), addedIDs.end(), j) != addedIDs.end())
@@ -485,23 +486,24 @@ void PedVariations::LogDataFile()
 
 void PedVariations::LogVariations()
 {
-    Log::Write("\nPed Variations:\n");
-    for (unsigned int i = 0; i < MAX_ORIGINAL_PED_ID; i++)
-        for (unsigned int j = 0; j < 16; j++)
-            if (!pedVars->variations[i][j].empty())
-            {
-                Log::Write("%u: ", i);
-                for (unsigned int k = 0; k < 16; k++)
-                    if (!pedVars->variations[i][k].empty())
-                    {
-                        Log::Write("(%u) ", k);
-                        for (const auto& l : pedVars->variations[i][k])
-                            Log::Write((std::find(addedIDs.begin(), addedIDs.end(), l) != addedIDs.end()) ? "%uSP " : "%u ", l);
-                    }
+    if (!Log::Write("Ped Variations:\n"))
+        return;
 
-                Log::Write("\n", i);
-                break;
-            }
+    std::map<unsigned short, std::set<unsigned short>> variationsMap;
+    for (auto& it : pedVars->variations)
+    {
+        for (auto &i : it.second)
+            for (auto j : i.second)
+                variationsMap[i.first].insert(j);
+    }
+
+    for (auto& i : variationsMap)
+    {
+        Log::Write("%u: ", i.first);
+        for (auto j : i.second)
+            Log::Write("%u ", j);
+        Log::Write("\n");
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -526,9 +528,10 @@ int __fastcall SetModelIndexHooked(CEntity* _this, void*, int index)
     if (vectorHasId(pedVars->disableOnMission, index) && CTheScripts__IsPlayerOnAMission())
         return retVal;
 
-    if (isValidPedId(_this->m_nModelIndex) && !pedVars->currentVariations[_this->m_nModelIndex].empty())
+    auto it = pedVars->currentVariations.find(_this->m_nModelIndex);
+    if (isValidPedId(_this->m_nModelIndex) && it != pedVars->currentVariations.end() && !it->second.empty())
     {
-        const unsigned short newModel = vectorGetRandom(pedVars->currentVariations[_this->m_nModelIndex]);
+        const unsigned short newModel = vectorGetRandom(it->second);
         if (newModel > 0 && newModel != _this->m_nModelIndex)
         {
             loadModels({ newModel }, PRIORITY_REQUEST, true);

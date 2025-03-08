@@ -40,6 +40,9 @@ std::pair<std::string, MODULEINFO> LoadedModules::GetModule(std::string_view nam
 
 std::string LoadedModules::GetSelfDirectory()
 {
+    if (loadedModules.empty())
+        LoadedModules::Refresh();
+
     if (modDirectory.empty())
     {
         std::string fullPath = LoadedModules::GetModule(MOD_NAME).first;
@@ -47,6 +50,7 @@ std::string LoadedModules::GetSelfDirectory()
         size_t pos = fullPath.find_last_of("/\\");
         modDirectory = (pos != std::string::npos) ? fullPath.substr(0, pos) : "";
     }
+
     return modDirectory;
 }
 

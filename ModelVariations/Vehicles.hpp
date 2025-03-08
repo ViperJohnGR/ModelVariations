@@ -1,13 +1,13 @@
 #pragma once
 
+#include <CTheZones.h>
+
 #include <string>
 #include <vector>
 
-extern const std::pair<std::string, unsigned> areas[];
+extern std::unordered_map<std::string, std::vector<CZone*>> presetAllZones;
 extern bool forceEnableGlobal;
 extern char currentZone[8];
-extern unsigned int currentTown;
-extern std::vector<std::string> zoneNames;
 
 class VehicleVariations
 {

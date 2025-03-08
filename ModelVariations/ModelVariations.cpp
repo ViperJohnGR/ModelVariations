@@ -39,28 +39,11 @@ struct jumpInfo {
     unsigned char type;
 };
 
-const std::pair<std::string, unsigned> areas[] = { {"Countryside", 0},
-                                                   {"LosSantos", 0},
-                                                   {"SanFierro", 0},
-                                                   {"LasVenturas", 0},
-                                                   {"Global", 0},
-                                                   {"Desert", 0},
-                                                   {"TierraRobada", 5},
-                                                   {"BoneCounty", 5},
-                                                   {"RedCounty", 0},
-                                                   {"Blueberry", 8},
-                                                   {"Montgomery", 8},
-                                                   {"Dillimore", 8},
-                                                   {"PalominoCreek", 8},
-                                                   {"FlintCounty", 0},
-                                                   {"Whetstone", 0},
-                                                   {"AngelPine", 14} };
+std::unordered_map<std::string, std::vector<CZone*>> presetAllZones;
 
-std::vector<std::pair<CZone*, int>> presetZones;
 
 std::set<std::uintptr_t> callChecks;
 std::set<unsigned short> referenceCountModels;
-std::vector<std::string> zoneNames;
 std::set<unsigned short> addedIDsInGroups;
 
 std::string exePath(256, 0);
@@ -76,9 +59,7 @@ short framesSinceCallsChecked = 1001;
 char lastInterior[8] = {};
 const char* currentInterior = lastInterior;
 char currentZone[8] = {};
-unsigned int currentTown = 0;
 unsigned int currentWanted = 0;
-int isFLASpecialFeaturesEnabled = 0;
 
 bool jumpsLogged = false;
 
@@ -291,20 +272,9 @@ void updateVariations()
 
     auto player = FindPlayerPed();
     CVector position = FindPlayerCoors(-1);
-
-    currentTown = CTheZones::m_CurrLevel;
-
-    if (currentTown == LEVEL_NAME_COUNTRY_SIDE)
-        for (auto zone : presetZones)
-            if (CTheZones__PointLiesWithinZone(&position, zone.first))
-            {
-                currentTown = (unsigned int)zone.second;
-                break;
-            }
-
-    if (Log::Write("CTheZones::m_CurrLevel = %d currentTown = %d\n", CTheZones::m_CurrLevel, currentTown))
+            
+    if (Log::Write("CStreaming::ms_pedsLoaded: "))
     {
-        Log::Write("CStreaming::ms_pedsLoaded: ");
         for (int i = 0; i < CStreaming__ms_numPedsLoaded; i++)
             Log::Write("%d ", CStreaming__ms_pedsLoaded[i]);
 
@@ -359,10 +329,10 @@ void initialize()
 
         DataReader flaIni(flaIniPath.c_str());
         flaMaxID = flaIni.ReadInteger("ID LIMITS", "Count of killable model IDs", -1);
-        if (maxPedID == 0)
+        if (maxPedID == 0 && flaMaxID > -1)
             maxPedID = flaMaxID;
 
-        isFLASpecialFeaturesEnabled = flaIni.ReadInteger("ADDONS", "Enable model special feature loader", -1);
+        auto isFLASpecialFeaturesEnabled = flaIni.ReadInteger("ADDONS", "Enable model special feature loader", -1);
 
         Log::Write("\nFLA settings:\n");
         Log::Write("Enable special features = %d\n", flaIni.ReadInteger("VEHICLE SPECIAL FEATURES", "Enable special features", -1));
@@ -757,22 +727,46 @@ void __cdecl InitialiseGameHooked()
     Log::Write("-- InitialiseGame Start (%s) --\n", getDatetime(false, true, true).c_str());
 
     Log::Write("Reading zone data...\n");
-    for (int i = 0; i < CTheZones::TotalNumberOfInfoZones; i++)
+    const std::unordered_map<const char*, std::vector<const char*>> areas = { {"Countryside", {"RED", "WHET", "FLINTC"} },
+                                                                              {"LosSantos", {"LA"}},
+                                                                              {"SanFierro", {"SF"}},
+                                                                              {"LasVenturas", {"VE"}},
+                                                                              {"Global", {}},
+                                                                              {"Desert", {"ROBAD", "ROBAD1", "BONE"}},
+                                                                              {"TierraRobada", {"ROBAD", "ROBAD1"}},
+                                                                              {"BoneCounty", {"BONE"}},
+                                                                              {"RedCounty", {"RED"}},
+                                                                              {"Blueberry", {"BLUEB", "BLUEB1"}},
+                                                                              {"Montgomery", {"MONT", "MONT1"}},
+                                                                              {"Dillimore", {"DILLI"}},
+                                                                              {"PalominoCreek", {"PALO"}},
+                                                                              {"FlintCounty", {"FLINTC"}},
+                                                                              {"Whetstone", {"WHET"}},
+                                                                              {"AngelPine", {"ANGPI"}} };
+    std::unordered_map<std::string, std::vector<CZone*>> presetMainZones;
+    for (int k = 0; k < CTheZones::TotalNumberOfInfoZones; k++)
     {
-        char zoneLabel[9] = {};
-        memcpy(&zoneLabel[0], CTheZones__NavigationZoneArray + i * 0x20, 8);
-        CZone* zone = reinterpret_cast<CZone*>(CTheZones__NavigationZoneArray + i * 0x20);
+        CZone* zone = reinterpret_cast<CZone*>(CTheZones__NavigationZoneArray + k * 0x20);
 
-        std::pair<const char*, int> presetZoneDta[10] = { {"ROBAD", 6}, {"BONE", 7}, {"BLUEB", 9}, {"MONT", 10}, {"DILLI", 11}, {"PALO", 12}, {"RED", 8}, {"ANGPI", 15}, {"FLINTC", 13}, {"WHET", 14} };
-        for (std::pair<const char*, int> preset : presetZoneDta)
-            if (strncmp(preset.first, zone->m_szLabel, 8) == 0)
-                presetZones.push_back({ zone, preset.second });
-
-        zoneNames.push_back(zoneLabel);
+        for (auto &i : areas)
+            for (auto j : i.second)
+                if (strncmp(zone->m_szLabel, j, 8) == 0)
+                    presetMainZones[i.first].push_back(zone);
     }
 
-    std::sort(zoneNames.begin(), zoneNames.end());
-    Log::Write("Finished reading %u zones.\n", zoneNames.size());
+    for (int k = 0; k < CTheZones::TotalNumberOfInfoZones; k++)
+    {
+        CZone* zone = reinterpret_cast<CZone*>(CTheZones__NavigationZoneArray + k * 0x20);
+
+        for (auto& i : presetMainZones)
+            for (auto j : i.second)
+                if (strncmp(j->m_szLabel, zone->m_szLabel, 8) == 0 || CTheZones::ZoneIsEntirelyContainedWithinOtherZone(zone, j))
+                    presetAllZones[i.first].push_back(zone);
+    }
+
+    presetAllZones["Global"];
+
+    Log::Write("TotalNumberOfInfoZones = %d\n", CTheZones::TotalNumberOfInfoZones);
     Log::Write("Reading cargrp...\n");
 
     for (int i = 0; i < 34; i++)
@@ -810,7 +804,6 @@ class ModelVariations {
 public:
     ModelVariations() {
 
-        LoadedModules::Refresh();
         iniSettings.Load(dataFileName);
 
         trackReferenceCounts = iniSettings.ReadInteger("Settings", "TrackReferenceCounts", -1);
@@ -820,8 +813,6 @@ public:
         reloadKey = iniSettings.ReadInteger("Settings", "ReloadKey", 0);
         enableLog = iniSettings.ReadBoolean("Settings", "EnableLog", false) && Log::Open("ModelVariations.log");
         logJumps = iniSettings.ReadBoolean("Settings", "LogJumps", false);
-
-        zoneNames.reserve(379);
 
         std::string checkForceEnabled = iniSettings.ReadString("Settings", "ForceEnable", "");
         if (checkForceEnabled == "1")

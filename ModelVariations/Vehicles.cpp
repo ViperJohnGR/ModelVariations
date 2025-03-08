@@ -12,6 +12,7 @@
 #include <CHeli.h>
 #include <CModelInfo.h>
 #include <CPlane.h>
+#include <CTheZones.h>
 #include <CVector.h>
 #include <CVehicle.h>
 #include <CWorld.h>
@@ -72,7 +73,7 @@ int occupantModelIndex = -1;
 std::map<CVehicle*, std::vector<CVehicle*>> spawnedTrailers;  //<veh, <trailers>>
 
 std::uintptr_t x6ABCBE_Destination = 0;
-char msg[255] = {};
+
 uint32_t asmNextInstr[4] = {};
 uint16_t asmModel16 = 0;
 uint32_t asmModel32 = 0;
@@ -80,13 +81,14 @@ std::uintptr_t asmJmpAddress = 0;
 uint32_t* jmpDest = asmNextInstr;
 
 struct tVehVars {
-    std::array<std::vector<unsigned short>, 16> variations[212];
-    std::array<std::vector<unsigned short>, 6> wantedVariations[212];
-    std::array<std::unordered_map<uint64_t, std::vector<unsigned short>>, 212> zoneVariations;
+    std::unordered_map<uint64_t, std::unordered_map<unsigned short, std::vector<unsigned short>>> variations;
+    std::unordered_map<unsigned short, std::array<std::vector<unsigned short>, 6>> wantedVariations;
 
-    std::unordered_map<unsigned short, std::array<std::vector<unsigned short>, 16>> occupantGroups;
-    std::unordered_map<unsigned short, std::array<std::vector<unsigned short>, 16>> trailerAreas;
-    std::unordered_map<unsigned short, std::array<std::vector<unsigned short>, 16>> tuning;
+    std::map<unsigned short, std::vector<unsigned short>> currentVariations;
+
+    std::unordered_map<uint64_t, std::unordered_map<unsigned short, std::vector<unsigned short>>> occupantGroups;
+    std::unordered_map<uint64_t, std::unordered_map<unsigned short, std::vector<unsigned short>>> trailerZones;
+    std::unordered_map<uint64_t, std::unordered_map<unsigned short, std::vector<unsigned short>>> tuning;
     std::unordered_map<unsigned short, std::array<std::vector<unsigned short>, 6>> groupWantedVariations;
     std::unordered_map<unsigned short, unsigned short> originalModels;
     std::unordered_map<unsigned short, std::vector<unsigned short>> drivers;
@@ -99,14 +101,12 @@ struct tVehVars {
     std::unordered_map<unsigned short, std::pair<CVector, float>> lightPositions;
     std::unordered_map<unsigned short, rgba> lightColors;
     std::unordered_map<unsigned short, rgba> lightColors2;
-    std::map<unsigned short, std::vector<unsigned short>> currentTuning;
+    std::unordered_map<unsigned short, std::vector<unsigned short>> *currentTuning;
     std::unordered_map<unsigned short, std::string> vehModels;
     std::unordered_map<unsigned short, BYTE> tuningChances;
     std::unordered_map<unsigned short, BYTE> trailersSpawnChances;
-    std::unordered_map<unsigned short, unsigned short> trailersHealth;
+    std::unordered_map<unsigned short, short> trailersHealth;
 
-    std::vector<unsigned short> currentVariations[212];
-    std::vector<unsigned short> mergeZones;
     std::vector<unsigned short> parkedCars;
     std::vector<unsigned short> trailersMatchColors;
     std::vector<unsigned short> useOnlyGroups;
@@ -273,10 +273,10 @@ void processTuning(CVehicle* veh)
        16 - misc
     */
 
-    if (veh->m_nCreatedBy != eVehicleCreatedBy::MISSION_VEHICLE)
+    if (veh->m_nCreatedBy != eVehicleCreatedBy::MISSION_VEHICLE && vehVars->currentTuning)
     {
-        auto it = vehVars->currentTuning.find(veh->m_nModelIndex);
-        if (it != vehVars->currentTuning.end() && !it->second.empty())
+        auto it = vehVars->currentTuning->find(veh->m_nModelIndex);
+        if (it != vehVars->currentTuning->end() && !it->second.empty())
         {
             std::array<std::vector<unsigned short>, 18> partsToInstall;
             for (auto& part : it->second)
@@ -339,30 +339,19 @@ void processOccupantGroups(const CVehicle* veh)
     {
         if (auto modelNumGroups = vehVars->modelNumGroups.find(veh->m_nModelIndex); modelNumGroups != vehVars->modelNumGroups.end())
         {
-            const CWanted* wanted = FindPlayerWanted(-1);
-            const unsigned int wantedLevel = wanted->m_nWantedLevel - (wanted->m_nWantedLevel ? 1 : 0);
+            std::vector<unsigned short> zoneGroups;
 
-            std::string section;
-            if (auto it = vehVars->vehModels.find(veh->m_nModelIndex); it != vehVars->vehModels.end())
-                section = it->second;
-            else
-                section = std::to_string(veh->m_nModelIndex);
-
-            std::vector<unsigned short> zoneGroups = dataFile.ReadLine(section, currentZone, READ_GROUPS);
-            checkNumGroups(zoneGroups, modelNumGroups->second);
-
-            if (auto it = vehVars->occupantGroups.find(veh->m_nModelIndex); it != vehVars->occupantGroups.end())
-            {
-                if (vectorHasId(vehVars->mergeZones, veh->m_nModelIndex))
-                    zoneGroups = vectorUnion(zoneGroups, vectorUnion(it->second[4], it->second[currentTown]));
-                else if (zoneGroups.empty())
-                    zoneGroups = vectorUnion(it->second[4], it->second[currentTown]);
-            }
+            if (auto it = vehVars->occupantGroups.find(*(uint64_t*)currentZone); it != vehVars->occupantGroups.end())
+                if (auto it2 = it->second.find(veh->m_nModelIndex); it2 != it->second.end())
+                    zoneGroups = it2->second;
 
             if (!zoneGroups.empty())
             {
+                const CWanted* wanted = FindPlayerWanted(-1);
+                const unsigned int wantedLevel = wanted->m_nWantedLevel - (wanted->m_nWantedLevel ? 1 : 0);
                 currentOccupantsModel = veh->m_nModelIndex;
-                vectorfilterVector(zoneGroups, vehVars->groupWantedVariations[veh->m_nModelIndex][wantedLevel]);
+                if (auto it = vehVars->groupWantedVariations.find(veh->m_nModelIndex); it != vehVars->groupWantedVariations.end())
+                    vectorfilterVector(zoneGroups, it->second[wantedLevel]);
                 currentOccupantsGroup = vectorGetRandom(zoneGroups) - 1;
             }
         }
@@ -383,9 +372,10 @@ static int __stdcall getVariationOriginalModel(const int modelIndex)
 
 int getRandomVariation(const int modelid, bool parked = false)
 {
-    if (modelid < 400 || modelid > 611)
+    if (modelid < 400)
         return modelid;
-    if (vehVars->currentVariations[modelid - 400].empty())
+    auto it = vehVars->currentVariations.find((unsigned short)modelid);
+    if (it == vehVars->currentVariations.end() || vehVars->currentVariations[(unsigned short)modelid].empty())
         return modelid;
 
     if (parked == false)
@@ -394,7 +384,7 @@ int getRandomVariation(const int modelid, bool parked = false)
             return modelid;
     }
 
-    const unsigned short variationModel = vectorGetRandom(vehVars->currentVariations[modelid - 400]);
+    const unsigned short variationModel = vectorGetRandom(vehVars->currentVariations[(unsigned short)modelid]);
     if (variationModel > 0)
     {
         loadModels({ variationModel }, PRIORITY_REQUEST, true);
@@ -409,8 +399,8 @@ int getRandomVariation(const int modelid, bool parked = false)
 
 void VehicleVariations::ClearData()
 {
-    vehVars.reset(new tVehVars);
-    vehOptions.reset(new tVehOptions);
+    vehVars.reset(new tVehVars());
+    vehOptions.reset(new tVehOptions());
 
     dataFile.data.clear();
 }
@@ -436,117 +426,154 @@ void VehicleVariations::LoadData()
         Log::Write("%s\n", iniData.first.c_str());
 
         std::string section = iniData.first;
-        int modelid = 0;
+        int iModel = 0;
         if (section[0] >= '0' && section[0] <= '9')
-            modelid = std::stoi(section);
+            iModel = std::stoi(section);
         else
         {
-            CModelInfo::GetModelInfo(section.data(), &modelid);
-            if (modelid >= 400)
-                vehVars->vehModels.insert({ (unsigned short)modelid, section });
+            CModelInfo::GetModelInfo(section.data(), &iModel);
+            if (iModel >= 400)
+                vehVars->vehModels.insert({ (unsigned short)iModel, section });
         }
 
-        unsigned short i = (unsigned short)modelid;
-        if (i >= 400)
+        if (iModel >= 400)
         {
-            if (i < 612)
+            unsigned short modelid = (unsigned short)iModel;
+            if (dataFile.ReadBoolean(section, "ChangeOnlyParked", false))
+                vehVars->parkedCars.push_back(modelid);
+
+            for (auto& kvp : iniData.second)
             {
-                vehVars->vehHasVariations.insert(i - 400U);
+                if (auto it = presetAllZones.find(kvp.first); it != presetAllZones.end())
+                {
+                    auto vec = dataFile.ReadLine(section, kvp.first, READ_VEHICLES);
 
-                if (dataFile.ReadBoolean(section, "ChangeOnlyParked", false))
-                    vehVars->parkedCars.push_back(i);
-
-                for (unsigned j = 0; j < 16; j++)
-                    if (j < 6)
-                        vehVars->variations[i - 400][j] = dataFile.ReadLine(section, areas[j].first, READ_VEHICLES);
-                    else
-                        vehVars->variations[i - 400][j] = vectorUnion(dataFile.ReadLine(section, areas[j].first, READ_VEHICLES), vehVars->variations[i - 400][areas[j].second]);
-
-                vehVars->wantedVariations[i - 400][0] = dataFile.ReadLine(section, "Wanted1", READ_VEHICLES);
-                vehVars->wantedVariations[i - 400][1] = dataFile.ReadLine(section, "Wanted2", READ_VEHICLES);
-                vehVars->wantedVariations[i - 400][2] = dataFile.ReadLine(section, "Wanted3", READ_VEHICLES);
-                vehVars->wantedVariations[i - 400][3] = dataFile.ReadLine(section, "Wanted4", READ_VEHICLES);
-                vehVars->wantedVariations[i - 400][4] = dataFile.ReadLine(section, "Wanted5", READ_VEHICLES);
-                vehVars->wantedVariations[i - 400][5] = dataFile.ReadLine(section, "Wanted6", READ_VEHICLES);
-
-
-                for (auto &j : vehVars->variations[i - 400])
-                    for (auto& k : j)
-                        if (k > 0 && k != i && !(vectorHasId(vehOptions->inheritExclude, k)))
-                            vehVars->originalModels.insert({ k, i });
-
-                for (const auto& keyValue : iniData.second)
-                    if (std::binary_search(zoneNames.begin(), zoneNames.end(), keyValue.first))
+                    if (!vec.empty())
                     {
-                        std::vector<unsigned short> vec = dataFile.ReadLine(section, keyValue.first, READ_VEHICLES);
-                        if (!vec.empty())
+                        vehVars->vehHasVariations.insert(modelid);
+                        if (it->second.empty()) //Global
+                            for (int k = 0; k < CTheZones::TotalNumberOfInfoZones; k++)
+                            {
+                                CZone* zone = reinterpret_cast<CZone*>(CTheZones__NavigationZoneArray + k * 0x20);
+                                vehVars->variations[*(uint64_t*)zone->m_szLabel][modelid] = vectorUnion(vehVars->variations[*(uint64_t*)zone->m_szLabel][modelid], vec);
+                            }
+                        else for (auto zone : it->second)
                         {
-                            char tmp[8] = {};
-                            strncpy(tmp, keyValue.first.c_str(), 7);
-                            vehVars->zoneVariations[i - 400U][*reinterpret_cast<uint64_t*>(tmp)] = vec;
+                            vehVars->variations[*(uint64_t*)zone->m_szLabel][modelid] = vectorUnion(vehVars->variations[*(uint64_t*)zone->m_szLabel][modelid], vec);
                         }
-
-                        if (!dataFile.ReadLine(section, keyValue.first, READ_TUNING).empty())
-                            vehVars->vehHasTuning.insert(i);
-
-                        for (auto variation : vec)
-                            if (variation > 0 && variation != i && !(vectorHasId(vehOptions->inheritExclude, variation)))
-                                vehVars->originalModels.insert({ variation, i });
                     }
-            }
 
-            //Groups
-            for (unsigned j = 0; j < 16; j++)
-            {
-                std::vector<unsigned short> vec = dataFile.ReadLine(section, areas[j].first, READ_GROUPS);
+                    //Groups
+                    vec = dataFile.ReadLine(section, kvp.first, READ_GROUPS);
 
-                if (j < 6)
-                {
                     if (!vec.empty())
-                        vehVars->occupantGroups[i][j] = vec;
-                }
-                else if (vehVars->occupantGroups.contains(i))
-                    vehVars->occupantGroups[i][j] = vectorUnion(vec, vehVars->occupantGroups[i][areas[j].second]);
-            }
+                    {
+                        if (it->second.empty())
+                            for (int k = 0; k < CTheZones::TotalNumberOfInfoZones; k++)
+                            {
+                                CZone* zone = reinterpret_cast<CZone*>(CTheZones__NavigationZoneArray + k * 0x20);
+                                vehVars->occupantGroups[*(uint64_t*)zone->m_szLabel][modelid] = vectorUnion(vehVars->occupantGroups[*(uint64_t*)zone->m_szLabel][modelid], vec);
+                            }
+                        else for (auto zone : it->second)
+                        {
+                            vehVars->occupantGroups[*(uint64_t*)zone->m_szLabel][modelid] = vectorUnion(vehVars->occupantGroups[*(uint64_t*)zone->m_szLabel][modelid], vec);
+                        }
+                    }
 
-            //Tuning
-            for (unsigned j = 0; j < 16; j++)
-            {
-                std::vector<unsigned short> vec = dataFile.ReadLine(section, areas[j].first, READ_TUNING);
+                    //Tuning
+                    vec = dataFile.ReadLine(section, kvp.first, READ_TUNING);
 
-                if (!vec.empty())
-                    vehVars->vehHasTuning.insert(i);
-
-                if (j < 6)
-                {
                     if (!vec.empty())
-                        vehVars->tuning[i][j] = vec;
-                }
-                else if (vehVars->tuning.contains(i))
-                    vehVars->tuning[i][j] = vectorUnion(vec, vehVars->tuning[i][areas[j].second]);
-            }
+                    {
+                        vehVars->vehHasTuning.insert(modelid);
+                        if (it->second.empty()) //Global
+                            for (int k = 0; k < CTheZones::TotalNumberOfInfoZones; k++)
+                            {
+                                CZone* zone = reinterpret_cast<CZone*>(CTheZones__NavigationZoneArray + k * 0x20);
+                                vehVars->tuning[*(uint64_t*)zone->m_szLabel][modelid] = vectorUnion(vehVars->tuning[*(uint64_t*)zone->m_szLabel][modelid], vec);
+                            }
+                        else for (auto zone : it->second)
+                        {
+                            vehVars->tuning[*(uint64_t*)zone->m_szLabel][modelid] = vectorUnion(vehVars->tuning[*(uint64_t*)zone->m_szLabel][modelid], vec);
+                        }
+                    }
 
-            //Trailers
-            for (unsigned j = 0; j < 16; j++)
-            {
-                std::vector<unsigned short> vec = dataFile.ReadLine(section, areas[j].first, READ_TRAILERS);
+                    //Trailers
+                    vec = dataFile.ReadLine(section, kvp.first, READ_TRAILERS);
 
-                if (j < 6)
-                {
                     if (!vec.empty())
-                        vehVars->trailerAreas[i][j] = vec;
+                    {
+                        if (it->second.empty()) //Global
+                            for (int k = 0; k < CTheZones::TotalNumberOfInfoZones; k++)
+                            {
+                                CZone* zone = reinterpret_cast<CZone*>(CTheZones__NavigationZoneArray + k * 0x20);
+                                vehVars->trailerZones[*(uint64_t*)zone->m_szLabel][modelid] = vectorUnion(vehVars->trailerZones[*(uint64_t*)zone->m_szLabel][modelid], vec);
+                            }
+                        else for (auto zone : it->second)
+                        {
+                            vehVars->trailerZones[*(uint64_t*)zone->m_szLabel][modelid] = vectorUnion(vehVars->trailerZones[*(uint64_t*)zone->m_szLabel][modelid], vec);
+                        }
+                    }
                 }
-                else if (vehVars->trailerAreas.contains(i))
-                    vehVars->trailerAreas[i][j] = vectorUnion(vec, vehVars->trailerAreas[i][areas[j].second]);
             }
+
+            bool mergeZones = dataFile.ReadBoolean(section, "MergeZonesWithCities", false);
+
+            for (auto& kvp : iniData.second)
+            {
+                if (isupper(kvp.first[1]))
+                {
+                    char zoneName[9] = {};
+                    strncpy(zoneName, kvp.first.c_str(), 8);
+
+                    auto vec = dataFile.ReadLine(section, kvp.first, READ_VEHICLES);
+                    if (!vec.empty())
+                    {
+                        vehVars->vehHasVariations.insert(modelid);
+                        vehVars->variations[*(uint64_t*)zoneName][modelid] = mergeZones ? vectorUnion(vehVars->variations[*(uint64_t*)zoneName][modelid], vec) : vec;
+                    }
+
+                    //Groups
+                    vec = dataFile.ReadLine(section, kvp.first, READ_GROUPS);
+                    if (!vec.empty())
+                        vehVars->occupantGroups[*(uint64_t*)zoneName][modelid] = mergeZones ? vectorUnion(vehVars->occupantGroups[*(uint64_t*)zoneName][modelid], vec) : vec;
+
+                    //Tuning
+                    vec = dataFile.ReadLine(section, kvp.first, READ_TUNING);
+                    if (!vec.empty())
+                    {
+                        vehVars->vehHasTuning.insert(modelid);
+                        vehVars->tuning[*(uint64_t*)zoneName][modelid] = mergeZones ? vectorUnion(vehVars->tuning[*(uint64_t*)zoneName][modelid], vec) : vec;
+                    }
+
+                    //Trailers
+                    vec = dataFile.ReadLine(section, kvp.first, READ_TRAILERS);
+                    if (!vec.empty())
+                        vehVars->trailerZones[*(uint64_t*)zoneName][modelid] = mergeZones ? vectorUnion(vehVars->trailerZones[*(uint64_t*)zoneName][modelid], vec) : vec;
+                }
+            }
+                
+            for (unsigned i = 0; i < 6; i++)
+            {
+                auto vec = dataFile.ReadLine(section, "Wanted" + std::to_string(i), READ_VEHICLES);
+                if (vec.empty())
+                    continue;
+                vehVars->wantedVariations[modelid][i] = vec;
+            }
+
+            for (auto &i : vehVars->variations)
+                if (auto it = i.second.find(modelid); it != i.second.end())
+                    for (auto variation : it->second)
+                        if (variation > 0 && variation != modelid && !(vectorHasId(vehOptions->inheritExclude, variation)))
+                            vehVars->originalModels.insert({ variation, modelid });
 
 
             const int tuningChance = dataFile.ReadInteger(section, "TuningChance", -1);
             if (tuningChance > -1)
-                vehVars->tuningChances.insert({ i, (BYTE)tuningChance });
+                vehVars->tuningChances.insert({ modelid, (BYTE)tuningChance });
 
             if (dataFile.ReadBoolean(section, "UseOnlyGroups", false))
-                vehVars->useOnlyGroups.push_back(i);
+                vehVars->useOnlyGroups.push_back(modelid);
 
             if (vehOptions->enableLights)
             {
@@ -563,11 +590,11 @@ void VehicleVariations::LoadData()
                 if ((uint8_t)r == r && (uint8_t)g == g && (uint8_t)b == b && (uint8_t)a == a)
                 {
                     rgba colors = { (uint8_t)r, (uint8_t)g, (uint8_t)b, (uint8_t)a };
-                    vehVars->lightColors.insert({ i, colors });
+                    vehVars->lightColors.insert({ modelid, colors });
                 }
 
                 if (lightX != 0.0 || lightY != 0.0 || lightZ != 0.0 || lightWidth > -900.0)
-                    vehVars->lightPositions.insert({ i, {{ lightX, lightY, lightZ }, lightWidth} });
+                    vehVars->lightPositions.insert({ modelid, {{ lightX, lightY, lightZ }, lightWidth} });
 
                 r = dataFile.ReadInteger(section, "LightR2", -1);
                 g = dataFile.ReadInteger(section, "LightG2", -1);
@@ -577,12 +604,9 @@ void VehicleVariations::LoadData()
                 if ((uint8_t)r == r && (uint8_t)g == g && (uint8_t)b == b && (uint8_t)a == a)
                 {
                     rgba colors = { (uint8_t)r, (uint8_t)g, (uint8_t)b, (uint8_t)a };
-                    vehVars->lightColors2.insert({ i, colors });
+                    vehVars->lightColors2.insert({ modelid, colors });
                 }
             }
-
-            if (dataFile.ReadBoolean(section, "MergeZonesWithCities", false))
-                vehVars->mergeZones.push_back(i);
 
             uint8_t trailersNum = 0;
             for (int j = 0; j < 9; j++)
@@ -590,17 +614,17 @@ void VehicleVariations::LoadData()
                 auto vec = dataFile.ReadTrailerLine(section, "Trailers" + std::to_string(j + 1));
                 if (!vec.empty())
                 {
-                    vehVars->trailerModels[j].insert({ i, vec });
+                    vehVars->trailerModels[j].insert({ modelid, vec });
                     trailersNum++;
                 }                    
             }
 
             if (trailersNum > 0)
-                vehVars->trailersNums[i] = trailersNum;
+                vehVars->trailersNums[modelid] = trailersNum;
 
-            if (auto it = vehVars->trailerAreas.find(i); it != vehVars->trailerAreas.end())
+            if (auto it = vehVars->trailerZones.find(modelid); it != vehVars->trailerZones.end())
                 for (auto& j : it->second)
-                    checkNumGroups(j, trailersNum);
+                    checkNumGroups(j.second, trailersNum);
 
             uint8_t numGroups = 0;
             for (int j = 0; j < 9; j++)
@@ -611,8 +635,8 @@ void VehicleVariations::LoadData()
                     std::vector<unsigned short> vecPassengers = dataFile.ReadLine(section, "PassengerGroup" + std::to_string(j + 1), READ_PEDS);
                     if (!vecPassengers.empty())
                     {
-                        vehVars->passengerGroups[j].insert({ i, vecPassengers });
-                        vehVars->driverGroups[j].insert({ i, vecDrivers });
+                        vehVars->passengerGroups[j].insert({ modelid, vecPassengers });
+                        vehVars->driverGroups[j].insert({ modelid, vecDrivers });
                         numGroups++;
                         continue;
                     }
@@ -621,7 +645,7 @@ void VehicleVariations::LoadData()
             }
 
             if (numGroups > 0)
-                vehVars->modelNumGroups[i] = numGroups;
+                vehVars->modelNumGroups[modelid] = numGroups;
 
             for (unsigned short j = 0; j < 6; j++)
             {
@@ -629,41 +653,40 @@ void VehicleVariations::LoadData()
                 if (!vec.empty())
                 {
                     checkNumGroups(vec, numGroups);
-                    vehVars->groupWantedVariations[i][j] = vec;
+                    vehVars->groupWantedVariations[modelid][j] = vec;
                 }
             }
 
-            if (auto it = vehVars->occupantGroups.find(i); it!= vehVars->occupantGroups.end())
+            if (auto it = vehVars->occupantGroups.find(modelid); it!= vehVars->occupantGroups.end())
                 for (auto &j : it->second)
-                    checkNumGroups(j, numGroups);
+                    checkNumGroups(j.second, numGroups);
 
 
             std::vector<unsigned short> vec = dataFile.ReadLine(section, "Drivers", READ_PEDS);
             if (!vec.empty())
-                vehVars->drivers.insert({ i, vec });
+                vehVars->drivers.insert({ modelid, vec });
 
             vec = dataFile.ReadLine(section, "Passengers", READ_PEDS);
             if (!vec.empty())
-                vehVars->passengers.insert({ i, vec });
+                vehVars->passengers.insert({ modelid, vec });
 
             vec = dataFile.ReadLine(section, "ParentModel", READ_VEHICLES);
             if (!vec.empty() && vec[0] >= 400)
-                vehVars->originalModels[i] = vec[0];
+                vehVars->originalModels[modelid] = vec[0];
 
             if (dataFile.ReadBoolean(section, "TrailersMatchColors", false))
-                vehVars->trailersMatchColors.push_back(i);
+                vehVars->trailersMatchColors.push_back(modelid);
 
             const int trailersSpawnChance = dataFile.ReadInteger(section, "TrailersSpawnChance", -1);
             if (trailersSpawnChance > -1)
-                vehVars->trailersSpawnChances.insert({ i, (BYTE)(trailersSpawnChance > 100 ? 100 : trailersSpawnChance) });
+                vehVars->trailersSpawnChances.insert({ modelid, (BYTE)(trailersSpawnChance > 100 ? 100 : trailersSpawnChance) });
 
-            const unsigned short trailersHealth = (unsigned short)dataFile.ReadInteger(section, "TrailersHealth", 2000);
-            if (trailersHealth < 2000)
-                vehVars->trailersHealth.insert({ i, trailersHealth });
+            const short trailersHealth = (short)dataFile.ReadInteger(section, "TrailersHealth", -1);
+            if (trailersHealth > -1)
+                vehVars->trailersHealth.insert({ modelid, trailersHealth });
         }
     }
 
-    std::sort(vehVars->mergeZones.begin(), vehVars->mergeZones.end());
     std::sort(vehVars->parkedCars.begin(), vehVars->parkedCars.end());
     std::sort(vehVars->trailersMatchColors.begin(), vehVars->trailersMatchColors.end());
     std::sort(vehVars->useOnlyGroups.begin(), vehVars->useOnlyGroups.end());
@@ -772,7 +795,7 @@ void VehicleVariations::Process()
         if (!IsVehiclePointerValid(veh) || veh->m_nCreatedBy == eVehicleCreatedBy::MISSION_VEHICLE)
             continue;
 
-        if (veh->m_nModelIndex >= 400 && veh->m_nModelIndex < 612 && !vehVars->currentVariations[veh->m_nModelIndex - 400].empty() && vehVars->currentVariations[veh->m_nModelIndex - 400][0] == 0)
+        if (auto x = vehVars->currentVariations.find(veh->m_nModelIndex); x != vehVars->currentVariations.end() && !x->second.empty() && x->second[0] == 0)
         {
             CWorld::Remove(veh);
             veh->Remove();
@@ -813,22 +836,10 @@ void VehicleVariations::Process()
             {
                 if (auto trailersNum = vehVars->trailersNums.find(veh->m_nModelIndex); trailersNum != vehVars->trailersNums.end())
                 {
-                    std::string section;
-                    if (auto it = vehVars->vehModels.find(veh->m_nModelIndex); it != vehVars->vehModels.end())
-                        section = it->second;
-                    else
-                        section = std::to_string(veh->m_nModelIndex);
-
-                    std::vector<unsigned short> zoneTrailers = dataFile.ReadLine(section, currentZone, READ_TRAILERS);
-                    checkNumGroups(zoneTrailers, trailersNum->second);
-
-                    if (auto it = vehVars->trailerAreas.find(veh->m_nModelIndex); it != vehVars->trailerAreas.end())
-                    {
-                        if (vectorHasId(vehVars->mergeZones, veh->m_nModelIndex))
-                            zoneTrailers = vectorUnion(zoneTrailers, vectorUnion(it->second[4], it->second[currentTown]));
-                        else if (zoneTrailers.empty())
-                            zoneTrailers = vectorUnion(it->second[4], it->second[currentTown]);
-                    }
+                    std::vector<unsigned short> zoneTrailers;
+                    if (auto it = vehVars->trailerZones.find(*(uint64_t*)currentZone); it != vehVars->trailerZones.end())
+                        if (auto it2 = it->second.find(veh->m_nModelIndex); it2 != it->second.end())
+                            zoneTrailers = it2->second;
 
                     if (zoneTrailers.empty())
                         return;
@@ -880,56 +891,32 @@ void VehicleVariations::Process()
 
 void VehicleVariations::UpdateVariations()
 {
-    for (auto& i : vehVars->vehHasTuning)
-    {
-        std::vector<unsigned short> currentAreaTuning;
+    const CWanted* wanted = FindPlayerWanted(-1);
+    vehVars->currentTuning = nullptr;
+    vehVars->currentVariations.clear();
 
-        if (auto it = vehVars->tuning.find(i); it != vehVars->tuning.end())
-            currentAreaTuning = vectorUnion(it->second[4], it->second[currentTown]);
+    auto currentZoneTuning = vehVars->tuning.find(*(uint64_t*)currentZone);
+    auto currentZoneVariations = vehVars->variations.find(*(uint64_t*)currentZone);
 
-        if (!currentAreaTuning.empty() || vehVars->currentTuning.contains(i))
-            vehVars->currentTuning[i] = currentAreaTuning;
+    if (currentZoneTuning != vehVars->tuning.end())
+        vehVars->currentTuning = &(currentZoneTuning->second);
 
-        std::string section;
-        if (auto it = vehVars->vehModels.find(i); it != vehVars->vehModels.end())
-            section = it->second;
-        else
-            section = std::to_string(i);
-
-        std::vector<unsigned short> vec = dataFile.ReadLine(section, currentZone, READ_TUNING);
-        if (!vec.empty())
+    if (currentZoneVariations != vehVars->variations.end())
+        for (auto& modelid : vehVars->vehHasVariations)
         {
-            if (vectorHasId(vehVars->mergeZones, i))
-                vehVars->currentTuning[i] = vectorUnion(vehVars->currentTuning[i], vec);
-            else
-                vehVars->currentTuning[i] = vec;
-        }
-    }
+            if (auto it = currentZoneVariations->second.find(modelid); it != currentZoneVariations->second.end())
+                vehVars->currentVariations[modelid] = it->second;
 
-    for (auto& modelid : vehVars->vehHasVariations)
-    {
-        vehVars->currentVariations[modelid] = vectorUnion(vehVars->variations[modelid][4], vehVars->variations[modelid][currentTown]);
-
-        const auto it = vehVars->zoneVariations[modelid].find(*reinterpret_cast<uint64_t*>(currentZone));
-        if (it != vehVars->zoneVariations[modelid].end())
-        {
-            if (!it->second.empty())
+            if (wanted)
             {
-                if (vectorHasId(vehVars->mergeZones, modelid + 400))
-                    vehVars->currentVariations[modelid] = vectorUnion(vehVars->currentVariations[modelid], it->second);
-                else
-                    vehVars->currentVariations[modelid] = it->second;
+                const unsigned int wantedLevel = wanted->m_nWantedLevel - (wanted->m_nWantedLevel ? 1 : 0);
+                if (auto it = vehVars->wantedVariations.find(modelid); it != vehVars->wantedVariations.end())
+                {
+                    if (!it->second[wantedLevel].empty() && !vehVars->currentVariations[modelid].empty())
+                        vectorfilterVector(vehVars->currentVariations[modelid], it->second[wantedLevel]);
+                }
             }
         }
-
-        const CWanted* wanted = FindPlayerWanted(-1);
-        if (wanted)
-        {
-            const unsigned int wantedLevel = wanted->m_nWantedLevel - (wanted->m_nWantedLevel ? 1 : 0);
-            if (!vehVars->wantedVariations[modelid][wantedLevel].empty() && !vehVars->currentVariations[modelid].empty())
-                vectorfilterVector(vehVars->currentVariations[modelid], vehVars->wantedVariations[modelid][wantedLevel]);
-        }
-    }
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -939,11 +926,11 @@ void VehicleVariations::UpdateVariations()
 void VehicleVariations::LogCurrentVariations()
 {
     Log::Write("vehCurrentVariations\n");
-    for (int i = 0; i < 212; i++)
-        if (!vehVars->currentVariations[i].empty())
+    for (auto it : vehVars->currentVariations)
+        if (!it.second.empty())
         {
-            Log::Write("%d: ", i+400);
-            for (auto j : vehVars->currentVariations[i])
+            Log::Write("%d: ", it.first);
+            for (auto j : it.second)
                 Log::Write("%u ", j);
             Log::Write("\n");
         }
@@ -960,24 +947,25 @@ void VehicleVariations::LogDataFile()
 }
 
 void VehicleVariations::LogVariations()
-{
-    Log::Write("Vehicle Variations:\n");
-    for (unsigned int i = 0; i < 212; i++)
-        for (unsigned int j = 0; j < 16; j++)
-            if (!vehVars->variations[i][j].empty())
-            {
-                Log::Write("%d: ", i+400);
-                for (unsigned int k = 0; k < 16; k++)
-                    if (!vehVars->variations[i][k].empty())
-                    {
-                        Log::Write("(%u) ", k);
-                        for (const auto& l : vehVars->variations[i][k])
-                            Log::Write("%u ", l);
-                    }
+{ 
+    if (!Log::Write("Vehicle Variations:\n"))
+        return;
 
-                Log::Write("\n");
-                break;
-            }
+    std::map<unsigned short, std::set<unsigned short>> variationsMap;
+    for (auto& it : vehVars->variations)
+    {
+        for (auto &i : it.second)
+            for (auto j : i.second)
+                variationsMap[i.first].insert(j);
+    }
+    
+    for (auto& i : variationsMap)
+    {
+        Log::Write("%u: ", i.first);
+        for (auto j : i.second)
+            Log::Write("%u ", j);
+        Log::Write("\n");
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -989,7 +977,7 @@ int __cdecl ChooseModelHooked(int* a1)
 {
     const int model = callOriginalAndReturn<int, address>(a1);
 
-    if (model < 400 || model > 611)
+    if (model < 400)
         return model;
 
     return getRandomVariation((unsigned short)model);

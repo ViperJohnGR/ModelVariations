@@ -1,13 +1,12 @@
 #pragma once
 
 #include <CPed.h>
+#include <CZone.h>
 
-extern const std::pair<std::string, unsigned> areas[];
+extern std::unordered_map<std::string, std::vector<CZone*>> presetAllZones;
 extern int maxPedID;
 extern char currentZone[8];
-extern unsigned int currentTown;
 extern const char* currentInterior;
-extern std::vector<std::string> zoneNames;
 
 class PedVariations
 {

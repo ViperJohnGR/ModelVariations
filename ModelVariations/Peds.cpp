@@ -458,7 +458,9 @@ void PedVariations::UpdateVariations()
 
 void PedVariations::LogCurrentVariations()
 {
-    Log::Write("pedCurrentVariations\n");
+    if (!Log::Write("pedCurrentVariations\n"))
+        return;
+
     for (auto it : pedVars->currentVariations)
         if (!it.second.empty())
         {

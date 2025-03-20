@@ -925,7 +925,9 @@ void VehicleVariations::UpdateVariations()
 
 void VehicleVariations::LogCurrentVariations()
 {
-    Log::Write("vehCurrentVariations\n");
+    if (!Log::Write("vehCurrentVariations\n"))
+        return;
+
     for (auto it : vehVars->currentVariations)
         if (!it.second.empty())
         {

@@ -162,7 +162,7 @@ bool isAnotherVehicleBehind(CVehicle* veh, const std::vector<CVehicle*> &excepti
     auto* mInfo = CModelInfo::GetModelInfo(veh->m_nModelIndex);
     if (mInfo == NULL)
         return false;
-    
+
     CVector vmin = mInfo->m_pColModel->m_boundBox.m_vecMin;
     CVector vmax = mInfo->m_pColModel->m_boundBox.m_vecMax;
 
@@ -206,7 +206,7 @@ bool isAnotherVehicleBehind(CVehicle* veh, const std::vector<CVehicle*> &excepti
                 return true;
         }
     }
-    
+
 
     return false;
 }
@@ -716,16 +716,16 @@ void VehicleVariations::Process()
 
                 if (trailerAttached)
                     for (auto trailer : it->second)
-                        if (trailer->m_pTractor && isAnotherVehicleBehind(trailer, it->second))
-                        {
-                            for (auto& j : it->second)
+                        if (trailer->m_pTractor && (isAnotherVehicleBehind(trailer, it->second) || veh->GetHasCollidedWithAnyObject()))
                             {
-                                CWorld::Remove(j);
-                                j->Remove();
+                                for (auto& j : it->second)
+                                {
+                                    CWorld::Remove(j);
+                                    j->Remove();
+                                }
+                                it->second.clear();
+                                break;
                             }
-                            it->second.clear();
-                            break;
-                        }
             }
             if ((CTimer::m_snTimeInMilliseconds - veh->m_nCreationTime) < 3900)
             {

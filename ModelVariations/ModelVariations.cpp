@@ -31,7 +31,7 @@
 #pragma comment (lib, "urlmon.lib")
 
 
-#define MOD_VERSION "9.9.2"
+#define MOD_VERSION "9.9.3"
 
 struct jumpInfo {
     std::uintptr_t address;
@@ -768,14 +768,17 @@ void __cdecl InitialiseGameHooked()
     presetAllZones["Global"];
 
     Log::Write("TotalNumberOfInfoZones = %d\n", CTheZones::TotalNumberOfInfoZones);
-    Log::Write("Reading cargrp...\n");
+    if (enableStreamingFix)
+    {
+        Log::Write("Reading cargrp...\n");
 
-    for (int i = 0; i < 34; i++)
-        for (int j = 0; j < CPopulation__m_nNumCarsInGroup[i]; j++)
-            if (CPopulation__m_CarGroups[i * CPopulation__m_iCarsPerGroup + j] > 611)
-                addedIDsInGroups.insert((unsigned short)CPopulation__m_CarGroups[i * CPopulation__m_iCarsPerGroup + j]);
+        for (int i = 0; i < 34; i++)
+            for (int j = 0; j < CPopulation__m_nNumCarsInGroup[i]; j++)
+                if (CPopulation__m_CarGroups[i * CPopulation__m_iCarsPerGroup + j] > 611)
+                    addedIDsInGroups.insert((unsigned short)CPopulation__m_CarGroups[i * CPopulation__m_iCarsPerGroup + j]);
 
-    Log::Write("Found %u added IDs in cargrp.\n", addedIDsInGroups.size());
+        Log::Write("Found %u added IDs in cargrp.\n", addedIDsInGroups.size());
+    }
     Log::Write("-- InitialiseGame End (%s) --\n", getDatetime(false, true, true).c_str());
 
     if (!FrontEndMenuManager->m_bWantToRestart)
@@ -809,6 +812,7 @@ public:
 
         trackReferenceCounts = iniSettings.ReadInteger("Settings", "TrackReferenceCounts", -1);
         loadSettingsImmediately = iniSettings.ReadBoolean("Settings", "LoadSettingsImmediately", true);
+        enableStreamingFix = iniSettings.ReadBoolean("Settings", "EnableStreamingFix", false);
         loadStage = iniSettings.ReadInteger("Settings", "LoadStage", 1);
         disableKey = iniSettings.ReadInteger("Settings", "DisableKey", 0);
         reloadKey = iniSettings.ReadInteger("Settings", "ReloadKey", 0);
@@ -919,7 +923,7 @@ public:
         if (loadStage == 0)
             initialize();
 
-        if (iniSettings.ReadBoolean("Settings", "EnableStreamingFix", false))
+        if (enableStreamingFix)
         {
             hookCall(0x408D43, AddToLoadedVehiclesListHooked<0x408D43>, "CStreaming::AddToLoadedVehiclesList"); //CStreaming::FinishLoadingLargeFile
             hookCall(0x40C858, AddToLoadedVehiclesListHooked<0x40C858>, "CStreaming::AddToLoadedVehiclesList"); //CStreaming::ConvertBufferToObject

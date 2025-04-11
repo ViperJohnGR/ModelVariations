@@ -109,6 +109,7 @@ struct tVehVars {
 
     std::vector<unsigned short> parkedCars;
     std::vector<unsigned short> trailersMatchColors;
+    std::vector<unsigned short> trailersMatchExtras;
     std::vector<unsigned short> useOnlyGroups;
 
     std::set<unsigned short> vehHasVariations;
@@ -677,6 +678,9 @@ void VehicleVariations::LoadData()
             if (dataFile.ReadBoolean(section, "TrailersMatchColors", false))
                 vehVars->trailersMatchColors.push_back(modelid);
 
+            if (dataFile.ReadBoolean(section, "TrailersMatchExtras", false))
+                vehVars->trailersMatchExtras.push_back(modelid);
+
             const int trailersSpawnChance = dataFile.ReadInteger(section, "TrailersSpawnChance", -1);
             if (trailersSpawnChance > -1)
                 vehVars->trailersSpawnChances.insert({ modelid, (BYTE)(trailersSpawnChance > 100 ? 100 : trailersSpawnChance) });
@@ -689,6 +693,7 @@ void VehicleVariations::LoadData()
 
     std::sort(vehVars->parkedCars.begin(), vehVars->parkedCars.end());
     std::sort(vehVars->trailersMatchColors.begin(), vehVars->trailersMatchColors.end());
+    std::sort(vehVars->trailersMatchExtras.begin(), vehVars->trailersMatchExtras.end());
     std::sort(vehVars->useOnlyGroups.begin(), vehVars->useOnlyGroups.end());
 
     Log::Write("\n");
@@ -717,15 +722,15 @@ void VehicleVariations::Process()
                 if (trailerAttached)
                     for (auto trailer : it->second)
                         if (trailer->m_pTractor && (isAnotherVehicleBehind(trailer, it->second) || veh->GetHasCollidedWithAnyObject()))
+                        {
+                            for (auto& j : it->second)
                             {
-                                for (auto& j : it->second)
-                                {
-                                    CWorld::Remove(j);
-                                    j->Remove();
-                                }
-                                it->second.clear();
-                                break;
+                                CWorld::Remove(j);
+                                j->Remove();
                             }
+                            it->second.clear();
+                            break;
+                        }
             }
             if ((CTimer::m_snTimeInMilliseconds - veh->m_nCreationTime) < 3900)
             {
@@ -854,6 +859,12 @@ void VehicleVariations::Process()
 
                     for (auto randTrailer : it->second[CGeneral::GetRandomNumberInRange(0, (int)it->second.size())])
                     {
+                        if (vectorHasId(vehVars->trailersMatchExtras, veh->m_nModelIndex))
+                        {
+                            CVehicleModelInfo::ms_compsToUse[0] = veh->m_anExtras[0];
+                            CVehicleModelInfo::ms_compsToUse[1] = veh->m_anExtras[1];
+                        }
+
                         loadModels({ randTrailer }, PRIORITY_REQUEST, true);
                         CVehicle* trailer = CCarCtrl::GetNewVehicleDependingOnCarModel(randTrailer, RANDOM_VEHICLE);
 
@@ -1099,7 +1110,6 @@ CHeli* __cdecl GenerateHeliHooked(CPed* ped, char newsHeli)
 {
     if (FindPlayerWanted(-1)->m_nWantedLevel < 4)
         return callOriginalAndReturn<CHeli*, address>(ped, 0);
-    //return CHeli::GenerateHeli(ped, 0);
 
     if (CHeli::pHelis)
     {
@@ -1113,7 +1123,6 @@ CHeli* __cdecl GenerateHeliHooked(CPed* ped, char newsHeli)
     }
 
     return callOriginalAndReturn<CHeli*, address>(ped, newsHeli);
-    //return CHeli::GenerateHeli(ped, newsHeli);
 }
 
 

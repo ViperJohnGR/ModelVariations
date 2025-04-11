@@ -316,6 +316,16 @@ int16_t __fastcall CollectParametersHooked(void* _this, void*, unsigned __int16 
     return retVal;
 }
 
+template <std::uintptr_t address>
+bool __fastcall DoWeHaveWeaponAvailableHooked(CPed* ped, void*, eWeaponType weapId)
+{
+    auto slot = CWeaponInfo::GetWeaponInfo(weapId, 1)->m_nSlot;
+    if (ped->m_aWeapons[slot].m_eWeaponType > WEAPON_UNARMED)
+        return true;
+
+    return false;
+}
+
 void PedWeaponVariations::InstallHooks()
 {
     hookCall(0x5DDB92, CPedHooked<0x5DDB92>, "CPed::CPed"); //CCivilianPed::CCivilianPed
@@ -326,4 +336,6 @@ void PedWeaponVariations::InstallHooks()
     hookCall(0x47D335, GiveWeaponHooked<0x47D335>, "CPed::GiveWeapon"); //01B2: GIVE_WEAPON_TO_CHAR
     hookCall(0x47D4AC, CollectParametersHooked<0x47D4AC>, "CRunningScript::CollectParameters"); //01B9: SET_CURRENT_CHAR_WEAPON
     hookCall(0x48AE9E, CollectParametersHooked<0x48AE9E>, "CRunningScript::CollectParameters"); //0491: HAS_CHAR_GOT_WEAPON
+    hookCall(0x68BBA0, DoWeHaveWeaponAvailableHooked<0x68BBA0>, "CTaskComplexPolicePursuit::SetWeapon"); //CTaskComplexPolicePursuit::SetWeapon
+    hookCall(0x68BB32, DoWeHaveWeaponAvailableHooked<0x68BB32>, "CTaskComplexPolicePursuit::SetWeapon"); //CTaskComplexPolicePursuit::SetWeapon
 }

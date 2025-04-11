@@ -31,7 +31,7 @@
 #pragma comment (lib, "urlmon.lib")
 
 
-#define MOD_VERSION "9.9.3"
+#define MOD_VERSION "9.9.4"
 
 struct jumpInfo {
     std::uintptr_t address;

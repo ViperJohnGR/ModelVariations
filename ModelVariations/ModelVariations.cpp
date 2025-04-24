@@ -928,7 +928,8 @@ public:
             hookCall(0x408D43, AddToLoadedVehiclesListHooked<0x408D43>, "CStreaming::AddToLoadedVehiclesList"); //CStreaming::FinishLoadingLargeFile
             hookCall(0x40C858, AddToLoadedVehiclesListHooked<0x40C858>, "CStreaming::AddToLoadedVehiclesList"); //CStreaming::ConvertBufferToObject
         }
-        Log::Write("Streaming fix disabled.\n");
+        else
+            Log::Write("Streaming fix disabled.\n");
 
         hookCall(0x53E981, CGame__ProcessHooked<0x53E981>, "CGame::Process"); //Idle
         hookCall(0x748E6B, CGame__ShutdownHooked<0x748E6B>, "CGame::Shutdown"); //WinMain

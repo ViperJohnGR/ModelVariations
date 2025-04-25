@@ -6,7 +6,6 @@
 extern std::unordered_map<std::string, std::vector<CZone*>> presetAllZones;
 extern int maxPedID;
 extern char currentZone[8];
-extern const char* currentInterior;
 
 class PedVariations
 {

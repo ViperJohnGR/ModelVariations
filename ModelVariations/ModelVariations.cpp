@@ -56,8 +56,6 @@ static const char* dataFileName = "ModelVariations.ini";
 DataReader iniSettings(dataFileName);
 
 short framesSinceCallsChecked = 1001;
-char lastInterior[8] = {};
-const char* currentInterior = lastInterior;
 char currentZone[8] = {};
 unsigned int currentWanted = 0;
 
@@ -219,6 +217,23 @@ bool LoadPESection(const char* filePath, int section, std::vector<unsigned char>
     CloseHandle(hFile);
 
     return true;
+}
+
+void logVariationsChange(const char* msg)
+{
+    auto player = FindPlayerPed();
+    auto pPos = FindPlayerCoors(-1);
+    auto wanted = FindPlayerWanted(-1);
+    CZone* zInfo = NULL;
+    CTheZones::GetZoneInfo(&pPos, &zInfo);
+
+    Log::Write("\n%s (%s). Updating variations...\n", msg, getDatetime(false, true, true).c_str());
+    Log::Write("pPos = {%f, %f, %f}\n", pPos.x, pPos.y, pPos.z);
+    Log::Write("currentWanted = %u wanted->m_nWantedLevel = %u\n", currentWanted, wanted->m_nWantedLevel);
+    Log::Write("currentZone = %.8s zInfo->m_szLabel = %.8s\n", currentZone, zInfo->m_szLabel);
+
+    if (player->m_pEnex)
+        Log::Write("player->m_pEnex = %.8s\n", player->m_pEnex);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -410,7 +425,6 @@ void refreshOnGameRestart()
         framesSinceCallsChecked = 900;
 
     *reinterpret_cast<uint64_t*>(currentZone) = 0;
-    lastInterior[0] = 0;
 
     reloadingSettings = true;
     auto doAsyncStuff = [startTime] {
@@ -459,6 +473,14 @@ bool __cdecl AddToLoadedVehiclesListHooked(int model)
         return callOriginalAndReturn<bool, address>(model);
 
     return 1;
+}
+
+template <std::uintptr_t address>
+char __fastcall InteriorManager_c__UpdateHooked(void* _this)
+{
+    logVariationsChange("Interior changed");
+    updateVariations();
+    return callMethodOriginalAndReturn<char, address>(_this);
 }
 
 template <std::uintptr_t address>
@@ -534,7 +556,6 @@ void __cdecl CGame__ProcessHooked()
     CZone* zInfo = NULL;
     CTheZones::GetZoneInfo(&pPos, &zInfo);
     const CWanted* wanted = FindPlayerWanted(-1);
-    const CPlayerPed* player = FindPlayerPed();
 
     if (trackReferenceCounts > 0 && CModelInfo::GetModelInfo(0))
         for (int i = 7; i < std::max<int>(flaMaxID, 20000); i++)
@@ -553,17 +574,6 @@ void __cdecl CGame__ProcessHooked()
                 referenceCountModels.insert(static_cast<unsigned short>(i));
             }
         }
-
-    auto logVariationChange = [&](const char* msg)
-    {
-        Log::Write("\n%s (%s). Updating variations...\n", msg, getDatetime(false, true, true).c_str());
-        Log::Write("pPos = {%f, %f, %f}\n", pPos.x, pPos.y, pPos.z);
-        Log::Write("currentWanted = %u wanted->m_nWantedLevel = %u\n", currentWanted, wanted->m_nWantedLevel);
-        Log::Write("currentZone = %.8s zInfo->m_szLabel = %.8s\n", currentZone, zInfo->m_szLabel);
-
-        if (currentInterior[0] != 0 || lastInterior[0] != 0)
-            Log::Write("currentInterior = %.8s lastInterior = %.8s\n", currentInterior, lastInterior);
-    };
 
     if (timeUpdate > -1 && ((clock() - timeUpdate) / CLOCKS_PER_SEC > 6))
     {
@@ -591,9 +601,9 @@ void __cdecl CGame__ProcessHooked()
             Log::Write("Reloading settings...\n");
             clearEverything();
             printMessage("~y~Model Variations~s~: Reloading settings...", 10000);
-            auto doAsyncStuff = [logVariationChange] {
+            auto doAsyncStuff = [] {
                 loadIniData();
-                logVariationChange("Settings reloaded");
+                logVariationsChange("Settings reloaded");
                 updateVariations();
                 printMessage("~y~Model Variations~s~: Settings reloaded.", 2000);
                 reloadingSettings = false;
@@ -666,22 +676,9 @@ void __cdecl CGame__ProcessHooked()
         framesSinceCallsChecked = 0;
     }
 
-    if (player && player->m_pEnex)
-        currentInterior = reinterpret_cast<const char*>(player->m_pEnex);
-    else
-        currentInterior = "";
-
-    if (strncmp(currentInterior, lastInterior, 7) != 0)
-    {
-        logVariationChange("Interior changed");
-
-        strncpy(lastInterior, currentInterior, 7);
-        updateVariations();
-    }
-
     if (wanted && wanted->m_nWantedLevel != currentWanted)
     {
-        logVariationChange("Wanted level changed");
+        logVariationsChange("Wanted level changed");
 
         currentWanted = wanted->m_nWantedLevel;
         updateVariations();
@@ -689,7 +686,7 @@ void __cdecl CGame__ProcessHooked()
 
     if (zInfo && strncmp(zInfo->m_szLabel, currentZone, 7) != 0 && strncmp(zInfo->m_szLabel, "SAN_AND", 7) != 0)
     {
-        logVariationChange("Zone changed");
+        logVariationsChange("Zone changed");
 
         *reinterpret_cast<uint64_t*>(currentZone) = 0;
         strncpy(currentZone, zInfo->m_szLabel, 7);
@@ -929,6 +926,8 @@ public:
             hookCall(0x40C858, AddToLoadedVehiclesListHooked<0x40C858>, "CStreaming::AddToLoadedVehiclesList"); //CStreaming::ConvertBufferToObject
         }
         Log::Write("Streaming fix disabled.\n");
+
+        hookCall(0x440840, InteriorManager_c__UpdateHooked<0x440840>, "InteriorManager_c::Update"); //as
 
         hookCall(0x53E981, CGame__ProcessHooked<0x53E981>, "CGame::Process"); //Idle
         hookCall(0x748E6B, CGame__ShutdownHooked<0x748E6B>, "CGame::Shutdown"); //WinMain

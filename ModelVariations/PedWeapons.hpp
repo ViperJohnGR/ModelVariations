@@ -1,7 +1,6 @@
 #pragma once
 
 extern char currentZone[8];
-extern const char* currentInterior;
 
 class PedWeaponVariations
 {

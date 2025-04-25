@@ -198,7 +198,7 @@ void PedVariations::LoadData()
 
             for (auto& kvp : iniData.second)
             {
-                if (isupper(kvp.first[1])) //also includes interiors
+                if (!islower(kvp.first[1])) //also includes interiors
                 {
                     auto vec = dataFile.ReadLine(section, kvp.first, READ_PEDS);
                     if (!vec.empty())
@@ -420,7 +420,8 @@ void PedVariations::UpdateVariations()
     const CWanted* wanted = FindPlayerWanted(-1);
     pedVars->currentVariations.clear();
 
-    auto interiorVariations = (currentInterior[0] != 0) ? pedVars->variations.find(*reinterpret_cast<const uint64_t*>(currentInterior)) : pedVars->variations.end();
+    auto player = FindPlayerPed();
+    auto interiorVariations = (player->m_pEnex) ? pedVars->variations.find(*reinterpret_cast<const uint64_t*>(player->m_pEnex)) : pedVars->variations.end();
     auto zoneVariations = pedVars->variations.find(*reinterpret_cast<const uint64_t*>(currentZone));
     
     for (auto& modelid : pedVars->pedHasVariations)

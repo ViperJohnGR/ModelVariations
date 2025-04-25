@@ -151,8 +151,8 @@ void PedWeaponVariations::Process()
         const int originalSlot = ped->m_nActiveWeaponSlot;
         bool wepChanged = false;
         std::string zoneString = currentZone;
-        if (currentInterior[0] != 0)
-            zoneString = currentInterior;
+        if (FindPlayerPed()->m_pEnex)
+            zoneString = (char*)FindPlayerPed()->m_pEnex;
 
         for (int k = 0; k < 2; k++)
             for (int j = 0; j < 4; j++)

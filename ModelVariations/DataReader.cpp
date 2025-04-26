@@ -100,6 +100,12 @@ float DataReader::ReadFloat(const std::string& section, const std::string& key, 
 
 bool DataReader::ReadBoolean(const std::string &section, const std::string &key, bool defaultValue)
 {
+	auto str = this->ReadString(section, key, "");
+	if (_stricmp("true", str.c_str()) == 0)
+		return true;
+	else if (_stricmp("false", str.c_str()) == 0)
+		return false;
+
 	return this->ReadInteger(section, key, defaultValue) != 0;
 }
 

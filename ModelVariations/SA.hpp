@@ -3,6 +3,7 @@
 #include <CDirectory.h>
 #include <CLoadedCarGroup.h>
 #include <CMenuManager.h>
+#include <CPhysical.h>
 #include <CPedModelInfo.h>
 #include <CStreamingInfo.h>
 #include <CZone.h>
@@ -30,6 +31,8 @@ inline char* CAnimManager__GetAnimGroupName(int index) { return getDynamicFuncti
 inline short CExternalScripts__findByScmIndex(void* _this, short scmIndex) { return getDynamicMethod<short, 0x476D56>(_this, scmIndex); }
 
 inline CPedModelInfo* CModelInfo__AddPedModel(int id) { return getDynamicFunction<CPedModelInfo*, 0x5B74A7>(id); }
+
+inline bool CPhysical__TestCollision(CPhysical* _this, bool applySpeed) { return reinterpret_cast<bool(__thiscall*)(CPhysical*, bool)>(0x54DEC0)(_this, applySpeed); }
 
 #define CPopulation__m_iCarsPerGroup *reinterpret_cast<int*>(0x40ADB8)
 

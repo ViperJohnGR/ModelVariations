@@ -105,9 +105,9 @@ struct tVehVars {
     std::unordered_map<unsigned short, BYTE> trailersSpawnChances;
     std::unordered_map<unsigned short, short> trailersHealth;
     std::unordered_map<unsigned short, std::vector<unsigned short>> trailersMatchExtras;
+    std::unordered_map<unsigned short, std::vector<unsigned short>> trailersMatchColors;
 
     std::vector<unsigned short> parkedCars;
-    std::vector<unsigned short> trailersMatchColors;
     std::vector<unsigned short> useOnlyGroups;
 
     std::set<unsigned short> vehHasVariations;
@@ -657,21 +657,13 @@ void VehicleVariations::LoadData()
             if (!vec.empty() && vec[0] >= 400)
                 vehVars->originalModels[modelid] = vec[0];
 
-            vec.clear();
-            for (auto& str : splitString(dataFile.ReadString(section, "TrailersMatchExtras", "100"), ','))
-            {
-                auto i = (unsigned short)fast_atoi(str.c_str());
-                if (i < 100)
-                    vec.push_back(i);
-            }
+            vec = dataFile.ReadLine(section, "TrailersMatchExtras", READ_NUMS);
             if (!vec.empty())
-            {
-                std::sort(vec.begin(), vec.end());
                 vehVars->trailersMatchExtras[modelid] = vec;
-            }
 
-            if (dataFile.ReadBoolean(section, "TrailersMatchColors", false))
-                vehVars->trailersMatchColors.push_back(modelid);
+            vec = dataFile.ReadLine(section, "TrailersMatchColors", READ_NUMS);
+            if (!vec.empty())
+                vehVars->trailersMatchColors[modelid] = vec;
 
             const int trailersSpawnChance = dataFile.ReadInteger(section, "TrailersSpawnChance", -1);
             if (trailersSpawnChance > -1)
@@ -684,7 +676,6 @@ void VehicleVariations::LoadData()
     }
 
     std::sort(vehVars->parkedCars.begin(), vehVars->parkedCars.end());
-    std::sort(vehVars->trailersMatchColors.begin(), vehVars->trailersMatchColors.end());
     std::sort(vehVars->useOnlyGroups.begin(), vehVars->useOnlyGroups.end());
 
     Log::Write("\n");
@@ -847,7 +838,8 @@ void VehicleVariations::Process()
                 CVehicle* previous = veh;
                 CCarCtrl::SwitchVehicleToRealPhysics(veh);
 
-                bool trailerMatchExtras = vehVars->trailersMatchExtras.contains(veh->m_nModelIndex) && vectorHasId(vehVars->trailersMatchExtras[veh->m_nModelIndex], trailerConfigSelected+1);
+                bool trailerMatchExtras = vehVars->trailersMatchExtras.contains(veh->m_nModelIndex) && vectorHasId(vehVars->trailersMatchExtras[veh->m_nModelIndex], trailerConfigSelected + 1);
+                bool trailerMatchColors = vehVars->trailersMatchColors.contains(veh->m_nModelIndex) && vectorHasId(vehVars->trailersMatchColors[veh->m_nModelIndex], trailerConfigSelected + 1);
 
                 const std::vector<unsigned short> &trailersVec = it->second[CGeneral::GetRandomNumberInRange(0, (int)it->second.size())];
                 CVehicle* firstTrailer = NULL;
@@ -881,7 +873,7 @@ void VehicleVariations::Process()
                         if (vehVars->trailersHealth.contains(veh->m_nModelIndex))
                             trailer->m_fHealth = (float)vehVars->trailersHealth[veh->m_nModelIndex];
 
-                        if (vectorHasId(vehVars->trailersMatchColors, veh->m_nModelIndex))
+                        if (trailerMatchColors)
                         {
                             trailer->m_nPrimaryColor = veh->m_nPrimaryColor;
                             trailer->m_nSecondaryColor = veh->m_nSecondaryColor;

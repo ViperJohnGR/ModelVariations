@@ -31,7 +31,7 @@
 #pragma comment (lib, "urlmon.lib")
 
 
-#define MOD_VERSION "9.9.5"
+#define MOD_VERSION "9.9.6"
 
 struct jumpInfo {
     std::uintptr_t address;
@@ -147,7 +147,8 @@ std::string getDatetime(bool printDate, bool printTime, bool printMs)
     return str;
 }
 
-bool LoadPESection(const char* filePath, int section, std::vector<unsigned char>& buffer, unsigned int* size) {
+bool loadPESection(const char* filePath, int section, std::vector<unsigned char>& buffer, unsigned int* size)
+{
     HANDLE hFile;
     HANDLE hFileMapping;
     LPVOID mapView;
@@ -516,7 +517,7 @@ void __cdecl CGame__ProcessHooked()
         for (auto& rangeStart : validRanges)
         {
             unsigned int sectionSize;
-            if (LoadPESection(exePath.c_str(), sections[secCount++], buffer, &sectionSize))
+            if (loadPESection(exePath.c_str(), sections[secCount++], buffer, &sectionSize))
                 for (unsigned int i = rangeStart; i < sectionSize + base; i++)
                 {
                     auto currentByte = *reinterpret_cast<unsigned char*>(i);
@@ -684,12 +685,11 @@ void __cdecl CGame__ProcessHooked()
         updateVariations();
     }
 
-    if (zInfo && strncmp(zInfo->m_szLabel, currentZone, 7) != 0 && strncmp(zInfo->m_szLabel, "SAN_AND", 7) != 0)
+    if (zInfo && *reinterpret_cast<uint64_t*>(zInfo->m_szLabel) != *reinterpret_cast<uint64_t*>(currentZone) && strncmp(zInfo->m_szLabel, "SAN_AND", 7) != 0)
     {
         logVariationsChange("Zone changed");
 
-        *reinterpret_cast<uint64_t*>(currentZone) = 0;
-        strncpy(currentZone, zInfo->m_szLabel, 7);
+        *reinterpret_cast<uint64_t*>(currentZone) = *reinterpret_cast<uint64_t*>(zInfo->m_szLabel);
         updateVariations();
     }
 

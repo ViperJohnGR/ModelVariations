@@ -213,7 +213,7 @@ void PedVariations::LoadData()
 
             for (unsigned j = 0; j < 6; j++)
             {
-                auto vec = dataFile.ReadLine(section, "Wanted" + std::to_string(j), READ_PEDS);
+                auto vec = dataFile.ReadLine(section, "Wanted" + std::to_string(j+1), READ_PEDS);
                 if (vec.empty())
                     continue;
                 pedVars->wantedVariations[modelIndex][j] = vec;

@@ -544,7 +544,7 @@ void VehicleVariations::LoadData()
                 
             for (unsigned i = 0; i < 6; i++)
             {
-                auto vec = dataFile.ReadLine(section, "Wanted" + std::to_string(i), READ_VEHICLES);
+                auto vec = dataFile.ReadLine(section, "Wanted" + std::to_string(i+1), READ_VEHICLES);
                 if (vec.empty())
                     continue;
                 vehVars->wantedVariations[modelid][i] = vec;

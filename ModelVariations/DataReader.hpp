@@ -23,7 +23,7 @@ class DataReader
 public:
 	DataReader(const char* filename);
 
-	bool Load(const char* filename);
+	void Load(const char* filename);
 
 	int ReadInteger(const std::string& section, const std::string& key, int defaultValue);
 	float ReadFloat(const std::string& section, const std::string& key, float defaultValue);

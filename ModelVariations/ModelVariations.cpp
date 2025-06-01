@@ -31,7 +31,7 @@
 #pragma comment (lib, "urlmon.lib")
 
 
-#define MOD_VERSION "9.9.6"
+#define MOD_VERSION "9.9.7"
 
 struct jumpInfo {
     std::uintptr_t address;
@@ -366,7 +366,9 @@ void initialize()
         olaIniPath.replace(olaIniPath.find_last_of("\\/"), std::string::npos, "\\III.VC.SA.LimitAdjuster.ini");
 
         DataReader olaIni(olaIniPath.c_str());
-        Log::Write("PedModels limit in OLA is %s\n\n", olaIni.ReadString("SALIMITS", "PedModels", "").c_str());
+        auto olaStr = olaIni.ReadString("SALIMITS", "PedModels", "");
+        if (!olaStr.empty())
+            Log::Write("PedModels limit in OLA is %s\n\n", olaStr.c_str());
     }
 
     loadIniData();

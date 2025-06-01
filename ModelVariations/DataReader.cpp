@@ -6,7 +6,6 @@
 
 #include <CModelInfo.h>
 #include <CPedModelInfo.h>
-#include <CStreaming.h>
 #include <CWeaponInfo.h>
 
 bool reachedMaxCapacity = false;
@@ -16,7 +15,7 @@ DataReader::DataReader(const char* filename)
 	Load(filename);
 }
 
-bool DataReader::Load(const char* filename)
+void DataReader::Load(const char* filename)
 {
 	std::string file = strchr(filename, ':') ? filename : (LoadedModules::GetSelfDirectory() + '\\' + filename);
 	file = fileToString(file);
@@ -71,8 +70,6 @@ bool DataReader::Load(const char* filename)
 						data[i][key] = value;
 		}
 	}
-
-	return true;
 }
 
 int DataReader::ReadInteger(const std::string &section, const std::string &key, int defaultValue)

@@ -23,16 +23,16 @@ std::pair<std::string, MODULEINFO> LoadedModules::GetModuleAtAddress(std::uintpt
     return {};
 }
 
-std::pair<std::string, MODULEINFO> LoadedModules::GetModule(std::string_view name, bool exactMatch)
+std::pair<std::string, MODULEINFO> LoadedModules::GetModule(const std::string &name, bool exactMatch)
 {
     for (auto& i : loadedModules)
         if (exactMatch)
         {
             auto filename = getFilenameFromPath(i.first);
-            if (_stricmp(filename.c_str(), name.data()) == 0)
+            if (_stricmp(filename.c_str(), name.c_str()) == 0)
                 return i;
         }
-        else if (strcasestr(i.first, name.data()))
+        else if (strcasestr(i.first, name))
             return i;
 
     return {};

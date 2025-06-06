@@ -155,11 +155,11 @@ inline std::string bytesToString(std::uintptr_t address, unsigned int nBytes)
     return result;
 }
 
-inline std::string fileToString(std::string_view filename)
+inline std::string fileToString(const std::string &filename)
 {
     std::string str;
 
-    HANDLE hFile = CreateFile(filename.data(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    HANDLE hFile = CreateFile(filename.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
     if (hFile == INVALID_HANDLE_VALUE)
         return str;
 
@@ -178,10 +178,9 @@ inline std::string fileToString(std::string_view filename)
     return str;
 }
 
-inline std::string getFilenameFromPath(std::string_view path)
+inline std::string getFilenameFromPath(const std::string &path)
 {
-    std::string filename = path.data();
-    return filename.substr(filename.find_last_of("/\\") + 1);
+    return path.substr(path.find_last_of("/\\") + 1);
 }
 
 inline bool strcasestr(std::string src, std::string sub)

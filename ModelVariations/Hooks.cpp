@@ -7,11 +7,11 @@
 std::unordered_map<std::uintptr_t, std::string> hooksASM;
 std::unordered_map<std::uintptr_t, hookinfo> hookedCalls;
 
-bool hookASM(std::uintptr_t address, std::string_view originalData, injector::memory_pointer_raw hookDest, std::string_view funcName)
+bool hookASM(std::uintptr_t address, const std::string &originalData, injector::memory_pointer_raw hookDest, const std::string &funcName)
 {
     unsigned numBytes = originalData.size() / 3 + 1;
 
-    if (!memcmp(address, originalData.data()) && forceEnableGlobal == false && !forceEnable.contains(address))
+    if (!memcmp(address, originalData.c_str()) && forceEnableGlobal == false && !forceEnable.contains(address))
     {
         std::string bytes = bytesToString(address, numBytes);
         auto branchDestination = injector::GetBranchDestination(address).as_int();
@@ -19,9 +19,9 @@ bool hookASM(std::uintptr_t address, std::string_view originalData, injector::me
         std::string funcType = (funcName.find("::") != std::string::npos) ? "Modified method" : "Modified function";
 
         if (branchDestination)
-            Log::LogModifiedAddress(address, "%s detected: %s - 0x%08X is %s %s 0x%08X\n", funcType.c_str(), funcName.data(), address, bytes.c_str(), getFilenameFromPath(moduleName).c_str(), branchDestination);
+            Log::LogModifiedAddress(address, "%s detected: %s - 0x%08X is %s %s 0x%08X\n", funcType.c_str(), funcName.c_str(), address, bytes.c_str(), getFilenameFromPath(moduleName).c_str(), branchDestination);
         else
-            Log::LogModifiedAddress(address, "%s detected: %s - 0x%08X is %s\n", funcType.c_str(), funcName.data(), address, bytes.c_str());
+            Log::LogModifiedAddress(address, "%s detected: %s - 0x%08X is %s\n", funcType.c_str(), funcName.c_str(), address, bytes.c_str());
 
         return false;
     }

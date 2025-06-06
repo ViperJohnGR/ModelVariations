@@ -18,7 +18,7 @@ class LoadedModules
 {
 public:
 	static std::pair<std::string, MODULEINFO> GetModuleAtAddress(std::uintptr_t address);
-	static std::pair<std::string, MODULEINFO> GetModule(std::string_view name, bool exactMatch = true);
+	static std::pair<std::string, MODULEINFO> GetModule(const std::string &name, bool exactMatch = true);
 
 	static std::string GetSelfDirectory();
 

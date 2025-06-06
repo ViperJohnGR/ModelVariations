@@ -6,11 +6,11 @@ HANDLE Log::logfile = INVALID_HANDLE_VALUE;
 std::set<std::uintptr_t> Log::modifiedAddresses;
 std::vector<char> Log::buffer;
 
-bool Log::Open(std::string_view filename)
+bool Log::Open(const std::string &filename)
 {
 	FindClose(logfile);
 	
-	logfile = CreateFile(filename.data(), GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_WRITE_THROUGH, NULL);
+	logfile = CreateFile(filename.c_str(), GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_WRITE_THROUGH, NULL);
 	if (logfile == INVALID_HANDLE_VALUE)
 		return false;
 

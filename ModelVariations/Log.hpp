@@ -15,7 +15,7 @@ class Log
 	static std::vector<char> buffer;
 
 public:
-	static bool Open(std::string_view filename);
+	static bool Open(const std::string &filename);
 	static bool Close();
 	static bool Write(const char* format, ...);
 

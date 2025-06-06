@@ -23,7 +23,7 @@ extern std::unordered_map<std::uintptr_t, hookinfo> hookedCalls;
 extern bool forceEnableGlobal;
 extern std::set<std::uintptr_t> forceEnable;
 
-bool hookASM(std::uintptr_t address, std::string_view originalData, injector::memory_pointer_raw hookDest, std::string_view funcName);
+bool hookASM(std::uintptr_t address, const std::string &originalData, injector::memory_pointer_raw hookDest, const std::string &funcName);
 void hookCall(std::uintptr_t address, void* pFunction, std::string name, bool isVTableAddress = false);
 
 template <std::uintptr_t address, typename... Args>
@@ -65,12 +65,12 @@ Ret callMethodOriginalAndReturn(C _this, Args... args)
 
 
 template <std::uintptr_t at, std::uintptr_t len = 5, class FuncT>
-void MakeInline(std::string_view funcName, const char* originalData, FuncT func)
+void MakeInline(const std::string &funcName, const char* originalData, FuncT func)
 {
     std::string funcType = (funcName.find("::") != std::string::npos) ? "Modified method" : "Modified function";
 
     if (memcmp(at, originalData) || forceEnable.contains(at) || forceEnableGlobal)
         injector::MakeInline<at, at + len>(func);
     else
-        Log::LogModifiedAddress(at, "%s detected: %s - 0x%08X is %s\n", funcType.c_str(), funcName, at, bytesToString(at, len).c_str());
+        Log::LogModifiedAddress(at, "%s detected: %s - 0x%08X is %s\n", funcType.c_str(), funcName.c_str(), at, bytesToString(at, len).c_str());
 }

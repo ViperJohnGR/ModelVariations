@@ -555,11 +555,6 @@ void __cdecl CGame__ProcessHooked()
         jumpsLogged = true;
     }
 
-    CVector pPos = FindPlayerCoors(-1);
-    CZone* zInfo = NULL;
-    CTheZones::GetZoneInfo(&pPos, &zInfo);
-    const CWanted* wanted = FindPlayerWanted(-1);
-
     if (trackReferenceCounts > 0 && CModelInfo::GetModelInfo(0))
         for (int i = 7; i < std::max<int>(flaMaxID, 20000); i++)
         {
@@ -638,9 +633,9 @@ void __cdecl CGame__ProcessHooked()
             if (_stricmp(moduleName.c_str(), MOD_NAME) != 0 && callChecks.insert(it.first).second)
             {
                 if (functionAddress > 0 && !moduleName.empty())
-                    Log::Write("Modified call detected: %s 0x%08X 0x%08X %s 0x%08X\n", it.second.name.data(), it.first, functionAddress, moduleName.c_str(), moduleInfo.second.lpBaseOfDll);
+                    Log::Write("Modified call detected: %s 0x%08X 0x%08X %s 0x%08X\n", it.second.name.c_str(), it.first, functionAddress, moduleName.c_str(), moduleInfo.second.lpBaseOfDll);
                 else
-                    Log::Write("Modified call detected: %s 0x%08X %s\n", it.second.name.data(), it.first, bytesToString(it.first, 5).c_str());
+                    Log::Write("Modified call detected: %s 0x%08X %s\n", it.second.name.c_str(), it.first, bytesToString(it.first, 5).c_str());
             }
 
             auto gta_saModule = LoadedModules::GetModule(exeName);
@@ -678,6 +673,11 @@ void __cdecl CGame__ProcessHooked()
 
         framesSinceCallsChecked = 0;
     }
+
+    CVector pPos = FindPlayerCoors(-1);
+    CZone* zInfo = NULL;
+    CTheZones::GetZoneInfo(&pPos, &zInfo);
+    const CWanted* wanted = FindPlayerWanted(-1);
 
     if (wanted && wanted->m_nWantedLevel != currentWanted)
     {
@@ -883,14 +883,6 @@ public:
             cbData = 63;
             if (RegGetValue(HKEY_LOCAL_MACHINE, "SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Environment", "PROCESSOR_ARCHITECTURE", RRF_RT_REG_SZ, NULL, str, &cbData) == ERROR_SUCCESS)
                     windowsVersion += str;
-
-            SYSTEM_INFO nsi;
-            GetNativeSystemInfo(&nsi);
-
-            if (nsi.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_INTEL)
-                windowsVersion += " (32-bit processor)";
-            else if (nsi.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_AMD64)
-                windowsVersion += " (64-bit processor)";
 
 
             Log::Write("Model Variations %s %s\n%s\n%s\n\n%s\n", MOD_VERSION, IS_DEBUG ? "DEBUG" : "", windowsVersion.c_str(), getDatetime(true, true, false).c_str(), exePath.c_str());

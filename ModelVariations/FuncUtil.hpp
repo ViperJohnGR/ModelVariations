@@ -46,9 +46,9 @@ inline unsigned int integerPow(unsigned int x, unsigned int power)
 // Loading //
 /////////////
 
-inline void loadModels(std::vector<int> vec, int Streamingflags, bool loadImmediately)
+inline void loadModels(const std::vector<int> &vec, int Streamingflags, bool loadImmediately)
 {
-    for (auto& i : vec)
+    for (auto i : vec)
         CStreaming__RequestModel(i, Streamingflags);
 
     if (loadImmediately)

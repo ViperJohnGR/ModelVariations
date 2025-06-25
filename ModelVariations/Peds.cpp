@@ -17,7 +17,7 @@
 
 static const char* dataFileName = "ModelVariations_Peds.ini";
 static DataReader dataFile(dataFileName);
-int16_t destroyedModelCounters[20000];
+std::array<int16_t[2], 20000> destroyedModelCounters;
 
 struct tPedVars {
     std::unordered_map<uint64_t, std::unordered_map<unsigned short, std::vector<unsigned short>>> variations;
@@ -504,7 +504,12 @@ void PedVariations::LogVariations()
     {
         Log::Write("%u: ", i.first);
         for (auto j : i.second)
-            Log::Write("%u ", j);
+        {
+            const char* suffix = " ";
+            if (std::find(addedIDs.begin(), addedIDs.end(), j) != addedIDs.end())
+                suffix = "SP ";
+            Log::Write("%u%s", j, suffix);
+        }
         Log::Write("\n");
     }
 }
@@ -513,12 +518,12 @@ void PedVariations::LogVariations()
 ///////////////////////////////////////////  CALL HOOKS    ////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
-int __cdecl getKillsByPlayer(int)
+int __cdecl getKillsByPlayer(int player)
 {
     int sum = 0;
 
-    for (auto i : destroyedModelCounters)
-        sum += i;
+    for (auto& i : destroyedModelCounters)
+        sum += i[player];
 
     return sum;
 }
@@ -646,35 +651,22 @@ void PedVariations::InstallHooks(bool enableSpecialPeds)
 
         if (notModified)
         {
-            injector::MakeInline<0x43DE6C, 0x43DE6C + 8>([](injector::reg_pack& regs)
-            {
-                destroyedModelCounters[regs.eax * 2]++;
-            });
-
-            injector::MakeInline<0x43DF5B, 0x43DF5B + 8>([](injector::reg_pack& regs)
-            {
-                destroyedModelCounters[regs.eax * 2]++;
-            });
-
-            auto leaEAX = [](injector::reg_pack& regs)
-            {
-                regs.eax = reinterpret_cast<uint32_t>(&(destroyedModelCounters[regs.eax * 2]));
-            };
-
-            auto movAX = [](injector::reg_pack& regs)
-            {
-                regs.eax = (regs.eax & 0xFFFF0000) | static_cast<uint32_t>(destroyedModelCounters[regs.edx * 2]);
-            };
+            injector::WriteMemory<int16_t*>(0x43DE70, destroyedModelCounters[0], true);
+            injector::WriteMemory<int16_t*>(0x43DF5F, destroyedModelCounters[0], true);
 
             if (gameHOODLUM)
             {
-                injector::MakeInline<0x1561634U, 0x1561634U + 7>(leaEAX);
-                injector::MakeInline<0x1564C2BU, 0x1564C2BU + 8>(movAX);
+                injector::WriteMemory<int16_t*>(0x1561637, destroyedModelCounters[0], true);
+                injector::WriteMemory<uint32_t>(0x156163C, 20000, true);
+
+                injector::WriteMemory<int16_t*>(0x1564C2F, destroyedModelCounters[0], true);            
             }
             else
             {
-                injector::MakeInline<0x43D6A4, 0x43D6A4 + 7>(leaEAX);
-                injector::MakeInline<0x43D6CB, 0x43D6CB + 8>(movAX);
+                injector::WriteMemory<int16_t*>(0x43D6A7, destroyedModelCounters[0], true);
+                injector::WriteMemory<uint32_t>(0x43D6AC, 20000, true);
+
+                injector::WriteMemory<int16_t*>(0x43D6CF, destroyedModelCounters[0], true);
             }
 
             injector::MakeJMP(0x43D6E0, getKillsByPlayer);

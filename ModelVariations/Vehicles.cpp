@@ -1422,6 +1422,15 @@ int __fastcall CreateInstanceHooked(CVehicleModelInfo* _this)
             Log::Write("OK\n");
         else
         {
+            Log::Write("\nFailed. Trying again as GAME_REQUIRED... ");
+            loadModels({ index }, GAME_REQUIRED, true);
+            if (_this->m_pVehicleStruct != NULL)
+            {
+                Log::Write("OK\n");
+                CStreaming__ms_aInfoForModel[index].m_nFlags &= ~((uint8_t)GAME_REQUIRED);
+                return callMethodOriginalAndReturn<int, address>(_this);
+            }
+
             char errorString[256] = {};
             snprintf(errorString, 255, "Couldn't load model %d! The game will probably crash.\n"
                                        "Load state: %u\n"

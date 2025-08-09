@@ -1416,7 +1416,7 @@ int __fastcall CreateInstanceHooked(CVehicleModelInfo* _this)
     {
         int index = 0;
         CModelInfo::GetModelInfoFromHashKey(_this->m_nKey, &index);
-        Log::Write("Model %d has NULL vehicle struct. Trying to load model... ", index);
+        Log::Write("Model %d has NULL vehicle struct (load state = %u). Trying to load model... ", index, CStreaming__ms_aInfoForModel[index].m_nLoadState);
         loadModels({ index }, PRIORITY_REQUEST, true);
         if (_this->m_pVehicleStruct != NULL)
             Log::Write("OK\n");

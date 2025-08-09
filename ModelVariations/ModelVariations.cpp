@@ -31,7 +31,7 @@
 #pragma comment (lib, "urlmon.lib")
 
 
-#define MOD_VERSION "9.9.8"
+#define MOD_VERSION "10.0"
 
 struct jumpInfo {
     std::uintptr_t address;
@@ -113,9 +113,23 @@ bool checkForUpdate()
     if (auto start = str.find("\"v"); start != std::string::npos)
         if (auto end = str.find_first_of('"', start+1); end != std::string::npos && end > start + 2)
         {
-            std::string newV = str.substr(start+2, end - start - 2);
-            std::string oldV = MOD_VERSION;
-            return std::lexicographical_compare(oldV.begin(), oldV.end(), newV.begin(), newV.end());
+            auto newV = splitString(str.substr(start+2, end - start - 2), '.');
+            auto oldV = splitString(MOD_VERSION, '.');
+
+            // Make both the same length by padding with "0"
+            if (newV.size() < oldV.size()) newV.resize(oldV.size(), "0");
+            else if (oldV.size() < newV.size()) oldV.resize(newV.size(), "0");
+
+            for (size_t i = 0; i < newV.size(); i++)
+            {
+                int n1 = std::stoi(newV[i]);
+                int n2 = std::stoi(oldV[i]);
+
+                if (n1 > n2) return true;
+                else if (n1 < n2) return false;
+            }
+
+            return false; // equal
         }
 
     Log::Write("Check for updates failed. Invalid version string.\n");
@@ -487,6 +501,18 @@ char __fastcall InteriorManager_c__UpdateHooked(void* _this)
 }
 
 template <std::uintptr_t address>
+void __cdecl RetryLoadFileHooked(int streamNum)
+{
+    Log::Write("RetryLoadFile called for the following IDs in channel %d: ", streamNum);
+
+    for (auto i : CStreaming::ms_channel[streamNum].modelIds)
+        Log::Write("%d ", i);
+    Log::Write("\n");
+
+    callOriginal<address>(streamNum);
+}
+
+template <std::uintptr_t address>
 void __cdecl CGame__ProcessHooked()
 {
     callOriginal<address>();
@@ -819,9 +845,9 @@ public:
         logJumps = iniSettings.ReadBoolean("Settings", "LogJumps", false);
 
         std::string checkForceEnabled = iniSettings.ReadString("Settings", "ForceEnable", "");
-        if (checkForceEnabled == "1")
+        if (checkForceEnabled == "1" || _stricmp(checkForceEnabled.c_str(), "true") == 0)
             forceEnableGlobal = true;
-        else if (checkForceEnabled != "0")
+        else if (checkForceEnabled != "0" && isdigit(checkForceEnabled[0]))
         {
             for (const auto& s : splitString(checkForceEnabled, ','))
             {
@@ -922,7 +948,8 @@ public:
         else
             Log::Write("Streaming fix disabled.\n");
 
-        hookCall(0x440840, InteriorManager_c__UpdateHooked<0x440840>, "InteriorManager_c::Update"); //as
+        hookCall(0x440840, InteriorManager_c__UpdateHooked<0x440840>, "InteriorManager_c::Update"); //CEntryExit::TransitionFinished
+        hookCall(0x40E37B, RetryLoadFileHooked<0x40E37B>, "CStreaming::RetryLoadFile"); //CStreaming::ProcessLoadingChannel
 
         hookCall(0x53E981, CGame__ProcessHooked<0x53E981>, "CGame::Process"); //Idle
         hookCall(0x748E6B, CGame__ShutdownHooked<0x748E6B>, "CGame::Shutdown"); //WinMain

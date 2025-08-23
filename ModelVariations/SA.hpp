@@ -8,6 +8,8 @@
 #include <CStreamingInfo.h>
 #include <CZone.h>
 
+extern CStreamingInfo* CStreaming__ms_aInfoForModel;
+
 template <typename Ret, std::uintptr_t address, typename C, typename... Args>
 constexpr Ret getDynamicMethod(C _this, Args... args)
 {
@@ -46,7 +48,6 @@ inline bool CPhysical__TestCollision(CPhysical* _this, bool applySpeed) { return
 #define CStreaming__ms_memoryUsed (**reinterpret_cast<uint32_t**>(0x408ACA))
 #define CStreaming__ms_numPedsLoaded (**reinterpret_cast<int**>(0x40A71F))
 #define CStreaming__ms_vehiclesLoaded (*reinterpret_cast<CLoadedCarGroup**>(0x40B997))
-#define CStreaming__ms_aInfoForModel (*reinterpret_cast<CStreamingInfo**>(0x5B8AE8))
 inline void CStreaming__LoadAllRequestedModels(bool bOnlyPriorityRequests) { getDynamicFunction<void, 0x49B421>(bOnlyPriorityRequests); }
 inline void CStreaming__RequestModel(int model, int flags) { getDynamicFunction<void, 0x40A612>(model, flags); }
 inline void CStreaming__RequestSpecialModel(int slot, char* name, int flags) { getDynamicFunction<void, 0x40B45E>(slot, name, flags); }

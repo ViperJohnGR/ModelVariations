@@ -31,13 +31,15 @@
 #pragma comment (lib, "urlmon.lib")
 
 
-#define MOD_VERSION "10.0"
+#define MOD_VERSION "10.0.1"
 
 struct jumpInfo {
     std::uintptr_t address;
     std::uintptr_t destination;
     unsigned char type;
 };
+
+CStreamingInfo* CStreaming__ms_aInfoForModel = CStreaming::ms_aInfoForModel;
 
 std::unordered_map<std::string, std::vector<CZone*>> presetAllZones;
 
@@ -122,9 +124,10 @@ bool checkForUpdate()
 
             for (size_t i = 0; i < newV.size(); i++)
             {
-                int n1 = std::stoi(newV[i]);
-                int n2 = std::stoi(oldV[i]);
+                int n1 = fast_atoi(newV[i].c_str());
+                int n2 = fast_atoi(oldV[i].c_str());
 
+                if (n1 == INT_MAX || n2 == INT_MAX) return false;
                 if (n1 > n2) return true;
                 else if (n1 < n2) return false;
             }
@@ -356,7 +359,19 @@ void initialize()
     if (!flaModule.first.empty())
     {
         std::string flaIniPath = flaModule.first;
+        std::string flaLogPath = flaModule.first;
         flaIniPath.replace(flaIniPath.find_last_of("\\/"), std::string::npos, "\\fastman92limitAdjuster_GTASA.ini");
+        flaLogPath.replace(flaIniPath.find_last_of("\\/"), std::string::npos, "\\fastman92limitAdjuster.log");
+
+        auto fastmanLog = fileToString(flaLogPath);
+        char* endptr = NULL;
+
+        if (auto pos = fastmanLog.find("CStreaming::ms_aInfoForModel: 0x"); pos != std::string::npos)
+        {
+            auto infoAddress = strtol(fastmanLog.c_str()+ pos+30, &endptr, 16);
+            if (infoAddress)
+                CStreaming__ms_aInfoForModel = reinterpret_cast<CStreamingInfo*>(infoAddress);
+        }
 
         DataReader flaIni(flaIniPath.c_str());
         flaMaxID = flaIni.ReadInteger("ID LIMITS", "Count of killable model IDs", -1);

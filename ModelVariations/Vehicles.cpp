@@ -946,9 +946,10 @@ void VehicleVariations::LogDataFile()
     if (GetFileAttributes(dataFileName) == INVALID_FILE_ATTRIBUTES && GetLastError() == ERROR_FILE_NOT_FOUND)
         Log::Write("\n%s not found!\n\n", dataFileName);
     else
-        Log::Write("##################################\n"
-                   "## ModelVariations_Vehicles.ini ##\n"
-                   "##################################\n%s\n", fileToString(dataFileName).c_str());
+    {
+        printFilenameWithBorder(dataFileName, '#');
+        Log::Write("%s\n", fileToString(dataFileName).c_str());
+    }
 }
 
 void VehicleVariations::LogVariations()
@@ -1416,6 +1417,15 @@ int __fastcall CreateInstanceHooked(CVehicleModelInfo* _this)
     {
         int index = 0;
         CModelInfo::GetModelInfoFromHashKey(_this->m_nKey, &index);
+        if (index > 26315 && CStreaming__ms_aInfoForModel == (CStreamingInfo*)0x8E4CC0)
+        {
+            Log::Write("Model %d has NULL vehicle struct. Trying to load model... ", index);
+            loadModels({ index }, PRIORITY_REQUEST, true);
+            if (_this->m_pVehicleStruct != NULL)
+                Log::Write("OK\n");
+            return callMethodOriginalAndReturn<int, address>(_this);
+        }
+
         Log::Write("Model %d has NULL vehicle struct (load state = %u). Trying to load model... ", index, CStreaming__ms_aInfoForModel[index].m_nLoadState);
         loadModels({ index }, PRIORITY_REQUEST, true);
         if (_this->m_pVehicleStruct != NULL)

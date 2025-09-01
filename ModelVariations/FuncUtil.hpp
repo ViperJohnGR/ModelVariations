@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Log.hpp"
 #include "SA.hpp"
 
 #include <algorithm>
@@ -40,6 +41,19 @@ inline unsigned int integerPow(unsigned int x, unsigned int power)
         x *= x;
 
     return x;
+}
+
+inline void printFilenameWithBorder(const char* name, const char ch = '#') 
+{
+    size_t total_width = strlen(name) + 6; // "## " + name + " ##"
+
+    for (size_t i = 0; i < total_width; ++i) Log::Write("%c", ch);
+    Log::Write("\n");
+
+    Log::Write("%c%c %s %c%c\n", ch, ch, name, ch, ch);
+
+    for (size_t i = 0; i < total_width; ++i) Log::Write("%c", ch);
+    Log::Write("\n");
 }
 
 /////////////
@@ -112,6 +126,51 @@ inline void WriteMemory(std::uintptr_t address, const char *value)
         value += 2;
         address++;
     }
+}
+
+inline bool isAddressValid(std::uintptr_t address)
+{
+    MEMORY_BASIC_INFORMATION mbi;
+    if (VirtualQuery((void*)address, &mbi, sizeof(mbi)) == 0)
+        return false; // Query failed
+
+    return (mbi.State == MEM_COMMIT) && !(mbi.Protect & (PAGE_NOACCESS | PAGE_GUARD));
+}
+
+inline bool isAddressValid(void* address)
+{
+    return isAddressValid(reinterpret_cast<std::uintptr_t>(address));
+}
+
+template <typename T>
+T* getPointerFromAddress(std::uintptr_t address, T* fallback, int depth = 1)
+{
+    if (!isAddressValid(address))
+    {
+        Log::Write("Address 0x%X is invalid.\n", address);
+        return fallback;
+    }
+
+    auto p = reinterpret_cast<void*>(address);
+
+    for (int i = 0; i < depth; ++i)
+    {
+        if (!isAddressValid(p))
+        {
+            Log::Write("Pointer chain broken at %d/%d (0x%X invalid). Using fallback 0x%X\n", i, depth-1, p, fallback);
+            return fallback;
+        }
+
+        p = *reinterpret_cast<void**>(p);
+    }
+
+    return reinterpret_cast<T*>(p);
+}
+
+template <typename T>
+T* getPointerFromAddress(std::uintptr_t address, std::uintptr_t fallback, int depth = 1)
+{
+    return getPointerFromAddress<T>(address, reinterpret_cast<T*>(fallback), depth);
 }
 
 

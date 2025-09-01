@@ -230,9 +230,10 @@ void PedWeaponVariations::LogDataFile()
     if (GetFileAttributes(dataFileName) == INVALID_FILE_ATTRIBUTES && GetLastError() == ERROR_FILE_NOT_FOUND)
         Log::Write("\n%s not found!\n\n", dataFileName);
     else
-        Log::Write("####################################\n"
-                   "## ModelVariations_PedWeapons.ini ##\n"
-                   "####################################\n%s\n", fileToString(dataFileName).c_str());
+    {
+        printFilenameWithBorder(dataFileName, '#');
+        Log::Write("%s\n", fileToString(dataFileName).c_str());
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////

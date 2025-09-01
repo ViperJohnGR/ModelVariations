@@ -31,7 +31,7 @@
 #pragma comment (lib, "urlmon.lib")
 
 
-#define MOD_VERSION "10.0.1"
+#define MOD_VERSION "10.0.2"
 
 struct jumpInfo {
     std::uintptr_t address;
@@ -39,6 +39,7 @@ struct jumpInfo {
     unsigned char type;
 };
 
+//FLA changed arrays
 CStreamingInfo* CStreaming__ms_aInfoForModel = CStreaming::ms_aInfoForModel;
 
 std::unordered_map<std::string, std::vector<CZone*>> presetAllZones;
@@ -363,13 +364,13 @@ void initialize()
         flaIniPath.replace(flaIniPath.find_last_of("\\/"), std::string::npos, "\\fastman92limitAdjuster_GTASA.ini");
         flaLogPath.replace(flaIniPath.find_last_of("\\/"), std::string::npos, "\\fastman92limitAdjuster.log");
 
-        auto fastmanLog = fileToString(flaLogPath);
+        std::string fastmanLog = fileToString(flaLogPath);
         char* endptr = NULL;
 
         if (auto pos = fastmanLog.find("CStreaming::ms_aInfoForModel: 0x"); pos != std::string::npos)
         {
-            auto infoAddress = strtol(fastmanLog.c_str()+ pos+30, &endptr, 16);
-            if (infoAddress)
+            unsigned int infoAddress = (unsigned int)strtol(fastmanLog.c_str()+ pos+30, &endptr, 16);
+            if (infoAddress && isAddressValid(infoAddress))
                 CStreaming__ms_aInfoForModel = reinterpret_cast<CStreamingInfo*>(infoAddress);
         }
 
@@ -378,14 +379,14 @@ void initialize()
         if (maxPedID == 0 && flaMaxID > -1)
             maxPedID = flaMaxID;
 
-        auto isFLASpecialFeaturesEnabled = flaIni.ReadInteger("ADDONS", "Enable model special feature loader", -1);
-
-        Log::Write("\nFLA settings:\n");
-        Log::Write("Enable special features = %d\n", flaIni.ReadInteger("VEHICLE SPECIAL FEATURES", "Enable special features", -1));
-        Log::Write("Extra objects directory = %d\n", flaIni.ReadInteger("DIRECTORY LIMITS", "Extra objects directory", -1));
-        Log::Write("Apply ID limit patch = %d\n", flaIni.ReadInteger("ID LIMITS", "Apply ID limit patch", -1));
-        Log::Write("Count of killable model IDs = %d\n", flaMaxID);
-        Log::Write("Enable model special feature loader = %d\n\n", isFLASpecialFeaturesEnabled);
+        Log::Write("\n");
+        printFilenameWithBorder(flaIniPath.substr(flaIniPath.find_last_of("/\\") + 1).c_str(), '#');
+        for (auto &i : flaIni.data)
+        {
+            Log::Write("[%s]\n", i.first.c_str());
+            for (auto& j : i.second)
+                Log::Write("%s = %s\n\n", j.first.c_str(), j.second.c_str());
+        }
     }
 
     auto olaModule = LoadedModules::GetModule("III.VC.SA.LimitAdjuster.asi");
@@ -942,15 +943,19 @@ public:
             if (GetFileAttributes(dataFileName) == INVALID_FILE_ATTRIBUTES && GetLastError() == ERROR_FILE_NOT_FOUND)
                 Log::Write("\n%s not found!\n\n", dataFileName);
             else
-                Log::Write("#########################\n"
-                           "## ModelVariations.ini ##\n"
-                           "#########################\n%s\n", fileToString(dataFileName).c_str());
+            {
+                printFilenameWithBorder(dataFileName, '#');
+                Log::Write("%s\n", fileToString(dataFileName).c_str());
+            }
 
             PedVariations::LogDataFile();
             PedWeaponVariations::LogDataFile();
             VehicleVariations::LogDataFile();
             Log::Write("\n");
         }
+
+        //FLA arrays
+        CStreaming__ms_aInfoForModel = getPointerFromAddress<CStreamingInfo>(0x5B8AE8, CStreaming::ms_aInfoForModel);
 
         if (loadStage == 0)
             initialize();

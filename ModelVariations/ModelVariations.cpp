@@ -24,7 +24,6 @@
 #include <set>
 #include <stack>
 
-#include <ntstatus.h>
 #include <urlmon.h>
 
 #pragma comment (lib, "bcrypt.lib")
@@ -886,28 +885,8 @@ public:
             {
                 exeFilesize = GetFileSize(hFile, NULL);
                 if (exeFilesize != INVALID_FILE_SIZE)
-                {
-                    DWORD lpNumberOfBytesRead = 0;
-                    BCRYPT_ALG_HANDLE hProvider = NULL;
-                    BCRYPT_HASH_HANDLE ctx = NULL;
-                    auto filebuf = std::vector<BYTE>(exeFilesize + 1);
+                    exeHash = hashFile(hFile, exeFilesize);
 
-                    if (ReadFile(hFile, filebuf.data(), exeFilesize, &lpNumberOfBytesRead, NULL))
-                        if (BCryptOpenAlgorithmProvider(&hProvider, BCRYPT_SHA256_ALGORITHM, NULL, 0) == STATUS_SUCCESS)
-                            if (BCryptCreateHash(hProvider, &ctx, NULL, 0, NULL, 0, 0) == STATUS_SUCCESS && ctx != NULL)
-                            {
-                                auto hash = std::vector<BYTE>(32);
-                                exeHash.resize(65);
-                                BCryptHashData(ctx, filebuf.data(), exeFilesize, 0);
-                                BCryptFinishHash(ctx, hash.data(), 32, 0);
-                                BCryptDestroyHash(ctx);
-                                BCryptCloseAlgorithmProvider(hProvider, 0);
-                                int hashLen = 0;
-
-                                for (auto& i : hash)
-                                    hashLen += snprintf(exeHash.data() + hashLen, 65U - hashLen, "%02x", i);
-                            }
-                }
                 CloseHandle(hFile);
             }
 
@@ -927,7 +906,7 @@ public:
                     windowsVersion += str;
 
 
-            Log::Write("Model Variations %s %s\n%s\n%s\n\n%s\n", MOD_VERSION, IS_DEBUG ? "DEBUG" : "", windowsVersion.c_str(), getDatetime(true, true, false).c_str(), exePath.c_str());
+            Log::Write("Model Variations %s %s %s\n%s\n%s\n\n%s\n", MOD_VERSION, IS_DEBUG ? "DEBUG" : "", hashFile(MOD_NAME).c_str(), windowsVersion.c_str(), getDatetime(true, true, false).c_str(), exePath.c_str());
 
             if (isGameHOODLUM())
                 Log::Write("Supported exe detected: 1.0 US HOODLUM | %u bytes | %s\n", exeFilesize, exeHash.c_str());

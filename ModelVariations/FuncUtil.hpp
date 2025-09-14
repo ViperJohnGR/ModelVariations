@@ -14,6 +14,8 @@
 #include <CMessages.h>
 #include <CStreaming.h>
 
+#include <ntstatus.h>
+
 
 inline bool isGameHOODLUM()
 {
@@ -55,6 +57,56 @@ inline void printFilenameWithBorder(const char* name, const char ch = '#')
     for (size_t i = 0; i < total_width; ++i) Log::Write("%c", ch);
     Log::Write("\n");
 }
+
+inline std::string hashFile(HANDLE& hFile, DWORD filesize = 0)
+{
+    std::string hashString;
+
+    if (hFile == INVALID_HANDLE_VALUE)
+        return "";
+
+    if (filesize == 0)
+        filesize = GetFileSize(hFile, NULL);
+
+    if (filesize != INVALID_FILE_SIZE)
+    {
+        DWORD lpNumberOfBytesRead = 0;
+        BCRYPT_ALG_HANDLE hProvider = NULL;
+        BCRYPT_HASH_HANDLE ctx = NULL;
+        auto filebuf = std::vector<BYTE>(filesize + 1);
+
+        if (ReadFile(hFile, filebuf.data(), filesize, &lpNumberOfBytesRead, NULL))
+            if (BCryptOpenAlgorithmProvider(&hProvider, BCRYPT_SHA256_ALGORITHM, NULL, 0) == STATUS_SUCCESS)
+                if (BCryptCreateHash(hProvider, &ctx, NULL, 0, NULL, 0, 0) == STATUS_SUCCESS && ctx != NULL)
+                {
+                    auto hashArray = std::vector<BYTE>(32);
+                    hashString.resize(65);
+                    BCryptHashData(ctx, filebuf.data(), filesize, 0);
+                    BCryptFinishHash(ctx, hashArray.data(), 32, 0);
+                    BCryptDestroyHash(ctx);
+                    BCryptCloseAlgorithmProvider(hProvider, 0);
+                    int hashLen = 0;
+
+                    for (auto& i : hashArray)
+                        hashLen += snprintf(hashString.data() + hashLen, 65U - hashLen, "%02x", i);
+                }
+    }
+
+    return hashString;
+}
+
+inline std::string hashFile(const char* filename)
+{
+    HANDLE hFile = CreateFile(filename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (hFile == INVALID_HANDLE_VALUE)
+    {
+        Log::Write("Error hashing '%s'. Couldn't open file.\n", filename);
+        return "";
+    }
+
+    return hashFile(hFile);
+}
+
 
 /////////////
 // Loading //

@@ -73,7 +73,7 @@ void LoadedModules::Refresh()
     HANDLE hProcess = GetCurrentProcess();
     DWORD cbNeeded = 0;
 
-    if (EnumProcessModules(hProcess, modules, sizeof(modules), &cbNeeded))
+    if (EnumProcessModules(hProcess, modules, sizeof(modules), &cbNeeded) && cbNeeded <= sizeof(modules))
         for (unsigned int i = 0; i < (cbNeeded / sizeof(HMODULE)); i++)
         {
             char szModName[MAX_PATH] = {};

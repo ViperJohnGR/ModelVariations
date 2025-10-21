@@ -30,7 +30,7 @@
 #pragma comment (lib, "urlmon.lib")
 
 
-#define MOD_VERSION "10.0.2"
+#define MOD_VERSION "10.0.3"
 
 struct jumpInfo {
     std::uintptr_t address;
@@ -940,7 +940,7 @@ public:
             GetSystemInfo(&si);
             Log::Write("lpMaximumApplicationAddress = 0x%X\n", si.lpMaximumApplicationAddress);
 
-            if (GetFileAttributes(dataFileName) == INVALID_FILE_ATTRIBUTES && GetLastError() == ERROR_FILE_NOT_FOUND)
+            if (!fileExists(dataFileName))
                 Log::Write("\n%s not found!\n\n", dataFileName);
             else
             {

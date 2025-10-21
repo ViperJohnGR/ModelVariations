@@ -227,7 +227,7 @@ void PedWeaponVariations::Process()
 
 void PedWeaponVariations::LogDataFile()
 {
-    if (GetFileAttributes(dataFileName) == INVALID_FILE_ATTRIBUTES && GetLastError() == ERROR_FILE_NOT_FOUND)
+    if (!fileExists(dataFileName))
         Log::Write("\n%s not found!\n\n", dataFileName);
     else
     {

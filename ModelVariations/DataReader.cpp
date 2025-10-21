@@ -17,8 +17,7 @@ DataReader::DataReader(const char* filename)
 
 void DataReader::Load(const char* filename)
 {
-	std::string file = strchr(filename, ':') ? filename : (LoadedModules::GetSelfDirectory() + '\\' + filename);
-	file = fileToString(file);
+	std::string file = fileToString(filename);
 
 	data.clear();
 

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "LoadedModules.hpp"
 #include "Log.hpp"
 #include "SA.hpp"
 
@@ -44,6 +45,11 @@ inline unsigned int integerPow(unsigned int x, unsigned int power)
         x *= x;
 
     return x;
+}
+
+inline std::string getFullPath(const std::string& filename)
+{
+    return filename.find(':') != std::string::npos ? filename : (LoadedModules::GetSelfDirectory() + '\\' + filename);
 }
 
 inline void printFilenameWithBorder(const char* name, const char ch = '#') 
@@ -96,12 +102,12 @@ inline std::string hashFile(HANDLE& hFile, DWORD filesize = 0)
     return hashString;
 }
 
-inline std::string hashFile(const char* filename)
+inline std::string hashFile(const std::string& filename)
 {
-    HANDLE hFile = CreateFile(filename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    HANDLE hFile = CreateFile(getFullPath(filename).c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
     if (hFile == INVALID_HANDLE_VALUE)
     {
-        Log::Write("Error hashing '%s'. Couldn't open file.\n", filename);
+        Log::Write("Error hashing '%s'. Couldn't open file.\n", filename.c_str());
         return "";
     }
 
@@ -115,6 +121,11 @@ inline size_t getMemoryUsage()
         return pmc.PrivateUsage;
 
     return 0;
+}
+
+inline bool fileExists(const std::string& filename)
+{
+    return GetFileAttributes(getFullPath(filename).c_str()) != INVALID_FILE_ATTRIBUTES;
 }
 
 
@@ -280,7 +291,7 @@ inline std::string fileToString(const std::string &filename)
 {
     std::string str;
 
-    HANDLE hFile = CreateFile(filename.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    HANDLE hFile = CreateFile(getFullPath(filename).c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
     if (hFile == INVALID_HANDLE_VALUE)
         return str;
 

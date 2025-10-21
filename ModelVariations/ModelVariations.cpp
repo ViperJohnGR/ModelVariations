@@ -57,7 +57,11 @@ int maxPedID = 0;
 static const char* dataFileName = "ModelVariations.ini";
 DataReader iniSettings(dataFileName);
 
-short framesSinceCallsChecked = 1001;
+std::chrono::steady_clock::time_point lastTime;
+std::chrono::steady_clock::time_point loadTime;
+std::chrono::milliseconds totalTimeSinceLoad(0);
+std::chrono::milliseconds gameplayTimeSinceLoad(0);
+
 char currentZone[8] = {};
 unsigned int currentWanted = 0;
 
@@ -67,7 +71,7 @@ bool keyDown = false;
 bool reloadingSettings = false;
 bool queuedReload = false;
 
-int timeUpdate = -1;
+bool newVersionFound = false;
 
 int flaMaxID = -1;
 
@@ -91,23 +95,24 @@ std::set<std::uintptr_t> forceEnable;
 bool modInitialized = false;
 
 std::future<void> future;
+std::thread t1;
 
 
-bool checkForUpdate()
+void checkForUpdate()
 {
     IStream* stream;
 
     if (URLOpenBlockingStream(0, "http://api.github.com/repos/ViperJohnGR/ModelVariations/tags", &stream, 0, 0) != S_OK)
     {
         Log::Write("Check for updates failed. Cannot open connection.\n");
-        return false;
+        return;
     }
 
     std::string str(51, 0);
     if (stream->Read(&str[0], 50, NULL) != S_OK)
     {
         Log::Write("Check for updates failed.\n");
-        return false;
+        return;
     }
 
     stream->Release();
@@ -127,16 +132,22 @@ bool checkForUpdate()
                 int n1 = fast_atoi(newV[i].c_str());
                 int n2 = fast_atoi(oldV[i].c_str());
 
-                if (n1 == INT_MAX || n2 == INT_MAX) return false;
-                if (n1 > n2) return true;
-                else if (n1 < n2) return false;
+                if (n1 == INT_MAX || n2 == INT_MAX) 
+                    return;
+                if (n1 > n2)
+                {
+                    newVersionFound = true;
+                    return;
+                }
+                else if (n1 < n2) 
+                    return;
             }
 
-            return false; // equal
+            return; // equal
         }
 
     Log::Write("Check for updates failed. Invalid version string.\n");
-    return false;
+    return;
 }
 
 std::string getDatetime(bool printDate, bool printTime, bool printMs)
@@ -245,8 +256,9 @@ void logVariationsChange(const char* msg)
     CZone* zInfo = NULL;
     CTheZones::GetZoneInfo(&pPos, &zInfo);
 
-    Log::Write("\n%s (%s). Updating variations...\n", msg, getDatetime(false, true, true).c_str());
-    Log::Write("pPos = {%f, %f, %f}\n", pPos.x, pPos.y, pPos.z);
+    Log::Write("\n%s (%s)\n", msg, getDatetime(false, true, true).c_str());
+    Log::Write("Streaming Memory usage: %u/%u MB  Total Memory usage: %u MB\n", CStreaming__ms_memoryUsed/1024/1024, CStreaming__ms_memoryAvailable/1024/1024, getMemoryUsage()/1024/1024);
+    Log::Write("Updating variations. pPos = {%f, %f, %f}\n", pPos.x, pPos.y, pPos.z);
     Log::Write("currentWanted = %u wanted->m_nWantedLevel = %u\n", currentWanted, wanted->m_nWantedLevel);
     Log::Write("currentZone = %.8s zInfo->m_szLabel = %.8s\n", currentZone, zInfo->m_szLabel);
 
@@ -439,8 +451,11 @@ void refreshOnGameRestart()
         queuedReload = true;
         return;
     }
+    lastTime = std::chrono::steady_clock::time_point{};
+    loadTime = std::chrono::steady_clock::now();
+    gameplayTimeSinceLoad = std::chrono::milliseconds(0);
 
-    auto startTime = clock();
+    auto startTime = std::chrono::steady_clock::now();
 
     if (!modInitialized && loadStage == 2)
         initialize();
@@ -452,9 +467,6 @@ void refreshOnGameRestart()
     clearEverything();
     PedVariations::ProcessDrugDealers(true);
     LoadedModules::Refresh();
-
-    if (enableLog)
-        framesSinceCallsChecked = 900;
 
     *reinterpret_cast<uint64_t*>(currentZone) = 0;
 
@@ -473,12 +485,11 @@ void refreshOnGameRestart()
 
         Log::Write("\n\n");
 
-        if (checkForUpdate())
-            timeUpdate = clock();
-        else
-            timeUpdate = -1;
+        if (t1.joinable())
+            t1.detach();
+        t1 = std::thread(checkForUpdate);
 
-        auto finalTime = clock() - startTime;
+        int finalTime = (int)std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - startTime).count();
         if (finalTime < 1000)
             Log::Write("Time spent loading: %dms.\n", finalTime);
         else
@@ -530,6 +541,18 @@ void __cdecl RetryLoadFileHooked(int streamNum)
 template <std::uintptr_t address>
 void __cdecl CGame__ProcessHooked()
 {
+    if (!FrontEndMenuManager->m_bMenuActive)
+    {
+        auto now = std::chrono::steady_clock::now();
+        if (lastTime.time_since_epoch().count() > 0)
+            gameplayTimeSinceLoad += std::chrono::duration_cast<std::chrono::milliseconds>(now - lastTime);
+        lastTime = now;
+    }
+    else
+        lastTime = std::chrono::steady_clock::time_point{};
+
+    totalTimeSinceLoad = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - loadTime);
+
     callOriginal<address>();
 
     if (reloadingSettings)
@@ -614,10 +637,10 @@ void __cdecl CGame__ProcessHooked()
             }
         }
 
-    if (timeUpdate > -1 && ((clock() - timeUpdate) / CLOCKS_PER_SEC > 6))
+    if (newVersionFound && gameplayTimeSinceLoad.count() > 9999)
     {
         printMessage("~y~Model Variations~s~: Update available.", 4000);
-        timeUpdate = -1;
+        newVersionFound = false;
     }
 
     if (disableKey > 0 && (GetKeyState(disableKey) & 0x8000) != 0)
@@ -657,10 +680,7 @@ void __cdecl CGame__ProcessHooked()
     else
         keyDown = false;
 
-    if (framesSinceCallsChecked < 1000)
-        framesSinceCallsChecked++;
-
-    if (framesSinceCallsChecked == 1000)
+    if (enableLog && static_cast<int>((double)totalTimeSinceLoad.count() / 1000.0) % 30 == 0) //every 30 seconds
     {
         for (auto& it : hookedCalls)
         {
@@ -711,8 +731,6 @@ void __cdecl CGame__ProcessHooked()
                     Log::Write("Modified ASM hook detected: %s 0x%08X %s\n", it.second.c_str(), it.first, bytesToString(it.first, 5).c_str());
             }
         }
-
-        framesSinceCallsChecked = 0;
     }
 
     CVector pPos = FindPlayerCoors(-1);
@@ -753,6 +771,9 @@ void __cdecl CGame__ShutdownHooked()
         for (unsigned int i = 0; i < pedsModelsCount; i++)
             pedsModels[i].m_pHitColModel = NULL;
     }
+
+    if (t1.joinable())
+        t1.join();
 
     callOriginal<address>();
 

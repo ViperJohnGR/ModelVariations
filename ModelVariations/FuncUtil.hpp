@@ -15,6 +15,7 @@
 #include <CStreaming.h>
 
 #include <ntstatus.h>
+#include <psapi.h>
 
 
 inline bool isGameHOODLUM()
@@ -105,6 +106,15 @@ inline std::string hashFile(const char* filename)
     }
 
     return hashFile(hFile);
+}
+
+inline size_t getMemoryUsage()
+{
+    PROCESS_MEMORY_COUNTERS_EX pmc;
+    if (GetProcessMemoryInfo(GetCurrentProcess(), (PROCESS_MEMORY_COUNTERS*)&pmc, sizeof(pmc)))
+        return pmc.PrivateUsage;
+
+    return 0;
 }
 
 

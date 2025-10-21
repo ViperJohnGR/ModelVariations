@@ -14,6 +14,7 @@
 
 #include <array>
 #include <stack>
+#include <chrono>
 
 static const char* dataFileName = "ModelVariations_Peds.ini";
 static DataReader dataFile(dataFileName);
@@ -24,7 +25,7 @@ struct tPedVars {
     std::unordered_map<unsigned short, std::array<std::vector<unsigned short>, 6>> wantedVariations;
     std::map<unsigned short, std::vector<unsigned short>> currentVariations;
 
-    std::map<unsigned short, int> pedTimeSinceSpawn;
+    std::map<unsigned short, std::chrono::steady_clock::time_point> pedTimeSinceSpawn;
     std::unordered_map<unsigned short, std::vector<unsigned short>> originalModels;
     std::unordered_map<unsigned short, bool> useParentVoice;
     std::unordered_map<unsigned short, std::vector<unsigned short>> voices;
@@ -280,7 +281,7 @@ void PedVariations::Process()
     {
         auto it = pedVars->pedTimeSinceSpawn.begin();
         while (it != pedVars->pedTimeSinceSpawn.end())
-            if ((clock() - it->second) / CLOCKS_PER_SEC < pedOptions->cloneRemoverSpawnDelay)
+            if (std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - it->second).count() < pedOptions->cloneRemoverSpawnDelay)
                 it++;
             else
                 it = pedVars->pedTimeSinceSpawn.erase(it);
@@ -358,10 +359,10 @@ void PedVariations::Process()
                     auto it = pedVars->originalModels.find(ped->m_nModelIndex);
                     if (it != pedVars->originalModels.end())
                         for (auto& i : it->second)
-                            pedVars->pedTimeSinceSpawn.insert({ i, clock() });
+                            pedVars->pedTimeSinceSpawn.insert({ i, std::chrono::steady_clock::now() });
                 }
                 else
-                    pedVars->pedTimeSinceSpawn.insert({ ped->m_nModelIndex, clock() });
+                    pedVars->pedTimeSinceSpawn.insert({ ped->m_nModelIndex, std::chrono::steady_clock::now() });
 
                 for (CPed* ped2 : CPools::ms_pPedPool)
                     if (IsPedPointerValid(ped2) && ped2 != ped && compareOriginalModels(ped->m_nModelIndex, ped2->m_nModelIndex, includeVariations))

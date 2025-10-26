@@ -18,7 +18,7 @@
 #include <CVector.h>
 
 #include <array>
-#include <future>
+#include <chrono>
 #include <iomanip>
 #include <map>
 #include <set>
@@ -94,9 +94,9 @@ std::set<std::uintptr_t> forceEnable;
 
 bool modInitialized = false;
 
-std::future<void> future;
-std::thread t1;
-
+std::thread iniDataThread;
+std::thread reloadThread;
+std::thread updatesThread;
 
 void checkForUpdate()
 {
@@ -472,7 +472,12 @@ void refreshOnGameRestart()
 
     reloadingSettings = true;
     auto doAsyncStuff = [startTime] {
-        loadIniData();
+
+        if (iniDataThread.joinable()) iniDataThread.join();
+
+        iniDataThread = std::thread(loadIniData);
+
+        if (iniDataThread.joinable()) iniDataThread.join();
 
         if (enablePeds)
             PedVariations::LogVariations();
@@ -485,9 +490,9 @@ void refreshOnGameRestart()
 
         Log::Write("\n\n");
 
-        if (t1.joinable())
-            t1.detach();
-        t1 = std::thread(checkForUpdate);
+        if (updatesThread.joinable())
+            updatesThread.detach();
+        updatesThread = std::thread(checkForUpdate);
 
         int finalTime = (int)std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - startTime).count();
         if (finalTime < 1000)
@@ -502,7 +507,11 @@ void refreshOnGameRestart()
     if (loadSettingsImmediately)
         doAsyncStuff();
     else
-        future = std::async(std::launch::async, doAsyncStuff);
+    {
+        if (reloadThread.joinable())
+            reloadThread.detach();
+        reloadThread = std::thread(doAsyncStuff);
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -560,8 +569,8 @@ void __cdecl CGame__ProcessHooked()
 
     if (queuedReload)
     {
-        if (future.valid())
-            future.get();
+        if (reloadThread.joinable())
+            reloadThread.join();
         queuedReload = false;
         return;
     }
@@ -664,9 +673,11 @@ void __cdecl CGame__ProcessHooked()
             clearEverything();
             printMessage("~y~Model Variations~s~: Reloading settings...", 10000);
             auto doAsyncStuff = [] {
-                loadIniData();
-                logVariationsChange("Settings reloaded");
-                updateVariations();
+                if (iniDataThread.joinable()) iniDataThread.join();
+                iniDataThread = std::thread(loadIniData);
+                if (iniDataThread.joinable()) iniDataThread.join();
+
+                *reinterpret_cast<uint64_t*>(currentZone) = 0;
                 printMessage("~y~Model Variations~s~: Settings reloaded.", 2000);
                 reloadingSettings = false;
             };
@@ -674,7 +685,11 @@ void __cdecl CGame__ProcessHooked()
             if (loadSettingsImmediately)
                 doAsyncStuff();
             else
-                future = std::async(std::launch::async, doAsyncStuff);
+            {
+                if (reloadThread.joinable())
+                    reloadThread.detach();
+                reloadThread = std::thread(doAsyncStuff);
+            }
         }
     }
     else
@@ -772,8 +787,12 @@ void __cdecl CGame__ShutdownHooked()
             pedsModels[i].m_pHitColModel = NULL;
     }
 
-    if (t1.joinable())
-        t1.join();
+    if (iniDataThread.joinable())
+        iniDataThread.join();
+    if (reloadThread.joinable())
+        reloadThread.join();
+    if (updatesThread.joinable())
+        updatesThread.join();
 
     callOriginal<address>();
 

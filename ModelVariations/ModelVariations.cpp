@@ -375,6 +375,9 @@ void initialize()
         flaIniPath.replace(flaIniPath.find_last_of("\\/"), std::string::npos, "\\fastman92limitAdjuster_GTASA.ini");
         flaLogPath.replace(flaIniPath.find_last_of("\\/"), std::string::npos, "\\fastman92limitAdjuster.log");
 
+        if (!fileExists(flaLogPath))
+            Log::Write("Could not find '%s'\n", flaLogPath.c_str());
+
         std::string fastmanLog = fileToString(flaLogPath);
         char* endptr = NULL;
 

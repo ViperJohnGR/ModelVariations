@@ -23,6 +23,7 @@
 #include <map>
 #include <set>
 #include <stack>
+#include <thread>
 
 #include <urlmon.h>
 
@@ -191,8 +192,10 @@ bool loadPESection(const char* filePath, int section, std::vector<unsigned char>
         {
             case 3:
                 UnmapViewOfFile(mapView);
+                [[fallthrough]];
             case 2:
                 CloseHandle(hFileMapping);
+                [[fallthrough]];
             case 1:
                 CloseHandle(hFile);
         }

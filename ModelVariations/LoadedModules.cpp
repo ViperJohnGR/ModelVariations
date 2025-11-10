@@ -90,8 +90,11 @@ void LoadedModules::Refresh()
                 assert(_stricmp("ModelVariations.asi", getFilenameFromPath(szModName).c_str()) != 0);
 #endif
                 MODULEINFO mInfo;
-                GetModuleInformation(hProcess, modules[i], &mInfo, sizeof(MODULEINFO));
-                loadedModules.push_back({ szModName, mInfo });
+                if (modules[i])
+                {
+                    GetModuleInformation(hProcess, modules[i], &mInfo, sizeof(MODULEINFO));
+                    loadedModules.push_back({ szModName, mInfo });
+                }
             }
         }
 

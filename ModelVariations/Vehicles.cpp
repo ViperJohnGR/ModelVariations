@@ -99,7 +99,7 @@ struct tVehVars {
     std::unordered_map<unsigned short, std::pair<CVector, float>> lightPositions;
     std::unordered_map<unsigned short, rgba> lightColors;
     std::unordered_map<unsigned short, rgba> lightColors2;
-    std::unordered_map<unsigned short, std::vector<unsigned short>> *currentTuning;
+    std::unordered_map<unsigned short, std::vector<unsigned short>> *currentTuning = nullptr;
     std::unordered_map<unsigned short, std::string> vehModels;
     std::unordered_map<unsigned short, BYTE> tuningChances;
     std::unordered_map<unsigned short, BYTE> trailersSpawnChances;
@@ -1075,6 +1075,7 @@ void __fastcall DoInternalProcessingHooked(CCarGenerator* park) //for non-random
         case 497: //Police Maverick
         case 488: //News Chopper
             park->m_nModelId = (short)getRandomVariation(park->m_nModelId, true);
+            [[fallthrough]];
         default:
             callMethodOriginal<address>(park);
     }

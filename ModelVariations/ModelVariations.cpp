@@ -10,6 +10,8 @@
 #include "Vehicles.hpp"
 
 #include <plugin.h>
+#include <CEntryExit.h>
+#include <CEntryExitManager.h>
 #include <CLoadedCarGroup.h>
 #include <CModelInfo.h>
 #include <CPedModelInfo.h>
@@ -31,7 +33,7 @@
 #pragma comment (lib, "urlmon.lib")
 
 
-#define MOD_VERSION "10.0.3"
+#define MOD_VERSION "10.1"
 
 struct jumpInfo {
     std::uintptr_t address;
@@ -65,6 +67,8 @@ std::chrono::milliseconds gameplayTimeSinceLoad(0);
 
 char currentZone[8] = {};
 unsigned int currentWanted = 0;
+
+bool transitioning = false;
 
 bool jumpsLogged = false;
 
@@ -536,8 +540,11 @@ bool __cdecl AddToLoadedVehiclesListHooked(int model)
 template <std::uintptr_t address>
 char __fastcall InteriorManager_c__UpdateHooked(void* _this)
 {
-    logVariationsChange("Interior changed");
-    updateVariations();
+    if (transitioning == false)
+    {
+        logVariationsChange("Interior changed");
+        updateVariations();
+    }
     return callMethodOriginalAndReturn<char, address>(_this);
 }
 
@@ -551,6 +558,34 @@ void __cdecl RetryLoadFileHooked(int streamNum)
     Log::Write("\n");
 
     callOriginal<address>(streamNum);
+}
+
+template <std::uintptr_t address>
+char __fastcall TransitionFinishedHooked(CEntryExit* _this, void*, CPed* ped)
+{
+    auto retVal = callMethodOriginalAndReturn<char, address>(_this, ped);    
+
+    if (FindPlayerPed()->m_nAreaCode == 0 || CEntryExitManager::ms_exitEnterState != 1)
+        return retVal;
+
+    if (_this && _this->m_pLink && !transitioning)
+    {
+        transitioning = true;
+        auto exitPos = _this->m_pLink->m_vecExitPos;
+
+        CZone* zInfo = NULL;
+        CTheZones::GetZoneInfo(&exitPos, &zInfo);
+
+        if (zInfo)
+        {
+            logVariationsChange("Exiting interior");
+
+            *reinterpret_cast<uint64_t*>(currentZone) = *reinterpret_cast<uint64_t*>(zInfo->m_szLabel);
+            updateVariations();
+        }
+    }
+
+    return retVal;
 }
 
 template <std::uintptr_t address>
@@ -758,6 +793,9 @@ void __cdecl CGame__ProcessHooked()
     CZone* zInfo = NULL;
     CTheZones::GetZoneInfo(&pPos, &zInfo);
     const CWanted* wanted = FindPlayerWanted(-1);
+
+    if (!CEntryExitManager::mp_Active)
+        transitioning = false;
 
     if (wanted && wanted->m_nWantedLevel != currentWanted)
     {
@@ -995,6 +1033,7 @@ public:
 
         hookCall(0x440840, InteriorManager_c__UpdateHooked<0x440840>, "InteriorManager_c::Update"); //CEntryExit::TransitionFinished
         hookCall(0x40E37B, RetryLoadFileHooked<0x40E37B>, "CStreaming::RetryLoadFile"); //CStreaming::ProcessLoadingChannel
+        hookCall(0x440F89, TransitionFinishedHooked<0x440F89>, "CEntryExit::TransitionFinished"); //CEntryExitManager::Update
 
         hookCall(0x53E981, CGame__ProcessHooked<0x53E981>, "CGame::Process"); //Idle
         hookCall(0x748E6B, CGame__ShutdownHooked<0x748E6B>, "CGame::Shutdown"); //WinMain

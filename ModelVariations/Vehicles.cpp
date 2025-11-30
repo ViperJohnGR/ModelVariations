@@ -458,7 +458,7 @@ void VehicleVariations::LoadData()
                     }
 
                     //Groups
-                    vec = dataFile.ReadLine(section, kvp.first, READ_GROUPS);
+                    vec = dataFile.ReadLine(section, kvp.first, READ_OCCUPANT_GROUPS);
 
                     if (!vec.empty())
                     {
@@ -526,7 +526,7 @@ void VehicleVariations::LoadData()
                     }
 
                     //Groups
-                    vec = dataFile.ReadLine(section, kvp.first, READ_GROUPS);
+                    vec = dataFile.ReadLine(section, kvp.first, READ_OCCUPANT_GROUPS);
                     if (!vec.empty())
                         vehVars->occupantGroups[*(uint64_t*)zoneName][modelid] = mergeZones ? vectorUnion(vehVars->occupantGroups[*(uint64_t*)zoneName][modelid], vec) : vec;
 
@@ -632,7 +632,7 @@ void VehicleVariations::LoadData()
 
             for (unsigned short j = 0; j < 6; j++)
             {
-                std::vector<unsigned short> vec = dataFile.ReadLineUnique(section, "Wanted" + std::to_string(j + 1), READ_GROUPS);
+                std::vector<unsigned short> vec = dataFile.ReadLineUnique(section, "Wanted" + std::to_string(j + 1), READ_OCCUPANT_GROUPS);
                 if (!vec.empty())
                 {
                     checkNumGroups(vec, numGroups);
@@ -1260,8 +1260,6 @@ CPed* __cdecl AddPedInCarHooked(CVehicle* veh, char driver, int a3, int a4, char
 
     //laemt1 -> dsher
     loadModels(274, 288, GAME_REQUIRED, true);
-    if (!policeOccupants && currentOccupantsGroup == -1)
-        processOccupantGroups(veh);
 
     std::string section;
     if (auto it = vehVars->vehModels.find(veh->m_nModelIndex); it != vehVars->vehModels.end())
@@ -1297,12 +1295,6 @@ CPed* __cdecl AddPedInCarHooked(CVehicle* veh, char driver, int a3, int a4, char
     CPed* ped = callOriginalAndReturn<CPed*, address>(veh, driver, a3, a4, a5, a6);
     veh->m_nModelIndex = model;
 
-    if (!policeOccupants)
-    {
-        currentOccupantsGroup = -1;
-        currentOccupantsModel = 0;
-    }
-
     return ped;
 }
 
@@ -1319,6 +1311,24 @@ CPed* __cdecl AddPedHooked(int pedType, int modelIndex, CVector* posn, bool unkn
     }
 
     return callOriginalAndReturn<CPed*, address>(pedType, modelIndex, posn, unknown);
+}
+
+template <std::uintptr_t address>
+void __cdecl SetUpDriverAndPassengersForVehicleHooked(CVehicle* car, int a3, int a4, char a5, char a6, int a7)
+{
+    processOccupantGroups(car);
+    callOriginal<address>(car, a3, a4, a5, a6, a7);
+    currentOccupantsGroup = -1;
+    currentOccupantsModel = 0;
+}
+
+template <std::uintptr_t address>
+void __cdecl AddAmbulanceOccupantsHooked(CVehicle* a1)
+{
+    processOccupantGroups(a1);
+    callOriginal<address>(a1);
+    currentOccupantsGroup = -1;
+    currentOccupantsModel = 0;
 }
 
 template <std::uintptr_t address>
@@ -2103,6 +2113,11 @@ void VehicleVariations::InstallHooks()
     hookCall(0x6F6986, AddPedInCarHooked<0x6F6986>, "CPopulation::AddPedInCar"); //CTrain::RemoveRandomPassenger
     hookCall(0x6F786F, AddPedInCarHooked<0x6F786F>, "CPopulation::AddPedInCar"); //CTrain::CreateMissionTrain
     hookCall(0x613B7F, AddPedHooked<0x613B7F>, "CPopulation::AddPed"); //CPopulation::AddPedInCar
+    hookCall(0x431DE2, SetUpDriverAndPassengersForVehicleHooked<0x431DE2>, "CCarCtrl::SetUpDriverAndPassengersForVehicle"); //CCarCtrl::GenerateOneRandomCar
+    hookCall(0x431DF9, SetUpDriverAndPassengersForVehicleHooked<0x431DF9>, "CCarCtrl::SetUpDriverAndPassengersForVehicle"); //CCarCtrl::GenerateOneRandomCar
+    hookCall(0x431ED1, SetUpDriverAndPassengersForVehicleHooked<0x431ED1>, "CCarCtrl::SetUpDriverAndPassengersForVehicle"); //CCarCtrl::GenerateOneRandomCar
+    hookCall(0x42BBFB, AddAmbulanceOccupantsHooked<0x42BBFB>, "CCarAI::AddAmbulanceOccupants"); //CCarCtrl::GenerateOneEmergencyServicesCar
+    hookCall(0x42BC1A, AddAmbulanceOccupantsHooked<0x42BC1A>, "CCarAI::AddFiretruckOccupants"); //CCarCtrl::GenerateOneEmergencyServicesCar
 
     hookCall(0x42DC19, IsLawEnforcementVehicleHooked<0x42DC19>, "CVehicle::IsLawEnforcementVehicle"); //CCarCtrl::IsThisAnAppropriateNode
     hookCall(0x42DD23, IsLawEnforcementVehicleHooked<0x42DD23>, "CVehicle::IsLawEnforcementVehicle"); //CCarCtrl::IsThisAnAppropriateNode

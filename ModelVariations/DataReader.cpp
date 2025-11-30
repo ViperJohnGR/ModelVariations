@@ -142,10 +142,10 @@ std::vector<unsigned short> DataReader::ReadLine(const std::string& section, con
 			if (weaponType > -1 && weaponType < 1000 && CWeaponInfo::GetWeaponInfo((eWeaponType)weaponType, 1) != NULL)
 				retVector.push_back((unsigned short)weaponType);
 		}
-		else if (parseType == READ_GROUPS)
+		else if (parseType == READ_OCCUPANT_GROUPS)
 		{
-			if (strncmp(token, "Group", 5) == 0)
-				retVector.push_back((unsigned short)(token[5] - '0'));
+			if (strncmp(token, "OccupantGroup", 13) == 0)
+				retVector.push_back((unsigned short)(token[13] - '0'));
 		}
 		else if (parseType == READ_TUNING)
 		{

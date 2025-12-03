@@ -1305,6 +1305,10 @@ CPed* __cdecl AddPedHooked(int pedType, int modelIndex, CVector* posn, bool unkn
     {
         modelIndex = occupantModelIndex;
         loadModels({ occupantModelIndex }, PRIORITY_REQUEST, true);
+        CPedModelInfo* mInfo = (CPedModelInfo*)CModelInfo::GetModelInfo(occupantModelIndex);
+        if (mInfo)
+            pedType = mInfo->m_nPedType;
+
         CPed* ped = callOriginalAndReturn<CPed*, address>(pedType, modelIndex, posn, unknown);
         occupantModelIndex = -1;
         return ped;

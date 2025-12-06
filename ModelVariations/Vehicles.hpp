@@ -9,6 +9,14 @@ extern std::unordered_map<std::string, std::vector<CZone*>> presetAllZones;
 extern bool forceEnableGlobal;
 extern char currentZone[8];
 
+struct vehTimeGroup {
+	unsigned short start = 0;
+	unsigned short end = 0;
+	std::vector<unsigned short> occupantGroups;
+	std::vector<unsigned short> trailers;
+	std::vector<unsigned short> variations;
+};
+
 class VehicleVariations
 {
 public:

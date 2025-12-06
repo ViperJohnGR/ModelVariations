@@ -7,6 +7,12 @@ extern std::unordered_map<std::string, std::vector<CZone*>> presetAllZones;
 extern int maxPedID;
 extern char currentZone[8];
 
+struct pedTimeGroup {
+	unsigned short start = 0;
+	unsigned short end = 0;
+	std::vector<unsigned short> variations;
+};
+
 class PedVariations
 {
 public:

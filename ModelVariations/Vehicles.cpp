@@ -9,6 +9,7 @@
 #include <plugin.h>
 #include <CCarCtrl.h>
 #include <CCarGenerator.h>
+#include <CClock.h>
 #include <CHeli.h>
 #include <CModelInfo.h>
 #include <CPlane.h>
@@ -96,6 +97,8 @@ struct tVehVars {
     std::unordered_map<unsigned short, std::vector<unsigned short>> driverGroups[9];
     std::unordered_map<unsigned short, std::vector<unsigned short>> passengerGroups[9];
     std::unordered_map<unsigned short, std::vector<std::vector<unsigned short>>> trailers[9];
+    std::unordered_map<unsigned short, std::vector<vehTimeGroup>> timeGroups;
+    std::unordered_map<unsigned short, std::set<unsigned short>> activeTimeGroups;
     std::unordered_map<unsigned short, std::pair<CVector, float>> lightPositions;
     std::unordered_map<unsigned short, rgba> lightColors;
     std::unordered_map<unsigned short, rgba> lightColors2;
@@ -348,6 +351,11 @@ void processOccupantGroups(const CVehicle* veh)
             currentOccupantsModel = veh->m_nModelIndex;
             if (auto it = vehVars->groupWantedVariations.find(veh->m_nModelIndex); it != vehVars->groupWantedVariations.end())
                 vectorfilterVector(zoneGroups, it->second[wantedLevel]);
+            
+            if (vehVars->activeTimeGroups.contains(veh->m_nModelIndex))
+                for (auto i : vehVars->activeTimeGroups[veh->m_nModelIndex])
+                    vectorfilterVector(zoneGroups, vehVars->timeGroups[veh->m_nModelIndex][i].occupantGroups);
+
             currentOccupantsGroup = vectorGetRandom(zoneGroups) - 1;
         }
     }
@@ -457,7 +465,7 @@ void VehicleVariations::LoadData()
                         }
                     }
 
-                    //Groups
+                    //Occupant Groups
                     vec = dataFile.ReadLine(section, kvp.first, READ_OCCUPANT_GROUPS);
 
                     if (!vec.empty())
@@ -644,6 +652,27 @@ void VehicleVariations::LoadData()
                 for (auto &j : it->second)
                     checkNumGroups(j.second, numGroups);
 
+            for (unsigned int j = 0; j < 9; j++)
+            {
+                auto groupStart = dataFile.ReadInteger(section, "TimeGroup" + std::to_string(j + 1) + "Start", -1);
+                if (groupStart > -1)
+                {
+                    auto groupEnd = dataFile.ReadInteger(section, "TimeGroup" + std::to_string(j + 1) + "End", -1);
+                    if (groupEnd > -1)
+                    {
+                        auto vec = dataFile.ReadLine(section, "TimeGroup" + std::to_string(j + 1), READ_VEHICLES);
+                        auto vec2 = dataFile.ReadLine(section, "TimeGroup" + std::to_string(j + 1), READ_OCCUPANT_GROUPS);
+                        auto vec3 = dataFile.ReadLine(section, "TimeGroup" + std::to_string(j + 1), READ_TRAILERS);
+
+                        if (!vec.empty() || !vec2.empty() || !vec3.empty())
+                        {
+                            vehVars->timeGroups[modelid].push_back(vehTimeGroup((unsigned short)groupStart, (unsigned short)groupEnd, vec2, vec3, vec));
+                            continue;
+                        }
+                    }
+                }
+                break;
+            }
 
             std::vector<unsigned short> vec = dataFile.ReadLine(section, "Drivers", READ_PEDS);
             if (!vec.empty())
@@ -683,6 +712,43 @@ void VehicleVariations::LoadData()
 
 void VehicleVariations::Process()
 {
+    bool variationsUpdateQueued = false;
+
+    int gameTime = (CClock::ms_nGameClockHours * 100 + CClock::ms_nGameClockMinutes);
+
+    for (auto& it : vehVars->activeTimeGroups)
+        for (auto it2 = it.second.begin(); it2 != it.second.end();)
+        {
+            auto index = *it2;
+
+            if (!isTimeInRange(gameTime, vehVars->timeGroups[it.first][index].start, vehVars->timeGroups[it.first][index].end))
+            {
+                it2 = it.second.erase(it2);
+                variationsUpdateQueued = true;
+            }
+            else
+            {
+                ++it2;
+            }
+        }
+
+    for (const auto &it : vehVars->timeGroups)
+        for (unsigned int i = 0; i < it.second.size(); i++)
+        {
+            if (isTimeInRange(gameTime, it.second[i].start, it.second[i].end))
+                if (vehVars->activeTimeGroups[it.first].insert((unsigned short)i).second == true)
+                    variationsUpdateQueued = true;
+        }
+
+    if (variationsUpdateQueued)
+    {
+        char gameTimeString[7] = {};
+        snprintf(gameTimeString, 6, "%02d:%02d", CClock::ms_nGameClockHours, CClock::ms_nGameClockMinutes);
+        Log::Write("Updating vehicle variations due to time groups. Game time: %s\n", gameTimeString);
+        UpdateVariations();
+        variationsUpdateQueued = false;
+    }
+
     for (auto it = spawnedTrailers.begin(); it != spawnedTrailers.end(); )
     {
         CVehicle* veh = it->first;
@@ -827,9 +893,13 @@ void VehicleVariations::Process()
                     if (auto it2 = it->second.find(veh->m_nModelIndex); it2 != it->second.end())
                         zoneTrailers = it2->second;
 
+                if (vehVars->activeTimeGroups.contains(veh->m_nModelIndex))
+                    for (auto i : vehVars->activeTimeGroups[veh->m_nModelIndex])
+                        vectorfilterVector(zoneTrailers, vehVars->timeGroups[veh->m_nModelIndex][i].trailers);
+
                 if (zoneTrailers.empty())
                     return;
-
+                
                 auto trailerConfigSelected = vectorGetRandom(zoneTrailers) - 1;
                 auto it = vehVars->trailers[trailerConfigSelected].find(veh->m_nModelIndex);
                 if (it == vehVars->trailers[trailerConfigSelected].end())
@@ -919,6 +989,10 @@ void VehicleVariations::UpdateVariations()
                         vectorfilterVector(vehVars->currentVariations[modelid], it->second[wantedLevel]);
                 }
             }
+
+            if (vehVars->activeTimeGroups.contains(modelid))
+                for (auto i : vehVars->activeTimeGroups[modelid])
+                    vectorfilterVector(vehVars->currentVariations[modelid], vehVars->timeGroups[modelid][i].variations);
         }
 }
 
@@ -1299,7 +1373,7 @@ CPed* __cdecl AddPedInCarHooked(CVehicle* veh, char driver, int a3, int a4, char
 }
 
 template <std::uintptr_t address>
-CPed* __cdecl AddPedHooked(int pedType, int modelIndex, CVector* posn, bool unknown)
+CPed* __cdecl AddPedHooked(unsigned int pedType, int modelIndex, CVector* posn, bool unknown)
 {
     if (occupantModelIndex > 0)
     {

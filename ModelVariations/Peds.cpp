@@ -7,6 +7,7 @@
 #include "SA.hpp"
 
 #include <plugin.h>
+#include <CClock.h>
 #include <CModelInfo.h>
 #include <CPedModelInfo.h>
 #include <CPed.h>
@@ -24,6 +25,9 @@ struct tPedVars {
     std::unordered_map<uint64_t, std::unordered_map<unsigned short, std::vector<unsigned short>>> variations;
     std::unordered_map<unsigned short, std::array<std::vector<unsigned short>, 6>> wantedVariations;
     std::map<unsigned short, std::vector<unsigned short>> currentVariations;
+    std::unordered_map<unsigned short, std::vector<pedTimeGroup>> timeGroups;
+    std::unordered_map<unsigned short, std::set<unsigned short>> activeTimeGroups;
+
 
     std::map<unsigned short, std::chrono::steady_clock::time_point> pedTimeSinceSpawn;
     std::unordered_map<unsigned short, std::vector<unsigned short>> originalModels;
@@ -229,6 +233,26 @@ void PedVariations::LoadData()
             for (auto &it : pedVars->originalModels)
                 std::sort(it.second.begin(), it.second.end());
 
+            for (unsigned int j = 0; j < 9; j++)
+            {
+                auto groupStart = dataFile.ReadInteger(section, "TimeGroup" + std::to_string(j + 1) + "Start", -1);
+                if (groupStart > -1)
+                {
+                    auto groupEnd = dataFile.ReadInteger(section, "TimeGroup" + std::to_string(j + 1) + "End", -1);
+                    if (groupEnd > -1)
+                    {
+                        auto vec = dataFile.ReadLine(section, "TimeGroup" + std::to_string(j + 1), READ_PEDS);
+
+                        if (!vec.empty())
+                        {
+                            pedVars->timeGroups[modelIndex].push_back(pedTimeGroup((unsigned short)groupStart, (unsigned short)groupEnd, vec));
+                            continue;
+                        }
+                    }
+                }
+                break;
+            }
+
             if (dataFile.ReadBoolean(section, "DontInheritBehaviour", false))
                 pedVars->dontInheritBehaviourModels.push_back(modelIndex);
 
@@ -277,6 +301,43 @@ void PedVariations::LoadData()
 
 void PedVariations::Process()
 {
+    bool variationsUpdateQueued = false;
+
+    int gameTime = (CClock::ms_nGameClockHours * 100 + CClock::ms_nGameClockMinutes);
+
+    for (auto& it : pedVars->activeTimeGroups)
+        for (auto it2 = it.second.begin(); it2 !=it.second.end();)
+        {
+            unsigned short index = *it2;
+
+            if (!isTimeInRange(gameTime, pedVars->timeGroups[it.first][index].start, pedVars->timeGroups[it.first][index].end))
+            {
+                it2 = it.second.erase(it2);
+                variationsUpdateQueued = true;
+            }
+            else
+            {
+                ++it2;
+            }
+        }
+
+    for (const auto& it : pedVars->timeGroups)
+        for (unsigned int i = 0; i < it.second.size(); i++)
+        {
+            if (it.second[i].start == gameTime)
+                if (pedVars->activeTimeGroups[it.first].insert((unsigned short)i).second == true)
+                    variationsUpdateQueued = true;
+        }
+
+    if (variationsUpdateQueued)
+    {
+        char gameTimeString[7] = {};
+        snprintf(gameTimeString, 6, "%02d:%02d", CClock::ms_nGameClockHours, CClock::ms_nGameClockMinutes);
+        Log::Write("Updating ped variations due to time groups. Game time: %s\n", gameTimeString);
+        UpdateVariations();
+        variationsUpdateQueued = false;
+    }
+
     if (pedOptions->enableCloneRemover)
     {
         auto it = pedVars->pedTimeSinceSpawn.begin();
@@ -451,6 +512,9 @@ void PedVariations::UpdateVariations()
                     vectorfilterVector(pedVars->currentVariations[modelid], it->second[wantedLevel]);
             }
         }
+
+        for (auto i : pedVars->activeTimeGroups[modelid])
+            vectorfilterVector(pedVars->currentVariations[modelid], pedVars->timeGroups[modelid][i].variations);
     }
 }
 

@@ -128,6 +128,14 @@ inline bool fileExists(const std::string& filename)
     return GetFileAttributes(getFullPath(filename).c_str()) != INVALID_FILE_ATTRIBUTES;
 }
 
+inline bool isTimeInRange(int timeNow, int timeStart, int timeEnd)
+{
+    if (timeStart <= timeEnd) // Normal range (same day)
+        return timeNow >= timeStart && timeNow <= timeEnd;
+
+    return timeNow >= timeStart || timeNow <= timeEnd; // Wrap-around past midnight
+}
+
 
 /////////////
 // Loading //
@@ -493,7 +501,7 @@ inline char* strtok(char* str, const char* delim, size_t* token_length) {
 // Vectors //
 /////////////
 
-inline void vectorfilterVector(std::vector<unsigned short>& vec, std::vector<unsigned short>& filterVec)
+inline void vectorfilterVector(std::vector<unsigned short>& vec, const std::vector<unsigned short>& filterVec)
 {
     if (filterVec.empty())
         return;

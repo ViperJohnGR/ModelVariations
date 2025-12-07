@@ -1854,7 +1854,7 @@ void __declspec(naked) patch6D42FE()
 void __declspec(naked) patch6AC730()
 {
     __asm {
-        movsx ecx, ax
+        movsx ecx, word ptr [esi+0x22]
         mov eax, 0x403DA7
         mov eax, dword ptr [eax] //CModelInfo::ms_modelInfoPtrs
         mov eax, [eax + ecx*4]

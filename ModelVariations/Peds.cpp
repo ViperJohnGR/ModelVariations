@@ -301,7 +301,7 @@ void PedVariations::LoadData()
 
 void PedVariations::Process()
 {
-    bool variationsUpdateQueued = false;
+    int variationsUpdateQueued = 0;
 
     int gameTime = (CClock::ms_nGameClockHours * 100 + CClock::ms_nGameClockMinutes);
 
@@ -313,7 +313,7 @@ void PedVariations::Process()
             if (!isTimeInRange(gameTime, pedVars->timeGroups[it.first][index].start, pedVars->timeGroups[it.first][index].end))
             {
                 it2 = it.second.erase(it2);
-                variationsUpdateQueued = true;
+                variationsUpdateQueued = it.first;
             }
             else
             {
@@ -326,16 +326,16 @@ void PedVariations::Process()
         {
             if (it.second[i].start == gameTime)
                 if (pedVars->activeTimeGroups[it.first].insert((unsigned short)i).second == true)
-                    variationsUpdateQueued = true;
+                    variationsUpdateQueued = it.first;
         }
 
-    if (variationsUpdateQueued)
+    if (variationsUpdateQueued > 0)
     {
         char gameTimeString[7] = {};
         snprintf(gameTimeString, 6, "%02d:%02d", CClock::ms_nGameClockHours, CClock::ms_nGameClockMinutes);
-        Log::Write("Updating ped variations due to time groups. Game time: %s\n", gameTimeString);
+        Log::Write("Updating ped variations due to model %d time groups. Game time: %s\n", variationsUpdateQueued, gameTimeString);
         UpdateVariations();
-        variationsUpdateQueued = false;
+        variationsUpdateQueued = 0;
     }
 
     if (pedOptions->enableCloneRemover)

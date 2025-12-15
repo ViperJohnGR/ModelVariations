@@ -712,7 +712,7 @@ void VehicleVariations::LoadData()
 
 void VehicleVariations::Process()
 {
-    bool variationsUpdateQueued = false;
+    int variationsUpdateQueued = 0;
 
     int gameTime = (CClock::ms_nGameClockHours * 100 + CClock::ms_nGameClockMinutes);
 
@@ -724,7 +724,7 @@ void VehicleVariations::Process()
             if (!isTimeInRange(gameTime, vehVars->timeGroups[it.first][index].start, vehVars->timeGroups[it.first][index].end))
             {
                 it2 = it.second.erase(it2);
-                variationsUpdateQueued = true;
+                variationsUpdateQueued = it.first;
             }
             else
             {
@@ -737,16 +737,16 @@ void VehicleVariations::Process()
         {
             if (isTimeInRange(gameTime, it.second[i].start, it.second[i].end))
                 if (vehVars->activeTimeGroups[it.first].insert((unsigned short)i).second == true)
-                    variationsUpdateQueued = true;
+                    variationsUpdateQueued = it.first;
         }
 
-    if (variationsUpdateQueued)
+    if (variationsUpdateQueued > 0)
     {
         char gameTimeString[7] = {};
         snprintf(gameTimeString, 6, "%02d:%02d", CClock::ms_nGameClockHours, CClock::ms_nGameClockMinutes);
-        Log::Write("Updating vehicle variations due to time groups. Game time: %s\n", gameTimeString);
+        Log::Write("Updating vehicle variations due to model %d time groups. Game time: %s\n", variationsUpdateQueued, gameTimeString);
         UpdateVariations();
-        variationsUpdateQueued = false;
+        variationsUpdateQueued = 0;
     }
 
     for (auto it = spawnedTrailers.begin(); it != spawnedTrailers.end(); )

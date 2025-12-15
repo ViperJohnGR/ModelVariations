@@ -62,7 +62,10 @@ bool LoadedModules::IsModLoaded(loadedModNames mod)
 void LoadedModules::Log()
 {
     for (auto& i : loadedModules)
-        Log::Write("0x%08X 0x%08X %s\n", i.second.lpBaseOfDll, i.second.SizeOfImage, i.first.c_str());
+    {
+        std::string hash = hashFile(i.first);
+        Log::Write("0x%08X 0x%08X %s %s\n", i.second.lpBaseOfDll, i.second.SizeOfImage, hash.c_str(), i.first.c_str());
+    }
 }
 
 void LoadedModules::Refresh()

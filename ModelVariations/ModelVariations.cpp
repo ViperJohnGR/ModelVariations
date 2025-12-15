@@ -993,9 +993,9 @@ public:
             Log::Write("Model Variations %s %s %s\n%s\n%s\n\n%s\n", MOD_VERSION, IS_DEBUG ? "DEBUG" : "", hashFile(MOD_NAME).c_str(), windowsVersion.c_str(), getDatetime(true, true, false).c_str(), exePath.c_str());
 
             if (isGameHOODLUM())
-                Log::Write("Supported exe detected: 1.0 US HOODLUM | %u bytes | %s\n", exeFilesize, exeHash.c_str());
+                Log::Write("Supported exe detected: 1.0 US HOODLUM | %u bytes\n", exeFilesize, exeHash.c_str());
             else if (isGameCompact())
-                Log::Write("Supported exe detected: 1.0 US Compact | %u bytes | %s\n", exeFilesize, exeHash.c_str());
+                Log::Write("Supported exe detected: 1.0 US Compact | %u bytes\n", exeFilesize, exeHash.c_str());
             else
                 Log::Write("Unsupported exe detected: %u bytes | %s\n", exeFilesize, exeHash.c_str());
             

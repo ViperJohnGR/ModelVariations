@@ -44,6 +44,7 @@ struct jumpInfo {
 //FLA changed arrays
 CStreamingInfo* CStreaming__ms_aInfoForModel = CStreaming::ms_aInfoForModel;
 
+std::unordered_map<std::string, std::vector<std::string>> areas;
 std::unordered_map<std::string, std::vector<CZone*>> presetAllZones;
 
 
@@ -852,22 +853,9 @@ void __cdecl InitialiseGameHooked()
     Log::Write("-- InitialiseGame Start (%s) --\n", getDatetime(false, true, true).c_str());
 
     Log::Write("Reading zone data...\n");
-    const std::unordered_map<const char*, std::vector<const char*>> areas = { {"Countryside", {"RED", "WHET", "FLINTC"} },
-                                                                              {"LosSantos", {"LA"}},
-                                                                              {"SanFierro", {"SF"}},
-                                                                              {"LasVenturas", {"VE"}},
-                                                                              {"Global", {}},
-                                                                              {"Desert", {"ROBAD", "ROBAD1", "BONE"}},
-                                                                              {"TierraRobada", {"ROBAD", "ROBAD1"}},
-                                                                              {"BoneCounty", {"BONE"}},
-                                                                              {"RedCounty", {"RED"}},
-                                                                              {"Blueberry", {"BLUEB", "BLUEB1"}},
-                                                                              {"Montgomery", {"MONT", "MONT1"}},
-                                                                              {"Dillimore", {"DILLI"}},
-                                                                              {"PalominoCreek", {"PALO"}},
-                                                                              {"FlintCounty", {"FLINTC"}},
-                                                                              {"Whetstone", {"WHET"}},
-                                                                              {"AngelPine", {"ANGPI"}} };
+    for (const auto &kvp : iniSettings.data["Areas"])
+        areas[kvp.first] = splitString(kvp.second, ',');
+
     std::unordered_map<std::string, std::vector<CZone*>> presetMainZones;
     for (int k = 0; k < CTheZones::TotalNumberOfInfoZones; k++)
     {
@@ -875,7 +863,7 @@ void __cdecl InitialiseGameHooked()
 
         for (auto &i : areas)
             for (auto j : i.second)
-                if (strncmp(zone->m_szLabel, j, 8) == 0)
+                if (strncmp(zone->m_szLabel, j.c_str(), 8) == 0)
                     presetMainZones[i.first].push_back(zone);
     }
 

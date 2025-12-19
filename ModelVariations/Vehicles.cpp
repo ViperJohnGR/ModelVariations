@@ -16,6 +16,7 @@
 #include <CTheZones.h>
 #include <CVector.h>
 #include <CVehicle.h>
+#include <CVisibilityPlugins.h>
 #include <CWorld.h>
 
 #include <array>
@@ -72,6 +73,8 @@ bool tuneParkedCar = false;
 int occupantModelIndex = -1;
 
 std::map<CVehicle*, std::vector<CVehicle*>> spawnedTrailers;  //<veh, <trailers>>
+
+std::set<CVehicle*> unseenTrucks;
 
 std::uintptr_t x6ABCBE_Destination = 0;
 
@@ -208,6 +211,25 @@ bool isAnotherVehicleBehind(CVehicle* veh, const std::vector<CVehicle*> &excepti
         }
     }
 
+
+    return false;
+}
+
+bool isVehicleVisible(CVehicle* veh) //TODO: this isn't working 100% correctly
+{
+    if (!IsVehiclePointerValid(veh))
+        return false;
+
+    if (!TheCamera.IsSphereVisible(veh->GetPosition(), CModelInfo::GetModelInfo(veh->m_nModelIndex)->m_pColModel->m_boundSphere.m_fRadius))
+        return false;
+
+    CColPoint outColPoint;
+    CEntity* outEntity;
+
+    bool hit = CWorld::ProcessLineOfSight(TheCamera.GetPosition(), veh->GetPosition(), outColPoint, outEntity, true, true, false, true, true, false, false, false);
+
+    if (CVisibilityPlugins::VehicleVisibilityCB(veh->m_pRwClump) && (!hit || (outEntity == veh)))
+        return true;
 
     return false;
 }
@@ -749,6 +771,37 @@ void VehicleVariations::Process()
         variationsUpdateQueued = 0;
     }
 
+    for (auto it = unseenTrucks.begin(); it != unseenTrucks.end();)
+    {
+        auto truck = *it;
+        auto it2 = spawnedTrailers.find(truck);
+
+        if (/*isVehicleVisible(truck) || */it2 == spawnedTrailers.end())
+        {
+            it = unseenTrucks.erase(it);
+            continue;
+        }
+
+        for (auto trailer : it2->second)
+            if (isVehicleVisible(trailer))
+            {
+                it = unseenTrucks.erase(it);
+                continue;
+            }
+
+        auto detachedTrailer = std::find_if(it2->second.begin(), it2->second.end(), [](const CVehicle* trailer) {return trailer->m_pTractor == NULL; });
+        if (detachedTrailer != it2->second.end() && (CTimer::m_snTimeInMilliseconds - (*detachedTrailer)->m_nCreationTime) > 500)
+        {
+            for (auto trailer : it2->second)
+            {
+                CWorld::Remove(trailer);
+                trailer->Remove();
+            }
+            it2->second.clear();
+        }
+        it++;
+    }
+
     for (auto it = spawnedTrailers.begin(); it != spawnedTrailers.end(); )
     {
         CVehicle* veh = it->first;
@@ -781,7 +834,7 @@ void VehicleVariations::Process()
                         }
             }
 
-            if ((CTimer::m_snTimeInMilliseconds - veh->m_nCreationTime) < 3900)
+            if ((CTimer::m_snTimeInMilliseconds - veh->m_nCreationTime) < 3900) //delete far detached trailers
             {
                 bool deleteTrailers = false;
                 bool trailersClose = false;
@@ -934,6 +987,7 @@ void VehicleVariations::Process()
                         CWorld::Add(trailer);
                         //CTheScripts::ClearSpaceForMissionEntity(previous->GetPosition(), trailer);
                         spawnedTrailers[veh].push_back(trailer);
+                        unseenTrucks.insert(veh);
                         trailer->SetPosn(newPos);
                         if (previous == veh)
                             if (!trailer->SetTowLink(previous, 1))
@@ -1415,8 +1469,11 @@ void __cdecl PossiblyRemoveVehicleHooked(CVehicle* car)
     if (car == NULL)
         return;
 
-    std::vector<CVehicle*> trailersToCheck;
-    
+    std::vector<CVehicle*> trailersToCheck;    
+
+    if (unseenTrucks.contains(car) && spawnedTrailers.contains(car))
+        trailersToCheck = spawnedTrailers[car];
+
     for (auto it = spawnedTrailers.begin(); it != spawnedTrailers.end(); )
     {
         if (!it->second.empty())

@@ -318,6 +318,15 @@ void loadIniData()
 
     if (enableVehicles)
         VehicleVariations::LoadData();
+
+    static std::once_flag flag;
+    if (enableSpecialPeds && CModelInfo::GetModelInfo(0))
+    {
+        std::call_once(flag, [] 
+        {
+            PedVariations::LoadData();
+        });
+    }
 }
 
 void updateVariations()

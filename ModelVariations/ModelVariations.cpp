@@ -53,7 +53,6 @@ std::set<unsigned short> referenceCountModels;
 std::set<unsigned short> addedIDsInGroups;
 
 std::string exePath(256, 0);
-std::string exeName;
 
 std::vector<unsigned short> addedIDs;
 int maxPedID = 0;
@@ -175,7 +174,7 @@ std::string getDatetime(bool printDate, bool printTime, bool printMs)
         i += snprintf(str + i, 254U - i, "%02d:%02d:%02d", systime.wHour, systime.wMinute, systime.wSecond);
 
         if (printMs)
-            i += snprintf(str + i, 254U - i, ".%03d", systime.wMilliseconds);
+            snprintf(str + i, 254U - i, ".%03d", systime.wMilliseconds);
     }
 
     return str;
@@ -635,12 +634,12 @@ void __cdecl CGame__ProcessHooked()
         const std::vector<std::uintptr_t> validRanges = isGameHOODLUM() ? std::vector<std::uintptr_t> { 0x401000, 0x857000, 0xCB1000, 0x12FB000, 0x1301000, 0x1556000 } : std::vector<std::uintptr_t>{ 0x401000, 0x857000 };
         std::unordered_map<std::string, std::vector<jumpInfo>> jumpsMap;
 
-        auto gta_saModule = LoadedModules::GetModule(exeName);
+        auto gta_saModule = LoadedModules::GetExeModule();
         std::uintptr_t gta_saEndAddress = ((std::uintptr_t)gta_saModule.second.lpBaseOfDll + gta_saModule.second.SizeOfImage);
         unsigned int secCount = 0;
         const unsigned int base = (unsigned int)gta_saModule.second.lpBaseOfDll;
 
-        for (auto& rangeStart : validRanges)
+        for (auto rangeStart : validRanges)
         {
             unsigned int sectionSize;
             if (loadPESection(exePath.c_str(), sections[secCount++], buffer, &sectionSize))
@@ -765,7 +764,7 @@ void __cdecl CGame__ProcessHooked()
                     Log::Write("Modified call detected: %s 0x%08X %s\n", it.second.name.c_str(), it.first, bytesToString(it.first, 5).c_str());
             }
 
-            auto gta_saModule = LoadedModules::GetModule(exeName);
+            auto gta_saModule = LoadedModules::GetExeModule();
             std::uintptr_t gta_saEndAddress = ((std::uintptr_t)gta_saModule.second.lpBaseOfDll + gta_saModule.second.SizeOfImage);
 
             if ((std::uintptr_t)it.second.originalFunction < gta_saEndAddress)
@@ -870,7 +869,7 @@ void __cdecl InitialiseGameHooked()
     {
         CZone* zone = reinterpret_cast<CZone*>(CTheZones__NavigationZoneArray + k * 0x20);
 
-        for (auto &i : areas)
+        for (const auto &i : areas)
             for (auto j : i.second)
                 if (strncmp(zone->m_szLabel, j.c_str(), 8) == 0)
                     presetMainZones[i.first].push_back(zone);
@@ -880,7 +879,7 @@ void __cdecl InitialiseGameHooked()
     {
         CZone* zone = reinterpret_cast<CZone*>(CTheZones__NavigationZoneArray + k * 0x20);
 
-        for (auto& i : presetMainZones)
+        for (const auto& i : presetMainZones)
             for (auto j : i.second)
                 if (strncmp(j->m_szLabel, zone->m_szLabel, 8) == 0 || CTheZones::ZoneIsEntirelyContainedWithinOtherZone(zone, j))
                     presetAllZones[i.first].push_back(zone);
@@ -958,7 +957,6 @@ public:
         {
             std::string exeHash;
             GetModuleFileName(NULL, &exePath[0], 255);
-            exeName = getFilenameFromPath(exePath);
             unsigned int exeFilesize = 0;
 
             HANDLE hFile = CreateFile(exePath.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);

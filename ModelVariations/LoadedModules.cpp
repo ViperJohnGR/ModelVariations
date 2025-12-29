@@ -9,11 +9,13 @@ std::map<loadedModNames, bool> loadedMods;
 std::vector<std::pair<std::string, MODULEINFO>> loadedModules;
 std::string modDirectory;
 
+std::pair<std::string, MODULEINFO> exeModule;
+
 
 std::pair<std::string, MODULEINFO> LoadedModules::GetModuleAtAddress(std::uintptr_t address)
 {
     if (address)
-        for (auto& it : loadedModules)
+        for (const auto& it : loadedModules)
         {
             uint32_t base = reinterpret_cast<uint32_t>(it.second.lpBaseOfDll);
             if (address >= base && address < base + it.second.SizeOfImage)
@@ -25,7 +27,7 @@ std::pair<std::string, MODULEINFO> LoadedModules::GetModuleAtAddress(std::uintpt
 
 std::pair<std::string, MODULEINFO> LoadedModules::GetModule(const std::string &name, bool exactMatch)
 {
-    for (auto& i : loadedModules)
+    for (const auto& i : loadedModules)
         if (exactMatch)
         {
             auto filename = getFilenameFromPath(i.first);
@@ -36,6 +38,19 @@ std::pair<std::string, MODULEINFO> LoadedModules::GetModule(const std::string &n
             return i;
 
     return {};
+}
+
+const std::pair<std::string, MODULEINFO>& LoadedModules::GetExeModule()
+{
+    if (exeModule.first.size() || loadedModules.empty())
+        return exeModule;
+
+    std::string exeName(256, 0);
+    GetModuleFileName(NULL, &exeName[0], 255);
+    exeName = getFilenameFromPath(exeName);
+
+    exeModule = GetModule(exeName);
+    return exeModule;
 }
 
 std::string LoadedModules::GetSelfDirectory()

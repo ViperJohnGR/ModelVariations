@@ -27,14 +27,6 @@
 
 using namespace plugin;
 
-struct rgba
-{
-    BYTE r;
-    BYTE g;
-    BYTE b;
-    BYTE a;
-};
-
 enum eRegs16
 {
     REG_AX,
@@ -103,8 +95,8 @@ struct tVehVars {
     std::unordered_map<unsigned short, std::vector<vehTimeGroup>> timeGroups;
     std::unordered_map<unsigned short, std::set<unsigned short>> activeTimeGroups;
     std::unordered_map<unsigned short, std::pair<CVector, float>> lightPositions;
-    std::unordered_map<unsigned short, rgba> lightColors;
-    std::unordered_map<unsigned short, rgba> lightColors2;
+    std::unordered_map<unsigned short, RwRGBA> lightColors;
+    std::unordered_map<unsigned short, RwRGBA> lightColors2;
     std::unordered_map<unsigned short, std::vector<unsigned short>> *currentTuning = nullptr;
     std::unordered_map<unsigned short, std::string> vehModels;
     std::unordered_map<unsigned short, BYTE> tuningChances;
@@ -362,7 +354,7 @@ void processOccupantGroups(const CVehicle* veh)
     {
         std::vector<unsigned short> zoneGroups;
 
-        if (auto it = vehVars->occupantGroups.find(*(uint64_t*)currentZone); it != vehVars->occupantGroups.end())
+        if (auto it = vehVars->occupantGroups.find(*reinterpret_cast<uint64_t*>(currentZone)); it != vehVars->occupantGroups.end())
             if (auto it2 = it->second.find(veh->m_nModelIndex); it2 != it->second.end())
                 zoneGroups = it2->second;
 
@@ -479,11 +471,13 @@ void VehicleVariations::LoadData()
                             for (int k = 0; k < CTheZones::TotalNumberOfInfoZones; k++)
                             {
                                 CZone* zone = reinterpret_cast<CZone*>(CTheZones__NavigationZoneArray + k * 0x20);
-                                vehVars->variations[*(uint64_t*)zone->m_szLabel][modelid] = vectorUnion(vehVars->variations[*(uint64_t*)zone->m_szLabel][modelid], vec);
+                                uint64_t zoneName = *reinterpret_cast<uint64_t*>(zone->m_szLabel);
+                                vehVars->variations[zoneName][modelid] = vectorUnion(vehVars->variations[zoneName][modelid], vec);
                             }
                         else for (auto zone : it->second)
                         {
-                            vehVars->variations[*(uint64_t*)zone->m_szLabel][modelid] = vectorUnion(vehVars->variations[*(uint64_t*)zone->m_szLabel][modelid], vec);
+                            uint64_t zoneName = *reinterpret_cast<uint64_t*>(zone->m_szLabel);
+                            vehVars->variations[zoneName][modelid] = vectorUnion(vehVars->variations[zoneName][modelid], vec);
                         }
                     }
 
@@ -496,11 +490,13 @@ void VehicleVariations::LoadData()
                             for (int k = 0; k < CTheZones::TotalNumberOfInfoZones; k++)
                             {
                                 CZone* zone = reinterpret_cast<CZone*>(CTheZones__NavigationZoneArray + k * 0x20);
-                                vehVars->occupantGroups[*(uint64_t*)zone->m_szLabel][modelid] = vectorUnion(vehVars->occupantGroups[*(uint64_t*)zone->m_szLabel][modelid], vec);
+                                uint64_t zoneName = *reinterpret_cast<uint64_t*>(zone->m_szLabel);
+                                vehVars->occupantGroups[zoneName][modelid] = vectorUnion(vehVars->occupantGroups[zoneName][modelid], vec);
                             }
                         else for (auto zone : it->second)
                         {
-                            vehVars->occupantGroups[*(uint64_t*)zone->m_szLabel][modelid] = vectorUnion(vehVars->occupantGroups[*(uint64_t*)zone->m_szLabel][modelid], vec);
+                            uint64_t zoneName = *reinterpret_cast<uint64_t*>(zone->m_szLabel);
+                            vehVars->occupantGroups[zoneName][modelid] = vectorUnion(vehVars->occupantGroups[zoneName][modelid], vec);
                         }
                     }
 
@@ -513,11 +509,13 @@ void VehicleVariations::LoadData()
                             for (int k = 0; k < CTheZones::TotalNumberOfInfoZones; k++)
                             {
                                 CZone* zone = reinterpret_cast<CZone*>(CTheZones__NavigationZoneArray + k * 0x20);
-                                vehVars->tuning[*(uint64_t*)zone->m_szLabel][modelid] = vectorUnion(vehVars->tuning[*(uint64_t*)zone->m_szLabel][modelid], vec);
+                                uint64_t zoneName = *reinterpret_cast<uint64_t*>(zone->m_szLabel);
+                                vehVars->tuning[zoneName][modelid] = vectorUnion(vehVars->tuning[zoneName][modelid], vec);
                             }
                         else for (auto zone : it->second)
                         {
-                            vehVars->tuning[*(uint64_t*)zone->m_szLabel][modelid] = vectorUnion(vehVars->tuning[*(uint64_t*)zone->m_szLabel][modelid], vec);
+                            uint64_t zoneName = *reinterpret_cast<uint64_t*>(zone->m_szLabel);
+                            vehVars->tuning[zoneName][modelid] = vectorUnion(vehVars->tuning[zoneName][modelid], vec);
                         }
                     }
 
@@ -530,11 +528,13 @@ void VehicleVariations::LoadData()
                             for (int k = 0; k < CTheZones::TotalNumberOfInfoZones; k++)
                             {
                                 CZone* zone = reinterpret_cast<CZone*>(CTheZones__NavigationZoneArray + k * 0x20);
-                                vehVars->trailerZones[*(uint64_t*)zone->m_szLabel][modelid] = vectorUnion(vehVars->trailerZones[*(uint64_t*)zone->m_szLabel][modelid], vec);
+                                uint64_t zoneName = *reinterpret_cast<uint64_t*>(zone->m_szLabel);
+                                vehVars->trailerZones[zoneName][modelid] = vectorUnion(vehVars->trailerZones[zoneName][modelid], vec);
                             }
                         else for (auto zone : it->second)
                         {
-                            vehVars->trailerZones[*(uint64_t*)zone->m_szLabel][modelid] = vectorUnion(vehVars->trailerZones[*(uint64_t*)zone->m_szLabel][modelid], vec);
+                            uint64_t zoneName = *reinterpret_cast<uint64_t*>(zone->m_szLabel);
+                            vehVars->trailerZones[zoneName][modelid] = vectorUnion(vehVars->trailerZones[zoneName][modelid], vec);
                         }
                     }
                 }
@@ -545,30 +545,30 @@ void VehicleVariations::LoadData()
             {
                 if (isupper(kvp.first[1]))
                 {
-                    char zoneName[9] = {};
-                    strncpy(zoneName, kvp.first.c_str(), 8);
+                    uint64_t zoneName;
+                    memcpy(&zoneName, kvp.first.c_str(), 8);
 
                     auto vec = dataFile.ReadLine(section, kvp.first, READ_VEHICLES);
                     if (!vec.empty())
                     {
                         vehVars->vehHasVariations.insert(modelid);
-                        vehVars->variations[*(uint64_t*)zoneName][modelid] = mergeZones ? vectorUnion(vehVars->variations[*(uint64_t*)zoneName][modelid], vec) : vec;
+                        vehVars->variations[zoneName][modelid] = mergeZones ? vectorUnion(vehVars->variations[zoneName][modelid], vec) : vec;
                     }
 
                     //Groups
                     vec = dataFile.ReadLine(section, kvp.first, READ_OCCUPANT_GROUPS);
                     if (!vec.empty())
-                        vehVars->occupantGroups[*(uint64_t*)zoneName][modelid] = mergeZones ? vectorUnion(vehVars->occupantGroups[*(uint64_t*)zoneName][modelid], vec) : vec;
+                        vehVars->occupantGroups[zoneName][modelid] = mergeZones ? vectorUnion(vehVars->occupantGroups[zoneName][modelid], vec) : vec;
 
                     //Tuning
                     vec = dataFile.ReadLine(section, kvp.first, READ_TUNING);
                     if (!vec.empty())
-                        vehVars->tuning[*(uint64_t*)zoneName][modelid] = mergeZones ? vectorUnion(vehVars->tuning[*(uint64_t*)zoneName][modelid], vec) : vec;
+                        vehVars->tuning[zoneName][modelid] = mergeZones ? vectorUnion(vehVars->tuning[zoneName][modelid], vec) : vec;
 
                     //Trailers
                     vec = dataFile.ReadLine(section, kvp.first, READ_TRAILERS);
                     if (!vec.empty())
-                        vehVars->trailerZones[*(uint64_t*)zoneName][modelid] = mergeZones ? vectorUnion(vehVars->trailerZones[*(uint64_t*)zoneName][modelid], vec) : vec;
+                        vehVars->trailerZones[zoneName][modelid] = mergeZones ? vectorUnion(vehVars->trailerZones[zoneName][modelid], vec) : vec;
                 }
             }
                 
@@ -608,7 +608,7 @@ void VehicleVariations::LoadData()
 
                 if ((uint8_t)r == r && (uint8_t)g == g && (uint8_t)b == b && (uint8_t)a == a)
                 {
-                    rgba colors = { (uint8_t)r, (uint8_t)g, (uint8_t)b, (uint8_t)a };
+                    RwRGBA colors = { (uint8_t)r, (uint8_t)g, (uint8_t)b, (uint8_t)a };
                     vehVars->lightColors.insert({ modelid, colors });
                 }
 
@@ -622,7 +622,7 @@ void VehicleVariations::LoadData()
 
                 if ((uint8_t)r == r && (uint8_t)g == g && (uint8_t)b == b && (uint8_t)a == a)
                 {
-                    rgba colors = { (uint8_t)r, (uint8_t)g, (uint8_t)b, (uint8_t)a };
+                    RwRGBA colors = { (uint8_t)r, (uint8_t)g, (uint8_t)b, (uint8_t)a };
                     vehVars->lightColors2.insert({ modelid, colors });
                 }
             }
@@ -942,7 +942,7 @@ void VehicleVariations::Process()
             if (veh->m_pDriver && veh->m_pDriver != FindPlayerPed() && spawnTrailer)
             {
                 std::vector<unsigned short> zoneTrailers;
-                if (auto it = vehVars->trailerZones.find(*(uint64_t*)currentZone); it != vehVars->trailerZones.end())
+                if (auto it = vehVars->trailerZones.find(*reinterpret_cast<uint64_t*>(currentZone)); it != vehVars->trailerZones.end())
                     if (auto it2 = it->second.find(veh->m_nModelIndex); it2 != it->second.end())
                         zoneTrailers = it2->second;
 
@@ -1022,8 +1022,8 @@ void VehicleVariations::UpdateVariations()
     vehVars->currentTuning = nullptr;
     vehVars->currentVariations.clear();
 
-    auto currentZoneTuning = vehVars->tuning.find(*(uint64_t*)currentZone);
-    auto currentZoneVariations = vehVars->variations.find(*(uint64_t*)currentZone);
+    auto currentZoneTuning = vehVars->tuning.find(*reinterpret_cast<uint64_t*>(currentZone));
+    auto currentZoneVariations = vehVars->variations.find(*reinterpret_cast<uint64_t*>(currentZone));
 
     if (currentZoneTuning != vehVars->tuning.end())
         vehVars->currentTuning = &(currentZoneTuning->second);
@@ -1433,9 +1433,12 @@ CPed* __cdecl AddPedHooked(unsigned int pedType, int modelIndex, CVector* posn, 
     {
         modelIndex = occupantModelIndex;
         loadModels({ occupantModelIndex }, PRIORITY_REQUEST, true);
-        CPedModelInfo* mInfo = (CPedModelInfo*)CModelInfo::GetModelInfo(occupantModelIndex);
-        if (mInfo)
-            pedType = mInfo->m_nPedType;
+        if (pedType != PED_TYPE_MEDIC)
+        {
+            CPedModelInfo* mInfo = (CPedModelInfo*)CModelInfo::GetModelInfo(occupantModelIndex);
+            if (mInfo)
+                pedType = mInfo->m_nPedType;
+        }
 
         CPed* ped = callOriginalAndReturn<CPed*, address>(pedType, modelIndex, posn, unknown);
         occupantModelIndex = -1;
@@ -1694,10 +1697,10 @@ void __cdecl RegisterCoronaHooked(void* _this, CEntity* a2, unsigned char a3, un
         const auto it = lightsMap.find(lightsModel);
         if (it != lightsMap.end())
         {
-            a3 = it->second.r;
-            a4 = it->second.g;
-            a5 = it->second.b;
-            a6 = it->second.a;
+            a3 = it->second.red;
+            a4 = it->second.green;
+            a5 = it->second.blue;
+            a6 = it->second.alpha;
         }
     }
 

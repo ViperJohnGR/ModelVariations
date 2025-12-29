@@ -94,7 +94,7 @@ inline std::string hashFile(HANDLE& hFile, DWORD filesize = 0)
                     BCryptCloseAlgorithmProvider(hProvider, 0);
                     int hashLen = 0;
 
-                    for (auto& i : hashArray)
+                    for (BYTE i : hashArray)
                         hashLen += snprintf(hashString.data() + hashLen, 65U - hashLen, "%02x", i);
                 }
     }
@@ -117,7 +117,7 @@ inline std::string hashFile(const std::string& filename)
 inline size_t getMemoryUsage()
 {
     PROCESS_MEMORY_COUNTERS_EX pmc;
-    if (GetProcessMemoryInfo(GetCurrentProcess(), (PROCESS_MEMORY_COUNTERS*)&pmc, sizeof(pmc)))
+    if (GetProcessMemoryInfo(GetCurrentProcess(), reinterpret_cast<PROCESS_MEMORY_COUNTERS*>(&pmc), sizeof(pmc)))
         return pmc.PrivateUsage;
 
     return 0;
@@ -212,7 +212,7 @@ inline void WriteMemory(std::uintptr_t address, const char *value)
 inline bool isAddressValid(std::uintptr_t address)
 {
     MEMORY_BASIC_INFORMATION mbi;
-    if (VirtualQuery((void*)address, &mbi, sizeof(mbi)) == 0)
+    if (VirtualQuery(reinterpret_cast<void*>(address), &mbi, sizeof(mbi)) == 0)
         return false; // Query failed
 
     return (mbi.State == MEM_COMMIT) && !(mbi.Protect & (PAGE_NOACCESS | PAGE_GUARD));

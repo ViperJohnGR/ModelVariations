@@ -33,7 +33,7 @@ bool hookASM(std::uintptr_t address, const std::string &originalData, injector::
     return true;
 }
 
-void hookCall(std::uintptr_t address, void* pFunction, std::string name, bool isVTableAddress)
+void hookCall(std::uintptr_t address, void* pFunction, const std::string &name, bool isVTableAddress)
 {
     void* originalAddress;
     if (isVTableAddress)

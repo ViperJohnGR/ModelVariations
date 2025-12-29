@@ -28,7 +28,7 @@ public:
 	int ReadInteger(const std::string& section, const std::string& key, int defaultValue);
 	float ReadFloat(const std::string& section, const std::string& key, float defaultValue);
 	bool ReadBoolean(const std::string& section, const std::string& key, bool defaultValue);
-	std::string ReadString(const std::string& section, const std::string& key, std::string defaultValue);
+	std::string ReadString(const std::string& section, const std::string& key, const std::string &defaultValue);
 	std::vector<unsigned short> ReadLine(const std::string& section, const std::string& key, dataTypeToRead parseType);
 	std::vector<std::vector<unsigned short>> ReadTrailerLine(const std::string& section, const std::string& key);
 	std::vector<unsigned short> ReadLineUnique(const std::string& section, const std::string& key, dataTypeToRead parseType);

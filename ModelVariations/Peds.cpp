@@ -170,7 +170,7 @@ void PedVariations::LoadData()
         else
             CModelInfo::GetModelInfo(section.data(), &i);
 
-        if (i <= 0)
+        if (i <= 0 || i > 65535)
             continue;
 
         unsigned short modelIndex = static_cast<unsigned short>(i);
@@ -189,12 +189,14 @@ void PedVariations::LoadData()
                             for (int k = 0; k < CTheZones::TotalNumberOfInfoZones; k++)
                             {
                                 CZone* zone = reinterpret_cast<CZone*>(CTheZones__NavigationZoneArray + k * 0x20);
-                                pedVars->variations[*(uint64_t*)zone->m_szLabel][modelIndex] = vectorUnion(pedVars->variations[*(uint64_t*)zone->m_szLabel][modelIndex], vec);
+                                uint64_t zoneName = *reinterpret_cast<uint64_t*>(zone->m_szLabel);
+                                pedVars->variations[zoneName][modelIndex] = vectorUnion(pedVars->variations[zoneName][modelIndex], vec);
                             }
                         }
                         else for (auto zone : it->second)
                         {
-                            pedVars->variations[*(uint64_t*)zone->m_szLabel][modelIndex] = vectorUnion(pedVars->variations[*(uint64_t*)zone->m_szLabel][modelIndex], vec);
+                            uint64_t zoneName = *reinterpret_cast<uint64_t*>(zone->m_szLabel);
+                            pedVars->variations[zoneName][modelIndex] = vectorUnion(pedVars->variations[zoneName][modelIndex], vec);
                         }
                     }
                 }
@@ -209,9 +211,9 @@ void PedVariations::LoadData()
                     if (!vec.empty())
                     {
                         pedVars->pedHasVariations.insert(modelIndex);
-                        char zoneName[9] = {};
-                        strncpy(zoneName, kvp.first.c_str(), 8);
-                        pedVars->variations[*(uint64_t*)zoneName][modelIndex] = mergeZones ? vectorUnion(pedVars->variations[*(uint64_t*)zoneName][modelIndex], vec) : vec;
+                        uint64_t zoneName;
+                        memcpy(&zoneName, kvp.first.c_str(), 8);
+                        pedVars->variations[zoneName][modelIndex] = mergeZones ? vectorUnion(pedVars->variations[zoneName][modelIndex], vec) : vec;
                     }
                 }
             }
@@ -271,7 +273,7 @@ void PedVariations::LoadData()
         if (!animGroupString.empty() && CAnimManager__ms_numAnimAssocDefinitions > 0)
             for (int j = CAnimManager__ms_numAnimAssocDefinitions - 1; j >= 0; j--)
             {
-                char* animString = CAnimManager__GetAnimGroupName(j);
+                const char* animString = CAnimManager__GetAnimGroupName(j);
                 if (animString != NULL && strcmp(animGroupString.c_str(), animString) == 0)
                 {
                     pedVars->animGroups[modelIndex] = (unsigned)j;
@@ -461,7 +463,7 @@ void PedVariations::ProcessDrugDealers(bool reset)
          
             for (auto& it : pedVars->originalModels)
                 if (it.first > 300)
-                    for (auto& originalModel : it.second)
+                    for (auto originalModel : it.second)
                         if (originalModel == 28 || originalModel == 29 || originalModel == 30 || originalModel == 254)
                         {
                             Log::Write((std::find(addedIDs.begin(), addedIDs.end(), it.first) != addedIDs.end()) ? "%uSP\n" : "%u\n", it.first);
@@ -559,14 +561,14 @@ void PedVariations::LogVariations()
         return;
 
     std::map<unsigned short, std::set<unsigned short>> variationsMap;
-    for (auto& it : pedVars->variations)
+    for (const auto& it : pedVars->variations)
     {
-        for (auto &i : it.second)
+        for (const auto &i : it.second)
             for (auto j : i.second)
                 variationsMap[i.first].insert(j);
     }
 
-    for (auto& i : variationsMap)
+    for (const auto& i : variationsMap)
     {
         Log::Write("%u: ", i.first);
         for (auto j : i.second)
@@ -588,7 +590,7 @@ int __cdecl getKillsByPlayer(int player)
 {
     int sum = 0;
 
-    for (auto& i : destroyedModelCounters)
+    for (const auto& i : destroyedModelCounters)
         sum += i[player];
 
     return sum;

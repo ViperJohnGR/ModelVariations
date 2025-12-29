@@ -105,7 +105,7 @@ bool DataReader::ReadBoolean(const std::string &section, const std::string &key,
 	return this->ReadInteger(section, key, defaultValue) != 0;
 }
 
-std::string DataReader::ReadString(const std::string& section, const std::string& key, std::string defaultValue)
+std::string DataReader::ReadString(const std::string& section, const std::string& key, const std::string &defaultValue)
 {
 	if (auto itSection = data.find(section); itSection != data.end())
 		if (auto itKey = itSection->second.find(key); itKey != itSection->second.end())

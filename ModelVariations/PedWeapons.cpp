@@ -92,13 +92,14 @@ void PedWeaponVariations::Process()
 {
     while (!pedWepStack.empty())
     {
+        auto player = FindPlayerPed();
         CPed* ped = pedWepStack.top();
         pedWepStack.pop();
 
-        if (!IsPedPointerValid(ped) || FindPlayerPed() == ped)
+        if (!IsPedPointerValid(ped) || player == ped)
             continue;
 
-        const auto changeWeapon = [ped](std::string section, std::string key, eWeaponType originalWeaponId = WEAPON_UNARMED) -> bool
+        const auto changeWeapon = [ped](const std::string& section, const std::string& key, eWeaponType originalWeaponId = WEAPON_UNARMED) -> bool
         {
             std::vector<unsigned short> vec = dataFile.ReadLine(section, key, READ_WEAPONS);
             if (!vec.empty())
@@ -151,8 +152,8 @@ void PedWeaponVariations::Process()
         const int originalSlot = ped->m_nActiveWeaponSlot;
         bool wepChanged = false;
         std::string zoneString = currentZone;
-        if (FindPlayerPed()->m_pEnex)
-            zoneString = (char*)FindPlayerPed()->m_pEnex;
+        if (player->m_pEnex)
+            zoneString = reinterpret_cast<char*>(player->m_pEnex);
 
         for (int k = 0; k < 2; k++)
             for (int j = 0; j < 4; j++)
@@ -178,7 +179,7 @@ void PedWeaponVariations::Process()
                 }
                 if (j == 0 || j == 2)
                 {
-                    CWanted* wanted = FindPlayerWanted(-1);
+                    const CWanted* wanted = FindPlayerWanted(-1);
                     if (wanted && wanted->m_nWantedLevel > 0)
                         wantedStr = "WANTED" + std::to_string(wanted->m_nWantedLevel) + "|";
                     else

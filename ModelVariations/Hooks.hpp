@@ -24,7 +24,7 @@ extern bool forceEnableGlobal;
 extern std::set<std::uintptr_t> forceEnable;
 
 bool hookASM(std::uintptr_t address, const std::string &originalData, injector::memory_pointer_raw hookDest, const std::string &funcName);
-void hookCall(std::uintptr_t address, void* pFunction, std::string name, bool isVTableAddress = false);
+void hookCall(std::uintptr_t address, void* pFunction, const std::string &name, bool isVTableAddress = false);
 
 template <std::uintptr_t address, typename... Args>
 void callOriginal(Args... args)

@@ -1,5 +1,6 @@
-#include "Hooks.hpp"
 #include "FuncUtil.hpp"
+#include "Hooks.hpp"
+#include "LoadedModules.hpp"
 
 #include <string>
 #include <unordered_map>

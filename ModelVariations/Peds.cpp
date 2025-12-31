@@ -9,7 +9,6 @@
 #include <plugin.h>
 #include <CClock.h>
 #include <CModelInfo.h>
-#include <CPedModelInfo.h>
 #include <CPed.h>
 #include <CTheZones.h>
 
@@ -41,7 +40,6 @@ struct tPedVars {
 
     std::vector<unsigned short> disableOnMission;
     std::vector<unsigned short> dontInheritBehaviourModels;
-    std::vector<unsigned short> mergeZones;
     std::vector<unsigned short> mergeInteriors;
 };
 
@@ -201,7 +199,7 @@ void PedVariations::LoadData()
                     }
                 }
 
-            bool mergeZones = dataFile.ReadBoolean(section, "MergeZonesWithCities", false);
+            bool mergeZones = dataFile.ReadBoolean(section, "MergeZonesWithAreas", false);
 
             for (auto& kvp : iniData.second)
             {
@@ -287,7 +285,6 @@ void PedVariations::LoadData()
     }
 
     std::sort(pedVars->dontInheritBehaviourModels.begin(), pedVars->dontInheritBehaviourModels.end());
-    std::sort(pedVars->mergeZones.begin(), pedVars->mergeZones.end());
 
     pedOptions->recursiveVariations = dataFile.ReadBoolean("Settings", "RecursiveVariations", true);
     pedOptions->useParentVoices = dataFile.ReadBoolean("Settings", "UseParentVoices", false);

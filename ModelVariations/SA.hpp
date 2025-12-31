@@ -3,10 +3,10 @@
 #include <CDirectory.h>
 #include <CLoadedCarGroup.h>
 #include <CMenuManager.h>
-#include <CPhysical.h>
 #include <CPedModelInfo.h>
+#include <CPhysical.h>
+#include <CPopulation.h>
 #include <CStreamingInfo.h>
-#include <CZone.h>
 
 extern CStreamingInfo* CStreaming__ms_aInfoForModel;
 

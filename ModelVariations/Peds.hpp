@@ -1,7 +1,10 @@
 #pragma once
 
-#include <CPed.h>
 #include <CZone.h>
+
+#include <string>
+#include <unordered_map>
+#include <vector>
 
 extern std::unordered_map<std::string, std::vector<CZone*>> presetAllZones;
 extern int maxPedID;

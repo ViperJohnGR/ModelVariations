@@ -1,12 +1,10 @@
 #pragma once
 
 #include "Log.hpp"
-#include "LoadedModules.hpp"
 
 #include <unordered_map>
 #include <set>
 #include <string>
-#include <memory>
 
 
 #include <injector/assembly.hpp>

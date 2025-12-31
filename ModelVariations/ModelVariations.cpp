@@ -15,16 +15,12 @@
 #include <CLoadedCarGroup.h>
 #include <CModelInfo.h>
 #include <CPedModelInfo.h>
-#include <CPopulation.h>
 #include <CTheZones.h>
 #include <CVector.h>
 
-#include <array>
 #include <chrono>
-#include <iomanip>
 #include <map>
 #include <set>
-#include <stack>
 #include <thread>
 
 #include <urlmon.h>

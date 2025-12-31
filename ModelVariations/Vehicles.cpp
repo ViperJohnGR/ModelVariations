@@ -2,7 +2,6 @@
 #include "DataReader.hpp"
 #include "FuncUtil.hpp"
 #include "Hooks.hpp"
-#include "LoadedModules.hpp"
 #include "Log.hpp"
 #include "SA.hpp"
 
@@ -22,8 +21,6 @@
 #include <array>
 #include <set>
 #include <stack>
-
-#include <psapi.h>
 
 using namespace plugin;
 
@@ -539,7 +536,7 @@ void VehicleVariations::LoadData()
                     }
                 }
 
-            bool mergeZones = dataFile.ReadBoolean(section, "MergeZonesWithCities", false);
+            bool mergeZones = dataFile.ReadBoolean(section, "MergeZonesWithAreas", false);
 
             for (auto& kvp : iniData.second)
             {

@@ -119,8 +119,9 @@ std::vector<unsigned short> DataReader::ReadLine(const std::string& section, con
 	std::vector<unsigned short> retVector;
 
 	std::string iniString = this->ReadString(section, key, "");
+	CPedModelInfo* mInfo7 = (CPedModelInfo*)CModelInfo::GetModelInfo(7);
 
-	if (iniString.empty())
+	if (iniString.empty() || mInfo7 == NULL)
 		return retVector;
 
 	for (char* token = strtok(iniString.data(), ","); token != NULL; token = strtok(NULL, ","))
@@ -193,14 +194,14 @@ std::vector<unsigned short> DataReader::ReadLine(const std::string& section, con
 						retVector.push_back((unsigned short)modelid);
 				}
 			}
-			else if (parseType == READ_PEDS && !(token[0] >= '0' && token[0] <= '9') && CModelInfo::GetModelInfo(0) && !reachedMaxCapacity)
+			else if (parseType == READ_PEDS && !(token[0] >= '0' && token[0] <= '9') && !reachedMaxCapacity)
 			{
 				if (CStreaming__ms_pExtraObjectsDir->m_nNumEntries >= CStreaming__ms_pExtraObjectsDir->m_nCapacity)
 				{
 					reachedMaxCapacity = true;
 					Log::Write("WARNING: The number of extra object directory entries is has reached max capacity (%u)\n", CStreaming__ms_pExtraObjectsDir->m_nCapacity);
 				}
-				else if (CStreaming__ms_pExtraObjectsDir->FindItem(token))
+				else if (CStreaming__ms_pExtraObjectsDir->FindItem(token) && mInfo7)
 				{
 					for (uint16_t i = 1326; i < maxPedID; i++)
 						if (CModelInfo::GetModelInfo(i) == NULL)
@@ -213,7 +214,9 @@ std::vector<unsigned short> DataReader::ReadLine(const std::string& section, con
 								CStreaming__RequestSpecialModel(i, token, 0);
 								retVector.push_back(i);
 								addedIDs.push_back(i);
-								pedInfo->m_nPedType = 4;
+								pedInfo->m_nPedType = ePedType::PED_TYPE_CIVMALE;
+								pedInfo->m_nRadio1 = mInfo7->m_nRadio1;
+								pedInfo->m_nRadio2 = mInfo7->m_nRadio2;
 							}
 							//Log::Write("OK\n");
 							break;

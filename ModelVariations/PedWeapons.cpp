@@ -25,6 +25,8 @@ std::stack<CPed*> pedWepStack;
 
 std::vector<unsigned short> pedHasWeaponVariations;
 std::vector<std::pair<CPed*, int>> weaponWatchers;
+const char* slotStrings[13] = {"SLOT0", "SLOT1", "SLOT2", "SLOT3", "SLOT4", "SLOT5", "SLOT6", "SLOT7", "SLOT8", "SLOT9", "SLOT10", "SLOT11", "SLOT12"};
+bool iniHasGlobal = false;
 
 bool isIdValidForWatcher(unsigned short id)
 {
@@ -63,6 +65,9 @@ void PedWeaponVariations::LoadData()
     for (auto& iniData : dataFile.data)
     {
         Log::Write("%s\n", iniData.first.c_str());
+
+        if (iniData.first == "Global")
+            iniHasGlobal = true;
 
         int modelid = 0;
         std::string section = iniData.first;
@@ -113,7 +118,9 @@ void PedWeaponVariations::Process()
         if (!IsPedPointerValid(ped) || ped->m_nModelIndex < 7 || !vectorHasId(pedHasWeaponVariations, ped->m_nModelIndex))
             continue;
 
-        const auto changeWeapon = [ped](const std::string& section, const std::string& key, eWeaponType originalWeaponId = WEAPON_UNARMED) -> bool
+        bool wepChanged = false;
+
+        const auto changeWeapon = [&](const std::string& section, const std::string& key, eWeaponType originalWeaponId = WEAPON_UNARMED) -> bool
         {
             std::vector<unsigned short> vec = dataFile.ReadLine(section, key, READ_WEAPONS);
             if (!vec.empty())
@@ -126,6 +133,7 @@ void PedWeaponVariations::Process()
                     if (isIdValidForWatcher(ped->m_nModelIndex))
                     {
                         weaponWatchers.push_back({ ped, weaponId });
+                        wepChanged = true;
                         return true;
                     };
 
@@ -141,6 +149,7 @@ void PedWeaponVariations::Process()
                     if (originalWeaponId == WEAPON_UNARMED)
                         ped->SetCurrentWeapon((int)wInfo->m_nSlot);
 
+                    wepChanged = true;
                     return true;
                 }
             }
@@ -164,13 +173,13 @@ void PedWeaponVariations::Process()
             originalWeapons[i] = ped->m_aWeapons[i].m_eWeaponType;
 
         const int originalSlot = ped->m_nActiveWeaponSlot;
-        bool wepChanged = false;
         char* zoneString = currentZone;
         auto player = FindPlayerPed();
+        const CWanted* wanted = FindPlayerWanted(-1);
         if (player->m_pEnex)
             zoneString = reinterpret_cast<char*>(player->m_pEnex);
 
-        for (int k = 0; k < 2; k++) //loop twice
+        for (int k = (iniHasGlobal ? 0 : 1); k < 2; k++) //loop twice
         {
             for (int j = 0; j < 4; j++)
             {
@@ -195,7 +204,6 @@ void PedWeaponVariations::Process()
                 }
                 if (j == 0 || j == 2)
                 {
-                    const CWanted* wanted = FindPlayerWanted(-1);
                     if (wanted && wanted->m_nWantedLevel > 0)
                         wantedStr = "WANTED" + std::to_string(wanted->m_nWantedLevel) + "|";
                     else
@@ -203,14 +211,18 @@ void PedWeaponVariations::Process()
                 }
 
                 bool changeZoneWeaponForce = true;
-                if ((wepChanged = changeWeapon(section, wantedStr + vehId + "WEAPONFORCE")) == true)
+                if (changeWeapon(section, wantedStr + vehId + "WEAPONFORCE"))
                     changeZoneWeaponForce = rand<bool>();
 
                 if (changeZoneWeaponForce || !mergeWeapons)
-                    wepChanged |= changeWeapon(section, wantedStr + vehId + zoneString + "|WEAPONFORCE");
+                    changeWeapon(section, wantedStr + vehId + zoneString + "|WEAPONFORCE");
 
 
                 if (!wepChanged)
+                {
+                    const std::string wantedVehString = wantedStr + vehId;
+                    const std::string wantedVehZoneString = wantedVehString + zoneString + "|";
+
                     for (int i = 0; i < 13; i++)
                         if (originalWeapons[i] > 0)
                         {
@@ -219,21 +231,22 @@ void PedWeaponVariations::Process()
                             bool changeZoneSlot = true;
                             //const int currentSlot = ped->m_nActiveWeaponSlot;
 
-                            if ((wepChanged = changeWeapon(section, wantedStr + vehId + "SLOT" + std::to_string(i), ped->m_aWeapons[i].m_eWeaponType)) == true)
+                            if (changeWeapon(section, wantedVehString + slotStrings[i] + std::to_string(i), ped->m_aWeapons[i].m_eWeaponType))
                                 changeZoneSlot = rand<bool>();
 
-                            if (changeZoneSlot || !mergeWeapons)
-                                wepChanged |= changeWeapon(section, wantedStr + vehId + zoneString + "|SLOT" + std::to_string(i), ped->m_aWeapons[i].m_eWeaponType);
+                            if ((changeZoneSlot || !mergeWeapons))
+                                changeWeapon(section, wantedVehZoneString + slotStrings[i], ped->m_aWeapons[i].m_eWeaponType);
 
-                            if ((changeWeapon(section, wantedStr + vehId + "WEAPON" + std::to_string(weaponId), ped->m_aWeapons[i].m_eWeaponType) == true) ? (wepChanged = true) : false)
+                            if (changeWeapon(section, wantedVehString + "WEAPON" + std::to_string(weaponId), ped->m_aWeapons[i].m_eWeaponType))
                                 changeZoneWeapon = rand<bool>();
 
-                            if (changeZoneWeapon || !mergeWeapons)
-                                wepChanged |= changeWeapon(section, wantedStr + vehId + zoneString + "|WEAPON" + std::to_string(weaponId), ped->m_aWeapons[i].m_eWeaponType);
-
-                            if (wepChanged)
-                                ped->SetCurrentWeapon(originalSlot);
+                            if ((changeZoneWeapon || !mergeWeapons))
+                                changeWeapon(section, wantedVehZoneString + "WEAPON" + std::to_string(weaponId), ped->m_aWeapons[i].m_eWeaponType);
                         }
+
+                    if (wepChanged)
+                        ped->SetCurrentWeapon(originalSlot);
+                }
             }
             section = "Global";
         }

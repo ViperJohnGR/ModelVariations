@@ -783,7 +783,7 @@ void VehicleVariations::Process()
             if (isVehicleVisible(trailer))
             {
                 it = unseenTrucks.erase(it);
-                continue;
+                break;
             }
 
         auto detachedTrailer = std::find_if(it2->second.begin(), it2->second.end(), [](const CVehicle* trailer) {return trailer->m_pTractor == NULL; });
@@ -796,7 +796,8 @@ void VehicleVariations::Process()
             }
             it2->second.clear();
         }
-        it++;
+        if (it != unseenTrucks.end())
+            it++;
     }
 
     for (auto it = spawnedTrailers.begin(); it != spawnedTrailers.end(); )

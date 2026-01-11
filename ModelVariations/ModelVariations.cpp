@@ -30,6 +30,7 @@
 
 
 #define MOD_VERSION "10.1"
+//Using Plugin-SDK: 34ba198
 
 struct jumpInfo {
     std::uintptr_t address;
@@ -344,7 +345,7 @@ void updateVariations()
         for (unsigned i = 0; i < CPopulation__m_AppropriateLoadedCars->CountMembers(); i++)
             Log::Write("%d ", CPopulation__m_AppropriateLoadedCars->m_members[i]);
 
-        if (player->m_nPedFlags.bInVehicle)
+        if (player->bInVehicle)
             Log::Write("\nPlayer is in vehicle 0x%X with model id %u\n", player->m_pVehicle, player->m_pVehicle->m_nModelIndex);
 
         Log::Write("\n\n");

@@ -1495,7 +1495,7 @@ void __cdecl PossiblyRemoveVehicleHooked(CVehicle* car)
         }
 
         for (auto trailer : it->second)
-            if (trailer == car && (((CTimer::m_snTimeInMilliseconds - trailer->m_nCreationTime) < 300) || (trailer->m_pTractor && (!trailer->m_pTractor->m_nVehicleFlags.bFadeOut))))
+            if (trailer == car && (((CTimer::m_snTimeInMilliseconds - trailer->m_nCreationTime) < 300) || (trailer->m_pTractor && (!trailer->m_pTractor->bFadeOut))))
                 return;
           
         if (it->first == car)
@@ -1509,12 +1509,12 @@ void __cdecl PossiblyRemoveVehicleHooked(CVehicle* car)
     callOriginal<address>(car);
 
     if (!trailersToCheck.empty())
-        if (!IsVehiclePointerValid(car) || (IsVehiclePointerValid(car) && car->m_nVehicleFlags.bFadeOut))
+        if (!IsVehiclePointerValid(car) || (IsVehiclePointerValid(car) && car->bFadeOut))
         {
             for (auto& trailer : trailersToCheck)
             {
                 if (trailer->m_pTractor)
-                    trailer->m_nVehicleFlags.bFadeOut = 1;
+                    trailer->bFadeOut = 1;
                 else if ((CTimer::m_snTimeInMilliseconds - trailer->m_nCreationTime) > 1500)
                     break;
             }
@@ -1777,10 +1777,10 @@ CPed* __fastcall CPool__atHandleTaxiHooked(void* _this, void*, int h) //Unnecess
     static uint8_t taxiVeh[sizeof(CVehicle)];
 
     CPed* ped = callMethodOriginalAndReturn<CPed*, address>(_this, h);
-    if (IsPedPointerValid(ped) && IsVehiclePointerValid(ped->m_pVehicle) && ped->m_nPedFlags.bInVehicle)
+    if (IsPedPointerValid(ped) && IsVehiclePointerValid(ped->m_pVehicle) && ped->bInVehicle)
     {
         CPed* pTaxiPed = reinterpret_cast<CPed*>(&taxiPed);
-        pTaxiPed->m_nPedFlags.bInVehicle = ped->m_nPedFlags.bInVehicle;
+        pTaxiPed->bInVehicle = ped->bInVehicle;
 
         constexpr auto pTaxiVeh = &taxiVeh;
         memcpy(&taxiPed[0x58C], &pTaxiVeh, 4);
@@ -1973,6 +1973,40 @@ isNotSkimmer:
         pop edx
         pop ecx
         mov asmJmpAddress, 0x6DD21D
+        jmp asmJmpAddress
+    }
+}
+
+void __declspec(naked) patch6AC0E2()
+{
+    __asm {
+        push eax
+        movsx edi, word ptr [esi+0x22]
+        push edi
+        call getVariationOriginalModel
+        cmp eax, 0x220
+        je isFiretruckLS
+        mov edi, 0x220
+isFiretruckLS:
+        pop eax
+        mov asmJmpAddress, 0x6AC0E7
+        jmp asmJmpAddress
+    }
+}
+
+void __declspec(naked) patch41F2A2()
+{
+    __asm {
+        push eax
+        movsx edi, word ptr[esi + 0x22]
+        push edi
+        call getVariationOriginalModel
+        cmp eax, 0x20B
+        je isCopBike
+        mov edi, 0x20B
+isCopBike:
+        pop eax
+        mov asmJmpAddress, 0x41F2A7
         jmp asmJmpAddress
     }
 }
@@ -2595,22 +2629,8 @@ void VehicleVariations::InstallHooks()
         hookASM(isGameCompact() ? 0x6ACBC7U : 0x40649C, "66 81 7E 22 EF 01", cmpWordPtrRegModel<REG_ESI, 0x6ACBCD, 0x1EF>, "CAutomobile::PreRender");
         hookASM(0x6BD40F, "66 81 7E 22 0B 02",                cmpWordPtrRegModel<REG_ESI, 0x6BD415, 0x20B>, "CBike::PreRender");
         hookASM(0x6D7E11, "66 81 7E 22 0B 02",                cmpWordPtrRegModel<REG_ESI, 0x6D7E17, 0x20B>, "CVehicle::InflictDamage");
-        
-        MakeInline<0x6AC0E2>("CAutomobile::PreRender", "BF 20 02 00 00", [](injector::reg_pack& regs)
-        {
-            auto model = reinterpret_cast<CVehicle*>(regs.esi)->m_nModelIndex;
-
-            if (getVariationOriginalModel(model) == 544)
-                regs.edi = model;
-        });
-
-        MakeInline<0x41F2A2>("CCarAI::UpdateCarAI", "BF 0B 02 00 00", [](injector::reg_pack& regs)
-        {
-            auto model = reinterpret_cast<CVehicle*>(regs.esi)->m_nModelIndex;
-
-            if (getVariationOriginalModel(model) == 523)
-                regs.edi = model;
-        });
+        hookASM(0x6AC0E2, "BF 20 02 00 00",                   patch6AC0E2, "CAutomobile::PreRender");
+        hookASM(0x41F2A2, "BF 0B 02 00 00",                   patch41F2A2, "CCarAI::UpdateCarAI");
 
         hookCall(0x8711D0, BurstTyreHooked<0x8711D0>, "CAutomobile::BurstTyre", true);
 

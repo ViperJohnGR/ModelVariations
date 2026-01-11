@@ -120,7 +120,7 @@ void PedWeaponVariations::Process()
 
         bool wepChanged = false;
 
-        const auto changeWeapon = [&](const std::string& section, const std::string& key, eWeaponType originalWeaponId = WEAPON_UNARMED) -> bool
+        const auto changeWeapon = [&](const std::string& section, const std::string& key, eWeaponType originalWeaponId = WEAPONTYPE_UNARMED) -> bool
         {
             std::vector<unsigned short> vec = dataFile.ReadLine(section, key, READ_WEAPONS);
             if (!vec.empty())
@@ -128,7 +128,7 @@ void PedWeaponVariations::Process()
                 eWeaponType weaponId = (eWeaponType)vectorGetRandom(vec);
                 const CWeaponInfo* wInfo = CWeaponInfo::GetWeaponInfo(weaponId, 1);
 
-                if (wInfo != NULL && wInfo->m_nModelId1 >= 321)
+                if (wInfo != NULL && wInfo->m_nModelId >= 321)
                 {
                     if (isIdValidForWatcher(ped->m_nModelIndex))
                     {
@@ -137,16 +137,16 @@ void PedWeaponVariations::Process()
                         return true;
                     };
 
-                    loadModels({ wInfo->m_nModelId1 }, PRIORITY_REQUEST, true);
+                    loadModels({ wInfo->m_nModelId }, PRIORITY_REQUEST, true);
 
-                    if (originalWeaponId > WEAPON_UNARMED)
+                    if (originalWeaponId > WEAPONTYPE_UNARMED)
                         ped->ClearWeapon(originalWeaponId);
                     else
                         ped->ClearWeapons();
 
                     ped->GiveWeapon(weaponId, 9999, true);
 
-                    if (originalWeaponId == WEAPON_UNARMED)
+                    if (originalWeaponId == WEAPONTYPE_UNARMED)
                         ped->SetCurrentWeapon((int)wInfo->m_nSlot);
 
                     wepChanged = true;
@@ -172,7 +172,7 @@ void PedWeaponVariations::Process()
         for (int i = 0; i < 13; i++)
             originalWeapons[i] = ped->m_aWeapons[i].m_eWeaponType;
 
-        const int originalSlot = ped->m_nActiveWeaponSlot;
+        const int originalSlot = ped->m_nSelectedWepSlot;
         char* zoneString = currentZone;
         auto player = FindPlayerPed();
         const CWanted* wanted = FindPlayerWanted(-1);
@@ -281,7 +281,7 @@ CPed* __fastcall CPedHooked(CPed* ped, void*, int pedType)
 template <std::uintptr_t address>
 void __fastcall GiveWeaponAtStartOfFightHooked(CPed* ped)
 {
-    if (ped && ped->m_nCreatedBy != 2 && ped->m_aWeapons[ped->m_nActiveWeaponSlot].m_eWeaponType == WEAPON_UNARMED)
+    if (ped && ped->m_nCreatedBy != 2 && ped->m_aWeapons[ped->m_nSelectedWepSlot].m_eWeaponType == WEAPONTYPE_UNARMED)
         switch (ped->m_nPedType)
         {
             case PED_TYPE_CRIMINAL:
@@ -305,8 +305,8 @@ int __fastcall GiveWeaponHooked(CPed* ped, void*, int weaponID, int ammo, int a4
         {
             weaponID = it->second;
             const CWeaponInfo* wInfo = CWeaponInfo::GetWeaponInfo((eWeaponType)weaponID, 1);
-            if (wInfo != NULL && wInfo->m_nModelId1 >= 321)
-                loadModels({wInfo->m_nModelId1}, PRIORITY_REQUEST, true);
+            if (wInfo != NULL && wInfo->m_nModelId >= 321)
+                loadModels({wInfo->m_nModelId}, PRIORITY_REQUEST, true);
             break;
         }
 
@@ -349,7 +349,7 @@ template <std::uintptr_t address>
 bool __fastcall DoWeHaveWeaponAvailableHooked(CPed* ped, void*, eWeaponType weapId)
 {
     auto slot = CWeaponInfo::GetWeaponInfo(weapId, 1)->m_nSlot;
-    if (ped->m_aWeapons[slot].m_eWeaponType > WEAPON_UNARMED)
+    if (ped->m_aWeapons[slot].m_eWeaponType > WEAPONTYPE_UNARMED)
         return true;
 
     return false;

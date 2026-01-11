@@ -186,8 +186,16 @@ void PedWeaponVariations::Process()
                 if (wepChanged)
                     break;
 
-                std::string vehId;
-                std::string wantedStr;
+                std::string wantedVehString;
+                std::string wantedVehZoneString;
+
+                if (j == 0 || j == 2)
+                {
+                    if (wanted && wanted->m_nWantedLevel > 0)
+                        wantedVehString = "WANTED" + std::to_string(wanted->m_nWantedLevel) + "|";
+                    else
+                        continue;
+                }
 
                 if (j < 2)
                 {
@@ -195,41 +203,31 @@ void PedWeaponVariations::Process()
                     {
                         auto it = wepVehModels.find(ped->m_pVehicle->m_nModelIndex);
                         if (it != wepVehModels.end())
-                            vehId = it->second + "|";
+                            wantedVehString += it->second + "|";
                         else
-                            vehId = std::to_string(ped->m_pVehicle->m_nModelIndex) + "|";
+                            wantedVehString += std::to_string(ped->m_pVehicle->m_nModelIndex) + "|";
                     }
-                    else
-                        continue;
-                }
-                if (j == 0 || j == 2)
-                {
-                    if (wanted && wanted->m_nWantedLevel > 0)
-                        wantedStr = "WANTED" + std::to_string(wanted->m_nWantedLevel) + "|";
                     else
                         continue;
                 }
 
                 bool changeZoneWeaponForce = true;
-                if (changeWeapon(section, wantedStr + vehId + "WEAPONFORCE"))
+                if (changeWeapon(section, wantedVehString + "WEAPONFORCE"))
                     changeZoneWeaponForce = rand<bool>();
 
-                if (changeZoneWeaponForce || !mergeWeapons)
-                    changeWeapon(section, wantedStr + vehId + zoneString + "|WEAPONFORCE");
+                wantedVehZoneString = wantedVehString + zoneString + '|';
 
+                if (changeZoneWeaponForce || !mergeWeapons)
+                    changeWeapon(section, wantedVehZoneString + "WEAPONFORCE");
 
                 if (!wepChanged)
                 {
-                    const std::string wantedVehString = wantedStr + vehId;
-                    const std::string wantedVehZoneString = wantedVehString + zoneString + "|";
-
                     for (int i = 0; i < 13; i++)
                         if (originalWeapons[i] > 0)
                         {
                             const eWeaponType weaponId = originalWeapons[i];
                             bool changeZoneWeapon = true;
                             bool changeZoneSlot = true;
-                            //const int currentSlot = ped->m_nActiveWeaponSlot;
 
                             if (changeWeapon(section, wantedVehString + slotStrings[i] + std::to_string(i), ped->m_aWeapons[i].m_eWeaponType))
                                 changeZoneSlot = rand<bool>();
@@ -283,9 +281,7 @@ CPed* __fastcall CPedHooked(CPed* ped, void*, int pedType)
 template <std::uintptr_t address>
 void __fastcall GiveWeaponAtStartOfFightHooked(CPed* ped)
 {
-    assert(ped != NULL);
-
-    if (ped->m_nCreatedBy != 2 && ped->m_aWeapons[ped->m_nActiveWeaponSlot].m_eWeaponType == WEAPON_UNARMED)
+    if (ped && ped->m_nCreatedBy != 2 && ped->m_aWeapons[ped->m_nActiveWeaponSlot].m_eWeaponType == WEAPON_UNARMED)
         switch (ped->m_nPedType)
         {
             case PED_TYPE_CRIMINAL:

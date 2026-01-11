@@ -2,9 +2,10 @@
 
 #include <map>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
-extern std::vector<unsigned short> addedIDs;
+extern std::unordered_map<unsigned short, std::string> addedIDs;
 extern int maxPedID;
 
 enum dataTypeToRead

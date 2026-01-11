@@ -1,14 +1,11 @@
 #include "DataReader.hpp"
 #include "FuncUtil.hpp"
-#include "LoadedModules.hpp"
 #include "Log.hpp"
 #include "SA.hpp"
 
 #include <CModelInfo.h>
 #include <CPedModelInfo.h>
 #include <CWeaponInfo.h>
-
-bool reachedMaxCapacity = false;
 
 DataReader::DataReader(const char* filename)
 {
@@ -116,6 +113,7 @@ std::string DataReader::ReadString(const std::string& section, const std::string
 
 std::vector<unsigned short> DataReader::ReadLine(const std::string& section, const std::string& key, dataTypeToRead parseType)
 {
+	static bool reachedMaxCapacity = false;
 	std::vector<unsigned short> retVector;
 
 	std::string iniString = this->ReadString(section, key, "");
@@ -203,22 +201,22 @@ std::vector<unsigned short> DataReader::ReadLine(const std::string& section, con
 				}
 				else if (CStreaming__ms_pExtraObjectsDir->FindItem(token) && mInfo7)
 				{
-					for (uint16_t i = 1326; i < maxPedID; i++)
+					static unsigned short startID = 1326;
+					for (unsigned short i = startID; i < maxPedID; i++)
 						if (CModelInfo::GetModelInfo(i) == NULL)
 						{
-							//Log::Write("Adding model %s to id %d... ", token.data(), i);
+							startID = i;
 							auto pedInfo = CModelInfo__AddPedModel(i);
 							if (pedInfo)
 							{
 								pedInfo->SetColModel((CColModel*)0x968DF0, false);
 								CStreaming__RequestSpecialModel(i, token, 0);
 								retVector.push_back(i);
-								addedIDs.push_back(i);
+								addedIDs[i] = token;
 								pedInfo->m_nPedType = ePedType::PED_TYPE_CIVMALE;
 								pedInfo->m_nRadio1 = mInfo7->m_nRadio1;
 								pedInfo->m_nRadio2 = mInfo7->m_nRadio2;
 							}
-							//Log::Write("OK\n");
 							break;
 						}
 				}

@@ -50,7 +50,7 @@ std::set<unsigned short> addedIDsInGroups;
 
 std::string exePath(256, 0);
 
-std::vector<unsigned short> addedIDs;
+std::unordered_map<unsigned short, std::string> addedIDs;
 int maxPedID = 0;
 
 static const char* dataFileName = "ModelVariations.ini";
@@ -475,7 +475,9 @@ void refreshOnGameRestart()
     if (!modInitialized && loadStage == 2)
         initialize();
 
-    assert(modInitialized);
+    if (!modInitialized)
+        MessageBox(NULL, "Could not initialize mod.", "Model Variations", MB_ICONWARNING);
+        
 
     Log::Write("-- Restarting (%s) --\n", getDatetime(false, true, true).c_str());
 
@@ -527,6 +529,17 @@ void refreshOnGameRestart()
             reloadThread.detach();
         reloadThread = std::thread(doAsyncStuff);
     }
+
+    static std::once_flag flag;
+    std::call_once(flag, []
+    {
+        if (!addedIDs.empty() && Log::Write("Added IDs:\n"))
+        {
+            for (auto &it : addedIDs)
+                Log::Write("%u %s\n", it.first, it.second.c_str());
+            Log::Write("\n");
+        }
+    });
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////

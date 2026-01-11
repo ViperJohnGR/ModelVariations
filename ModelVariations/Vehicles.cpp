@@ -1129,7 +1129,8 @@ int __cdecl ChoosePoliceCarModelHooked(int a1)
 template <std::uintptr_t address>
 void __cdecl AddPoliceCarOccupantsHooked(CVehicle* a2, char a3)
 {
-    assert(a2 != NULL);
+    if (a2 == NULL)
+        return;
 
     processOccupantGroups(a2);
     policeOccupants = true;
@@ -1253,13 +1254,14 @@ CPlane* __fastcall CPlaneHooked(CPlane* plane, void*, int a2, char a3)
 }
 
 template <std::uintptr_t address>
-char __fastcall IsLawEnforcementVehicleHooked(CVehicle* veh)
+bool __fastcall IsLawEnforcementVehicleHooked(CVehicle* veh)
 {
-    assert(veh != NULL);
+    if (veh == NULL)
+        return false;
 
     const unsigned short modelIndex = veh->m_nModelIndex;
     veh->m_nModelIndex = (unsigned short)getVariationOriginalModel(veh->m_nModelIndex);
-    char isLawEnforcement = callMethodOriginalAndReturn<char, address>(veh);
+    bool isLawEnforcement = callMethodOriginalAndReturn<bool, address>(veh);
     veh->m_nModelIndex = modelIndex;
 
     return isLawEnforcement;
@@ -1382,7 +1384,8 @@ CCopPed* __fastcall CCopPedHooked(CCopPed* ped, void*, int copType)
 template <std::uintptr_t address>
 CPed* __cdecl AddPedInCarHooked(CVehicle* veh, char driver, int a3, int a4, char a5, char a6)
 {
-    assert(veh != NULL);
+    if (veh == NULL)
+        return NULL;
 
     //laemt1 -> dsher
     loadModels(274, 288, GAME_REQUIRED, true);
@@ -1536,7 +1539,8 @@ void* __fastcall SetDriverHooked(CVehicle* _this, void*, CPed* a2)
 template <std::uintptr_t address>
 void __fastcall CAutomobile__PreRenderHooked(CAutomobile* veh)
 {
-    assert(veh != NULL);
+    if (veh == NULL)
+        return;
 
     unsigned short originalModel = veh->m_nModelIndex;
     lightsModel = veh->m_nModelIndex;
@@ -1656,7 +1660,8 @@ CVehicle* __cdecl CreateCarForScriptHooked(int modelId, float posX, float posY, 
 template <std::uintptr_t address>
 bool __fastcall UsesSirenHooked(CVehicle* veh)
 {
-    assert(veh != NULL);
+    if (veh == NULL)
+        return false;
 
     const unsigned short modelIndex = veh->m_nModelIndex;
     veh->m_nModelIndex = (unsigned short)getVariationOriginalModel(veh->m_nModelIndex);
@@ -1740,7 +1745,8 @@ void __fastcall AddDamagedVehicleParticlesHooked(CVehicle* veh)
 template <std::uintptr_t address>
 bool __cdecl IsCarSprayableHooked(CVehicle* veh)
 {
-    assert(veh != NULL);
+    if (veh == NULL)
+        return false;
 
     const unsigned short modelIndex = veh->m_nModelIndex;
     veh->m_nModelIndex = (unsigned short)getVariationOriginalModel(veh->m_nModelIndex);

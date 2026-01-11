@@ -59,7 +59,6 @@ struct tPedOptions {
 
 std::unique_ptr<tPedOptions> pedOptions(new tPedOptions);
 
-int dealersFrames = 0;
 unsigned short variationModel = 0;
 
 bool isValidPedId(int id)
@@ -392,18 +391,21 @@ void PedVariations::Process()
         pedVars->stack.pop();
 
         if (IsPedPointerValid(ped) && isValidPedId(ped->m_nModelIndex))
-            if (!pedVars->currentVariations[ped->m_nModelIndex].empty() && pedVars->currentVariations[ped->m_nModelIndex][0] == 0 && ped->m_nCreatedBy != 2) //Delete models with a 0 id variation
+        {
+            auto it = pedVars->currentVariations.find(ped->m_nModelIndex);
+            if (it != pedVars->currentVariations.end() && !it->second.empty() && it->second[0] == 0 && ped->m_nCreatedBy != 2) //Delete models with a 0 id variation
             {
                 if (IsVehiclePointerValid(ped->m_pVehicle))
                     pedDeleteVeh(ped);
                 else
                     deletePed(ped);
             }
+        }
 
         if (IsPedPointerValid(ped) && pedOptions->enableCloneRemover && ped->m_nCreatedBy != 2 && CPools::ms_pPedPool && 
             !(pedOptions->cloneRemoverDisableOnMission && CTheScripts__IsPlayerOnAMission())) //Clone remover
         {
-            bool includeVariations = std::find(pedOptions->cloneRemoverIncludeVariations.begin(), pedOptions->cloneRemoverIncludeVariations.end(), ped->m_nModelIndex) != pedOptions->cloneRemoverIncludeVariations.end();
+            bool includeVariations = vectorHasId(pedOptions->cloneRemoverIncludeVariations, ped->m_nModelIndex);
             if (pedDelaySpawn(ped->m_nModelIndex, includeVariations)) //Delete peds spawned before SpawnTime
             {
                 if (!IsVehiclePointerValid(ped->m_pVehicle))
@@ -445,6 +447,8 @@ void PedVariations::Process()
 
 void PedVariations::ProcessDrugDealers(bool reset)
 {
+    static int dealersFrames = 0;
+
     if (reset)
     {
         dealersFrames = 0;
@@ -463,7 +467,7 @@ void PedVariations::ProcessDrugDealers(bool reset)
                     for (auto originalModel : it.second)
                         if (originalModel == 28 || originalModel == 29 || originalModel == 30 || originalModel == 254)
                         {
-                            Log::Write((std::find(addedIDs.begin(), addedIDs.end(), it.first) != addedIDs.end()) ? "%uSP\n" : "%u\n", it.first);
+                            Log::Write(addedIDs.contains(it.first) ? "%uSP\n" : "%u\n", it.first);
                             auto findByScmIndex = CExternalScripts__findByScmIndex(CTheScripts__StreamedScripts, 19);
 
                             CScriptsForBrains__AddNewScriptBrain(CTheScripts__ScriptsForBrains, findByScmIndex, (short)it.first, 100, 0, -1, -1.0);
@@ -512,8 +516,9 @@ void PedVariations::UpdateVariations()
             }
         }
 
-        for (auto i : pedVars->activeTimeGroups[modelid])
-            vectorfilterVector(pedVars->currentVariations[modelid], pedVars->timeGroups[modelid][i].variations);
+        if (auto it = pedVars->activeTimeGroups.find(modelid); it != pedVars->activeTimeGroups.end())
+            for (auto i : it->second)
+                vectorfilterVector(pedVars->currentVariations[modelid], pedVars->timeGroups[modelid][i].variations);
     }
 }
 
@@ -533,7 +538,7 @@ void PedVariations::LogCurrentVariations()
             for (auto j : it.second)
             {
                 const char* suffix = " ";
-                if (std::find(addedIDs.begin(), addedIDs.end(), j) != addedIDs.end())
+                if (addedIDs.contains(j))
                     suffix = "SP ";
                 Log::Write("%u%s", j, suffix);
             }
@@ -571,7 +576,7 @@ void PedVariations::LogVariations()
         for (auto j : i.second)
         {
             const char* suffix = " ";
-            if (std::find(addedIDs.begin(), addedIDs.end(), j) != addedIDs.end())
+            if (addedIDs.contains(j))
                 suffix = "SP ";
             Log::Write("%u%s", j, suffix);
         }

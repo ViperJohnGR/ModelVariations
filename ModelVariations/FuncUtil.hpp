@@ -525,7 +525,6 @@ inline void vectorfilterVector(std::vector<unsigned short>& vec, const std::vect
 
 inline unsigned short vectorGetRandom(const std::vector<unsigned short>& vec)
 {
-    assert(vec.size() > 0);
     return vec[CGeneral::GetRandomNumberInRange(0, (int)vec.size())];
 }
 

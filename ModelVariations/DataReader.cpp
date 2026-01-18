@@ -211,6 +211,8 @@ std::vector<unsigned short> DataReader::ReadLine(const std::string& section, con
 							{
 								pedInfo->SetColModel((CColModel*)0x968DF0, false);
 								CStreaming__RequestSpecialModel(i, token, 0);
+								CStreaming::SetModelIsDeletable(i);
+								CStreaming::SetModelTxdIsDeletable(i);
 								retVector.push_back(i);
 								addedIDs[i] = token;
 								pedInfo->m_nPedType = ePedType::PED_TYPE_CIVMALE;

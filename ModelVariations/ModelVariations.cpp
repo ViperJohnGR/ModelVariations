@@ -294,7 +294,17 @@ void loadIniData()
     if (enablePeds)
     {
         if (!modInitialized)
+        {
             enableSpecialPeds = iniSettings.ReadBoolean("Settings", "EnableSpecialPeds", false);
+
+            int extraObjectsDirLimit = iniSettings.ReadInteger("Limits", "ExtraObjectsDirLimit", -1);
+
+            //Extra objects directory
+            if (*reinterpret_cast<uint32_t*>(0x5B8DE0) == 550 && extraObjectsDirLimit > 0)
+                WriteMemory<uint32_t>(0x5B8DE0, extraObjectsDirLimit);
+            else
+                Log::Write("Extra objects directory limit was not increased.\n");
+        }
 
         if (enableSpecialPeds && !LoadedModules::IsModLoaded(MOD_FLA) && !LoadedModules::IsModLoaded(MOD_OLA))
         {
@@ -432,6 +442,8 @@ void initialize()
 
     if (enablePeds)
     {
+        if (maxPedID == 0)
+            maxPedID = iniSettings.ReadInteger("Limits", "MaxModelID", -1);
         Log::Write("Installing ped hooks...\n");
         PedVariations::InstallHooks(enableSpecialPeds);
         Log::Write("Ped hooks installed.\n");
@@ -995,7 +1007,11 @@ public:
                     windowsVersion += str;
 
 
-            Log::Write("Model Variations %s %s %s\n%s\n%s\n\n%s\n", MOD_VERSION, IS_DEBUG ? "DEBUG" : "", hashFile(MOD_NAME).c_str(), windowsVersion.c_str(), getDatetime(true, true, false).c_str(), exePath.c_str());
+            Log::Write("Model Variations %s %s\n", MOD_VERSION, IS_DEBUG ? "DEBUG" : "");
+            Log::Write("Build date: %s\n", __DATE__);
+            Log::Write("%s\n", windowsVersion.c_str());
+            Log::Write("%s\n\n", getDatetime(true, true, false).c_str(), exePath.c_str());
+            Log::Write("%s\n", exePath.c_str());
 
             if (isGameHOODLUM())
                 Log::Write("Supported exe detected: 1.0 US HOODLUM | %u bytes\n", exeFilesize, exeHash.c_str());

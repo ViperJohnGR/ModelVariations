@@ -18,7 +18,7 @@
 
 static const char* dataFileName = "ModelVariations_Peds.ini";
 static DataReader dataFile(dataFileName);
-std::array<int16_t[2], 20000> destroyedModelCounters;
+std::vector<int16_t> destroyedModelCounters;
 
 struct tPedVars {
     std::unordered_map<uint64_t, std::unordered_map<unsigned short, std::vector<unsigned short>>> variations;
@@ -255,7 +255,7 @@ void PedVariations::LoadData()
             if (dataFile.ReadBoolean(section, "DontInheritBehaviour", false))
                 pedVars->dontInheritBehaviourModels.push_back(modelIndex);
 
-            if (dataFile.ReadBoolean(section, "MergeInteriorsWithCitiesAndZones", false))
+            if (dataFile.ReadBoolean(section, "MergeInteriorsWithAreasAndZones", false))
                 pedVars->mergeInteriors.push_back(modelIndex);
 
             if (dataFile.ReadBoolean(section, "DisableOnMission", false))
@@ -588,17 +588,18 @@ void PedVariations::LogVariations()
 ///////////////////////////////////////////  CALL HOOKS    ////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
+template <std::uintptr_t address>
 int __cdecl getKillsByPlayer(int player)
 {
     int sum = 0;
 
-    for (const auto& i : destroyedModelCounters)
-        sum += i[player];
+    for (int i = maxPedID * player; i < maxPedID * 2; i++)
+        sum += destroyedModelCounters[i];
 
     return sum;
 }
 
-template<std::uintptr_t address>
+template <std::uintptr_t address>
 int __fastcall SetModelIndexHooked(CEntity* _this, void*, int index)
 {
     int retVal = callMethodOriginalAndReturn<int, address>(_this, index);
@@ -693,12 +694,6 @@ void PedVariations::InstallHooks(bool enableSpecialPeds)
 {
     if (enableSpecialPeds)
     {
-        //Extra objects directory
-        if (*reinterpret_cast<uint32_t*>(0x5B8DE0) == 550)
-            WriteMemory<uint32_t>(0x5B8DE0, 4000);
-        else
-            Log::Write("Extra objects directory limit was not increased.\n");
-
         bool gameHOODLUM = isGameHOODLUM();
         bool notModified = true;
 
@@ -711,37 +706,29 @@ void PedVariations::InstallHooks(bool enableSpecialPeds)
             notModified = false;
         }
 
-        if (gameHOODLUM)
+        if (notModified && maxPedID > -1)
         {
-            if (!memcmp(0x43D6E0, "E9 1B C2 12 01"))
-                notModified = false;
-        }
-        else if (!memcmp(0x43D6E0, "8B 4C 24 04 56"))
-            notModified = false;
+            destroyedModelCounters.resize(maxPedID * 2);
 
-        if (notModified)
-        {
-            injector::WriteMemory<int16_t*>(0x43DE70, destroyedModelCounters[0], true);
-            injector::WriteMemory<int16_t*>(0x43DF5F, destroyedModelCounters[0], true);
+            injector::WriteMemory<int16_t*>(0x43DE70, &destroyedModelCounters[0], true);
+            injector::WriteMemory<int16_t*>(0x43DF5F, &destroyedModelCounters[0], true);
 
             if (gameHOODLUM)
             {
-                injector::WriteMemory<int16_t*>(0x1561637, destroyedModelCounters[0], true);
-                injector::WriteMemory<uint32_t>(0x156163C, 20000, true);
+                injector::WriteMemory<int16_t*>(0x1561637, &destroyedModelCounters[0], true);
+                injector::WriteMemory<uint32_t>(0x156163C, maxPedID, true);
 
-                injector::WriteMemory<int16_t*>(0x1564C2F, destroyedModelCounters[0], true);            
+                injector::WriteMemory<int16_t*>(0x1564C2F, &destroyedModelCounters[0], true);
             }
             else
             {
-                injector::WriteMemory<int16_t*>(0x43D6A7, destroyedModelCounters[0], true);
-                injector::WriteMemory<uint32_t>(0x43D6AC, 20000, true);
+                injector::WriteMemory<int16_t*>(0x43D6A7, &destroyedModelCounters[0], true);
+                injector::WriteMemory<uint32_t>(0x43D6AC, maxPedID, true);
 
-                injector::WriteMemory<int16_t*>(0x43D6CF, destroyedModelCounters[0], true);
+                injector::WriteMemory<int16_t*>(0x43D6CF, &destroyedModelCounters[0], true);
             }
 
-            injector::MakeJMP(0x43D6E0, getKillsByPlayer);
-
-            maxPedID = 20000;
+            hookCall(0x47360D, getKillsByPlayer<0x47360D>, "CDarkel::FindTotalPedsKilledByPlayer");
         }
         else
             Log::Write("Count of killable model IDs was not increased. %s\n", (LoadedModules::IsModLoaded(MOD_FLA) ? "FLA is loaded." : "FLA is NOT loaded."));

@@ -765,6 +765,20 @@ void VehicleVariations::Process()
         snprintf(gameTimeString, 6, "%02d:%02d", CClock::ms_nGameClockHours, CClock::ms_nGameClockMinutes);
         Log::Write("Updating vehicle variations due to model %d time groups. Game time: %s\n", variationsUpdateQueued, gameTimeString);
         UpdateVariations();
+        VehicleVariations::LogCurrentVariations();
+        Log::Write("\n");
+        Log::Write("Active time groups\n");
+        for (auto it : vehVars->activeTimeGroups)
+        {
+            if (!it.second.empty())
+            {
+                Log::Write("%d: ", it.first);
+                for (auto j : it.second)
+                    Log::Write("%u ", j + 1);
+                Log::Write("\n");
+            }
+        }
+        Log::Write("\n\n");
         variationsUpdateQueued = 0;
     }
 
@@ -1054,8 +1068,13 @@ void VehicleVariations::UpdateVariations()
 
 void VehicleVariations::LogCurrentVariations()
 {
-    if (!Log::Write("vehCurrentVariations\n"))
+    if (!Log::Write("vehCurrentVariations"))
         return;
+
+    if (vehVars->currentVariations.empty())
+        Log::Write(" is empty\n");
+    else
+        Log::Write("\n");
 
     for (auto it : vehVars->currentVariations)
         if (!it.second.empty())

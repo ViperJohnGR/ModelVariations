@@ -333,6 +333,20 @@ void PedVariations::Process()
         snprintf(gameTimeString, 6, "%02d:%02d", CClock::ms_nGameClockHours, CClock::ms_nGameClockMinutes);
         Log::Write("Updating ped variations due to model %d time groups. Game time: %s\n", variationsUpdateQueued, gameTimeString);
         UpdateVariations();
+        PedVariations::LogCurrentVariations();
+        Log::Write("\n");
+        Log::Write("Active time groups\n");
+        for (auto it : pedVars->activeTimeGroups)
+        {
+            if (!it.second.empty())
+            {
+                Log::Write("%d: ", it.first);
+                for (auto j : it.second)
+                    Log::Write("%u ", j + 1);
+                Log::Write("\n");
+            }
+        }
+        Log::Write("\n\n");
         variationsUpdateQueued = 0;
     }
 
@@ -528,8 +542,13 @@ void PedVariations::UpdateVariations()
 
 void PedVariations::LogCurrentVariations()
 {
-    if (!Log::Write("pedCurrentVariations\n"))
+    if (!Log::Write("pedCurrentVariations"))
         return;
+
+    if (pedVars->currentVariations.empty())
+        Log::Write(" is empty\n");
+    else
+        Log::Write("\n");
 
     for (auto it : pedVars->currentVariations)
         if (!it.second.empty())

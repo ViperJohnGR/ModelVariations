@@ -29,7 +29,7 @@
 #pragma comment (lib, "urlmon.lib")
 
 
-#define MOD_VERSION "10.2"
+#define MOD_VERSION "10.3"
 //Using Plugin-SDK: 34ba198
 
 struct jumpInfo {

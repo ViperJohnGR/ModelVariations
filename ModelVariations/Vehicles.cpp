@@ -63,8 +63,6 @@ int occupantModelIndex = -1;
 
 std::map<CVehicle*, std::vector<CVehicle*>> spawnedTrailers;  //<veh, <trailers>>
 
-std::set<CVehicle*> unseenTrucks;
-
 std::uintptr_t x6ABCBE_Destination = 0;
 
 uint32_t asmNextInstr[4] = {};
@@ -201,25 +199,6 @@ bool isAnotherVehicleBehind(CVehicle* veh, const std::vector<CVehicle*> &excepti
         }
     }
 
-
-    return false;
-}
-
-bool isVehicleVisible(CVehicle* veh) //TODO: this isn't working 100% correctly
-{
-    if (!IsVehiclePointerValid(veh))
-        return false;
-
-    if (!TheCamera.IsSphereVisible(veh->GetPosition(), CModelInfo::GetModelInfo(veh->m_nModelIndex)->m_pColModel->m_boundSphere.m_fRadius))
-        return false;
-
-    CColPoint outColPoint;
-    CEntity* outEntity;
-
-    bool hit = CWorld::ProcessLineOfSight(TheCamera.GetPosition(), veh->GetPosition(), outColPoint, outEntity, true, true, false, true, true, false, false, false);
-
-    if (CVisibilityPlugins::VehicleVisibilityCB(veh->m_pRwClump) && (!hit || (outEntity == veh)))
-        return true;
 
     return false;
 }
@@ -787,38 +766,6 @@ void VehicleVariations::Process()
         variationsUpdateQueued = 0;
     }
 
-    for (auto it = unseenTrucks.begin(); it != unseenTrucks.end();)
-    {
-        auto truck = *it;
-        auto it2 = spawnedTrailers.find(truck);
-
-        if (/*isVehicleVisible(truck) || */it2 == spawnedTrailers.end())
-        {
-            it = unseenTrucks.erase(it);
-            continue;
-        }
-
-        for (auto trailer : it2->second)
-            if (isVehicleVisible(trailer))
-            {
-                it = unseenTrucks.erase(it);
-                break;
-            }
-
-        auto detachedTrailer = std::find_if(it2->second.begin(), it2->second.end(), [](const CVehicle* trailer) {return trailer->m_pTractor == NULL; });
-        if (detachedTrailer != it2->second.end() && (CTimer::m_snTimeInMilliseconds - (*detachedTrailer)->m_nCreationTime) > 500)
-        {
-            for (auto trailer : it2->second)
-            {
-                CWorld::Remove(trailer);
-                trailer->Remove();
-            }
-            it2->second.clear();
-        }
-        if (it != unseenTrucks.end())
-            it++;
-    }
-
     for (auto it = spawnedTrailers.begin(); it != spawnedTrailers.end(); )
     {
         CVehicle* veh = it->first;
@@ -1004,7 +951,6 @@ void VehicleVariations::Process()
                         CWorld::Add(trailer);
                         //CTheScripts::ClearSpaceForMissionEntity(previous->GetPosition(), trailer);
                         spawnedTrailers[veh].push_back(trailer);
-                        unseenTrucks.insert(veh);
                         trailer->SetPosn(newPos);
                         if (previous == veh)
                             if (!trailer->SetTowLink(previous, 1))
@@ -1499,9 +1445,6 @@ void __cdecl PossiblyRemoveVehicleHooked(CVehicle* car)
 
     std::vector<CVehicle*> trailersToCheck;    
 
-    if (unseenTrucks.contains(car) && spawnedTrailers.contains(car))
-        trailersToCheck = spawnedTrailers[car];
-
     for (auto it = spawnedTrailers.begin(); it != spawnedTrailers.end(); )
     {
         if (!it->second.empty())
@@ -1660,6 +1603,27 @@ void __fastcall AddAudioEventHooked(CAEVehicleAudioEntity* audio, void*, int aud
     CVehicle* vehicle = static_cast<CVehicle*>(audio->m_pEntity);
     if ((CTimer::m_snTimeInMilliseconds - vehicle->m_nCreationTime) > 2000)
         callMethodOriginal<address>(audio, audioEvent, fVolume);
+}
+
+void __cdecl CWorld__Remove(CEntity* entity)
+{
+    if (entity)
+    {
+        auto it = spawnedTrailers.find((CVehicle*)entity);
+        if (it != spawnedTrailers.end())
+        {
+            for (auto trailer : it->second)
+            {
+                CWorld::Remove(trailer);
+                trailer->Remove();
+            }
+            spawnedTrailers.erase(it);
+        }
+    
+        entity->Remove();
+        if (entity->m_nType > ENTITY_TYPE_BUILDING && entity->m_nType < ENTITY_TYPE_DUMMY)
+            ((CPhysical*)entity)->RemoveFromMovingList();
+    }
 }
 
 template <std::uintptr_t address>
@@ -2367,6 +2331,11 @@ void VehicleVariations::InstallHooks()
 
     hookCall(0x6CFFBB, AddAudioEventHooked<0x6CFFBB>, "CAEVehicleAudioEntity::AddAudioEvent"); //CTrailer::SetTowLink
     hookCall(0x6CEFCE, AddAudioEventHooked<0x6CEFCE>, "CAEVehicleAudioEntity::AddAudioEvent"); //CTrailer::BreakTowLink
+
+    if (memcmp(0x563280, "56 8B 74 24 08"))
+        injector::MakeJMP(0x563280, CWorld__Remove);
+    else
+        Log::LogModifiedAddress(0x563280, "Modified function detected: CWorld::Remove - 0x563280 is %s\n", bytesToString(0x563280, 5).c_str());
 
     //Tuning for parked cars
     hookCall(0x6F3C8C, CWorld__AddHooked<0x6F3C8C>, "CWorld::Add"); //CCarGenerator::DoInternalProcessing

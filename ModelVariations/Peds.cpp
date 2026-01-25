@@ -208,8 +208,8 @@ void PedVariations::LoadData()
                     if (!vec.empty())
                     {
                         pedVars->pedHasVariations.insert(modelIndex);
-                        uint64_t zoneName;
-                        memcpy(&zoneName, kvp.first.c_str(), 8);
+                        uint64_t zoneName = 0;
+                        strncpy((char*)&zoneName, kvp.first.c_str(), 8);
                         pedVars->variations[zoneName][modelIndex] = mergeZones ? vectorUnion(pedVars->variations[zoneName][modelIndex], vec) : vec;
                     }
                 }

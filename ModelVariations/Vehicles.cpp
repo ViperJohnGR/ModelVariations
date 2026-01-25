@@ -542,8 +542,8 @@ void VehicleVariations::LoadData()
             {
                 if (isupper(kvp.first[1]))
                 {
-                    uint64_t zoneName;
-                    memcpy(&zoneName, kvp.first.c_str(), 8);
+                    uint64_t zoneName = 0;
+                    strncpy((char*)&zoneName, kvp.first.c_str(), 8);
 
                     auto vec = dataFile.ReadLine(section, kvp.first, READ_VEHICLES);
                     if (!vec.empty())

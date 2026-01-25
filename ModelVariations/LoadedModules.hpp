@@ -9,8 +9,7 @@
 enum loadedModNames
 {
 	MOD_FLA,
-	MOD_OLA,
-	MOD_WLE
+	MOD_OLA
 };
 
 

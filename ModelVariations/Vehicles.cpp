@@ -94,6 +94,7 @@ struct tVehVars {
     std::unordered_map<unsigned short, std::pair<CVector, float>> lightPositions;
     std::unordered_map<unsigned short, RwRGBA> lightColors;
     std::unordered_map<unsigned short, RwRGBA> lightColors2;
+    std::unordered_map<unsigned short, float> lightSizes;
     std::unordered_map<unsigned short, std::vector<unsigned short>> *currentTuning = nullptr;
     std::unordered_map<unsigned short, std::string> vehModels;
     std::unordered_map<unsigned short, BYTE> tuningChances;
@@ -593,6 +594,7 @@ void VehicleVariations::LoadData()
 
             if (vehOptions->enableLights)
             {
+                const float lightSize = dataFile.ReadFloat(section, "LightSize", -1.0);
                 const float lightWidth = dataFile.ReadFloat(section, "LightWidth", -999.0);
                 const float lightX = dataFile.ReadFloat(section, "LightX", 0.0);
                 const float lightY = dataFile.ReadFloat(section, "LightY", 0.0);
@@ -602,6 +604,9 @@ void VehicleVariations::LoadData()
                 int g = dataFile.ReadInteger(section, "LightG", -1);
                 int b = dataFile.ReadInteger(section, "LightB", -1);
                 int a = dataFile.ReadInteger(section, "LightA", -1);
+
+                if (lightSize > 0.0)
+                    vehVars->lightSizes.insert({ modelid, lightSize });
 
                 if ((uint8_t)r == r && (uint8_t)g == g && (uint8_t)b == b && (uint8_t)a == a)
                 {
@@ -1692,41 +1697,51 @@ bool __fastcall UsesSirenHooked(CVehicle* veh)
 
 //enableLights
 template <std::uintptr_t address, bool second = false>
-void __cdecl RegisterCoronaHooked(void* _this, CEntity* a2, unsigned char a3, unsigned char a4, unsigned char a5, unsigned char a6, CVector* a7, const CVector* a8,
+void __cdecl RegisterCoronaHooked(void* _this, CEntity* a2, unsigned char red, unsigned char green, unsigned char blue, unsigned char alpha, CVector* coors, float size,
                                   float a9, void* texture, unsigned char a11, unsigned char a12, unsigned char a13, int a14, float a15, float a16, float a17, float a18,
                                   float a19, float a20, bool a21)
 {
-    if (a7 && a2)
+    if (!a2 || !coors)
+        callOriginal<address>(_this, a2, red, green, blue, alpha, coors, size, a9, texture, a11, a12, a13, a14, a15, a16, a17, a18, a19, a20, a21);
+
+    //size
+    {
+        const auto it = vehVars->lightSizes.find(lightsModel);
+        if (it != vehVars->lightSizes.end())
+            size = it->second;
+    }
+
+    //position
     {
         const auto it = vehVars->lightPositions.find(lightsModel);
         if (it != vehVars->lightPositions.end())
         {
             if (it->second.second > -900.0)
-                a7->x *= it->second.second;
+                coors->x *= it->second.second;
             if (it->second.first.x != 0.0)
-                a7->x += it->second.first.x;
+                coors->x += it->second.first.x;
             if (it->second.first.y != 0.0)
-                a7->y += it->second.first.y;
+                coors->y += it->second.first.y;
             if (it->second.first.z != 0.0)
-                a7->z += it->second.first.z;
+                coors->z += it->second.first.z;
         }
     }
 
-    if (a2)
+    //colors
     {
         auto& lightsMap = (second ? vehVars->lightColors2 : vehVars->lightColors);
 
         const auto it = lightsMap.find(lightsModel);
         if (it != lightsMap.end())
         {
-            a3 = it->second.red;
-            a4 = it->second.green;
-            a5 = it->second.blue;
-            a6 = it->second.alpha;
+            red = it->second.red;
+            green = it->second.green;
+            blue = it->second.blue;
+            alpha = it->second.alpha;
         }
     }
 
-    callOriginal<address>(_this, a2, a3, a4, a5, a6, a7, a8, a9, texture, a11, a12, a13, a14, a15, a16, a17, a18, a19, a20, a21);
+    callOriginal<address>(_this, a2, red, green, blue, alpha, coors, size, a9, texture, a11, a12, a13, a14, a15, a16, a17, a18, a19, a20, a21);
 }
 
 template <std::uintptr_t address>
@@ -1747,6 +1762,10 @@ void __cdecl AddLightHooked(char type, float x, float y, float z, float dir_x, f
             if (it->second.first.z != 0.0f)
                 z += it->second.first.z;
         }
+
+        const auto it2 = vehVars->lightSizes.find(lightsModel);
+        if (it2 != vehVars->lightSizes.end())
+            radius = it2->second;
     }
 
     callOriginal<address>(type, x, y, z, dir_x, dir_y, dir_z, radius, r, g, b, fogType, generateExtraShadows, attachedTo);

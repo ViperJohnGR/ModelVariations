@@ -10,6 +10,7 @@
 #include <CClock.h>
 #include <CModelInfo.h>
 #include <CPed.h>
+#include <CTaskComplexCopInCar.h>
 #include <CTheZones.h>
 
 #include <array>
@@ -709,6 +710,36 @@ CPhysical* __fastcall CPhysicalHooked(CPed* _this)
     return retVal;
 }
 
+//Improper fix for crash 0x68FB5C
+template <std::uintptr_t address>
+void* __fastcall CreateNextSubTaskHooked(CTaskComplexCopInCar* _this, void*, CPed* ped)
+{
+    if (_this == NULL)
+        Log::Write("CreateNextSubTaskHooked _this is NULL. ped is 0x%X\n", ped);
+    else if (ped == NULL)
+        Log::Write("CreateNextSubTaskHooked ped is NULL. _this is 0x%X\n", _this);
+    else if (_this->m_pVehicle == NULL)
+    {
+        Log::Write("CTaskComplexCopInCar 0x%X of ped 0x%X with model index %u has NULL vehicle pointer.\n", _this, ped, ped->m_nModelIndex);
+        if (_this->GetSubTask()->GetId() == TASK_SIMPLE_CAR_DRIVE)
+        {
+            if (ped->m_pVehicle)
+                ped->m_pVehicle->m_autoPilot.m_nCarMission = MISSION_NONE;
+            else
+                Log::Write("CTaskComplexCopInCar ped->m_pVehicle is NULL.\n");
+
+            uint8_t originalData[7];
+            injector::ReadMemoryRaw(0x68FB5C, originalData, 7, true);
+            injector::MakeNOP(0x68FB5C, 7);
+            auto retVal = callMethodOriginalAndReturn<void*, address>(_this, ped);
+            injector::WriteMemoryRaw(0x68FB5C, originalData, 7, true);
+            return retVal;
+        }
+    }
+
+    return callMethodOriginalAndReturn<void*, address>(_this, ped);
+}
+
 void PedVariations::InstallHooks(bool enableSpecialPeds)
 {
     if (enableSpecialPeds)
@@ -762,4 +793,6 @@ void PedVariations::InstallHooks(bool enableSpecialPeds)
     hookCall(0x5DE388, CAEPedSpeechAudioEntity__InitialiseHooked<0x5DE388>, "CAEPedSpeechAudioEntity::Initialise"); //CEmergencyPed
 
     hookCall(0x5E8052, CPhysicalHooked<0x5E8052>, "CPhysical::CPhysical"); //CPed::CPed
+
+    hookCall(0x870A4C, CreateNextSubTaskHooked<0x870A4C>, "CTaskComplexCopInCar::CreateNextSubTask", true);
 }

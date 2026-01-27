@@ -28,6 +28,8 @@ std::vector<std::pair<CPed*, int>> weaponWatchers;
 const char* slotStrings[13] = {"SLOT0", "SLOT1", "SLOT2", "SLOT3", "SLOT4", "SLOT5", "SLOT6", "SLOT7", "SLOT8", "SLOT9", "SLOT10", "SLOT11", "SLOT12"};
 bool iniHasGlobal = false;
 
+int lastMissionLoaded = -1;
+
 bool isIdValidForWatcher(unsigned short id)
 {
     for (auto i : PedVariations::GetVariationOriginalModels(id))
@@ -179,75 +181,80 @@ void PedWeaponVariations::Process()
         if (player->m_pEnex)
             zoneString = reinterpret_cast<char*>(player->m_pEnex);
 
-        for (int k = (iniHasGlobal ? 0 : 1); k < 2; k++) //loop twice
-        {
-            for (int j = 0; j < 4; j++)
+        for (int m = 0; m < 2; m++)
+            for (int k = (iniHasGlobal ? 0 : 1); k < 2; k++) //loop twice
             {
-                if (wepChanged)
-                    break;
-
-                std::string wantedVehString;
-                std::string wantedVehZoneString;
-
-                if (j == 0 || j == 2)
+                for (int j = 0; j < 4; j++)
                 {
-                    if (wanted && wanted->m_nWantedLevel > 0)
-                        wantedVehString = "WANTED" + std::to_string(wanted->m_nWantedLevel) + "|";
-                    else
-                        continue;
-                }
-
-                if (j < 2)
-                {
-                    if (IsVehiclePointerValid(ped->m_pVehicle))
-                    {
-                        auto it = wepVehModels.find(ped->m_pVehicle->m_nModelIndex);
-                        if (it != wepVehModels.end())
-                            wantedVehString += it->second + "|";
-                        else
-                            wantedVehString += std::to_string(ped->m_pVehicle->m_nModelIndex) + "|";
-                    }
-                    else
-                        continue;
-                }
-
-                bool changeZoneWeaponForce = true;
-                if (changeWeapon(section, wantedVehString + "WEAPONFORCE"))
-                    changeZoneWeaponForce = rand<bool>();
-
-                wantedVehZoneString = wantedVehString + zoneString + '|';
-
-                if (changeZoneWeaponForce || !mergeWeapons)
-                    changeWeapon(section, wantedVehZoneString + "WEAPONFORCE");
-
-                if (!wepChanged)
-                {
-                    for (int i = 0; i < 13; i++)
-                        if (originalWeapons[i] > 0)
-                        {
-                            const eWeaponType weaponId = originalWeapons[i];
-                            bool changeZoneWeapon = true;
-                            bool changeZoneSlot = true;
-
-                            if (changeWeapon(section, wantedVehString + slotStrings[i] + std::to_string(i), ped->m_aWeapons[i].m_eWeaponType))
-                                changeZoneSlot = rand<bool>();
-
-                            if ((changeZoneSlot || !mergeWeapons))
-                                changeWeapon(section, wantedVehZoneString + slotStrings[i], ped->m_aWeapons[i].m_eWeaponType);
-
-                            if (changeWeapon(section, wantedVehString + "WEAPON" + std::to_string(weaponId), ped->m_aWeapons[i].m_eWeaponType))
-                                changeZoneWeapon = rand<bool>();
-
-                            if ((changeZoneWeapon || !mergeWeapons))
-                                changeWeapon(section, wantedVehZoneString + "WEAPON" + std::to_string(weaponId), ped->m_aWeapons[i].m_eWeaponType);
-                        }
-
                     if (wepChanged)
-                        ped->SetCurrentWeapon(originalSlot);
+                        break;
+
+                    std::string wantedVehString;
+
+                    if (m == 0 && CTheScripts__IsPlayerOnAMission())
+                    {
+                        wantedVehString = "MISSION" + std::to_string(lastMissionLoaded) + "|";
+                    }
+
+                    if (j == 0 || j == 2)
+                    {
+                        if (wanted && wanted->m_nWantedLevel > 0)
+                            wantedVehString += "WANTED" + std::to_string(wanted->m_nWantedLevel) + "|";
+                        else
+                            continue;
+                    }
+
+                    if (j < 2)
+                    {
+                        if (IsVehiclePointerValid(ped->m_pVehicle))
+                        {
+                            auto it = wepVehModels.find(ped->m_pVehicle->m_nModelIndex);
+                            if (it != wepVehModels.end())
+                                wantedVehString += it->second + "|";
+                            else
+                                wantedVehString += std::to_string(ped->m_pVehicle->m_nModelIndex) + "|";
+                        }
+                        else
+                            continue;
+                    }
+
+                    bool changeZoneWeaponForce = true;
+                    if (changeWeapon(section, wantedVehString + "WEAPONFORCE"))
+                        changeZoneWeaponForce = rand<bool>();
+
+                    std::string wantedVehZoneString = wantedVehString + zoneString + '|';
+
+                    if (changeZoneWeaponForce || !mergeWeapons)
+                        changeWeapon(section, wantedVehZoneString + "WEAPONFORCE");
+
+                    if (!wepChanged)
+                    {
+                        for (int i = 0; i < 13; i++)
+                            if (originalWeapons[i] > 0)
+                            {
+                                const eWeaponType weaponId = originalWeapons[i];
+                                bool changeZoneWeapon = true;
+                                bool changeZoneSlot = true;
+
+                                if (changeWeapon(section, wantedVehString + slotStrings[i] + std::to_string(i), ped->m_aWeapons[i].m_eWeaponType))
+                                    changeZoneSlot = rand<bool>();
+
+                                if ((changeZoneSlot || !mergeWeapons))
+                                    changeWeapon(section, wantedVehZoneString + slotStrings[i], ped->m_aWeapons[i].m_eWeaponType);
+
+                                if (changeWeapon(section, wantedVehString + "WEAPON" + std::to_string(weaponId), ped->m_aWeapons[i].m_eWeaponType))
+                                    changeZoneWeapon = rand<bool>();
+
+                                if ((changeZoneWeapon || !mergeWeapons))
+                                    changeWeapon(section, wantedVehZoneString + "WEAPON" + std::to_string(weaponId), ped->m_aWeapons[i].m_eWeaponType);
+                            }
+
+                        if (wepChanged)
+                            ped->SetCurrentWeapon(originalSlot);
+                    }
                 }
+                section = "Global";
             }
-            section = "Global";
-        }
     }
 }
 
@@ -355,6 +362,14 @@ bool __fastcall DoWeHaveWeaponAvailableHooked(CPed* ped, void*, eWeaponType weap
     return false;
 }
 
+template <std::uintptr_t address>
+void __cdecl CTimer__SuspendHooked()
+{
+    callOriginal<address>();
+    lastMissionLoaded = ScriptParams[0];
+}
+
+
 void PedWeaponVariations::InstallHooks()
 {
     hookCall(0x5DDB92, CPedHooked<0x5DDB92>, "CPed::CPed"); //CCivilianPed::CCivilianPed
@@ -367,4 +382,5 @@ void PedWeaponVariations::InstallHooks()
     hookCall(0x48AE9E, CollectParametersHooked<0x48AE9E>, "CRunningScript::CollectParameters"); //0491: HAS_CHAR_GOT_WEAPON
     hookCall(0x68BBA0, DoWeHaveWeaponAvailableHooked<0x68BBA0>, "CTaskComplexPolicePursuit::SetWeapon"); //CTaskComplexPolicePursuit::SetWeapon
     hookCall(0x68BB32, DoWeHaveWeaponAvailableHooked<0x68BB32>, "CTaskComplexPolicePursuit::SetWeapon"); //CTaskComplexPolicePursuit::SetWeapon
+    hookCall(0x489955, CTimer__SuspendHooked<0x489955>, "CTimer::Suspend"); //0417: LOAD_AND_LAUNCH_MISSION_INTERNAL
 }

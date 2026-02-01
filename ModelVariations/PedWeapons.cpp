@@ -215,7 +215,7 @@ void PedWeaponVariations::Process()
                                 wantedVehString += std::to_string(ped->m_pVehicle->m_nModelIndex) + "|";
                         }
                         else
-                            continue;
+                            wantedVehString += "ON_FOOT|";
                     }
 
                     bool changeZoneWeaponForce = true;

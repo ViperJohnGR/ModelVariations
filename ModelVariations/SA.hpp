@@ -50,7 +50,7 @@ inline bool CPhysical__TestCollision(CPhysical* _this, bool applySpeed) { return
 #define CStreaming__ms_vehiclesLoaded getPointerFromAddress<CLoadedCarGroup>(0x40B997, 0x8E4C24)
 inline void CStreaming__LoadAllRequestedModels(bool bOnlyPriorityRequests) { getDynamicFunction<void, 0x49B421>(bOnlyPriorityRequests); }
 inline void CStreaming__RequestModel(int model, int flags) { getDynamicFunction<void, 0x40A612>(model, flags); }
-inline void CStreaming__RequestSpecialModel(int slot, char* name, int flags) { getDynamicFunction<void, 0x40B45E>(slot, name, flags); }
+inline void CStreaming__RequestSpecialModel(int slot, const char* name, int flags) { getDynamicFunction<void, 0x40B45E>(slot, name, flags); }
 inline void CStreaming__RequestVehicleUpgrade(int model, int flags) { getDynamicFunction<void, 0x447E83>(model, flags); }
 inline void CStreaming__SetMissionDoesntRequireModel(int model) { getDynamicFunction<void, 0x40B49D>(model); }
 

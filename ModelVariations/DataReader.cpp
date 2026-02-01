@@ -18,52 +18,42 @@ void DataReader::Load(const char* filename)
 
 	data.clear();
 
-	std::vector<char*> sections;
+	std::vector<std::string> sections;
 	std::string key, value;
-	size_t token_length = 0;
 
-	for (char* line = strtok(file.data(), "\r\n", &token_length); line != NULL; line = strtok(NULL, "\r\n", &token_length))
+	for (std::string &line : splitString(file, "\n\r"))
 	{		 
-		for (auto pos = line; *pos;)
-		{
-			if (*pos == ';' || *pos == '#')
-				*pos = 0;
-			else if (*pos == '/' && *(pos + 1) == '/')
-				*pos = 0;
-			else
-				pos++;
-		}
+		if (auto pos = line.find_first_of(";#"); pos < line.size())
+			line.resize(pos);
+		if (auto pos = line.find("//"); pos < line.size())
+			line.resize(pos);
 
-		token_length = trim(&line);
+		line = trimString(line);
+		if (line.empty())
+			continue;
 
-		if (line[0] == '[' && line[token_length-1] == ']')
+		if (line.front() == '[' && line.back() == ']')
 		{
 			sections.clear();
 
-			line++;
-			token_length--;
-			line[token_length - 1] = 0;
+			std::string inner = line.substr(1);
+			inner.resize(inner.size()-1);
 
-			for (char* token = strtok(line, ","); token != NULL; token = strtok(NULL, ","))
+			for (std::string &token : splitString(inner, ','))
 			{
-				trim(&token);
-				sections.push_back(token);
+				token = trimString(token);
+				if (!token.empty())
+					sections.push_back(token);
 			}
 		}
-		else if (auto pos = strchr(line, '='); pos)
+		else if (auto pos = line.find_first_of('='); pos < line.size())
 		{
-			*pos = 0;
-			trim(&line);
-			key = line;
-
-			line = pos + 1;
-			trim(&line);
-			value = line;
+			key = trimString(line.substr(0, pos));
+			value = trimString(line.substr(pos+1));
 
 			if (!key.empty() && !value.empty())
-				for (auto& i : sections)
-					if (i[0] != 0)
-						data[i][key] = value;
+				for (auto& s : sections)
+						data[s][key] = value;
 		}
 	}
 }
@@ -83,8 +73,8 @@ float DataReader::ReadFloat(const std::string& section, const std::string& key, 
 	if (auto itSection = data.find(section); itSection != data.end())
 		if (auto itKey = itSection->second.find(key); itKey != itSection->second.end())
 		{
-			float value = strtof(itKey->second.c_str());
-			if (value != NAN)
+			float value = floatFromString(itKey->second.c_str());
+			if (!std::isnan(value))
 				return value;
 		}
 
@@ -122,21 +112,25 @@ std::vector<unsigned short> DataReader::ReadLine(const std::string& section, con
 	if (iniString.empty() || mInfo7 == NULL)
 		return retVector;
 
-	for (char* token = strtok(iniString.data(), ","); token != NULL; token = strtok(NULL, ","))
+	for (std::string &str : splitString(iniString, ','))
 	{
 		int modelid = 0;
-		trim(&token);
+		auto trimmed = trimString(str);
+		if (trimmed.empty())
+			continue;
+
+		auto token = trimmed.c_str();
 
 		if (parseType == READ_NUMS)
 		{
-			if (isdigit(token[0]))
-				retVector.push_back((unsigned short)atoi(token));
+			if (token[0] >= '0' && token[0] <= '9')
+				retVector.push_back((unsigned short)fast_atoi(token));
 		}
 		else if (parseType == READ_WEAPONS)
 		{
 			int weaponType = -1;
 			if (token[0] >= '0' && token[0] <= '9')
-				weaponType = atoi(token);
+				weaponType = fast_atoi(token);
 
 			if (weaponType > -1 && weaponType < 1000 && CWeaponInfo::GetWeaponInfo((eWeaponType)weaponType, 1) != NULL)
 				retVector.push_back((unsigned short)weaponType);
@@ -150,7 +144,7 @@ std::vector<unsigned short> DataReader::ReadLine(const std::string& section, con
 		{
 			if (_strnicmp(token, "paintjob", 8) == 0)
 			{
-				retVector.push_back((unsigned short)atoi(token+8)-1U);
+				retVector.push_back((unsigned short)fast_atoi(token+8)-1U);
 			}
 			else if (token[0] != 'G')
 			{
@@ -173,7 +167,12 @@ std::vector<unsigned short> DataReader::ReadLine(const std::string& section, con
 			CBaseModelInfo* mInfo = NULL;
 			if (token[0] >= '0' && token[0] <= '9')
 			{
-				modelid = atoi(token);
+				modelid = fast_atoi(token);
+				if (modelid < 0 || modelid > 65535)
+				{
+					Log::Write("Error reading key %s in [%s]: invalid model id %s\n", key.c_str(), section.c_str(), token);
+					return {};
+				}
 				mInfo = CModelInfo::GetModelInfo(modelid);
 			}
 			else
@@ -241,21 +240,28 @@ std::vector<std::vector<unsigned short>> DataReader::ReadTrailerLine(const std::
 	if (iniString.empty())
 		return retVector;
 
-	for (char* token = strtok(iniString.data(), ","); token != NULL; token = strtok(NULL, ","))
+	for (std::string &token : splitString(iniString, ','))
 	{
 		int modelid = 0;
-		trim(&token);
+		token = trimString(token);
+		if (token.empty())
+			continue;
 
 		if (token[0] != '[')
 		{
 			CBaseModelInfo* mInfo = NULL;
 			if (token[0] >= '0' && token[0] <= '9')
 			{
-				modelid = atoi(token);
+				modelid = fast_atoi(token.c_str());
+				if (modelid < 0 || modelid > 65535)
+				{
+					Log::Write("Error reading key %s in [%s]: invalid model id %s\n", key.c_str(), section.c_str(), token.c_str());
+					return {};
+				}
 				mInfo = CModelInfo::GetModelInfo(modelid);
 			}
 			else
-				mInfo = CModelInfo::GetModelInfo(token, &modelid);
+				mInfo = CModelInfo::GetModelInfo(token.c_str(), &modelid);
 
 
 			if (mInfo != NULL && mInfo->GetModelType() == MODEL_INFO_VEHICLE)
@@ -263,33 +269,35 @@ std::vector<std::vector<unsigned short>> DataReader::ReadTrailerLine(const std::
 		}
 		else
 		{
-			token++;
+			std::string inner = token.substr(1);
+			if (auto pos = inner.find(']'); pos != std::string::npos)
+				inner.resize(pos);
+			else
+				continue;
+
 			retVector.push_back({});
-			char model[9] = {};
-			for (int i = 0; *token; token++)
+			for (std::string &s : splitString(inner, '-'))
 			{
-				if (*token == '-' || *token == ']')
+				s = trimString(s);
+				if (s.empty())
+					continue;
+
+				CBaseModelInfo* mInfo = NULL;
+				if (s[0] >= '0' && s[0] <= '9')
 				{
-					char* trimmedModel = model;
-					trim(&trimmedModel);
-
-					CBaseModelInfo* mInfo = NULL;
-					if (trimmedModel[0] >= '0' && trimmedModel[0] <= '9')
+					modelid = fast_atoi(s.c_str());
+					if (modelid < 0 || modelid > 65535)
 					{
-						modelid = atoi(trimmedModel);
-						mInfo = CModelInfo::GetModelInfo(modelid);
+						Log::Write("Error reading key %s in [%s]: invalid model id %s\n", key.c_str(), section.c_str(), s.c_str());
+						return {};
 					}
-					else
-						mInfo = CModelInfo::GetModelInfo(trimmedModel, &modelid);
-
-					if (mInfo != NULL && mInfo->GetModelType() == MODEL_INFO_VEHICLE)
-						retVector.back().push_back((unsigned short)modelid);
-
-					memset(model, 0, 9);
-					i = 0;
+					mInfo = CModelInfo::GetModelInfo(modelid);
 				}
 				else
-					model[i++] = *token;
+					mInfo = CModelInfo::GetModelInfo(s.c_str(), &modelid);
+
+				if (mInfo != NULL && mInfo->GetModelType() == MODEL_INFO_VEHICLE)
+					retVector.back().push_back((unsigned short)modelid);
 			}
 		}
 	}

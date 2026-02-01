@@ -339,25 +339,53 @@ inline bool strcasestr(std::string src, std::string sub)
     return false;
 }
 
-inline std::vector<std::string> splitString(const std::string &sv, const char separator)
+inline std::vector<std::string> splitString(std::string_view s, char separator)
 {
-    std::vector<std::string> result;
+    std::vector<std::string> out;
 
-    size_t start = 0;
-
-    for(size_t i = 0;; i++)
+    std::size_t start = 0;
+    while (start <= s.size())
     {
-        if (sv[i] == separator || sv[i] == 0)
-        {
-            result.push_back(sv.substr(start, i - start));
-            if (sv[i] == 0)
-                break;
-            else
-                start = i + 1;
-        }
+        const std::size_t pos = s.find(separator, start);
+        const std::size_t end = (pos == std::string_view::npos) ? s.size() : pos;
+
+        if (end > start) // non-empty token
+            out.emplace_back(s.substr(start, end - start));
+
+        if (pos == std::string_view::npos)
+            break;
+
+        start = pos + 1;
     }
 
-    return result;
+    return out;
+}
+
+inline std::vector<std::string> splitString(const std::string& s, const std::string& separators)
+{
+    std::vector<std::string> out;
+
+    std::size_t start = 0;
+
+    while (start < s.size())
+    {
+        // Skip leading separators
+        start = s.find_first_not_of(separators, start);
+        if (start == std::string::npos) break;
+
+        // Find end of token
+        std::size_t end = s.find_first_of(separators, start);
+        if (end == std::string::npos)
+        {
+            out.emplace_back(s.substr(start));
+            break;
+        }
+
+        out.emplace_back(s.substr(start, end - start));
+        start = end + 1;
+    }
+
+    return out;
 }
 
 inline std::string trimString(const std::string& str) 
@@ -379,7 +407,7 @@ inline int fast_atoi(const char* str, bool returnAtInvalidChar = false)
     if (negative)
         str++;
 
-    while (*str) 
+    while (*str)
     {
         if (*str < '0' || *str > '9')
         {
@@ -392,110 +420,18 @@ inline int fast_atoi(const char* str, bool returnAtInvalidChar = false)
     return negative ? -val : val;
 }
 
-inline float strtof(const char *str)
+inline float floatFromString(const std::string &str)
 {
-    const char* dot = str;
+    float out;
 
-    while (1)
-    {
-        if (*dot == '.' || *dot == 0)
-            break;
-        dot++;
-    }
+    const char* first = str.data();
+    const char* last = first + str.size();
 
-    bool negative = str[0] == '-' ? true : false;
-    if (negative)
-        str++;
+    auto [ptr, ec] = std::from_chars(first, last, out, std::chars_format::general);
 
-    int integerPart = fast_atoi(str, true);
-    //if (integerPart == INT_MAX)
-        //return NAN;
-
-    if (*dot == 0)
-        return static_cast<float>(integerPart);
-
-    int decimalPart = fast_atoi(dot+1);
-    if (decimalPart == INT_MAX)
-        return NAN;
-
-    auto finalFloat = (float)integerPart + (float)decimalPart / (float)integerPow(10, strlen(dot + 1));
-
-    return negative ? -finalFloat : finalFloat;
+    return (ec == std::errc{}) ? out : std::numeric_limits<float>::quiet_NaN();
 }
 
-inline size_t ltrim(char** str, size_t n)
-{
-    size_t len = (n > 0) ? n : strlen(*str);
-    size_t i = 0;
-
-    while (i < len && isspace((*str)[i]))
-        i++;
-
-    *str += i;
-
-    return len - i;
-}
-
-inline size_t rtrim(char** str, size_t n)
-{
-    size_t len = (n > 0) ? n : strlen(*str);
-
-    if (len == 0)
-        return 0;
-
-    for (size_t i = len - 1; isspace((*str)[i]); i--)
-    {
-        (*str)[i] = 0;
-        len--;
-    }
-
-    return len;
-}
-
-inline size_t trim(char** str, size_t n = 0)
-{
-    size_t len = ltrim(str, n);
-    len = rtrim(str, len);
-    return len;
-}
-
-inline char* strtok(char* str, const char* delim, size_t* token_length) {
-    static char* next_token = NULL;
-    if (str != NULL)
-        next_token = str;
-    else if (next_token == NULL)
-        return NULL; // No more tokens
-
-    // Skip leading delimiters
-    char* start = next_token;
-    while (*start && strchr(delim, *start))
-        start++;
-
-    if (*start == '\0') 
-    {
-        next_token = NULL; // End of string reached
-        return NULL;
-    }
-
-    // Find the end of the token
-    char* end = start;
-    while (*end && !strchr(delim, *end))
-        end++;
-
-    // If a token is found, update `next_token`
-    if (*end) 
-    {
-        *end = '\0';        // Null-terminate the token
-        next_token = end + 1; // Move to the next character after the delimiter
-    }
-    else
-        next_token = NULL; // End of the string
-
-    if (token_length)
-        *token_length = (size_t)(end - start);
-
-    return start;
-}
 
 /////////////
 // Vectors //

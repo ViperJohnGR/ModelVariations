@@ -15,7 +15,6 @@
 #include <CTheZones.h>
 #include <CVector.h>
 #include <CVehicle.h>
-#include <CVisibilityPlugins.h>
 #include <CWorld.h>
 
 #include <array>

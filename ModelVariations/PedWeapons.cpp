@@ -117,7 +117,7 @@ void PedWeaponVariations::Process()
         CPed* ped = pedWepStack.top();
         pedWepStack.pop();
 
-        if (!IsPedPointerValid(ped) || ped->m_nModelIndex < 7 || !vectorHasId(pedHasWeaponVariations, ped->m_nModelIndex))
+        if (!IsPedPointerValid(ped) || ped->m_nModelIndex < 7 || (!vectorHasId(pedHasWeaponVariations, ped->m_nModelIndex) && !iniHasGlobal))
             continue;
 
         bool wepChanged = false;

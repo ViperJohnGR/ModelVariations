@@ -54,6 +54,8 @@ void PedWeaponVariations::ClearData()
 {
     wepPedModels.clear();
     wepVehModels.clear();
+    pedHasWeaponVariations.clear();
+    iniHasGlobal = false;
 
     dataFile.data.clear();
 }
@@ -166,8 +168,10 @@ void PedWeaponVariations::Process()
             section = std::to_string(ped->m_nModelIndex);
 
         const bool mergeWeapons = dataFile.ReadBoolean(section, "MergeZonesWithGlobal", false);
+        bool isOnMission = CTheScripts__IsPlayerOnAMission();
+        bool pedInVehicle = IsVehiclePointerValid(ped->m_pVehicle);
 
-        if (dataFile.ReadBoolean(section, "DisableOnMission", false) && CTheScripts__IsPlayerOnAMission())
+        if (dataFile.ReadBoolean(section, "DisableOnMission", false) && isOnMission)
             continue;
 
         eWeaponType originalWeapons[13];
@@ -178,11 +182,25 @@ void PedWeaponVariations::Process()
         char* zoneString = currentZone;
         auto player = FindPlayerPed();
         const CWanted* wanted = FindPlayerWanted(-1);
+        unsigned int wantedLevel = wanted ? wanted->m_nWantedLevel : 0;
+
         if (player->m_pEnex)
             zoneString = reinterpret_cast<char*>(player->m_pEnex);
 
-        for (int m = 0; m < 2; m++)
-            for (int k = (iniHasGlobal ? 0 : 1); k < 2; k++) //loop twice
+        const std::string missionString = "MISSION" + std::to_string(lastMissionLoaded) + "|";
+        const std::string wantedString = "WANTED" + std::to_string(wantedLevel) + "|";
+        std::string vehString = "ON_FOOT|";
+        if (pedInVehicle)
+        {
+            auto it = wepVehModels.find(ped->m_pVehicle->m_nModelIndex);
+            if (it != wepVehModels.end())
+                vehString = it->second + "|";
+            else
+                vehString = std::to_string(ped->m_pVehicle->m_nModelIndex) + "|";
+        }
+
+        for (int m = (isOnMission ? 0 : 1); m < 2; m++)
+            for (int k = (iniHasGlobal ? 0 : 1); k < 2; k++)
             {
                 for (int j = 0; j < 4; j++)
                 {
@@ -191,32 +209,19 @@ void PedWeaponVariations::Process()
 
                     std::string wantedVehString;
 
-                    if (m == 0 && CTheScripts__IsPlayerOnAMission())
-                    {
-                        wantedVehString = "MISSION" + std::to_string(lastMissionLoaded) + "|";
-                    }
+                    if (m == 0)
+                        wantedVehString = missionString;
 
                     if (j == 0 || j == 2)
                     {
-                        if (wanted && wanted->m_nWantedLevel > 0)
-                            wantedVehString += "WANTED" + std::to_string(wanted->m_nWantedLevel) + "|";
+                        if (wantedLevel > 0)
+                            wantedVehString += wantedString;
                         else
                             continue;
                     }
 
                     if (j < 2)
-                    {
-                        if (IsVehiclePointerValid(ped->m_pVehicle))
-                        {
-                            auto it = wepVehModels.find(ped->m_pVehicle->m_nModelIndex);
-                            if (it != wepVehModels.end())
-                                wantedVehString += it->second + "|";
-                            else
-                                wantedVehString += std::to_string(ped->m_pVehicle->m_nModelIndex) + "|";
-                        }
-                        else
-                            wantedVehString += "ON_FOOT|";
-                    }
+                        wantedVehString += vehString;
 
                     bool changeZoneWeaponForce = true;
                     if (changeWeapon(section, wantedVehString + "WEAPONFORCE"))
@@ -236,7 +241,7 @@ void PedWeaponVariations::Process()
                                 bool changeZoneWeapon = true;
                                 bool changeZoneSlot = true;
 
-                                if (changeWeapon(section, wantedVehString + slotStrings[i] + std::to_string(i), ped->m_aWeapons[i].m_eWeaponType))
+                                if (changeWeapon(section, wantedVehString + slotStrings[i], ped->m_aWeapons[i].m_eWeaponType))
                                     changeZoneSlot = rand<bool>();
 
                                 if ((changeZoneSlot || !mergeWeapons))

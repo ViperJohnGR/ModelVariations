@@ -154,6 +154,9 @@ bool isAnotherVehicleBehind(CVehicle* veh, const std::vector<CVehicle*> &excepti
     if (mInfo == NULL)
         return false;
 
+    if (mInfo->m_pColModel == NULL)
+        return false;
+
     CVector vmin = mInfo->m_pColModel->m_boundBox.m_vecMin;
     CVector vmax = mInfo->m_pColModel->m_boundBox.m_vecMax;
 
@@ -1665,7 +1668,7 @@ void __cdecl RegisterCoronaHooked(void* _this, CEntity* a2, unsigned char red, u
                                   float a19, float a20, bool a21)
 {
     if (!a2 || !coors)
-        callOriginal<address>(_this, a2, red, green, blue, alpha, coors, size, a9, texture, a11, a12, a13, a14, a15, a16, a17, a18, a19, a20, a21);
+        return callOriginal<address>(_this, a2, red, green, blue, alpha, coors, size, a9, texture, a11, a12, a13, a14, a15, a16, a17, a18, a19, a20, a21);
 
     //size
     {

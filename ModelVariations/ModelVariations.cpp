@@ -15,6 +15,7 @@
 #include <CLoadedCarGroup.h>
 #include <CModelInfo.h>
 #include <CPedModelInfo.h>
+#include <CStreaming.h>
 #include <CTheZones.h>
 #include <CVector.h>
 
@@ -260,6 +261,9 @@ void logVariationsChange(const char* msg)
     CZone* zInfo = NULL;
     CTheZones::GetZoneInfo(&pPos, &zInfo);
 
+    if (zInfo == NULL || wanted == NULL)
+        return;
+
     Log::Write("\n%s (%s)\n", msg, getDatetime(false, true, true).c_str());
     Log::Write("Streaming Memory usage: %u/%u MB  Total Memory usage: %u MB\n", CStreaming__ms_memoryUsed/1024/1024, CStreaming__ms_memoryAvailable/1024/1024, getMemoryUsage()/1024/1024);
     Log::Write("Updating variations. pPos = {%f, %f, %f}\n", pPos.x, pPos.y, pPos.z);
@@ -340,7 +344,6 @@ void updateVariations()
     //zInfo->m_szTextKey = BLUEB | zInfo->m_szLabel = BLUEB1
 
     auto player = FindPlayerPed();
-    CVector position = FindPlayerCoors(-1);
             
     if (Log::Write("CStreaming::ms_pedsLoaded: "))
     {
@@ -396,7 +399,7 @@ void initialize()
         std::string flaIniPath = flaModule.first;
         std::string flaLogPath = flaModule.first;
         flaIniPath.replace(flaIniPath.find_last_of("\\/"), std::string::npos, "\\fastman92limitAdjuster_GTASA.ini");
-        flaLogPath.replace(flaIniPath.find_last_of("\\/"), std::string::npos, "\\fastman92limitAdjuster.log");
+        flaLogPath.replace(flaLogPath.find_last_of("\\/"), std::string::npos, "\\fastman92limitAdjuster.log");
 
         if (!fileExists(flaLogPath))
             Log::Write("Could not find '%s'\n", flaLogPath.c_str());
@@ -659,13 +662,12 @@ void __cdecl CGame__ProcessHooked()
         auto gta_saModule = LoadedModules::GetExeModule();
         std::uintptr_t gta_saEndAddress = ((std::uintptr_t)gta_saModule.second.lpBaseOfDll + gta_saModule.second.SizeOfImage);
         unsigned int secCount = 0;
-        const unsigned int base = (unsigned int)gta_saModule.second.lpBaseOfDll;
 
         for (auto rangeStart : validRanges)
         {
             unsigned int sectionSize;
             if (loadPESection(exePath.c_str(), sections[secCount++], buffer, &sectionSize))
-                for (unsigned int i = rangeStart; i < sectionSize + base; i++)
+                for (unsigned int i = rangeStart; i < rangeStart + sectionSize; i++)
                 {
                     auto currentByte = *reinterpret_cast<unsigned char*>(i);
                     if (currentByte != buffer[i - rangeStart])
@@ -696,6 +698,7 @@ void __cdecl CGame__ProcessHooked()
                 Log::Write("0x%08X 0x%08X %X\n", j.address, j.destination, j.type);
             }
         }
+        Log::Write("\n");
 
         jumpsLogged = true;
     }
@@ -962,22 +965,24 @@ public:
         logJumps = iniSettings.ReadBoolean("Settings", "LogJumps", false);
 
         std::string checkForceEnabled = iniSettings.ReadString("Settings", "ForceEnable", "");
-        if (checkForceEnabled == "1" || _stricmp(checkForceEnabled.c_str(), "true") == 0)
-            forceEnableGlobal = true;
-        else if (checkForceEnabled != "0" && isdigit(checkForceEnabled[0]))
+        if (!checkForceEnabled.empty())
         {
-            for (const auto& s : splitString(checkForceEnabled, ','))
+            if (checkForceEnabled == "1" || _stricmp(checkForceEnabled.c_str(), "true") == 0)
+                forceEnableGlobal = true;
+            else if (checkForceEnabled != "0" && isdigit(checkForceEnabled[0]))
             {
-                char* endptr = NULL;
-                std::uintptr_t value = strtoul(s.c_str(), &endptr, 16);
-                if (*endptr == 0)
-                    forceEnable.insert(value);
+                for (const auto& s : splitString(checkForceEnabled, ','))
+                {
+                    char* endptr = NULL;
+                    std::uintptr_t value = strtoul(s.c_str(), &endptr, 16);
+                    if (*endptr == 0)
+                        forceEnable.insert(value);
+                }
             }
         }
 
         if (enableLog)
         {
-            std::string exeHash;
             GetModuleFileName(NULL, &exePath[0], 255);
             unsigned int exeFilesize = 0;
 
@@ -985,9 +990,6 @@ public:
             if (hFile != INVALID_HANDLE_VALUE)
             {
                 exeFilesize = GetFileSize(hFile, NULL);
-                if (exeFilesize != INVALID_FILE_SIZE)
-                    exeHash = hashFile(hFile, exeFilesize);
-
                 CloseHandle(hFile);
             }
 
@@ -1010,15 +1012,15 @@ public:
             Log::Write("Model Variations %s %s\n", MOD_VERSION, IS_DEBUG ? "DEBUG" : "");
             Log::Write("Build date: %s\n", __DATE__);
             Log::Write("%s\n", windowsVersion.c_str());
-            Log::Write("%s\n\n", getDatetime(true, true, false).c_str(), exePath.c_str());
+            Log::Write("%s\n\n", getDatetime(true, true, false).c_str());
             Log::Write("%s\n", exePath.c_str());
 
             if (isGameHOODLUM())
-                Log::Write("Supported exe detected: 1.0 US HOODLUM | %u bytes\n", exeFilesize, exeHash.c_str());
+                Log::Write("Supported exe detected: 1.0 US HOODLUM | %u bytes\n", exeFilesize);
             else if (isGameCompact())
-                Log::Write("Supported exe detected: 1.0 US Compact | %u bytes\n", exeFilesize, exeHash.c_str());
+                Log::Write("Supported exe detected: 1.0 US Compact | %u bytes\n", exeFilesize);
             else
-                Log::Write("Unsupported exe detected: %u bytes | %s\n", exeFilesize, exeHash.c_str());
+                Log::Write("Unsupported exe detected: %u bytes\n", exeFilesize);
             
             SYSTEM_INFO si;
             GetSystemInfo(&si);

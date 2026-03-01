@@ -5,7 +5,6 @@
 #include "SA.hpp"
 
 #include <algorithm>
-#include <iomanip>
 #include <iterator>
 #include <charconv>
 #include <type_traits>
@@ -13,7 +12,6 @@
 
 #include <CGeneral.h>
 #include <CMessages.h>
-#include <CStreaming.h>
 
 #include <ntstatus.h>
 #include <psapi.h>
@@ -29,7 +27,7 @@ inline bool isGameCompact()
     return (plugin::GetGameVersion() == GAME_10US_COMPACT);
 }
 
-inline CVector2D convert3DVectorTo2D(const CVector vec)
+inline CVector2D convert3DVectorTo2D(const CVector& vec)
 {
     return { vec.x, vec.y };
 }
@@ -37,14 +35,6 @@ inline CVector2D convert3DVectorTo2D(const CVector vec)
 inline void printMessage(const char* message, unsigned int time)
 {
     CMessages::AddMessageJumpQ(const_cast<char*>(message), time, 0, false);
-}
-
-inline unsigned int integerPow(unsigned int x, unsigned int power)
-{
-    for (unsigned int i = 1; i < power; i++)
-        x *= x;
-
-    return x;
 }
 
 inline std::string getFullPath(const std::string& filename)
@@ -65,7 +55,7 @@ inline void printFilenameWithBorder(const char* name, const char ch = '#')
     Log::Write("\n");
 }
 
-inline std::string hashFile(HANDLE& hFile, DWORD filesize = 0)
+inline std::string hashFile(const HANDLE& hFile, DWORD filesize = 0)
 {
     std::string hashString;
 
@@ -111,7 +101,9 @@ inline std::string hashFile(const std::string& filename)
         return "";
     }
 
-    return hashFile(hFile);
+    auto hash = hashFile(hFile);
+    CloseHandle(hFile);
+    return hash;
 }
 
 inline size_t getMemoryUsage()
@@ -461,6 +453,8 @@ inline void vectorfilterVector(std::vector<unsigned short>& vec, const std::vect
 
 inline unsigned short vectorGetRandom(const std::vector<unsigned short>& vec)
 {
+    if (vec.empty())
+        return 0;
     return vec[CGeneral::GetRandomNumberInRange(0, (int)vec.size())];
 }
 

@@ -5,6 +5,7 @@
 
 #include <CModelInfo.h>
 #include <CPedModelInfo.h>
+#include <CStreaming.h>
 #include <CWeaponInfo.h>
 
 DataReader::DataReader(const char* filename)

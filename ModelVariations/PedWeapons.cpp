@@ -87,8 +87,8 @@ void PedWeaponVariations::LoadData()
         }
         else
         {
-            modelid = std::stoi(section);
-            if (modelid > 0)
+            modelid = fast_atoi(section.c_str());
+            if (modelid > 0 && modelid < 65535)
                 pedHasWeaponVariations.push_back((unsigned short)modelid);
         }
 
@@ -180,13 +180,14 @@ void PedWeaponVariations::Process()
                 weaponStrings[i] = "WEAPON" + std::to_string(ped->m_aWeapons[i].m_eWeaponType);
 
         const int originalSlot = ped->m_nSelectedWepSlot;
-        char* zoneString = currentZone;
+        char zoneString[9] = {};
+        *reinterpret_cast<uint64_t*>(zoneString) = currentZone.load();
         auto player = FindPlayerPed();
         const CWanted* wanted = FindPlayerWanted(-1);
         unsigned int wantedLevel = wanted ? wanted->m_nWantedLevel : 0;
 
         if (player->m_pEnex)
-            zoneString = reinterpret_cast<char*>(player->m_pEnex);
+            strncpy(zoneString, reinterpret_cast<char*>(player->m_pEnex), 8);
 
         const std::string missionString = (isOnMission) ? ("MISSION" + std::to_string(lastMissionLoaded) + "|") : "";
         const std::string wantedString = (wantedLevel > 0) ? ("WANTED" + std::to_string(wantedLevel) + "|") : "";

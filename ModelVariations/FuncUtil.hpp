@@ -220,7 +220,7 @@ T* getPointerFromAddress(std::uintptr_t address, T* fallback, int depth = 1)
 {
     if (!isAddressValid(address))
     {
-        Log::Write("Address 0x%X is invalid.\n", address);
+        Log::Write("Address 0x%08X is invalid.\n", address);
         return fallback;
     }
 
@@ -230,7 +230,7 @@ T* getPointerFromAddress(std::uintptr_t address, T* fallback, int depth = 1)
     {
         if (!isAddressValid(p))
         {
-            Log::Write("Pointer chain broken at %d/%d (0x%X invalid). Using fallback 0x%X\n", i, depth-1, p, fallback);
+            Log::Write("Pointer chain broken at %d/%d (0x%08X invalid). Using fallback 0x%08X\n", i, depth-1, p, fallback);
             return fallback;
         }
 

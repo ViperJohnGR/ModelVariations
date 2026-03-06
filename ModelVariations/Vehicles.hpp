@@ -8,7 +8,7 @@
 
 extern std::unordered_map<std::string, std::vector<CZone*>> presetAllZones;
 extern bool forceEnableGlobal;
-extern char currentZone[8];
+extern std::atomic<uint64_t> currentZone;
 
 struct vehTimeGroup {
 	unsigned short start = 0;

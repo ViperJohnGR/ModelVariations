@@ -1,19 +1,9 @@
 #pragma once
 
-#include <fstream>
-#include <set>
-#include <vector>
-
-#include <Windows.h>
-
-#define MAX_LOG_WRITE_SIZE 100000
+#include <string>
 
 class Log
 {
-	static HANDLE logfile;
-	static std::set<std::uintptr_t> modifiedAddresses;
-	static std::vector<char> buffer;
-
 public:
 	static bool Open(const std::string &filename);
 	static bool Close();

@@ -163,8 +163,8 @@ void PedVariations::LoadData()
         int i = 0;
         std::string section = iniData.first;
 
-        if (section[0] >= '0' && section[0] <= '9')
-            i = std::stoi(iniData.first);
+        if (!section.empty() && section[0] >= '0' && section[0] <= '9')
+            i = fast_atoi(iniData.first.c_str());
         else
             CModelInfo::GetModelInfo(section.data(), &i);
 
@@ -203,7 +203,7 @@ void PedVariations::LoadData()
 
             for (auto& kvp : iniData.second)
             {
-                if (!islower(kvp.first[1])) //also includes interiors
+                if (!kvp.first.empty() && !islower(kvp.first[1])) //also includes interiors
                 {
                     auto vec = dataFile.ReadLine(section, kvp.first, READ_PEDS);
                     if (!vec.empty())
@@ -229,9 +229,6 @@ void PedVariations::LoadData()
                     for (auto variation : it->second)
                         if (variation > 0 && variation != modelIndex)
                             vectorPushUnique(pedVars->originalModels[variation], modelIndex);
-
-            for (auto &it : pedVars->originalModels)
-                std::sort(it.second.begin(), it.second.end());
 
             for (unsigned int j = 0; j < 9; j++)
             {
@@ -285,6 +282,11 @@ void PedVariations::LoadData()
     }
 
     std::sort(pedVars->dontInheritBehaviourModels.begin(), pedVars->dontInheritBehaviourModels.end());
+    std::sort(pedVars->mergeInteriors.begin(), pedVars->mergeInteriors.end());
+    std::sort(pedVars->disableOnMission.begin(), pedVars->disableOnMission.end());
+
+    for (auto& it : pedVars->originalModels)
+        std::sort(it.second.begin(), it.second.end());
 
     pedOptions->recursiveVariations = dataFile.ReadBoolean("Settings", "RecursiveVariations", true);
     pedOptions->useParentVoices = dataFile.ReadBoolean("Settings", "UseParentVoices", false);
@@ -323,7 +325,7 @@ void PedVariations::Process()
     for (const auto& it : pedVars->timeGroups)
         for (unsigned int i = 0; i < it.second.size(); i++)
         {
-            if (it.second[i].start == gameTime)
+            if (isTimeInRange(gameTime, it.second[i].start, it.second[i].end))
                 if (pedVars->activeTimeGroups[it.first].insert((unsigned short)i).second == true)
                     variationsUpdateQueued = it.first;
         }
@@ -502,7 +504,7 @@ void PedVariations::UpdateVariations()
 
     auto player = FindPlayerPed();
     auto interiorVariations = (player->m_pEnex) ? pedVars->variations.find(*reinterpret_cast<const uint64_t*>(player->m_pEnex)) : pedVars->variations.end();
-    auto zoneVariations = pedVars->variations.find(*reinterpret_cast<const uint64_t*>(currentZone));
+    auto zoneVariations = pedVars->variations.find(currentZone);
     
     for (auto& modelid : pedVars->pedHasVariations)
     {
@@ -613,7 +615,7 @@ int __cdecl getKillsByPlayer(int player)
 {
     int sum = 0;
 
-    for (int i = maxPedID * player; i < maxPedID * 2; i++)
+    for (int i = maxPedID * player; i < maxPedID * (player+1); i++)
         sum += destroyedModelCounters[i];
 
     return sum;
@@ -715,13 +717,14 @@ template <std::uintptr_t address>
 void* __fastcall CreateNextSubTaskHooked(CTaskComplexCopInCar* _this, void*, CPed* ped)
 {
     if (_this == NULL)
-        Log::Write("CreateNextSubTaskHooked _this is NULL. ped is 0x%X\n", ped);
+        Log::Write("CreateNextSubTaskHooked _this is NULL. ped is 0x%08X\n", ped);
     else if (ped == NULL)
-        Log::Write("CreateNextSubTaskHooked ped is NULL. _this is 0x%X\n", _this);
+        Log::Write("CreateNextSubTaskHooked ped is NULL. _this is 0x%08X\n", _this);
     else if (_this->m_pVehicle == NULL)
     {
-        Log::Write("CTaskComplexCopInCar 0x%X of ped 0x%X with model index %u has NULL vehicle pointer.\n", _this, ped, ped->m_nModelIndex);
-        if (_this->GetSubTask()->GetId() == TASK_SIMPLE_CAR_DRIVE)
+        Log::Write("CTaskComplexCopInCar 0x%08X of ped 0x%08X with model index %u has NULL vehicle pointer.\n", _this, ped, ped->m_nModelIndex);
+        auto subtask = _this->GetSubTask();
+        if (subtask && subtask->GetId() == TASK_SIMPLE_CAR_DRIVE)
         {
             if (ped->m_pVehicle)
                 ped->m_pVehicle->m_autoPilot.m_nCarMission = MISSION_NONE;

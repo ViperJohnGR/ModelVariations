@@ -63,7 +63,9 @@ std::chrono::steady_clock::time_point loadTime;
 std::chrono::milliseconds totalTimeSinceLoad(0);
 std::chrono::milliseconds gameplayTimeSinceLoad(0);
 
-char currentZone[8] = {};
+int secondsSinceLastModCheck = -1;
+
+std::atomic<uint64_t> currentZone(0);
 unsigned int currentWanted = 0;
 
 bool transitioning = false;
@@ -71,10 +73,10 @@ bool transitioning = false;
 bool jumpsLogged = false;
 
 bool keyDown = false;
-bool reloadingSettings = false;
+std::atomic<bool> reloadingSettings(false);
 bool queuedReload = false;
 
-bool newVersionFound = false;
+std::atomic<bool> newVersionFound(false);
 
 int flaMaxID = -1;
 
@@ -115,6 +117,7 @@ void checkForUpdate()
     if (stream->Read(&str[0], 50, NULL) != S_OK)
     {
         Log::Write("Check for updates failed.\n");
+        stream->Release();
         return;
     }
 
@@ -240,7 +243,11 @@ bool loadPESection(const char* filePath, int section, std::vector<unsigned char>
                 buffer.resize(sectionHeader->SizeOfRawData);
 
             memcpy(&buffer[0], (BYTE*)mapView + sectionHeader->PointerToRawData, *size);
-            break;
+            UnmapViewOfFile(mapView);
+            CloseHandle(hFileMapping);
+            CloseHandle(hFile);
+
+            return true;
         }
         sectionHeader++;
     }
@@ -250,7 +257,7 @@ bool loadPESection(const char* filePath, int section, std::vector<unsigned char>
     CloseHandle(hFileMapping);
     CloseHandle(hFile);
 
-    return true;
+    return false;
 }
 
 void logVariationsChange(const char* msg)
@@ -264,11 +271,13 @@ void logVariationsChange(const char* msg)
     if (zInfo == NULL || wanted == NULL)
         return;
 
+    char _currentZone[9] = {};
+    *reinterpret_cast<uint64_t*>(_currentZone) = currentZone.load();
     Log::Write("\n%s (%s)\n", msg, getDatetime(false, true, true).c_str());
     Log::Write("Streaming Memory usage: %u/%u MB  Total Memory usage: %u MB\n", CStreaming__ms_memoryUsed/1024/1024, CStreaming__ms_memoryAvailable/1024/1024, getMemoryUsage()/1024/1024);
     Log::Write("Updating variations. pPos = {%f, %f, %f}\n", pPos.x, pPos.y, pPos.z);
     Log::Write("currentWanted = %u wanted->m_nWantedLevel = %u\n", currentWanted, wanted->m_nWantedLevel);
-    Log::Write("currentZone = %.8s zInfo->m_szLabel = %.8s\n", currentZone, zInfo->m_szLabel);
+    Log::Write("currentZone = %.8s zInfo->m_szLabel = %.8s\n", _currentZone, zInfo->m_szLabel);
 
     if (player->m_pEnex)
         Log::Write("player->m_pEnex = %.8s\n", player->m_pEnex);
@@ -359,7 +368,7 @@ void updateVariations()
             Log::Write("%d ", CPopulation__m_AppropriateLoadedCars->m_members[i]);
 
         if (player->bInVehicle)
-            Log::Write("\nPlayer is in vehicle 0x%X with model id %u\n", player->m_pVehicle, player->m_pVehicle->m_nModelIndex);
+            Log::Write("\nPlayer is in vehicle 0x%08X with model id %u\n", player->m_pVehicle, player->m_pVehicle->m_nModelIndex);
 
         Log::Write("\n\n");
     }
@@ -501,7 +510,7 @@ void refreshOnGameRestart()
     PedVariations::ProcessDrugDealers(true);
     LoadedModules::Refresh();
 
-    *reinterpret_cast<uint64_t*>(currentZone) = 0;
+    currentZone = 0;
 
     reloadingSettings = true;
     auto doAsyncStuff = [startTime] {
@@ -614,7 +623,7 @@ char __fastcall TransitionFinishedHooked(CEntryExit* _this, void*, CPed* ped)
         {
             logVariationsChange("Exiting interior");
 
-            *reinterpret_cast<uint64_t*>(currentZone) = *reinterpret_cast<uint64_t*>(zInfo->m_szLabel);
+            currentZone = *reinterpret_cast<uint64_t*>(zInfo->m_szLabel);
             updateVariations();
         }
     }
@@ -752,7 +761,7 @@ void __cdecl CGame__ProcessHooked()
                 iniDataThread = std::thread(loadIniData);
                 if (iniDataThread.joinable()) iniDataThread.join();
 
-                *reinterpret_cast<uint64_t*>(currentZone) = 0;
+                currentZone = 0;
                 printMessage("~y~Model Variations~s~: Settings reloaded.", 2000);
                 reloadingSettings = false;
             };
@@ -764,14 +773,17 @@ void __cdecl CGame__ProcessHooked()
                 if (reloadThread.joinable())
                     reloadThread.detach();
                 reloadThread = std::thread(doAsyncStuff);
+                return;
             }
         }
     }
     else
         keyDown = false;
 
-    if (enableLog && static_cast<int>((double)totalTimeSinceLoad.count() / 1000.0) % 30 == 0) //every 30 seconds
+    int seconds = static_cast<int>(totalTimeSinceLoad.count() / 1000.0);
+    if (enableLog && (seconds / 30) != secondsSinceLastModCheck) //every 30 seconds
     {
+        secondsSinceLastModCheck = seconds / 30;
         for (auto& it : hookedCalls)
         {
             if (it.second.name.empty())
@@ -839,11 +851,11 @@ void __cdecl CGame__ProcessHooked()
         updateVariations();
     }
 
-    if (zInfo && *reinterpret_cast<uint64_t*>(zInfo->m_szLabel) != *reinterpret_cast<uint64_t*>(currentZone) && strncmp(zInfo->m_szLabel, "SAN_AND", 7) != 0)
+    if (zInfo && *reinterpret_cast<uint64_t*>(zInfo->m_szLabel) != currentZone && strncmp(zInfo->m_szLabel, "SAN_AND", 7) != 0)
     {
         logVariationsChange("Zone changed");
 
-        *reinterpret_cast<uint64_t*>(currentZone) = *reinterpret_cast<uint64_t*>(zInfo->m_szLabel);
+        currentZone = *reinterpret_cast<uint64_t*>(zInfo->m_szLabel);
         updateVariations();
     }
 
@@ -1024,7 +1036,7 @@ public:
             
             SYSTEM_INFO si;
             GetSystemInfo(&si);
-            Log::Write("lpMaximumApplicationAddress = 0x%X\n", si.lpMaximumApplicationAddress);
+            Log::Write("lpMaximumApplicationAddress = 0x%08X\n", si.lpMaximumApplicationAddress);
 
             if (!fileExists(dataFileName))
                 Log::Write("\n%s not found!\n\n", dataFileName);

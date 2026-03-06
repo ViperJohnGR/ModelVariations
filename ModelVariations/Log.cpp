@@ -1,39 +1,59 @@
 #include "Log.hpp"
 
 #include <cstdarg>
+#include <mutex>
+#include <set>
+#include <vector>
 
-HANDLE Log::logfile = INVALID_HANDLE_VALUE;
-std::set<std::uintptr_t> Log::modifiedAddresses;
-std::vector<char> Log::buffer;
+#include <Windows.h>
+
+#define LOG_BUFFER_SIZE 50000
+
+HANDLE logfile = INVALID_HANDLE_VALUE;
+std::set<std::uintptr_t> modifiedAddresses;
+std::mutex logMutex;
 
 bool Log::Open(const std::string &filename)
 {
-	FindClose(logfile);
+	std::lock_guard<std::mutex> lock(logMutex);
+
+	if (logfile != INVALID_HANDLE_VALUE)
+	{
+		CloseHandle(logfile);
+		logfile = INVALID_HANDLE_VALUE;
+	}
 	
 	logfile = CreateFile(filename.c_str(), GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_WRITE_THROUGH, NULL);
-	if (logfile == INVALID_HANDLE_VALUE)
-		return false;
 
-	if (buffer.empty())
-		buffer = std::vector<char>(MAX_LOG_WRITE_SIZE);
-
-	return true;
+	modifiedAddresses.clear();
+	return logfile != INVALID_HANDLE_VALUE;
 }
 
 bool Log::Close()
 {
-	return CloseHandle(logfile);
+	std::lock_guard<std::mutex> lock(logMutex);
+
+	if (logfile == INVALID_HANDLE_VALUE)
+		return true;
+
+	auto retVal = CloseHandle(logfile);
+	logfile = INVALID_HANDLE_VALUE;
+	return retVal;
 }
 
 bool Log::Write(const char* format, ...)
 {
+	std::lock_guard<std::mutex> lock(logMutex);
+
 	if (logfile == INVALID_HANDLE_VALUE)
 		return false;
+
+	static thread_local std::vector<char> buffer(LOG_BUFFER_SIZE);
 
 	va_list argptr;
 	va_start(argptr, format);
 
-	vsnprintf(buffer.data(), MAX_LOG_WRITE_SIZE-1, format, argptr);
+	vsnprintf(buffer.data(), LOG_BUFFER_SIZE-1, format, argptr);
 
 	va_end(argptr);
 
@@ -50,13 +70,17 @@ bool Log::Write(const char* format, ...)
 
 bool Log::LogModifiedAddress(std::uintptr_t address, const char* format, ...)
 {
+	std::lock_guard<std::mutex> lock(logMutex);
+
 	if (logfile == INVALID_HANDLE_VALUE || modifiedAddresses.contains(address))
 		return false;
+
+	static thread_local std::vector<char> buffer(LOG_BUFFER_SIZE);
 
 	va_list argptr;
 	va_start(argptr, format);
 
-	vsnprintf(buffer.data(), MAX_LOG_WRITE_SIZE-1, format, argptr);
+	vsnprintf(buffer.data(), LOG_BUFFER_SIZE-1, format, argptr);
 
 	va_end(argptr);
 

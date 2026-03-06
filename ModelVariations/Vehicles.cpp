@@ -161,7 +161,7 @@ bool isAnotherVehicleBehind(CVehicle* veh, const std::vector<CVehicle*> &excepti
     CVector vmax = mInfo->m_pColModel->m_boundBox.m_vecMax;
 
     CVector bottom_left = veh->TransformFromObjectSpace({ vmin.x, vmin.y * 3.0f, 0.0f });
-    CVector bottom_right = veh->TransformFromObjectSpace({ -vmin.x, vmin.y * 3.0f, 0.0f });
+    CVector bottom_right = veh->TransformFromObjectSpace({ vmax.x, vmin.y * 3.0f, 0.0f });
     CVector top_right = veh->TransformFromObjectSpace({ vmax.x, vmin.y, 0.0f });
     CVector top_left = veh->TransformFromObjectSpace({ vmin.x, vmin.y, 0.0f });
 
@@ -183,7 +183,7 @@ bool isAnotherVehicleBehind(CVehicle* veh, const std::vector<CVehicle*> &excepti
             continue;
 
         auto* mInfoTarget = CModelInfo::GetModelInfo(i->m_nModelIndex);
-        if (i != veh && mInfoTarget != NULL)
+        if (i != veh && mInfoTarget != NULL && mInfoTarget->m_pColModel != NULL)
         {
             CVector vminTarget = mInfoTarget->m_pColModel->m_boundBox.m_vecMin;
             CVector vmaxTarget = mInfoTarget->m_pColModel->m_boundBox.m_vecMax;
@@ -267,6 +267,12 @@ void processTuning(CVehicle* veh)
        16 - misc
     */
 
+    if (veh == NULL)
+    {
+        Log::Write("processTuning veh is NULL\n");
+        return;
+    }
+
     if (veh->m_nCreatedBy != eVehicleCreatedBy::MISSION_VEHICLE && vehVars->currentTuning)
     {
         auto it = vehVars->currentTuning->find(veh->m_nModelIndex);
@@ -333,7 +339,7 @@ void processOccupantGroups(const CVehicle* veh)
     {
         std::vector<unsigned short> zoneGroups;
 
-        if (auto it = vehVars->occupantGroups.find(*reinterpret_cast<uint64_t*>(currentZone)); it != vehVars->occupantGroups.end())
+        if (auto it = vehVars->occupantGroups.find(currentZone); it != vehVars->occupantGroups.end())
             if (auto it2 = it->second.find(veh->m_nModelIndex); it2 != it->second.end())
                 zoneGroups = it2->second;
 
@@ -424,7 +430,7 @@ void VehicleVariations::LoadData()
         std::string section = iniData.first;
         int iModel = 0;
         if (section[0] >= '0' && section[0] <= '9')
-            iModel = std::stoi(section);
+            iModel = fast_atoi(section.c_str());
         else
         {
             CModelInfo::GetModelInfo(section.data(), &iModel);
@@ -432,7 +438,7 @@ void VehicleVariations::LoadData()
                 vehVars->vehModels.insert({ (unsigned short)iModel, section });
         }
 
-        if (iModel >= 400)
+        if (iModel >= 400 && iModel < 65535)
         {
             unsigned short modelid = (unsigned short)iModel;
             if (dataFile.ReadBoolean(section, "ChangeOnlyParked", false))
@@ -621,9 +627,12 @@ void VehicleVariations::LoadData()
                 }                    
             }
 
-            if (auto it = vehVars->trailerZones.find(modelid); it != vehVars->trailerZones.end())
-                for (auto& j : it->second)
-                    checkNumGroups(j.second, trailersNum);
+            for (auto& zoneEntry : vehVars->trailerZones)
+            {
+                auto itModel = zoneEntry.second.find(modelid);
+                if (itModel != zoneEntry.second.end())
+                    checkNumGroups(itModel->second, trailersNum);
+            }
 
             uint8_t numGroups = 0;
             for (int j = 0; j < 9; j++)
@@ -653,9 +662,12 @@ void VehicleVariations::LoadData()
                 }
             }
 
-            if (auto it = vehVars->occupantGroups.find(modelid); it!= vehVars->occupantGroups.end())
-                for (auto &j : it->second)
-                    checkNumGroups(j.second, numGroups);
+            for (auto& zoneEntry : vehVars->occupantGroups) 
+            {
+                auto itModel = zoneEntry.second.find(modelid);
+                if (itModel != zoneEntry.second.end())
+                    checkNumGroups(itModel->second, numGroups);
+            }
 
             for (unsigned int j = 0; j < 9; j++)
             {
@@ -788,16 +800,17 @@ void VehicleVariations::Process()
 
                 if (trailerAttached)
                     for (auto trailer : it->second)
-                        if (trailer->m_pTractor && (isAnotherVehicleBehind(trailer, it->second) || veh->GetHasCollidedWithAnyObject() || CPhysical__TestCollision(trailer, false)))
-                        {
-                            for (auto& j : it->second)
+                        if (IsVehiclePointerValid(trailer))
+                            if (trailer->m_pTractor && (isAnotherVehicleBehind(trailer, it->second) || veh->GetHasCollidedWithAnyObject() || CPhysical__TestCollision(trailer, false)))
                             {
-                                CWorld::Remove(j);
-                                j->Remove();
+                                for (auto& j : it->second)
+                                {
+                                    CWorld::Remove(j);
+                                    j->Remove();
+                                }
+                                it->second.clear();
+                                break;
                             }
-                            it->second.clear();
-                            break;
-                        }
             }
 
             if ((CTimer::m_snTimeInMilliseconds - veh->m_nCreationTime) < 3900) //delete far detached trailers
@@ -806,13 +819,14 @@ void VehicleVariations::Process()
                 bool trailersClose = false;
 
                 for (auto trailer : it->second)
-                {
-                    if (IsVehiclePointerValid(trailer) && trailer->m_pTractor == NULL)
-                        deleteTrailers = true;
+                    if (IsVehiclePointerValid(trailer))
+                    {
+                        if (trailer->m_pTractor == NULL)
+                            deleteTrailers = true;
 
-                    if ((veh->GetPosition() - trailer->GetPosition()).Magnitude() < 50.0)
-                        trailersClose = true;
-                }
+                        if ((veh->GetPosition() - trailer->GetPosition()).Magnitude() < 50.0)
+                            trailersClose = true;
+                    }
 
                 if (deleteTrailers && !trailersClose)
                 {
@@ -893,7 +907,7 @@ void VehicleVariations::Process()
             if (trailersSpawnChance != vehVars->trailersSpawnChances.end())
                 spawnTrailer = (trailersSpawnChance->second == 0) ? false : ((rand<uint32_t>(0, 100) < trailersSpawnChance->second) ? true : false);
 
-            for (auto i : spawnedTrailers)
+            for (auto &i : spawnedTrailers)
                 if (!i.second.empty() && i.second[0] == veh && veh->m_pTractor && isAnotherVehicleBehind(veh, i.second))
                 {
                     for (auto& j : i.second)
@@ -908,7 +922,7 @@ void VehicleVariations::Process()
             if (veh->m_pDriver && veh->m_pDriver != FindPlayerPed() && spawnTrailer)
             {
                 std::vector<unsigned short> zoneTrailers;
-                if (auto it = vehVars->trailerZones.find(*reinterpret_cast<uint64_t*>(currentZone)); it != vehVars->trailerZones.end())
+                if (auto it = vehVars->trailerZones.find(currentZone); it != vehVars->trailerZones.end())
                     if (auto it2 = it->second.find(veh->m_nModelIndex); it2 != it->second.end())
                         zoneTrailers = it2->second;
 
@@ -917,12 +931,14 @@ void VehicleVariations::Process()
                         vectorfilterVector(zoneTrailers, vehVars->timeGroups[veh->m_nModelIndex][i].trailers);
 
                 if (zoneTrailers.empty())
-                    return;
+                    continue;
                 
                 auto trailerConfigSelected = vectorGetRandom(zoneTrailers) - 1;
+                if (trailerConfigSelected < 0)
+                    continue;
                 auto it = vehVars->trailers[trailerConfigSelected].find(veh->m_nModelIndex);
                 if (it == vehVars->trailers[trailerConfigSelected].end())
-                    return;
+                    continue;
 
                 CVehicle* previous = veh;
                 CCarCtrl::SwitchVehicleToRealPhysics(veh);
@@ -969,7 +985,7 @@ void VehicleVariations::Process()
                             trailer->m_nTertiaryColor = veh->m_nTertiaryColor;
                             trailer->m_nQuaternaryColor = veh->m_nQuaternaryColor;
                         }
-                        if (trailersVec.size() > 1 && trailerMatchExtras)
+                        if (firstTrailer && trailersVec.size() > 1 && trailerMatchExtras)
                         {
                             CVehicleModelInfo::ms_compsToUse[0] = firstTrailer->m_anExtras[0];
                             CVehicleModelInfo::ms_compsToUse[1] = firstTrailer->m_anExtras[1];
@@ -987,8 +1003,8 @@ void VehicleVariations::UpdateVariations()
     vehVars->currentTuning = nullptr;
     vehVars->currentVariations.clear();
 
-    auto currentZoneTuning = vehVars->tuning.find(*reinterpret_cast<uint64_t*>(currentZone));
-    auto currentZoneVariations = vehVars->variations.find(*reinterpret_cast<uint64_t*>(currentZone));
+    auto currentZoneTuning = vehVars->tuning.find(currentZone);
+    auto currentZoneVariations = vehVars->variations.find(currentZone);
 
     if (currentZoneTuning != vehVars->tuning.end())
         vehVars->currentTuning = &(currentZoneTuning->second);
@@ -1616,8 +1632,11 @@ void __cdecl CWorld__Remove(CEntity* entity)
         {
             for (auto trailer : it->second)
             {
-                CWorld::Remove(trailer);
-                trailer->Remove();
+                if (IsVehiclePointerValid(trailer))
+                {
+                    CWorld::Remove(trailer);
+                    trailer->Remove();
+                }
             }
             spawnedTrailers.erase(it);
         }

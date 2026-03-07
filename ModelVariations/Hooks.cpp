@@ -1,6 +1,7 @@
 #include "FuncUtil.hpp"
 #include "Hooks.hpp"
 #include "LoadedModules.hpp"
+#include "Log.hpp"
 
 #include <string>
 #include <unordered_map>
@@ -41,9 +42,16 @@ void hookCall(std::uintptr_t address, void* pFunction, const std::string &name, 
     {
         originalAddress = *reinterpret_cast<void**>(address);
         *reinterpret_cast<void**>(address) = pFunction;
+        hookedCalls.insert({ address, {name, originalAddress, pFunction, isVTableAddress} });
     }
     else
-        originalAddress = reinterpret_cast<void*>(injector::MakeCALL(address, pFunction).as_int());
-
-    hookedCalls.insert({ address, {name, originalAddress, pFunction, isVTableAddress} });
+    {
+        if (isAddressValid(injector::GetBranchDestination(address).as_int()))
+        {
+            originalAddress = reinterpret_cast<void*>(injector::MakeCALL(address, pFunction).as_int());
+            hookedCalls.insert({ address, {name, originalAddress, pFunction, isVTableAddress} });
+        }
+        else
+            Log::LogModifiedAddress(address, "Modified function call detected: %s - 0x%08X is %s\n", name.c_str(), address, bytesToString(address, 5).c_str());
+    }
 }

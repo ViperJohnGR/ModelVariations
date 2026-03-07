@@ -2,7 +2,6 @@
 
 #include "LoadedModules.hpp"
 #include "Log.hpp"
-#include "SA.hpp"
 
 #include <algorithm>
 #include <iterator>
@@ -126,29 +125,6 @@ inline bool isTimeInRange(int timeNow, int timeStart, int timeEnd)
         return timeNow >= timeStart && timeNow <= timeEnd;
 
     return timeNow >= timeStart || timeNow <= timeEnd; // Wrap-around past midnight
-}
-
-
-/////////////
-// Loading //
-/////////////
-
-inline void loadModels(const std::vector<int> &vec, int Streamingflags, bool loadImmediately)
-{
-    for (auto i : vec)
-        CStreaming__RequestModel(i, Streamingflags);
-
-    if (loadImmediately)
-        CStreaming__LoadAllRequestedModels(false);
-}
-
-inline void loadModels(int rangeMin, int rangeMax, int Streamingflags, bool loadImmediately)
-{
-    for (int i = rangeMin; i <= rangeMax; i++)
-        CStreaming__RequestModel(i, Streamingflags);
-
-    if (loadImmediately)
-        CStreaming__LoadAllRequestedModels(false);
 }
 
 

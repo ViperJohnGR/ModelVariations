@@ -1,7 +1,5 @@
 #pragma once
 
-#include "Log.hpp"
-
 #include <unordered_map>
 #include <set>
 #include <string>
@@ -30,6 +28,8 @@ void callOriginal(Args... args)
     auto it = hookedCalls.find(address);
     if (it != hookedCalls.end())
         reinterpret_cast<void(__cdecl*)(Args...)>(it->second.originalFunction)(args...);
+    else
+        Log::Write("Error! Original function not found for address 0x%08X\n", address);
 }
 
 template <typename Ret, std::uintptr_t address, typename... Args>
@@ -38,6 +38,8 @@ Ret callOriginalAndReturn(Args... args)
     auto it = hookedCalls.find(address);
     if (it != hookedCalls.end())
         return reinterpret_cast<Ret(__cdecl*)(Args...)>(it->second.originalFunction)(args...);
+    else
+        Log::Write("Error! Original function not found for address 0x%08X\n", address);
 
     return 0;
 }
@@ -49,6 +51,8 @@ void callMethodOriginal(C _this, Args... args)
     auto it = hookedCalls.find(address);
     if (it != hookedCalls.end())
         reinterpret_cast<void(__thiscall*)(C, Args...)>(it->second.originalFunction)(_this, args...);
+    else
+        Log::Write("Error! Original method not found for address 0x%08X\n", address);
 }
 
 template <typename Ret, std::uintptr_t address, typename C, typename... Args>
@@ -57,6 +61,8 @@ Ret callMethodOriginalAndReturn(C _this, Args... args)
     auto it = hookedCalls.find(address);
     if (it != hookedCalls.end())
         return reinterpret_cast<Ret(__thiscall*)(C, Args...)>(it->second.originalFunction)(_this, args...);
+    else
+        Log::Write("Error! Original method not found for address 0x%08X\n", address);
 
     return 0;
 }

@@ -83,15 +83,6 @@ inline short CVehicleModelInfo__CLinkedUpgradeList__FindOtherUpgrade(uint32_t* _
 #define ScriptParams (reinterpret_cast<int*>(0xA43C78))
 
 
-inline void loadModels(const std::vector<int>& vec, int Streamingflags, bool loadImmediately)
-{
-    for (auto i : vec)
-        CStreaming__RequestModel(i, Streamingflags);
-
-    if (loadImmediately)
-        CStreaming__LoadAllRequestedModels(false);
-}
-
 inline void loadModels(int rangeMin, int rangeMax, int Streamingflags, bool loadImmediately)
 {
     for (int i = rangeMin; i <= rangeMax; i++)

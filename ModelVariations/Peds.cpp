@@ -635,7 +635,8 @@ int __fastcall SetModelIndexHooked(CEntity* _this, void*, int index)
         const unsigned short newModel = vectorGetRandom(it->second);
         if (newModel > 0 && newModel != _this->m_nModelIndex)
         {
-            loadModels({ newModel }, PRIORITY_REQUEST, true);
+            CStreaming__RequestModel(newModel, PRIORITY_REQUEST);
+            CStreaming__LoadAllRequestedModels(false);
             const unsigned short originalModel = _this->m_nModelIndex;
             _this->DeleteRwObject();
 

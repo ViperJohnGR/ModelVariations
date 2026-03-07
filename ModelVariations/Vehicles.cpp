@@ -389,7 +389,8 @@ int getRandomVariation(const int modelid, bool parked = false)
     const unsigned short variationModel = vectorGetRandom(vehVars->currentVariations[(unsigned short)modelid]);
     if (variationModel > 0)
     {
-        loadModels({ variationModel }, PRIORITY_REQUEST, true);
+        CStreaming__RequestModel(variationModel, PRIORITY_REQUEST);
+        CStreaming__LoadAllRequestedModels(false);
         return variationModel;
     }
     return modelid;
@@ -956,7 +957,8 @@ void VehicleVariations::Process()
                         //CVehicleModelInfo::ms_compsToUse[1] = veh->m_anExtras[1];
                     }
 
-                    loadModels({ trailerModel }, PRIORITY_REQUEST, true);
+                    CStreaming__RequestModel(trailerModel, PRIORITY_REQUEST);
+                    CStreaming__LoadAllRequestedModels(false);
                     CVehicle* trailer = CCarCtrl::GetNewVehicleDependingOnCarModel(trailerModel, RANDOM_VEHICLE);
                     if (firstTrailer == NULL)
                         firstTrailer = trailer;
@@ -1222,13 +1224,18 @@ CHeli* __cdecl GenerateHeliHooked(CPed* ped, char newsHeli)
 
     if (CHeli::pHelis)
     {
-        loadModels({ 488, 497 }, GAME_REQUIRED, true);
         newsHeli = 1;
         if (CHeli::pHelis[0] && getVariationOriginalModel(CHeli::pHelis[0]->m_nModelIndex) == 488)
             newsHeli = 0;
 
         if (CHeli::pHelis[1] && getVariationOriginalModel(CHeli::pHelis[1]->m_nModelIndex) == 488)
             newsHeli = 0;
+
+        if (newsHeli)
+            CStreaming__RequestModel(488, PRIORITY_REQUEST);
+        else
+            CStreaming__RequestModel(497, PRIORITY_REQUEST);
+        CStreaming__LoadAllRequestedModels(false);
     }
 
     return callOriginalAndReturn<CHeli*, address>(ped, newsHeli);
@@ -1317,7 +1324,8 @@ CCopPed* __fastcall CCopPedHooked(CCopPed* ped, void*, int copType)
         if (auto it = vehVars->driverGroups[currentOccupantsGroup].find(currentOccupantsModel); it != vehVars->driverGroups[currentOccupantsGroup].end())
         {
             auto driver = vectorGetRandom(it->second);
-            loadModels({ driver }, PRIORITY_REQUEST, true);
+            CStreaming__RequestModel(driver, PRIORITY_REQUEST);
+            CStreaming__LoadAllRequestedModels(false);
 
             switch (getVariationOriginalModel(currentOccupantsModel))
             {
@@ -1421,7 +1429,8 @@ CPed* __cdecl AddPedHooked(unsigned int pedType, int modelIndex, CVector* posn, 
     if (occupantModelIndex > 0)
     {
         modelIndex = occupantModelIndex;
-        loadModels({ occupantModelIndex }, PRIORITY_REQUEST, true);
+        CStreaming__RequestModel(occupantModelIndex, PRIORITY_REQUEST);
+        CStreaming__LoadAllRequestedModels(false);
         if (pedType != PED_TYPE_MEDIC)
         {
             CPedModelInfo* mInfo = (CPedModelInfo*)CModelInfo::GetModelInfo(occupantModelIndex);
@@ -1556,20 +1565,23 @@ int __fastcall CreateInstanceHooked(CVehicleModelInfo* _this)
         if (index > 26315 && CStreaming__ms_aInfoForModel == (CStreamingInfo*)0x8E4CC0)
         {
             Log::Write("Model %d has NULL vehicle struct. Trying to load model... ", index);
-            loadModels({ index }, PRIORITY_REQUEST, true);
+            CStreaming__RequestModel(index, PRIORITY_REQUEST);
+            CStreaming__LoadAllRequestedModels(false);
             if (_this->m_pVehicleStruct != NULL)
                 Log::Write("OK\n");
             return callMethodOriginalAndReturn<int, address>(_this);
         }
 
         Log::Write("Model %d has NULL vehicle struct (load state = %u). Trying to load model... ", index, CStreaming__ms_aInfoForModel[index].m_nLoadState);
-        loadModels({ index }, PRIORITY_REQUEST, true);
+        CStreaming__RequestModel(index, PRIORITY_REQUEST);
+        CStreaming__LoadAllRequestedModels(false);
         if (_this->m_pVehicleStruct != NULL)
             Log::Write("OK\n");
         else
         {
             Log::Write("\nFailed. Trying again as GAME_REQUIRED... ");
-            loadModels({ index }, GAME_REQUIRED, true);
+            CStreaming__RequestModel(index, GAME_REQUIRED);
+            CStreaming__LoadAllRequestedModels(false);
             if (_this->m_pVehicleStruct != NULL)
             {
                 Log::Write("OK\n");

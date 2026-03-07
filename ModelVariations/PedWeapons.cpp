@@ -141,7 +141,8 @@ void PedWeaponVariations::Process()
                         return true;
                     };
 
-                    loadModels({ wInfo->m_nModelId }, PRIORITY_REQUEST, true);
+                    CStreaming__RequestModel(wInfo->m_nModelId, PRIORITY_REQUEST);
+                    CStreaming__LoadAllRequestedModels(false);
 
                     if (originalWeaponId > WEAPONTYPE_UNARMED)
                         ped->ClearWeapon(originalWeaponId);
@@ -319,7 +320,10 @@ int __fastcall GiveWeaponHooked(CPed* ped, void*, int weaponID, int ammo, int a4
             weaponID = it->second;
             const CWeaponInfo* wInfo = CWeaponInfo::GetWeaponInfo((eWeaponType)weaponID, 1);
             if (wInfo != NULL && wInfo->m_nModelId >= 321)
-                loadModels({wInfo->m_nModelId}, PRIORITY_REQUEST, true);
+            {
+                CStreaming__RequestModel(wInfo->m_nModelId, PRIORITY_REQUEST);
+                CStreaming__LoadAllRequestedModels(false);
+            }
             break;
         }
 

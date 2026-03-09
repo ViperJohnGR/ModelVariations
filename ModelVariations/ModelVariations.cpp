@@ -76,6 +76,7 @@ bool keyDown = false;
 std::atomic<bool> reloadingSettings(false);
 bool queuedReload = false;
 
+std::atomic<bool> checkingForUpdates(false);
 std::atomic<bool> newVersionFound(false);
 
 int flaMaxID = -1;
@@ -105,6 +106,13 @@ std::thread updatesThread;
 
 void checkForUpdate()
 {
+    checkingForUpdates = true;
+
+    struct Guard {
+        std::atomic<bool>& flag;
+        ~Guard() { flag.store(false); }
+    } guard{ checkingForUpdates };
+
     IStream* stream;
 
     if (URLOpenBlockingStream(0, "http://api.github.com/repos/ViperJohnGR/ModelVariations/tags", &stream, 0, 0) != S_OK)
@@ -515,11 +523,16 @@ void refreshOnGameRestart()
     reloadingSettings = true;
     auto doAsyncStuff = [startTime] {
 
-        if (iniDataThread.joinable()) iniDataThread.join();
+        if (loadSettingsImmediately)
+            loadIniData();
+        else
+        {
+            if (iniDataThread.joinable()) iniDataThread.join();
 
-        iniDataThread = std::thread(loadIniData);
+            iniDataThread = std::thread(loadIniData);
 
-        if (iniDataThread.joinable()) iniDataThread.join();
+            if (iniDataThread.joinable()) iniDataThread.join();
+        }
 
         if (enablePeds)
             PedVariations::LogVariations();
@@ -532,9 +545,12 @@ void refreshOnGameRestart()
 
         Log::Write("\n\n");
 
-        if (updatesThread.joinable())
-            updatesThread.detach();
-        updatesThread = std::thread(checkForUpdate);
+        if (!checkingForUpdates)
+        {
+            if (updatesThread.joinable())
+                updatesThread.join();
+            updatesThread = std::thread(checkForUpdate);
+        }
 
         int finalTime = (int)std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - startTime).count();
         if (finalTime < 1000)
@@ -757,9 +773,14 @@ void __cdecl CGame__ProcessHooked()
             clearEverything();
             printMessage("~y~Model Variations~s~: Reloading settings...", 10000);
             auto doAsyncStuff = [] {
-                if (iniDataThread.joinable()) iniDataThread.join();
-                iniDataThread = std::thread(loadIniData);
-                if (iniDataThread.joinable()) iniDataThread.join();
+                if (loadSettingsImmediately)
+                    loadIniData();
+                else
+                {
+                    if (iniDataThread.joinable()) iniDataThread.join();
+                    iniDataThread = std::thread(loadIniData);
+                    if (iniDataThread.joinable()) iniDataThread.join();
+                }
 
                 currentZone = 0;
                 printMessage("~y~Model Variations~s~: Settings reloaded.", 2000);

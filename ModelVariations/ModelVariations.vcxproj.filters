@@ -9,6 +9,7 @@
     <ClCompile Include="Log.cpp" />
     <ClCompile Include="LoadedModules.cpp" />
     <ClCompile Include="Hooks.cpp" />
+    <ClCompile Include="Memory.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Vehicles.hpp" />
@@ -20,6 +21,7 @@
     <ClInclude Include="FuncUtil.hpp" />
     <ClInclude Include="LoadedModules.hpp" />
     <ClInclude Include="SA.hpp" />
+    <ClInclude Include="Memory.hpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="ModelVariations.ruleset" />

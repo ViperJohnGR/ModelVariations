@@ -4,6 +4,7 @@
 #include "Hooks.hpp"
 #include "LoadedModules.hpp"
 #include "Log.hpp"
+#include "Memory.hpp"
 #include "SA.hpp"
 
 #include <plugin.h>
@@ -203,7 +204,7 @@ void PedVariations::LoadData()
 
             for (auto& kvp : iniData.second)
             {
-                if (!kvp.first.empty() && !islower(kvp.first[1])) //also includes interiors
+                if (kvp.first.size() > 1 && !islower(kvp.first[1])) //also includes interiors
                 {
                     auto vec = dataFile.ReadLine(section, kvp.first, READ_PEDS);
                     if (!vec.empty())

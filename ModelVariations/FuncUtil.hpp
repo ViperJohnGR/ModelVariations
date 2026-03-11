@@ -105,15 +105,6 @@ inline std::string hashFile(const std::string& filename)
     return hash;
 }
 
-inline size_t getMemoryUsage()
-{
-    PROCESS_MEMORY_COUNTERS_EX pmc;
-    if (GetProcessMemoryInfo(GetCurrentProcess(), reinterpret_cast<PROCESS_MEMORY_COUNTERS*>(&pmc), sizeof(pmc)))
-        return pmc.PrivateUsage;
-
-    return 0;
-}
-
 inline bool fileExists(const std::string& filename)
 {
     return GetFileAttributes(getFullPath(filename).c_str()) != INVALID_FILE_ATTRIBUTES;
@@ -125,101 +116,6 @@ inline bool isTimeInRange(int timeNow, int timeStart, int timeEnd)
         return timeNow >= timeStart && timeNow <= timeEnd;
 
     return timeNow >= timeStart || timeNow <= timeEnd; // Wrap-around past midnight
-}
-
-
-////////////
-// Memory //
-////////////
-
-inline bool memcmp(std::uintptr_t address, const char* value)
-{
-    while (*value)
-    {
-        if (*value == ' ')
-            value++;
-        uint8_t iValue = 0;
-
-        std::from_chars(value, value + 2, iValue, 16);
-        if (*reinterpret_cast<uint8_t*>(address) != iValue)
-            return false;
-        value += 2;
-        address++;
-    }
-
-    return true;
-}
-
-template <typename T>
-void WriteMemory(std::uintptr_t address, int value)
-{
-    injector::WriteMemory<T>(address, (T)value, true);
-}
-
-template <typename T>
-void WriteMemory(std::uintptr_t address, unsigned int value)
-{
-    injector::WriteMemory<T>(address, (T)value, true);
-}
-
-inline void WriteMemory(std::uintptr_t address, const char *value)
-{
-    while (*value)
-    {
-        if (*value == ' ')
-            value++;
-        uint8_t iValue = 0;
-
-        std::from_chars(value, value + 2, iValue, 16);
-        injector::WriteMemory<uint8_t>(address, iValue, true);
-        value += 2;
-        address++;
-    }
-}
-
-inline bool isAddressValid(std::uintptr_t address)
-{
-    MEMORY_BASIC_INFORMATION mbi;
-    if (VirtualQuery(reinterpret_cast<void*>(address), &mbi, sizeof(mbi)) == 0)
-        return false; // Query failed
-
-    return (mbi.State == MEM_COMMIT) && !(mbi.Protect & (PAGE_NOACCESS | PAGE_GUARD));
-}
-
-inline bool isAddressValid(void* address)
-{
-    return isAddressValid(reinterpret_cast<std::uintptr_t>(address));
-}
-
-template <typename T>
-T* getPointerFromAddress(std::uintptr_t address, T* fallback, int depth = 1)
-{
-    if (!isAddressValid(address))
-    {
-        Log::Write("Address 0x%08X is invalid.\n", address);
-        return fallback;
-    }
-
-    auto p = reinterpret_cast<void*>(address);
-
-    for (int i = 0; i < depth; ++i)
-    {
-        if (!isAddressValid(p))
-        {
-            Log::Write("Pointer chain broken at %d/%d (0x%08X invalid). Using fallback 0x%08X\n", i, depth-1, p, fallback);
-            return fallback;
-        }
-
-        p = *reinterpret_cast<void**>(p);
-    }
-
-    return reinterpret_cast<T*>(p);
-}
-
-template <typename T>
-T* getPointerFromAddress(std::uintptr_t address, std::uintptr_t fallback, int depth = 1)
-{
-    return getPointerFromAddress<T>(address, reinterpret_cast<T*>(fallback), depth);
 }
 
 
@@ -294,11 +190,11 @@ inline std::string getFilenameFromPath(const std::string &path)
 inline bool strcasestr(std::string src, std::string sub)
 {
     std::for_each(src.begin(), src.end(), [](char& c) {
-        c = (char)::toupper(c);
+        c =  ((c & 0x80) == 0) ? (char)::toupper(c) : c;
     });
 
     std::for_each(sub.begin(), sub.end(), [](char& c) {
-        c = (char)::toupper(c);
+        c = ((c & 0x80) == 0) ? (char)::toupper(c) : c;
     });
 
     if (src.find(sub) != std::string::npos)
@@ -439,10 +335,7 @@ inline bool vectorHasId(const std::vector<unsigned short>& vec, int id)
     if (vec.size() < 1)
         return false;
 
-    if (vec.size() < 50)
-        return std::find(vec.begin(), vec.end(), id) != vec.end();
-
-    return std::binary_search(vec.begin(), vec.end(), id);
+    return std::find(vec.begin(), vec.end(), id) != vec.end();
 }
 
 inline bool vectorPushUnique(std::vector<unsigned short>& vec, unsigned short value)

@@ -2,6 +2,7 @@
 #include "Hooks.hpp"
 #include "LoadedModules.hpp"
 #include "Log.hpp"
+#include "Memory.hpp"
 
 #include <string>
 #include <unordered_map>

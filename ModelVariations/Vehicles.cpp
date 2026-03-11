@@ -3,6 +3,7 @@
 #include "FuncUtil.hpp"
 #include "Hooks.hpp"
 #include "Log.hpp"
+#include "Memory.hpp"
 #include "SA.hpp"
 
 #include <plugin.h>
@@ -529,7 +530,7 @@ void VehicleVariations::LoadData()
 
             for (auto& kvp : iniData.second)
             {
-                if (isupper(kvp.first[1]))
+                if (kvp.first.size() > 1 && isupper(kvp.first[1]))
                 {
                     uint64_t zoneName = 0;
                     strncpy((char*)&zoneName, kvp.first.c_str(), 8);
@@ -575,7 +576,7 @@ void VehicleVariations::LoadData()
 
             const int tuningChance = dataFile.ReadInteger(section, "TuningChance", -1);
             if (tuningChance > -1)
-                vehVars->tuningChances.insert({ modelid, (BYTE)tuningChance });
+                vehVars->tuningChances.insert({ modelid, std::min(tuningChance, 100) });
 
             if (dataFile.ReadBoolean(section, "UseOnlyGroups", false))
                 vehVars->useOnlyGroups.push_back(modelid);
@@ -1384,7 +1385,9 @@ CPed* __cdecl AddPedInCarHooked(CVehicle* veh, char driver, int a3, int a4, char
         return NULL;
 
     //laemt1 -> dsher
-    loadModels(274, 288, GAME_REQUIRED, true);
+    for (auto i = 274; i <= 288; i++)
+        CStreaming__RequestModel(i, GAME_REQUIRED);
+    CStreaming__LoadAllRequestedModels(false);
 
     std::string section;
     if (auto it = vehVars->vehModels.find(veh->m_nModelIndex); it != vehVars->vehModels.end())

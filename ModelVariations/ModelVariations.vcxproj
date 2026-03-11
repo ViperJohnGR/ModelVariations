@@ -112,6 +112,7 @@
     <ClCompile Include="Hooks.cpp" />
     <ClCompile Include="LoadedModules.cpp" />
     <ClCompile Include="Log.cpp" />
+    <ClCompile Include="Memory.cpp" />
     <ClCompile Include="Peds.cpp" />
     <ClCompile Include="PedWeapons.cpp" />
     <ClCompile Include="Vehicles.cpp" />
@@ -123,6 +124,7 @@
     <ClInclude Include="LoadedModules.hpp" />
     <ClInclude Include="Log.hpp" />
     <ClInclude Include="Hooks.hpp" />
+    <ClInclude Include="Memory.hpp" />
     <ClInclude Include="Peds.hpp" />
     <ClInclude Include="PedWeapons.hpp" />
     <ClInclude Include="SA.hpp" />

@@ -39,8 +39,6 @@ struct jumpInfo {
     unsigned char type;
 };
 
-//FLA changed arrays
-CStreamingInfo* CStreaming__ms_aInfoForModel = CStreaming::ms_aInfoForModel;
 
 std::unordered_map<std::string, std::vector<std::string>> areas;
 std::unordered_map<std::string, std::vector<CZone*>> presetAllZones;
@@ -414,22 +412,7 @@ void initialize()
     if (!flaModule.first.empty())
     {
         std::string flaIniPath = flaModule.first;
-        std::string flaLogPath = flaModule.first;
         flaIniPath.replace(flaIniPath.find_last_of("\\/"), std::string::npos, "\\fastman92limitAdjuster_GTASA.ini");
-        flaLogPath.replace(flaLogPath.find_last_of("\\/"), std::string::npos, "\\fastman92limitAdjuster.log");
-
-        if (!fileExists(flaLogPath))
-            Log::Write("Could not find '%s'\n", flaLogPath.c_str());
-
-        std::string fastmanLog = fileToString(flaLogPath);
-        char* endptr = NULL;
-
-        if (auto pos = fastmanLog.find("CStreaming::ms_aInfoForModel: 0x"); pos != std::string::npos)
-        {
-            unsigned int infoAddress = (unsigned int)strtol(fastmanLog.c_str()+ pos+30, &endptr, 16);
-            if (infoAddress && isAddressValid(infoAddress))
-                CStreaming__ms_aInfoForModel = reinterpret_cast<CStreamingInfo*>(infoAddress);
-        }
 
         DataReader flaIni(flaIniPath.c_str());
         flaMaxID = flaIni.ReadInteger("ID LIMITS", "Count of killable model IDs", -1);
@@ -675,9 +658,8 @@ void __cdecl CGame__ProcessHooked()
         return;
     }
 
-    if (enableLog && !jumpsLogged && logJumps)
+    if (!jumpsLogged && logJumps && Log::Write("\nLogging JMP hooks...\n"))
     {
-        Log::Write("\nLogging JMP hooks...\n");
         std::vector<unsigned char> buffer;
 
         const std::vector<int> sections = isGameHOODLUM() ? std::vector<int> { 0, 1, 7, 8, 9, 10 } : std::vector<int>{ 0, 1 };
@@ -986,6 +968,7 @@ class ModelVariations {
 public:
     ModelVariations() {
 
+        GetModuleFileName(NULL, &exePath[0], 255);
         iniSettings.Load(dataFileName);
 
         trackReferenceCounts = iniSettings.ReadInteger("Settings", "TrackReferenceCounts", -1);
@@ -1016,7 +999,6 @@ public:
 
         if (enableLog)
         {
-            GetModuleFileName(NULL, &exePath[0], 255);
             unsigned int exeFilesize = 0;
 
             HANDLE hFile = CreateFile(exePath.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
@@ -1072,9 +1054,6 @@ public:
             VehicleVariations::LogDataFile();
             Log::Write("\n");
         }
-
-        //FLA arrays
-        CStreaming__ms_aInfoForModel = getPointerFromAddress<CStreamingInfo>(0x5B8AE8, CStreaming::ms_aInfoForModel);
 
         if (loadStage == 0)
             initialize();

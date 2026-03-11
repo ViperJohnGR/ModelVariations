@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Memory.hpp"
+
 #include <CDirectory.h>
 #include <CLoadedCarGroup.h>
 #include <CMenuManager.h>
@@ -8,7 +10,6 @@
 #include <CPopulation.h>
 #include <CStreamingInfo.h>
 
-extern CStreamingInfo* CStreaming__ms_aInfoForModel;
 
 template <typename Ret, std::uintptr_t address, std::uintptr_t fallback, typename C, typename... Args>
 constexpr Ret getDynamicMethod(C _this, Args... args)
@@ -54,6 +55,7 @@ inline bool CPhysical__TestCollision(CPhysical* _this, bool applySpeed) { return
 #define CPopulation__m_nNumCarsInGroup getPointerFromAddress<short>(0x406F48, (short*)CPopulation::m_nNumCarsInGroup)
 #define CPopulation__m_CarGroups getPointerFromAddress<short>(0x421948, 0xC0ED38)
 
+#define CStreaming__ms_aInfoForModel getPointerFromAddress<CStreamingInfo>(0x408ADD, 0x8E4CC0)
 #define CStreaming__ms_pExtraObjectsDir getPointerFromAddress<CDirectory>(0x409F6C, 0x8E48D0, 2)
 #define CStreaming__ms_pedsLoaded getPointerFromAddress<int>(0x40A5A0, 0x8E4C00)
 #define CStreaming__ms_memoryAvailable (*getPointerFromAddress<uint32_t>(0x40E146, 0x8A5A80))
@@ -82,12 +84,3 @@ inline short CVehicleModelInfo__CLinkedUpgradeList__FindOtherUpgrade(uint32_t* _
 
 #define ScriptParams (reinterpret_cast<int*>(0xA43C78))
 
-
-inline void loadModels(int rangeMin, int rangeMax, int Streamingflags, bool loadImmediately)
-{
-    for (int i = rangeMin; i <= rangeMax; i++)
-        CStreaming__RequestModel(i, Streamingflags);
-
-    if (loadImmediately)
-        CStreaming__LoadAllRequestedModels(false);
-}

@@ -425,7 +425,7 @@ void processOccupantGroups(const CVehicle* veh)
     {
         std::vector<unsigned short> zoneGroups;
 
-        if (auto it = vehVars->occupantGroups.find(currentZone); it != vehVars->occupantGroups.end())
+        if (auto it = vehVars->occupantGroups.find(*reinterpret_cast<uint64_t*>(currentZone)); it != vehVars->occupantGroups.end())
             if (auto it2 = it->second.find(veh->m_nModelIndex); it2 != it->second.end())
                 zoneGroups = it2->second;
 
@@ -997,7 +997,7 @@ void VehicleVariations::Process()
             if (veh->m_pDriver && veh->m_pDriver != FindPlayerPed() && spawnTrailer)
             {
                 std::vector<unsigned short> zoneTrailers;
-                if (auto it = vehVars->trailerZones.find(currentZone); it != vehVars->trailerZones.end())
+                if (auto it = vehVars->trailerZones.find(*reinterpret_cast<uint64_t*>(currentZone)); it != vehVars->trailerZones.end())
                     if (auto it2 = it->second.find(veh->m_nModelIndex); it2 != it->second.end())
                         zoneTrailers = it2->second;
 
@@ -1079,8 +1079,8 @@ void VehicleVariations::UpdateVariations()
     vehVars->currentTuning = nullptr;
     vehVars->currentVariations.clear();
 
-    auto currentZoneTuning = vehVars->tuning.find(currentZone);
-    auto currentZoneVariations = vehVars->variations.find(currentZone);
+    auto currentZoneTuning = vehVars->tuning.find(*reinterpret_cast<uint64_t*>(currentZone));
+    auto currentZoneVariations = vehVars->variations.find(*reinterpret_cast<uint64_t*>(currentZone));
 
     if (currentZoneTuning != vehVars->tuning.end())
         vehVars->currentTuning = &(currentZoneTuning->second);

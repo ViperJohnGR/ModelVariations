@@ -8,7 +8,7 @@
 
 extern std::unordered_map<std::string, std::vector<CZone*>> presetAllZones;
 extern int maxPedID;
-extern std::atomic<uint64_t> currentZone;
+extern char currentZone[9];
 
 struct pedTimeGroup {
 	unsigned short start = 0;

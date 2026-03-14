@@ -182,7 +182,7 @@ void PedWeaponVariations::Process()
 
         const int originalSlot = ped->m_nSelectedWepSlot;
         char zoneString[9] = {};
-        *reinterpret_cast<uint64_t*>(zoneString) = currentZone.load();
+        *reinterpret_cast<uint64_t*>(zoneString) = *reinterpret_cast<uint64_t*>(currentZone);
         auto player = FindPlayerPed();
         const CWanted* wanted = FindPlayerWanted(-1);
         unsigned int wantedLevel = wanted ? wanted->m_nWantedLevel : 0;

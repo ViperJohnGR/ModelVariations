@@ -1,6 +1,6 @@
 #pragma once
 
-extern std::atomic<uint64_t> currentZone;
+extern char currentZone[9];
 
 class PedWeaponVariations
 {

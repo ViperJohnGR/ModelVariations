@@ -545,7 +545,7 @@ void PedVariations::UpdateVariations()
 
     auto player = FindPlayerPed();
     auto interiorVariations = (player->m_pEnex) ? pedVars->variations.find(*reinterpret_cast<const uint64_t*>(player->m_pEnex)) : pedVars->variations.end();
-    auto zoneVariations = pedVars->variations.find(currentZone);
+    auto zoneVariations = pedVars->variations.find(*reinterpret_cast<uint64_t*>(currentZone));
     
     for (auto& modelid : pedVars->pedHasVariations)
     {

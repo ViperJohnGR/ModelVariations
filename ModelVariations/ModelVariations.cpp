@@ -63,7 +63,7 @@ std::chrono::milliseconds gameplayTimeSinceLoad(0);
 
 int secondsSinceLastModCheck = -1;
 
-std::atomic<uint64_t> currentZone(0);
+char currentZone[9] = {};
 unsigned int currentWanted = 0;
 
 bool transitioning = false;
@@ -71,7 +71,6 @@ bool transitioning = false;
 bool jumpsLogged = false;
 
 bool keyDown = false;
-std::atomic<bool> reloadingSettings(false);
 bool queuedReload = false;
 
 std::atomic<bool> checkingForUpdates(false);
@@ -99,9 +98,7 @@ std::set<std::uintptr_t> forceEnable;
 
 bool modInitialized = false;
 
-std::thread iniDataThread;
-std::thread reloadThread;
-std::thread updatesThread;
+std::jthread updatesThread;
 
 void checkForUpdate()
 {
@@ -278,13 +275,11 @@ void logVariationsChange(const char* msg)
     if (zInfo == NULL || wanted == NULL)
         return;
 
-    char _currentZone[9] = {};
-    *reinterpret_cast<uint64_t*>(_currentZone) = currentZone.load();
     Log::Write("\n%s (%s)\n", msg, getDatetime(false, true, true).c_str());
     Log::Write("Streaming Memory usage: %u/%u MB  Total Memory usage: %u MB\n", CStreaming__ms_memoryUsed/1024/1024, CStreaming__ms_memoryAvailable/1024/1024, getMemoryUsage()/1024/1024);
     Log::Write("Updating variations. pPos = {%f, %f, %f}\n", pPos.x, pPos.y, pPos.z);
     Log::Write("currentWanted = %u wanted->m_nWantedLevel = %u\n", currentWanted, wanted->m_nWantedLevel);
-    Log::Write("currentZone = %.8s zInfo->m_szLabel = %.8s\n", _currentZone, zInfo->m_szLabel);
+    Log::Write("currentZone = %.8s zInfo->m_szLabel = %.8s\n", currentZone, zInfo->m_szLabel);
 
     if (player->m_pEnex)
         Log::Write("player->m_pEnex = %.8s\n", player->m_pEnex);
@@ -479,11 +474,6 @@ void initialize()
 
 void refreshOnGameRestart()
 {
-    if (!loadSettingsImmediately && reloadingSettings)
-    {
-        queuedReload = true;
-        return;
-    }
     lastTime = std::chrono::steady_clock::time_point{};
     loadTime = std::chrono::steady_clock::now();
     gameplayTimeSinceLoad = std::chrono::milliseconds(0);
@@ -503,60 +493,37 @@ void refreshOnGameRestart()
     PedVariations::ProcessDrugDealers(true);
     LoadedModules::Refresh();
 
-    currentZone = 0;
+    *reinterpret_cast<uint64_t*>(currentZone) = 0;
 
-    reloadingSettings = true;
-    auto doAsyncStuff = [startTime] {
+    loadIniData();
 
-        if (loadSettingsImmediately)
-            loadIniData();
-        else
-        {
-            if (iniDataThread.joinable()) iniDataThread.join();
+    drawDebugText = iniSettings.ReadBoolean("Settings", "DrawDebugText", false);
 
-            iniDataThread = std::thread(loadIniData);
+    if (enablePeds)
+        PedVariations::LogVariations();
 
-            if (iniDataThread.joinable()) iniDataThread.join();
-        }
-
-        drawDebugText = iniSettings.ReadBoolean("Settings", "DrawDebugText", false);
-
-        if (enablePeds)
-            PedVariations::LogVariations();
-
-        if (enableVehicles)
-        {
-            Log::Write("\n");
-            VehicleVariations::LogVariations();
-        }
-
-        Log::Write("\n\n");
-
-        if (!checkingForUpdates)
-        {
-            if (updatesThread.joinable())
-                updatesThread.join();
-            updatesThread = std::thread(checkForUpdate);
-        }
-
-        int finalTime = (int)std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - startTime).count();
-        if (finalTime < 1000)
-            Log::Write("Time spent loading: %dms.\n", finalTime);
-        else
-            Log::Write("Time spent loading: %gs.\n", finalTime / 1000.0);
-
-        reloadingSettings = false;
-        Log::Write("-- Restart Finished (%s) --\n", getDatetime(false, true, true).c_str());
-    };
-
-    if (loadSettingsImmediately)
-        doAsyncStuff();
-    else
+    if (enableVehicles)
     {
-        if (reloadThread.joinable())
-            reloadThread.detach();
-        reloadThread = std::thread(doAsyncStuff);
+        Log::Write("\n");
+        VehicleVariations::LogVariations();
     }
+
+    Log::Write("\n\n");
+
+    if (!checkingForUpdates)
+    {
+        if (updatesThread.joinable())
+            updatesThread.join();
+        updatesThread = std::jthread(checkForUpdate);
+    }
+
+    int finalTime = (int)std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - startTime).count();
+    if (finalTime < 1000)
+        Log::Write("Time spent loading: %dms.\n", finalTime);
+    else
+        Log::Write("Time spent loading: %gs.\n", finalTime / 1000.0);
+
+    Log::Write("-- Restart Finished (%s) --\n", getDatetime(false, true, true).c_str());
 
     static std::once_flag flag;
     std::call_once(flag, []
@@ -626,7 +593,7 @@ char __fastcall TransitionFinishedHooked(CEntryExit* _this, void*, CPed* ped)
         {
             logVariationsChange("Exiting interior");
 
-            currentZone = *reinterpret_cast<uint64_t*>(zInfo->m_szLabel);
+            *reinterpret_cast<uint64_t*>(currentZone) = *reinterpret_cast<uint64_t*>(zInfo->m_szLabel);
             updateVariations();
         }
     }
@@ -664,17 +631,6 @@ void __cdecl CGame__ProcessHooked()
     totalTimeSinceLoad = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - loadTime);
 
     callOriginal<address>();
-
-    if (reloadingSettings)
-        return;
-
-    if (queuedReload)
-    {
-        if (reloadThread.joinable())
-            reloadThread.join();
-        queuedReload = false;
-        return;
-    }
 
     if (!jumpsLogged && logJumps && Log::Write("\nLogging JMP hooks...\n"))
     {
@@ -768,35 +724,14 @@ void __cdecl CGame__ProcessHooked()
         if (!keyDown)
         {
             keyDown = true;
-            reloadingSettings = true;
             Log::Write("Reloading settings...\n");
             clearEverything();
             printMessage("~y~Model Variations~s~: Reloading settings...", 10000);
-            auto doAsyncStuff = [] {
-                if (loadSettingsImmediately)
-                    loadIniData();
-                else
-                {
-                    if (iniDataThread.joinable()) iniDataThread.join();
-                    iniDataThread = std::thread(loadIniData);
-                    if (iniDataThread.joinable()) iniDataThread.join();
-                }
+            loadIniData();
 
-                drawDebugText = iniSettings.ReadBoolean("Settings", "DrawDebugText", false);
-                currentZone = 0;
-                printMessage("~y~Model Variations~s~: Settings reloaded.", 2000);
-                reloadingSettings = false;
-            };
-
-            if (loadSettingsImmediately)
-                doAsyncStuff();
-            else
-            {
-                if (reloadThread.joinable())
-                    reloadThread.detach();
-                reloadThread = std::thread(doAsyncStuff);
-                return;
-            }
+            drawDebugText = iniSettings.ReadBoolean("Settings", "DrawDebugText", false);
+            *reinterpret_cast<uint64_t*>(currentZone) = 0;
+            printMessage("~y~Model Variations~s~: Settings reloaded.", 2000);
         }
     }
     else
@@ -873,11 +808,11 @@ void __cdecl CGame__ProcessHooked()
         updateVariations();
     }
 
-    if (zInfo && *reinterpret_cast<uint64_t*>(zInfo->m_szLabel) != currentZone && strncmp(zInfo->m_szLabel, "SAN_AND", 7) != 0)
+    if (zInfo && *reinterpret_cast<uint64_t*>(zInfo->m_szLabel) != *reinterpret_cast<uint64_t*>(currentZone) != 0 && strncmp(zInfo->m_szLabel, "SAN_AND", 7) != 0)
     {
         logVariationsChange("Zone changed");
 
-        currentZone = *reinterpret_cast<uint64_t*>(zInfo->m_szLabel);
+        *reinterpret_cast<uint64_t*>(currentZone) = *reinterpret_cast<uint64_t*>(zInfo->m_szLabel);
         updateVariations();
     }
 
@@ -899,10 +834,6 @@ void __cdecl CGame__ShutdownHooked()
             pedsModels[i].m_pHitColModel = NULL;
     }
 
-    if (iniDataThread.joinable())
-        iniDataThread.join();
-    if (reloadThread.joinable())
-        reloadThread.join();
     if (updatesThread.joinable())
         updatesThread.join();
 

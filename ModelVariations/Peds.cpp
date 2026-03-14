@@ -9,10 +9,13 @@
 
 #include <plugin.h>
 #include <CClock.h>
+#include <CFont.h>
 #include <CModelInfo.h>
 #include <CPed.h>
+#include <CSprite.h>
 #include <CTaskComplexCopInCar.h>
 #include <CTheZones.h>
+#include <CWorld.h>
 
 #include <array>
 #include <stack>
@@ -62,6 +65,8 @@ struct tPedOptions {
 std::unique_ptr<tPedOptions> pedOptions(new tPedOptions);
 
 unsigned short variationModel = 0;
+
+std::map<CPed*, unsigned short> changedVoices;
 
 bool isValidPedId(int id)
 {
@@ -137,6 +142,37 @@ bool compareOriginalModels(unsigned short model1, unsigned short model2, bool in
     }
 
     return false;
+}
+
+bool isPedVisible(CPed* ped) 
+{
+    if (!ped)
+        return false;
+
+    CVector camPos = TheCamera.m_vecGameCamPos;
+    CVector targetPos = ped->GetPosition();
+
+    CColPoint hitPoint;
+    CEntity* hitEntity = nullptr;
+
+    bool hitSomething = CWorld::ProcessLineOfSight(
+        camPos,
+        targetPos,
+        hitPoint,
+        hitEntity,
+        true,   // buildings
+        false,   // vehicles
+        false,  // peds
+        true,   // objects
+        true,   // dummies
+        true,   // doSeeThroughCheck
+        true,   // doCameraIgnoreCheck
+        false   // doShootThroughCheck
+    );
+
+    // Visible if nothing blocks the ray,
+    // or if the first hit is the vehicle itself.
+    return !hitSomething || hitEntity == ped;
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -354,6 +390,10 @@ void PedVariations::Process()
         variationsUpdateQueued = 0;
     }
 
+    std::erase_if(changedVoices, [](std::pair<CPed*, unsigned short> it) {
+        return !IsPedPointerValid(it.first);
+    });
+
     if (pedOptions->enableCloneRemover)
     {
         auto it = pedVars->pedTimeSinceSpawn.begin();
@@ -408,7 +448,7 @@ void PedVariations::Process()
         CPed* ped = pedVars->stack.top();
         pedVars->stack.pop();
 
-        if (IsPedPointerValid(ped) && isValidPedId(ped->m_nModelIndex))
+        if (isValidPedId(ped->m_nModelIndex))
         {
             auto it = pedVars->currentVariations.find(ped->m_nModelIndex);
             if (it != pedVars->currentVariations.end() && !it->second.empty() && it->second[0] == 0 && ped->m_nCreatedBy != 2) //Delete models with a 0 id variation
@@ -537,6 +577,76 @@ void PedVariations::UpdateVariations()
         if (auto it = pedVars->activeTimeGroups.find(modelid); it != pedVars->activeTimeGroups.end())
             for (auto i : it->second)
                 vectorfilterVector(pedVars->currentVariations[modelid], pedVars->timeGroups[modelid][i].variations);
+    }
+}
+
+void PedVariations::DrawDebugInfo() 
+{
+    auto* pedPool = CPools::ms_pPedPool;
+    if (!pedPool)
+        return;
+
+    // Text style
+    CFont::SetBackground(false, false);
+    CFont::SetOrientation(ALIGN_CENTER);
+    CFont::SetProportional(true);
+    CFont::SetFontStyle(FONT_SUBTITLES);
+    CFont::SetScale(0.42f, 0.96f);
+    CFont::SetEdge(1);
+    CFont::SetDropColor(CRGBA(0, 0, 0, 255));
+    CFont::SetColor(CRGBA(127, 255, 255, 255));
+
+    for (int i = 0; i < pedPool->m_nSize; ++i)
+    {
+        CPed* ped = pedPool->GetAt(i);
+        if (!IsPedPointerValid(ped) || ped->m_nModelIndex < 7 || !ped->IsAlive() || !isPedVisible(ped))
+            continue;
+
+        // Position a little above the vehicle
+        CVector pos = ped->GetPosition();
+
+        RwV3d worldPos;
+        worldPos.x = pos.x;
+        worldPos.y = pos.y;
+        worldPos.z = pos.z + 1.2f;
+
+        RwV3d screenPos;
+        float w, h;
+        if (!CSprite::CalcScreenCoors(worldPos, &screenPos, &w, &h, true, true))
+            continue;
+
+        float lineOffset = 15.0f;
+        char line1[32] = {};
+        char line2[32] = {};
+        std::snprintf(line1, sizeof(line1), "0x%08X", reinterpret_cast<std::uintptr_t>(ped));
+        std::snprintf(line2, sizeof(line2), "%u", ped->m_nModelIndex);
+
+        CFont::PrintString(screenPos.x, screenPos.y, line1);
+        CFont::PrintString(screenPos.x, screenPos.y + lineOffset, line2);
+        lineOffset += 15.0f;
+
+        std::string nextLine;
+       
+        if (auto it = pedVars->originalModels.find(ped->m_nModelIndex); it != pedVars->originalModels.end() && !it->second.empty())
+        {
+            nextLine = "Parent models:";
+            for (auto parentModel : it->second)
+            {
+                char buffer[20];
+                std::snprintf(buffer, sizeof(buffer), " %u", parentModel);
+                nextLine += buffer;
+            }
+            CFont::PrintString(screenPos.x, screenPos.y + lineOffset, nextLine.c_str());
+            lineOffset += 15.0f;
+        }
+
+        if (auto it = changedVoices.find(ped); it != changedVoices.end())
+        {
+            char buffer[32] = {};
+            std::snprintf(buffer, sizeof(buffer), "Voice: %u", it->second);
+            CFont::PrintString(screenPos.x, screenPos.y + lineOffset, buffer);
+            lineOffset += 15.0f;
+        }
     }
 }
 
@@ -696,6 +806,7 @@ char __fastcall CAEPedSpeechAudioEntity__InitialiseHooked(CAEPedSpeechAudioEntit
 
         if (newModel > 0)
         {
+            changedVoices[ped] = newModel;
             ped->m_nModelIndex = newModel;
             char retVal = callMethodOriginalAndReturn<char, address>(_this, ped);
             ped->m_nModelIndex = currentModel;
@@ -709,6 +820,7 @@ char __fastcall CAEPedSpeechAudioEntity__InitialiseHooked(CAEPedSpeechAudioEntit
 template <std::uintptr_t address>
 CPhysical* __fastcall CPhysicalHooked(CPed* _this)
 {
+    changedVoices.erase(_this);
     CPhysical* retVal = callMethodOriginalAndReturn<CPhysical*, address>(_this);
     pedVars->stack.push(_this);
     return retVal;

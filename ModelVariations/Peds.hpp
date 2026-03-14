@@ -24,6 +24,7 @@ public:
 	static void Process();
 	static void ProcessDrugDealers(bool reset = false);
 	static void UpdateVariations();
+	static void DrawDebugInfo();
 
 	//Logging
 	static void LogCurrentVariations();

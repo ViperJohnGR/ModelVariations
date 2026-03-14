@@ -10,9 +10,11 @@
 #include <CCarCtrl.h>
 #include <CCarGenerator.h>
 #include <CClock.h>
+#include <CFont.h>
 #include <CHeli.h>
 #include <CModelInfo.h>
 #include <CPlane.h>
+#include <CSprite.h>
 #include <CTheZones.h>
 #include <CVector.h>
 #include <CVehicle.h>
@@ -128,6 +130,89 @@ struct tVehOptions {
 std::unique_ptr<tVehOptions> vehOptions(new tVehOptions);
 
 
+static int __stdcall getVariationOriginalModel(const int modelIndex)
+{
+    if (modelIndex < 400)
+        return modelIndex;
+
+    auto it = vehVars->originalModels.find((unsigned short)modelIndex);
+    if (it != vehVars->originalModels.end())
+        return it->second;
+
+    return modelIndex;
+}
+
+
+bool isVehicleVisible(CVehicle* veh) 
+{
+    if (!veh || !veh->m_pRwObject)
+        return false;
+
+    CBaseModelInfo* modelInfo = CModelInfo::GetModelInfo(veh->m_nModelIndex);
+    if (!modelInfo)
+        return false;
+
+    CColModel* colModel = modelInfo->m_pColModel;
+    if (!colModel)
+        return false;
+
+    const CBox& box = colModel->m_boundBox;
+    CMatrix* mat = veh->GetMatrix();
+    if (!mat)
+        return false;
+
+    const CVector camPos = TheCamera.m_vecGameCamPos;
+
+    auto LocalToWorld = [&](const CVector& local) -> CVector {
+        return CVector(
+            mat->GetRight().x * local.x + mat->GetForward().x * local.y + mat->GetUp().x * local.z + mat->GetPosition().x,
+            mat->GetRight().y * local.x + mat->GetForward().y * local.y + mat->GetUp().y * local.z + mat->GetPosition().y,
+            mat->GetRight().z * local.x + mat->GetForward().z * local.y + mat->GetUp().z * local.z + mat->GetPosition().z
+        );
+        };
+
+    // Use a height around the middle/top of the vehicle so ground/curbs block less often.
+    const float z = (box.m_vecMin.z + box.m_vecMax.z) * 0.5f;
+
+    CVector testPoints[6] = {
+        LocalToWorld(CVector(box.m_vecMin.x, box.m_vecMin.y, z)), // rear-left
+        LocalToWorld(CVector(box.m_vecMax.x, box.m_vecMin.y, z)), // rear-right
+        LocalToWorld(CVector(box.m_vecMin.x, box.m_vecMax.y, z)), // front-left
+        LocalToWorld(CVector(box.m_vecMax.x, box.m_vecMax.y, z)), // front-right
+        LocalToWorld(CVector(box.m_vecMin.x, 0.0f,       z)),     // left middle
+        LocalToWorld(CVector(box.m_vecMax.x, 0.0f,       z))      // right middle
+    };
+
+    for (int i = 0; i < 6; ++i) {
+        const CVector& targetPos = testPoints[i];
+
+        CColPoint hitPoint;
+        CEntity* hitEntity = nullptr;
+
+        bool hitSomething = CWorld::ProcessLineOfSight(
+            camPos,
+            targetPos,
+            hitPoint,
+            hitEntity,
+            true,   // buildings
+            true,   // vehicles
+            false,  // peds
+            true,   // objects
+            true,   // dummies
+            true,   // doSeeThroughCheck
+            true,   // doCameraIgnoreCheck
+            false   // doShootThroughCheck
+        );
+
+        // If at least one point is not blocked, or the first hit is this vehicle,
+        // we consider the vehicle visible.
+        if (!hitSomething || hitEntity == veh)
+            return true;
+    }
+
+    return false;
+}
+
 bool isAnotherVehicleBehind(CVehicle* veh, const std::vector<CVehicle*> &exceptions)
 {
     auto isPointInPolygon = [](const std::vector<CVector2D>& polygon, const CVector2D& point)
@@ -210,38 +295,38 @@ int getTuningPartSlot(int model)
 {
     const auto mInfo = CModelInfo::GetModelInfo(model);
 
-    if (mInfo != NULL)
-    {
-        if ((mInfo->m_nFlags & 0x100) != 0)
-            switch ((mInfo->m_nFlags >> 10) & 0x1F)
-            {
-                case 1:  return 11;
-                case 2:  return 12;
-                case 12: return 14;
-                case 13: return 15;
-                case 19: return 13;
-                case 20:
-                case 21:
-                case 22: return 16;
-            }
-        else
-            switch ((mInfo->m_nFlags >> 10) & 0x1F)
-            {
-                case 0:  return 0;
-                case 1:
-                case 2:  return 1;
-                case 6:  return 2;
-                case 8:
-                case 9:  return 3;
-                case 10: return 4;
-                case 11: return 5;
-                case 12: return 6;
-                case 14: return 7;
-                case 15: return 8;
-                case 16: return 9;
-                case 17: return 10;
-            }
-    }
+    if (mInfo == NULL)
+        return -1;
+
+    if ((mInfo->m_nFlags & 0x100) != 0)
+        switch ((mInfo->m_nFlags >> 10) & 0x1F)
+        {
+            case 1:  return 11;
+            case 2:  return 12;
+            case 12: return 14;
+            case 13: return 15;
+            case 19: return 13;
+            case 20:
+            case 21:
+            case 22: return 16;
+        }
+    else
+        switch ((mInfo->m_nFlags >> 10) & 0x1F)
+        {
+            case 0:  return 0;
+            case 1:
+            case 2:  return 1;
+            case 6:  return 2;
+            case 8:
+            case 9:  return 3;
+            case 10: return 4;
+            case 11: return 5;
+            case 12: return 6;
+            case 14: return 7;
+            case 15: return 8;
+            case 16: return 9;
+            case 17: return 10;
+        }
 
     return -1;
 }
@@ -274,51 +359,51 @@ void processTuning(CVehicle* veh)
         return;
     }
 
-    if (veh->m_nCreatedBy != eVehicleCreatedBy::MISSION_VEHICLE && vehVars->currentTuning)
+    if (veh->m_nCreatedBy == eVehicleCreatedBy::MISSION_VEHICLE || vehVars->currentTuning == nullptr)
+        return;
+
+    auto it = vehVars->currentTuning->find(veh->m_nModelIndex);
+    if (it != vehVars->currentTuning->end() && !it->second.empty())
     {
-        auto it = vehVars->currentTuning->find(veh->m_nModelIndex);
-        if (it != vehVars->currentTuning->end() && !it->second.empty())
-        {
-            std::array<std::vector<unsigned short>, 18> partsToInstall;
-            for (auto& part : it->second)
-                if (part < static_cast<CVehicleModelInfo*>(CModelInfo::GetModelInfo(veh->m_nModelIndex))->GetNumRemaps())
-                    partsToInstall[17].push_back(part);
-                else
-                {
-                    unsigned modSlot = (unsigned)getTuningPartSlot(part);
-                    if (modSlot < 17)
-                        partsToInstall[modSlot].push_back(part);
-                }
-
-
-            auto tuningChance = vehVars->tuningChances.find(veh->m_nModelIndex);
-
-            std::array<bool, 18> slotsToInstall = {};
-            for (unsigned int i = 0; i < 18; i++)
-                if (tuningChance != vehVars->tuningChances.end())
-                    slotsToInstall[i] = (tuningChance->second == 0) ? false : ((rand<uint32_t>(0, 100) < tuningChance->second) ? true : false);
-                else
-                    slotsToInstall[i] = (rand<uint32_t>(0, 3) == 0 ? true : false);
-
-            std::string section;
-            if (auto it2 = vehVars->vehModels.find(veh->m_nModelIndex); it2 != vehVars->vehModels.end())
-                section = it2->second;
+        std::array<std::vector<unsigned short>, 18> partsToInstall;
+        for (auto& part : it->second)
+            if (part < static_cast<CVehicleModelInfo*>(CModelInfo::GetModelInfo(veh->m_nModelIndex))->GetNumRemaps())
+                partsToInstall[17].push_back(part);
             else
-                section = std::to_string(veh->m_nModelIndex);
-
-            if (dataFile.ReadBoolean(section, "TuningFullBodykit", false))
-                if (slotsToInstall[14] == true || slotsToInstall[15] == true || slotsToInstall[3] == true)
-                    slotsToInstall[14] = slotsToInstall[15] = slotsToInstall[3] = true;
-
-            for (unsigned int i = 0; i < 18; i++)
-                if (slotsToInstall[i] == false)
-                    partsToInstall[i].clear();
+            {
+                unsigned modSlot = (unsigned)getTuningPartSlot(part);
+                if (modSlot < 17)
+                    partsToInstall[modSlot].push_back(part);
+            }
 
 
-            //if (logfile.is_open())
-                //logfile << "Installing part " << it->second[0] << " modSlot " << modSlot << std::endl;
-            vehVars->tuningStack.push({ veh, partsToInstall });
-        }
+        auto tuningChance = vehVars->tuningChances.find(veh->m_nModelIndex);
+
+        std::array<bool, 18> slotsToInstall = {};
+        for (unsigned int i = 0; i < 18; i++)
+            if (tuningChance != vehVars->tuningChances.end())
+                slotsToInstall[i] = (tuningChance->second == 0) ? false : ((rand<uint32_t>(0, 100) < tuningChance->second) ? true : false);
+            else
+                slotsToInstall[i] = (rand<uint32_t>(0, 3) == 0 ? true : false);
+
+        std::string section;
+        if (auto it2 = vehVars->vehModels.find(veh->m_nModelIndex); it2 != vehVars->vehModels.end())
+            section = it2->second;
+        else
+            section = std::to_string(veh->m_nModelIndex);
+
+        if (dataFile.ReadBoolean(section, "TuningFullBodykit", false))
+            if (slotsToInstall[14] == true || slotsToInstall[15] == true || slotsToInstall[3] == true)
+                slotsToInstall[14] = slotsToInstall[15] = slotsToInstall[3] = true;
+
+        for (unsigned int i = 0; i < 18; i++)
+            if (slotsToInstall[i] == false)
+                partsToInstall[i].clear();
+
+
+        //if (logfile.is_open())
+            //logfile << "Installing part " << it->second[0] << " modSlot " << modSlot << std::endl;
+        vehVars->tuningStack.push({ veh, partsToInstall });
     }
 }
 
@@ -359,18 +444,6 @@ void processOccupantGroups(const CVehicle* veh)
             currentOccupantsGroup = vectorGetRandom(zoneGroups) - 1;
         }
     }
-}
-
-static int __stdcall getVariationOriginalModel(const int modelIndex)
-{
-    if (modelIndex < 400)
-        return modelIndex;
-
-    auto it = vehVars->originalModels.find((unsigned short)modelIndex);
-    if (it != vehVars->originalModels.end())
-        return it->second;
-
-    return modelIndex;
 }
 
 int getRandomVariation(const int modelid, bool parked = false)
@@ -1032,6 +1105,61 @@ void VehicleVariations::UpdateVariations()
                 for (auto i : vehVars->activeTimeGroups[modelid])
                     vectorfilterVector(vehVars->currentVariations[modelid], vehVars->timeGroups[modelid][i].variations);
         }
+}
+
+void VehicleVariations::DrawDebugInfo() {
+    auto* vehiclePool = CPools::ms_pVehiclePool;
+    if (!vehiclePool)
+        return;
+
+    // Text style
+    CFont::SetBackground(false, false);
+    CFont::SetOrientation(ALIGN_CENTER);
+    CFont::SetProportional(true);
+    CFont::SetFontStyle(FONT_SUBTITLES);
+    CFont::SetScale(0.42f, 0.96f);
+    CFont::SetEdge(1);
+    CFont::SetDropColor(CRGBA(0, 0, 0, 255));
+    CFont::SetColor(CRGBA(255, 255, 255, 255));
+
+    for (int i = 0; i < vehiclePool->m_nSize; ++i)
+    {
+        CVehicle* veh = vehiclePool->GetAt(i);
+        if (!IsVehiclePointerValid(veh) || !isVehicleVisible(veh) || veh->m_fHealth < 0.1)
+            continue;
+
+        // Position a little above the vehicle
+        CVector pos = veh->GetPosition();
+
+        RwV3d worldPos;
+        worldPos.x = pos.x;
+        worldPos.y = pos.y;
+        worldPos.z = pos.z + 1.5f;
+
+        RwV3d screenPos;
+        float w, h;
+        if (!CSprite::CalcScreenCoors(worldPos, &screenPos, &w, &h, true, true))
+            continue;
+
+        float lineOffset = 14.0f;
+        char line1[32] = {};
+        char line2[32] = {};
+        std::snprintf(line1, sizeof(line1), "0x%08X", reinterpret_cast<std::uintptr_t>(veh));
+        std::snprintf(line2, sizeof(line2), "%u", veh->m_nModelIndex);
+
+        CFont::PrintString(screenPos.x, screenPos.y, line1);
+        CFont::PrintString(screenPos.x, screenPos.y + lineOffset, line2);
+        lineOffset += 14.0f;
+
+        char nextline[32] = {};
+        auto parentModel = getVariationOriginalModel(veh->m_nModelIndex);
+        if (parentModel != veh->m_nModelIndex)
+        {
+            std::snprintf(nextline, sizeof(nextline), "Parent model: %u", parentModel);
+            CFont::PrintString(screenPos.x, screenPos.y + lineOffset, nextline);
+            lineOffset += 14.0f;
+        }
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////

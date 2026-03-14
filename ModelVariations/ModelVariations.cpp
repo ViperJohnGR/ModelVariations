@@ -89,6 +89,7 @@ bool enablePedWeapons = false;
 bool forceEnableGlobal = false;
 bool loadSettingsImmediately = false;
 bool enableStreamingFix = false;
+bool drawDebugText = false;
 int loadStage = 1;
 int trackReferenceCounts = -1;
 int disableKey = 0;
@@ -295,6 +296,7 @@ void logVariationsChange(const char* msg)
 
 void clearEverything()
 {
+    drawDebugText = false;
     iniSettings.data.clear();
 
     PedVariations::ClearData();
@@ -517,6 +519,8 @@ void refreshOnGameRestart()
             if (iniDataThread.joinable()) iniDataThread.join();
         }
 
+        drawDebugText = iniSettings.ReadBoolean("Settings", "DrawDebugText", false);
+
         if (enablePeds)
             PedVariations::LogVariations();
 
@@ -628,6 +632,20 @@ char __fastcall TransitionFinishedHooked(CEntryExit* _this, void*, CPed* ped)
     }
 
     return retVal;
+}
+
+template <std::uintptr_t address>
+void CPopCycle__DisplayHooked()
+{
+    if (drawDebugText)
+    {
+        if (enableVehicles)
+            VehicleVariations::DrawDebugInfo();
+        if (enablePeds)
+            PedVariations::DrawDebugInfo();
+    }
+
+    callOriginal<address>();
 }
 
 template <std::uintptr_t address>
@@ -764,6 +782,7 @@ void __cdecl CGame__ProcessHooked()
                     if (iniDataThread.joinable()) iniDataThread.join();
                 }
 
+                drawDebugText = iniSettings.ReadBoolean("Settings", "DrawDebugText", false);
                 currentZone = 0;
                 printMessage("~y~Model Variations~s~: Settings reloaded.", 2000);
                 reloadingSettings = false;
@@ -1069,6 +1088,7 @@ public:
         hookCall(0x440840, InteriorManager_c__UpdateHooked<0x440840>, "InteriorManager_c::Update"); //CEntryExit::TransitionFinished
         hookCall(0x40E37B, RetryLoadFileHooked<0x40E37B>, "CStreaming::RetryLoadFile"); //CStreaming::ProcessLoadingChannel
         hookCall(0x440F89, TransitionFinishedHooked<0x440F89>, "CEntryExit::TransitionFinished"); //CEntryExitManager::Update
+        hookCall(0x53E293, CPopCycle__DisplayHooked<0x53E293>, "CPopCycle::Display"); //Render2dStuff
 
         hookCall(0x53E981, CGame__ProcessHooked<0x53E981>, "CGame::Process"); //Idle
         hookCall(0x748E6B, CGame__ShutdownHooked<0x748E6B>, "CGame::Shutdown"); //WinMain

@@ -25,6 +25,7 @@ public:
 	static void LoadData();
 	static void Process();
 	static void UpdateVariations();
+	static void DrawDebugInfo();
 
 	//Logging
 	static void LogCurrentVariations();

@@ -13,7 +13,6 @@
 #include <CMessages.h>
 
 #include <ntstatus.h>
-#include <psapi.h>
 
 
 inline bool isGameHOODLUM()

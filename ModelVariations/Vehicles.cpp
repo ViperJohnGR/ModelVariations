@@ -192,7 +192,7 @@ bool isAnotherVehicleBehind(CVehicle* veh, const std::vector<CVehicle*> &excepti
             CVector2D top_rightTarget = convert3DVectorTo2D(i->TransformFromObjectSpace({ vmaxTarget.x, vminTarget.y, 0.0f }));
             CVector2D top_leftTarget = convert3DVectorTo2D(i->TransformFromObjectSpace({ vminTarget.x, vminTarget.y, 0.0f }));
             CVector2D bottom_leftTarget = convert3DVectorTo2D(i->TransformFromObjectSpace({ vminTarget.x, vminTarget.y * 2.0f, 0.0f }));
-            CVector2D bottom_rightTarget = convert3DVectorTo2D(i->TransformFromObjectSpace({ -vminTarget.x, vminTarget.y * 2.0f, 0.0f }));
+            CVector2D bottom_rightTarget = convert3DVectorTo2D(i->TransformFromObjectSpace({ vmaxTarget.x, vminTarget.y * 2.0f, 0.0f }));
 
             CVector2D top_centerTarget = convert3DVectorTo2D(i->TransformFromObjectSpace({ 0.0, vminTarget.y, 0.0f }));
 

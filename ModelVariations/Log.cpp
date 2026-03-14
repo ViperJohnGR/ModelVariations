@@ -7,7 +7,7 @@
 
 #include <Windows.h>
 
-#define LOG_BUFFER_SIZE 50000
+constexpr auto logBufferSize = 50000;
 
 HANDLE logfile = INVALID_HANDLE_VALUE;
 std::set<std::uintptr_t> modifiedAddresses;
@@ -48,12 +48,12 @@ bool Log::Write(const char* format, ...)
 	if (logfile == INVALID_HANDLE_VALUE)
 		return false;
 
-	static thread_local std::vector<char> buffer(LOG_BUFFER_SIZE);
+	static thread_local std::vector<char> buffer(logBufferSize);
 
 	va_list argptr;
 	va_start(argptr, format);
 
-	vsnprintf(buffer.data(), LOG_BUFFER_SIZE-1, format, argptr);
+	vsnprintf(buffer.data(), logBufferSize-1, format, argptr);
 
 	va_end(argptr);
 
@@ -75,12 +75,12 @@ bool Log::LogModifiedAddress(std::uintptr_t address, const char* format, ...)
 	if (logfile == INVALID_HANDLE_VALUE || modifiedAddresses.contains(address))
 		return false;
 
-	static thread_local std::vector<char> buffer(LOG_BUFFER_SIZE);
+	static thread_local std::vector<char> buffer(logBufferSize);
 
 	va_list argptr;
 	va_start(argptr, format);
 
-	vsnprintf(buffer.data(), LOG_BUFFER_SIZE-1, format, argptr);
+	vsnprintf(buffer.data(), logBufferSize-1, format, argptr);
 
 	va_end(argptr);
 

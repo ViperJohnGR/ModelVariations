@@ -124,8 +124,9 @@ std::vector<unsigned short> DataReader::ReadLine(const std::string& section, con
 
 		if (parseType == READ_NUMS)
 		{
-			if (token[0] >= '0' && token[0] <= '9')
-				retVector.push_back((unsigned short)fast_atoi(token));
+			auto num = fast_atoi(token);
+			if (num > -1 && num < INT_MAX)
+				retVector.push_back((unsigned short)num);
 		}
 		else if (parseType == READ_WEAPONS)
 		{
@@ -139,13 +140,19 @@ std::vector<unsigned short> DataReader::ReadLine(const std::string& section, con
 		else if (parseType == READ_OCCUPANT_GROUPS)
 		{
 			if (strncmp(token, "OccupantGroup", 13) == 0)
-				retVector.push_back((unsigned short)(token[13] - '0'));
+			{
+				auto occupantGroup = fast_atoi(token + 13);
+				if (occupantGroup > -1 && occupantGroup < INT_MAX)
+					retVector.push_back((unsigned short)occupantGroup);
+			}
 		}
 		else if (parseType == READ_TUNING)
 		{
 			if (_strnicmp(token, "paintjob", 8) == 0)
 			{
-				retVector.push_back((unsigned short)fast_atoi(token+8)-1U);
+				auto paintjob = fast_atoi(token + 8);
+				if (paintjob > 0 && paintjob <= 10)
+					retVector.push_back((unsigned short)paintjob-1U);
 			}
 			else if (token[0] != 'G')
 			{

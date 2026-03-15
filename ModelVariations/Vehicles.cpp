@@ -1104,7 +1104,8 @@ void VehicleVariations::UpdateVariations()
         }
 }
 
-void VehicleVariations::DrawDebugInfo() {
+void VehicleVariations::DrawDebugInfo()
+{
     auto* vehiclePool = CPools::ms_pVehiclePool;
     if (!vehiclePool)
         return;

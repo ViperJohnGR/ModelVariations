@@ -30,7 +30,7 @@
 #pragma comment (lib, "urlmon.lib")
 
 
-#define MOD_VERSION "10.4"
+#define MOD_VERSION "10.5"
 //Using Plugin-SDK: 34ba198
 
 struct jumpInfo {
@@ -63,6 +63,8 @@ std::chrono::milliseconds gameplayTimeSinceLoad(0);
 
 int secondsSinceLastModCheck = -1;
 
+int drawDebugText = false;
+
 char currentZone[9] = {};
 unsigned int currentWanted = 0;
 
@@ -88,11 +90,11 @@ bool enablePedWeapons = false;
 bool forceEnableGlobal = false;
 bool loadSettingsImmediately = false;
 bool enableStreamingFix = false;
-bool drawDebugText = false;
 int loadStage = 1;
 int trackReferenceCounts = -1;
 int disableKey = 0;
 int reloadKey = 0;
+int debugKey = 0;
 
 std::set<std::uintptr_t> forceEnable;
 
@@ -291,7 +293,6 @@ void logVariationsChange(const char* msg)
 
 void clearEverything()
 {
-    drawDebugText = false;
     iniSettings.data.clear();
 
     PedVariations::ClearData();
@@ -497,8 +498,6 @@ void refreshOnGameRestart()
 
     loadIniData();
 
-    drawDebugText = iniSettings.ReadBoolean("Settings", "DrawDebugText", false);
-
     if (enablePeds)
         PedVariations::LogVariations();
 
@@ -604,13 +603,10 @@ char __fastcall TransitionFinishedHooked(CEntryExit* _this, void*, CPed* ped)
 template <std::uintptr_t address>
 void CPopCycle__DisplayHooked()
 {
-    if (drawDebugText)
-    {
-        if (enableVehicles)
-            VehicleVariations::DrawDebugInfo();
-        if (enablePeds)
-            PedVariations::DrawDebugInfo();
-    }
+    if (drawDebugText > 1 && enableVehicles)
+        VehicleVariations::DrawDebugInfo();
+    if ((drawDebugText == 1 || drawDebugText == 3) && enablePeds)
+        PedVariations::DrawDebugInfo();
 
     callOriginal<address>();
 }
@@ -729,9 +725,18 @@ void __cdecl CGame__ProcessHooked()
             printMessage("~y~Model Variations~s~: Reloading settings...", 10000);
             loadIniData();
 
-            drawDebugText = iniSettings.ReadBoolean("Settings", "DrawDebugText", false);
             *reinterpret_cast<uint64_t*>(currentZone) = 0;
             printMessage("~y~Model Variations~s~: Settings reloaded.", 2000);
+        }
+    }
+    else if (debugKey > 0 && (GetKeyState(debugKey) & 0x8000) != 0)
+    {
+        if (!keyDown)
+        {
+            keyDown = true;
+            drawDebugText++;
+            if (drawDebugText > 3)
+                drawDebugText = 0;
         }
     }
     else
@@ -927,6 +932,7 @@ public:
         loadStage = iniSettings.ReadInteger("Settings", "LoadStage", 1);
         disableKey = iniSettings.ReadInteger("Settings", "DisableKey", 0);
         reloadKey = iniSettings.ReadInteger("Settings", "ReloadKey", 0);
+        debugKey = iniSettings.ReadInteger("Settings", "DebugKey", 0);
         enableLog = iniSettings.ReadBoolean("Settings", "EnableLog", false) && Log::Open("ModelVariations.log");
         logJumps = iniSettings.ReadBoolean("Settings", "LogJumps", false);
 

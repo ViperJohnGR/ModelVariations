@@ -996,7 +996,8 @@ public:
             else
             {
                 printFilenameWithBorder(dataFileName, '#');
-                Log::Write("%s\n", fileToString(dataFileName).c_str());
+                Log::LogFile(dataFileName);
+                Log::Write("\n");
             }
 
             PedVariations::LogDataFile();

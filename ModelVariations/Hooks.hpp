@@ -41,7 +41,7 @@ Ret callOriginalAndReturn(Args... args)
     else
         Log::Write("Error! Original function not found for address 0x%08X\n", address);
 
-    return 0;
+    return Ret{};
 }
 
 
@@ -64,5 +64,5 @@ Ret callMethodOriginalAndReturn(C _this, Args... args)
     else
         Log::Write("Error! Original method not found for address 0x%08X\n", address);
 
-    return 0;
+    return Ret{};
 }

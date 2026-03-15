@@ -146,7 +146,7 @@ bool compareOriginalModels(unsigned short model1, unsigned short model2, bool in
 
 bool isPedVisible(CPed* ped) 
 {
-    if (!ped)
+    if (ped == NULL)
         return false;
 
     CVector camPos = TheCamera.m_vecGameCamPos;
@@ -686,7 +686,8 @@ void PedVariations::LogDataFile()
     else
     {
         printFilenameWithBorder(dataFileName, '#');
-        Log::Write("%s\n", fileToString(dataFileName).c_str());
+        Log::LogFile(dataFileName);
+        Log::Write("\n");
     }
 }
 

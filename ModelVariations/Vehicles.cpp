@@ -145,20 +145,20 @@ static int __stdcall getVariationOriginalModel(const int modelIndex)
 
 bool isVehicleVisible(CVehicle* veh) 
 {
-    if (!veh || !veh->m_pRwObject)
+    if (veh == NULL || veh->m_pRwObject == NULL)
         return false;
 
     CBaseModelInfo* modelInfo = CModelInfo::GetModelInfo(veh->m_nModelIndex);
-    if (!modelInfo)
+    if (modelInfo == NULL)
         return false;
 
     CColModel* colModel = modelInfo->m_pColModel;
-    if (!colModel)
+    if (colModel == NULL)
         return false;
 
     const CBox& box = colModel->m_boundBox;
     CMatrix* mat = veh->GetMatrix();
-    if (!mat)
+    if (mat == NULL)
         return false;
 
     const CVector camPos = TheCamera.m_vecGameCamPos;
@@ -187,7 +187,7 @@ bool isVehicleVisible(CVehicle* veh)
         const CVector& targetPos = testPoints[i];
 
         CColPoint hitPoint;
-        CEntity* hitEntity = nullptr;
+        CEntity* hitEntity = NULL;
 
         bool hitSomething = CWorld::ProcessLineOfSight(
             camPos,
@@ -237,10 +237,7 @@ bool isAnotherVehicleBehind(CVehicle* veh, const std::vector<CVehicle*> &excepti
     };
 
     auto* mInfo = CModelInfo::GetModelInfo(veh->m_nModelIndex);
-    if (mInfo == NULL)
-        return false;
-
-    if (mInfo->m_pColModel == NULL)
+    if (mInfo == NULL || mInfo->m_pColModel == NULL)
         return false;
 
     CVector vmin = mInfo->m_pColModel->m_boundBox.m_vecMin;
@@ -1193,7 +1190,8 @@ void VehicleVariations::LogDataFile()
     else
     {
         printFilenameWithBorder(dataFileName, '#');
-        Log::Write("%s\n", fileToString(dataFileName).c_str());
+        Log::LogFile(dataFileName);
+        Log::Write("\n");
     }
 }
 

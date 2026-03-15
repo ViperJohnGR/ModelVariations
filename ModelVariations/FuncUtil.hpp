@@ -7,6 +7,7 @@
 #include <iterator>
 #include <charconv>
 #include <type_traits>
+#include <utility>
 #include <vector>
 
 #include <CGeneral.h>
@@ -70,7 +71,7 @@ inline std::string hashFile(const HANDLE& hFile, DWORD filesize = 0)
         BCRYPT_HASH_HANDLE ctx = NULL;
         auto filebuf = std::vector<BYTE>(filesize + 1);
 
-        if (ReadFile(hFile, filebuf.data(), filesize, &lpNumberOfBytesRead, NULL))
+        if (ReadFile(hFile, filebuf.data(), filesize, &lpNumberOfBytesRead, NULL) && lpNumberOfBytesRead == filesize)
             if (BCryptOpenAlgorithmProvider(&hProvider, BCRYPT_SHA256_ALGORITHM, NULL, 0) == STATUS_SUCCESS)
                 if (BCryptCreateHash(hProvider, &ctx, NULL, 0, NULL, 0, 0) == STATUS_SUCCESS && ctx != NULL)
                 {
@@ -202,7 +203,7 @@ inline bool strcasestr(std::string src, std::string sub)
     return false;
 }
 
-inline std::vector<std::string> splitString(std::string_view s, char separator)
+inline std::vector<std::string> splitString(const std::string &s, char separator)
 {
     std::vector<std::string> out;
 
@@ -210,12 +211,12 @@ inline std::vector<std::string> splitString(std::string_view s, char separator)
     while (start <= s.size())
     {
         const std::size_t pos = s.find(separator, start);
-        const std::size_t end = (pos == std::string_view::npos) ? s.size() : pos;
+        const std::size_t end = (pos == std::string::npos) ? s.size() : pos;
 
         if (end > start) // non-empty token
             out.emplace_back(s.substr(start, end - start));
 
-        if (pos == std::string_view::npos)
+        if (pos == std::string::npos)
             break;
 
         start = pos + 1;
@@ -305,21 +306,14 @@ inline void vectorfilterVector(std::vector<unsigned short>& vec, const std::vect
     if (filterVec.empty())
         return;
 
-    bool matchFound = false;
-    std::vector<unsigned short> vec2 = vec;
+    std::vector<unsigned short> vec2;
 
-    auto it = vec.begin();
-    while (it != vec.end())
-        if (std::find(filterVec.begin(), filterVec.end(), *it) != filterVec.end())
-        {
-            matchFound = true;
-            ++it;
-        }
-        else
-            it = vec.erase(it);
+    for (auto i : vec)
+        if (std::find(filterVec.begin(), filterVec.end(), i) != filterVec.end())
+            vec2.push_back(i);
 
-    if (matchFound == false)
-        vec = vec2;
+    if (!vec2.empty())
+        vec = std::move(vec2);
 }
 
 inline unsigned short vectorGetRandom(const std::vector<unsigned short>& vec)

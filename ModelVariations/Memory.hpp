@@ -46,6 +46,12 @@ T* getPointerFromAddress(std::uintptr_t address, T* fallback, int depth = 1)
         p = *reinterpret_cast<void**>(p);
     }
 
+    if (!isAddressValid(p))
+    {
+        Log::Write("Final address 0x%08X is invalid. Using fallback 0x%08X\n", p, fallback);
+        return fallback;
+    }
+
     return reinterpret_cast<T*>(p);
 }
 

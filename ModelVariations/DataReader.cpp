@@ -15,14 +15,12 @@ DataReader::DataReader(const char* filename)
 
 void DataReader::Load(const char* filename)
 {
-	std::string file = fileToString(filename);
-
 	data.clear();
 
 	std::vector<std::string> sections;
 	std::string key, value;
 
-	for (std::string &line : splitString(file, "\n\r"))
+	for (std::string &line : splitString(fileToString(filename), "\n\r"))
 	{		 
 		if (auto pos = line.find_first_of(";#"); pos < line.size())
 			line.resize(pos);

@@ -9,5 +9,6 @@ public:
 	static bool Close();
 	static bool Write(const char* format, ...);
 
+	static bool LogFile(const std::string& filename);
 	static bool LogModifiedAddress(std::uintptr_t address, const char* format, ...);
 };

@@ -67,7 +67,7 @@ bool Log::Write(const char* format, ...)
 	return true;
 }
 
-bool Log::LogFile(const std::string& filename)
+bool Log::LogTextFile(const std::string& filename)
 {
 	std::lock_guard<std::mutex> lock(logMutex);
 

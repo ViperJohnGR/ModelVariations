@@ -276,7 +276,7 @@ void PedWeaponVariations::LogDataFile()
     else
     {
         printFilenameWithBorder(dataFileName, '#');
-        Log::LogFile(dataFileName);
+        Log::LogTextFile(dataFileName);
         Log::Write("\n");
     }
 }

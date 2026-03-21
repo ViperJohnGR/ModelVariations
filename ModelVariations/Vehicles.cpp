@@ -142,6 +142,13 @@ static int __stdcall getVariationOriginalModel(const int modelIndex)
     return modelIndex;
 }
 
+float getDistanceFromVeh(CVehicle* vehicle, CEntity* target)
+{
+    if (vehicle == NULL || target == NULL)
+        return 0.0f;
+
+    return (vehicle->GetPosition() - target->GetPosition()).Magnitude();
+}
 
 bool isVehicleVisible(CVehicle* veh) 
 {
@@ -876,10 +883,8 @@ void VehicleVariations::Process()
                             if (trailer->m_pTractor && (isAnotherVehicleBehind(trailer, it->second) || veh->GetHasCollidedWithAnyObject() || CPhysical__TestCollision(trailer, false)))
                             {
                                 for (auto& j : it->second)
-                                {
-                                    CWorld::Remove(j);
-                                    j->Remove();
-                                }
+                                    DestroyVehicleAndDriverAndPassengers(j);
+
                                 it->second.clear();
                                 break;
                             }
@@ -904,10 +909,8 @@ void VehicleVariations::Process()
                 {
                     for (auto trailer : it->second)
                         if (IsVehiclePointerValid(trailer))
-                        {
-                            CWorld::Remove(trailer);
-                            trailer->Remove();
-                        }
+                            DestroyVehicleAndDriverAndPassengers(trailer);
+
                     it->second.clear();
                 }
             }
@@ -955,10 +958,7 @@ void VehicleVariations::Process()
             continue;
 
         if (auto x = vehVars->currentVariations.find(veh->m_nModelIndex); x != vehVars->currentVariations.end() && !x->second.empty() && x->second[0] == 0)
-        {
-            CWorld::Remove(veh);
-            veh->Remove();
-        }
+            DestroyVehicleAndDriverAndPassengers(veh);
         else
         {
             if (auto it = vehVars->passengers.find(veh->m_nModelIndex); it != vehVars->passengers.end() && it->second[0] == 0)
@@ -983,10 +983,8 @@ void VehicleVariations::Process()
                 if (!i.second.empty() && i.second[0] == veh && veh->m_pTractor && isAnotherVehicleBehind(veh, i.second))
                 {
                     for (auto& j : i.second)
-                    {
-                        CWorld::Remove(j);
-                        j->Remove();
-                    }
+                        DestroyVehicleAndDriverAndPassengers(j);
+
                     i.second.clear();
                     break;
                 }
@@ -1765,28 +1763,25 @@ void __fastcall AddAudioEventHooked(CAEVehicleAudioEntity* audio, void*, int aud
         callMethodOriginal<address>(audio, audioEvent, fVolume);
 }
 
-void __cdecl CWorld__Remove(CEntity* entity)
+template <std::uintptr_t address>
+void __cdecl CWorld__RemoveHooked(CEntity* entity)
 {
     if (entity)
     {
-        auto it = spawnedTrailers.find((CVehicle*)entity);
+        CVehicle* truck = reinterpret_cast<CVehicle*>(entity);
+
+        auto it = spawnedTrailers.find(truck);
         if (it != spawnedTrailers.end())
         {
             for (auto trailer : it->second)
-            {
-                if (IsVehiclePointerValid(trailer))
-                {
-                    CWorld::Remove(trailer);
-                    trailer->Remove();
-                }
-            }
+                if (IsVehiclePointerValid(trailer) && getDistanceFromVeh(truck, trailer) < 22.0f)
+                    DestroyVehicleAndDriverAndPassengers(trailer);
+
             spawnedTrailers.erase(it);
         }
-    
-        entity->Remove();
-        if (entity->m_nType > ENTITY_TYPE_BUILDING && entity->m_nType < ENTITY_TYPE_DUMMY)
-            ((CPhysical*)entity)->RemoveFromMovingList();
     }
+
+    callOriginal<address>(entity);
 }
 
 template <std::uintptr_t address>
@@ -2495,10 +2490,24 @@ void VehicleVariations::InstallHooks()
     hookCall(0x6CFFBB, AddAudioEventHooked<0x6CFFBB>, "CAEVehicleAudioEntity::AddAudioEvent"); //CTrailer::SetTowLink
     hookCall(0x6CEFCE, AddAudioEventHooked<0x6CEFCE>, "CAEVehicleAudioEntity::AddAudioEvent"); //CTrailer::BreakTowLink
 
-    if (memcmp(0x563280, "56 8B 74 24 08"))
-        injector::MakeJMP(0x563280, CWorld__Remove);
-    else
-        Log::LogModifiedAddress(0x563280, "Modified function detected: CWorld::Remove - 0x563280 is %s\n", bytesToString(0x563280, 5).c_str());
+    hookCall(0x4251E6, CWorld__RemoveHooked<0x4251E6>, "CWorld::Remove"); //CCarCtrl::PossiblyRemoveVehicle
+    hookCall(0x425221, CWorld__RemoveHooked<0x425221>, "CWorld::Remove"); //CCarCtrl::PossiblyRemoveVehicle
+    hookCall(0x42541E, CWorld__RemoveHooked<0x42541E>, "CWorld::Remove"); //CCarCtrl::PossiblyRemoveVehicle
+    hookCall(0x4323F9, CWorld__RemoveHooked<0x4323F9>, "CWorld::Remove"); //CCarCtrl::RemoveCarsIfThePoolGetsFull
+    hookCall(0x449729, CWorld__RemoveHooked<0x449729>, "CWorld::Remove"); //CGarage::RemoveCarsBlockingDoorNotInside
+    hookCall(0x4499F3, CWorld__RemoveHooked<0x4499F3>, "CWorld::Remove"); //CGarage::StoreAndRemoveCarsForThisHideOut
+    hookCall(0x449B43, CWorld__RemoveHooked<0x449B43>, "CWorld::Remove"); //CGarage::StoreAndRemoveCarsForThisImpoundingGarage
+    hookCall(0x449CE0, CWorld__RemoveHooked<0x449CE0>, "CWorld::Remove"); //CGarage::TidyUpGarage
+    hookCall(0x449E2A, CWorld__RemoveHooked<0x449E2A>, "CWorld::Remove"); //CGarage::TidyUpGarageClose
+    hookCall(0x4610CC, CWorld__RemoveHooked<0x4610CC>, "CWorld::Remove"); //CRoadBlocks::ClearSpaceForRoadBlockObject
+    hookCall(0x467B3C, CWorld__RemoveHooked<0x467B3C>, "CWorld::Remove"); //DELETE_CAR
+    hookCall(0x4698E4, CWorld__RemoveHooked<0x4698E4>, "CWorld::Remove"); //DELETE_OBJECT
+    hookCall(0x486D3E, CWorld__RemoveHooked<0x486D3E>, "CWorld::Remove"); //CTheScripts::ClearSpaceForMissionEntity
+    hookCall(0x499D90, CWorld__RemoveHooked<0x499D90>, "CWorld::Remove"); //CSetPiece::Update
+    hookCall(0x49A45A, CWorld__RemoveHooked<0x49A45A>, "CWorld::Remove"); //CSetPiece::Update
+    hookCall(0x5667B0, CWorld__RemoveHooked<0x5667B0>, "CWorld::Remove"); //CWorld::ClearCarsFromArea
+    hookCall(0x6A9CA4, CWorld__RemoveHooked<0x6A9CA4>, "CWorld::Remove"); //CAutomobile::Teleport
+    hookCall(0x6D22D7, CWorld__RemoveHooked<0x6D22D7>, "CWorld::Remove"); //DestroyVehicleAndDriverAndPassengers
 
     //Tuning for parked cars
     hookCall(0x6F3C8C, CWorld__AddHooked<0x6F3C8C>, "CWorld::Add"); //CCarGenerator::DoInternalProcessing

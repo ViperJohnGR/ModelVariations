@@ -163,10 +163,11 @@ std::vector<unsigned short> DataReader::ReadLine(const std::string& section, con
 				}
 			}
 		}
-		else if (parseType == READ_TRAILERS)
+		else if (parseType == READ_TRAILERS && strncmp(token, "Trailers", 8) == 0)
 		{
-			if (strncmp(token, "Trailers", 8) == 0)
-				retVector.push_back((unsigned short)(token[8] - '0'));
+			auto trailer = fast_atoi(token + 8);
+			if (trailer > 0 && trailer < 10)
+				retVector.push_back((unsigned short)trailer);
 		}
 		else
 		{

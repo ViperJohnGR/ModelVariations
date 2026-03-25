@@ -170,8 +170,6 @@ bool isPedVisible(CPed* ped)
         false   // doShootThroughCheck
     );
 
-    // Visible if nothing blocks the ray,
-    // or if the first hit is the vehicle itself.
     return !hitSomething || hitEntity == ped;
 }
 

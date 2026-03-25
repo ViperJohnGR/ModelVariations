@@ -30,7 +30,7 @@
 #pragma comment (lib, "urlmon.lib")
 
 
-#define MOD_VERSION "10.5"
+#define MOD_VERSION "10.6"
 //Using Plugin-SDK: 34ba198
 
 struct jumpInfo {
@@ -813,7 +813,7 @@ void __cdecl CGame__ProcessHooked()
         updateVariations();
     }
 
-    if (zInfo && *reinterpret_cast<uint64_t*>(zInfo->m_szLabel) != *reinterpret_cast<uint64_t*>(currentZone) != 0 && strncmp(zInfo->m_szLabel, "SAN_AND", 7) != 0)
+    if (zInfo && *reinterpret_cast<uint64_t*>(zInfo->m_szLabel) != *reinterpret_cast<uint64_t*>(currentZone) && strncmp(zInfo->m_szLabel, "SAN_AND", 7) != 0)
     {
         logVariationsChange("Zone changed");
 

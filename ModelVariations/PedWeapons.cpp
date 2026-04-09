@@ -275,7 +275,7 @@ void PedWeaponVariations::LogDataFile()
         Log::Write("\n%s not found!\n\n", dataFileName);
     else
     {
-        printFilenameWithBorder(dataFileName, '#');
+        Log::Write("%s\n", printFilenameWithBorder(dataFileName, '#').c_str());
         Log::LogTextFile(dataFileName);
         Log::Write("\n");
     }

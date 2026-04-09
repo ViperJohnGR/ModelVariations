@@ -1,7 +1,6 @@
 #pragma once
 
 #include "LoadedModules.hpp"
-#include "Log.hpp"
 
 #include <algorithm>
 #include <iterator>
@@ -41,17 +40,23 @@ inline std::string getFullPath(const std::string& filename)
     return filename.find(':') != std::string::npos ? filename : (LoadedModules::GetSelfDirectory() + '\\' + filename);
 }
 
-inline void printFilenameWithBorder(const char* name, const char ch = '#') 
+inline std::string printFilenameWithBorder(const std::string &name, const char ch = '#') 
 {
-    size_t total_width = strlen(name) + 6; // "## " + name + " ##"
+    std::string outString;
+    size_t line_width = name.size() + 6; // "## " + name + " ##"
 
-    for (size_t i = 0; i < total_width; ++i) Log::Write("%c", ch);
-    Log::Write("\n");
 
-    Log::Write("%c%c %s %c%c\n", ch, ch, name, ch, ch);
+    for (size_t i = 0;i<line_width;i++)
+        outString += ch;
 
-    for (size_t i = 0; i < total_width; ++i) Log::Write("%c", ch);
-    Log::Write("\n");
+    outString += "\n";
+    outString += std::string(2, ch) + " " + name + " " + std::string(2, ch);
+    outString += "\n";
+
+    for (size_t i = 0;i<line_width;i++)
+        outString += ch;
+
+    return outString;
 }
 
 inline std::string hashFile(const HANDLE& hFile, DWORD filesize = 0)
@@ -95,10 +100,7 @@ inline std::string hashFile(const std::string& filename)
 {
     HANDLE hFile = CreateFile(getFullPath(filename).c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
     if (hFile == INVALID_HANDLE_VALUE)
-    {
-        Log::Write("Error hashing '%s'. Couldn't open file.\n", filename.c_str());
         return "";
-    }
 
     auto hash = hashFile(hFile);
     CloseHandle(hFile);

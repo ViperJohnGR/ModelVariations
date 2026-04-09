@@ -418,7 +418,7 @@ void initialize()
             maxPedID = flaMaxID;
 
         Log::Write("\n");
-        printFilenameWithBorder(flaIniPath.substr(flaIniPath.find_last_of("/\\") + 1).c_str(), '#');
+        Log::Write("%s\n", printFilenameWithBorder(flaIniPath.substr(flaIniPath.find_last_of("/\\") + 1), '#').c_str());
         for (auto &i : flaIni.data)
         {
             Log::Write("[%s]\n", i.first.c_str());
@@ -426,6 +426,8 @@ void initialize()
                 Log::Write("%s = %s\n\n", j.first.c_str(), j.second.c_str());
         }
     }
+
+    Log::Write("\n");
 
     auto olaModule = LoadedModules::GetModule("III.VC.SA.LimitAdjuster.asi");
     if (!olaModule.first.empty())
@@ -1001,7 +1003,7 @@ public:
                 Log::Write("\n%s not found!\n\n", dataFileName);
             else
             {
-                printFilenameWithBorder(dataFileName, '#');
+                Log::Write("%s\n", printFilenameWithBorder(dataFileName, '#').c_str());
                 Log::LogTextFile(dataFileName);
                 Log::Write("\n");
             }

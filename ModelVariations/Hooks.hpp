@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Log.hpp"
+
 #include <unordered_map>
 #include <set>
 #include <string>

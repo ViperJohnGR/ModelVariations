@@ -99,3 +99,17 @@ inline bool loadModel(int model, int streamingFlags, bool loadImmediately)
 
     return CStreamingInfo::ms_pArrayBase[modelIndex].m_nLoadState == LOADSTATE_LOADED;
 }
+
+inline std::string getLoadStateString(unsigned char loadState)
+{
+    switch (loadState)
+    {
+        case LOADSTATE_NOT_LOADED: return "LOADSTATE_NOT_LOADED";
+        case LOADSTATE_LOADED: return "LOADSTATE_LOADED";
+        case LOADSTATE_Requested: return "LOADSTATE_REQUESTED";
+        case LOADSTATE_Channeled: return "LOADSTATE_CHANNELED";
+        case LOADSTATE_Finishing: return "LOADSTATE_FINISHING";
+    };
+
+    return std::to_string(loadState);
+}

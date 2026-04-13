@@ -615,9 +615,9 @@ void PedVariations::DrawDebugInfo()
 
         float lineOffset = 15.0f;
         char line1[32] = {};
-        char line2[32] = {};
+        char line2[64] = {};
         std::snprintf(line1, sizeof(line1), "0x%08X", reinterpret_cast<std::uintptr_t>(ped));
-        std::snprintf(line2, sizeof(line2), "%u", ped->m_nModelIndex);
+        std::snprintf(line2, sizeof(line2), "%u %s", ped->m_nModelIndex, modelNames.contains(ped->m_nModelIndex) ? modelNames[ped->m_nModelIndex].c_str() : "");
 
         CFont::PrintString(screenPos.x, screenPos.y, line1);
         CFont::PrintString(screenPos.x, screenPos.y + lineOffset, line2);

@@ -5,6 +5,7 @@
 #include <unordered_map>
 #include <vector>
 
+extern std::unordered_map<unsigned short, std::string> modelNames;
 extern std::unordered_map<unsigned short, std::string> addedIDs;
 extern int maxPedID;
 

@@ -141,8 +141,11 @@ void PedWeaponVariations::Process()
                         return true;
                     };
 
-                    CStreaming__RequestModel(wInfo->m_nModelId, PRIORITY_REQUEST);
-                    CStreaming__LoadAllRequestedModels(false);
+                    if (!loadModel(wInfo->m_nModelId, PRIORITY_REQUEST, true))
+                    {
+                        Log::Write("Error loading weapon model %d (%s)\n", wInfo->m_nModelId, modelNames.contains((unsigned short)wInfo->m_nModelId) ? modelNames[(unsigned short)wInfo->m_nModelId].c_str() : "");
+                        return false;
+                    }
 
                     if (originalWeaponId > WEAPONTYPE_UNARMED)
                         ped->ClearWeapon(originalWeaponId);
@@ -321,10 +324,9 @@ int __fastcall GiveWeaponHooked(CPed* ped, void*, int weaponID, int ammo, int a4
             weaponID = it->second;
             const CWeaponInfo* wInfo = CWeaponInfo::GetWeaponInfo((eWeaponType)weaponID, 1);
             if (wInfo != NULL && wInfo->m_nModelId >= 321)
-            {
-                CStreaming__RequestModel(wInfo->m_nModelId, PRIORITY_REQUEST);
-                CStreaming__LoadAllRequestedModels(false);
-            }
+                if (!loadModel(wInfo->m_nModelId, PRIORITY_REQUEST, true))
+                    Log::Write("Error loading weapon model %d (%s)\n", wInfo->m_nModelId, modelNames.contains((unsigned short)wInfo->m_nModelId) ? modelNames[(unsigned short)wInfo->m_nModelId].c_str() : "");
+
             break;
         }
 

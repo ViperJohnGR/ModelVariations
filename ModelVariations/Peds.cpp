@@ -732,7 +732,7 @@ int __cdecl getKillsByPlayer(int player)
 }
 
 template <std::uintptr_t address>
-int __fastcall SetModelIndexHooked(CEntity* _this, void*, int index)
+int __fastcall SetModelIndexHooked(CEntity* _this, void*, const int index)
 {
     int retVal = callMethodOriginalAndReturn<int, address>(_this, index);
 
@@ -745,18 +745,21 @@ int __fastcall SetModelIndexHooked(CEntity* _this, void*, int index)
         const unsigned short newModel = vectorGetRandom(it->second);
         if (newModel > 0 && newModel != _this->m_nModelIndex)
         {
-            CStreaming__RequestModel(newModel, PRIORITY_REQUEST);
-            CStreaming__LoadAllRequestedModels(false);
-            const unsigned short originalModel = _this->m_nModelIndex;
+            if (!loadModel(newModel, PRIORITY_REQUEST, true))
+            {
+                Log::Write("Error loading ped model %d (%s)\n", newModel, modelNames.contains(newModel) ? modelNames[newModel].c_str() : "");
+                return callMethodOriginalAndReturn<int, address>(_this, newModel);
+            }
+
             _this->DeleteRwObject();
 
             if (pedOptions->recursiveVariations)
                 _this->SetModelIndex(newModel);
             else 
-                callMethodOriginalAndReturn<int, address>(_this, newModel);
+                retVal = callMethodOriginalAndReturn<int, address>(_this, newModel);
 
-            if (!vectorHasId(pedVars->dontInheritBehaviourModels, originalModel))
-                _this->m_nModelIndex = originalModel;
+            if (!vectorHasId(pedVars->dontInheritBehaviourModels, index))
+                _this->m_nModelIndex = (unsigned short)index;
             variationModel = newModel;
         }
     }

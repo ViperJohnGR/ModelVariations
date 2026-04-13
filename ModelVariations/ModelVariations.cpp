@@ -51,6 +51,7 @@ std::set<unsigned short> addedIDsInGroups;
 std::string exePath(256, 0);
 
 std::unordered_map<unsigned short, std::string> addedIDs;
+std::unordered_map<unsigned short, std::string> modelNames;
 int maxPedID = 0;
 
 static const char* dataFileName = "ModelVariations.ini";
@@ -347,6 +348,7 @@ void loadIniData()
     {
         std::call_once(flag, [] 
         {
+            PedVariations::ClearData();
             PedVariations::LoadData();
         });
     }
@@ -611,6 +613,21 @@ void CPopCycle__DisplayHooked()
         PedVariations::DrawDebugInfo();
 
     callOriginal<address>();
+}
+
+//Model names
+template <std::uintptr_t address>
+int __cdecl FileLoaderLoadObject(const char* a1)
+{
+    if (a1)
+    {
+        int modelId = -1;
+        char modelName[50] = {};
+        if (sscanf(a1, "%d %s", &modelId, modelName) == 2 && modelId > 0 && strnlen(modelName, 49) > 0)
+            modelNames[(unsigned short)modelId] = modelName;
+    }
+
+    return callOriginalAndReturn<unsigned int, address>(a1);
 }
 
 template <std::uintptr_t address>
@@ -1029,6 +1046,15 @@ public:
         hookCall(0x40E37B, RetryLoadFileHooked<0x40E37B>, "CStreaming::RetryLoadFile"); //CStreaming::ProcessLoadingChannel
         hookCall(0x440F89, TransitionFinishedHooked<0x440F89>, "CEntryExit::TransitionFinished"); //CEntryExitManager::Update
         hookCall(0x53E293, CPopCycle__DisplayHooked<0x53E293>, "CPopCycle::Display"); //Render2dStuff
+
+        //CFileLoader::LoadObjectTypes
+        hookCall(0x5B85DD, FileLoaderLoadObject<0x5B85DD>, "CFileLoader::LoadObject");
+        hookCall(0x5B862C, FileLoaderLoadObject<0x5B862C>, "CFileLoader::LoadTimeObject");
+        hookCall(0x5B8634, FileLoaderLoadObject<0x5B8634>, "CFileLoader::LoadWeaponObject");
+        hookCall(0x5B863C, FileLoaderLoadObject<0x5B863C>, "CFileLoader::LoadClumpObject");
+        hookCall(0x5B8644, FileLoaderLoadObject<0x5B8644>, "CFileLoader::LoadAnimatedClumpObject");
+        hookCall(0x5B864C, FileLoaderLoadObject<0x5B864C>, "CFileLoader::LoadVehicleObject");
+        hookCall(0x5B8654, FileLoaderLoadObject<0x5B8654>, "CFileLoader::LoadPedObject");
 
         hookCall(0x53E981, CGame__ProcessHooked<0x53E981>, "CGame::Process"); //Idle
         hookCall(0x748E6B, CGame__ShutdownHooked<0x748E6B>, "CGame::Shutdown"); //WinMain

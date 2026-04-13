@@ -220,6 +220,7 @@ std::vector<unsigned short> DataReader::ReadLine(const std::string& section, con
 								CStreaming::SetModelIsDeletable(i);
 								CStreaming::SetModelTxdIsDeletable(i);
 								retVector.push_back(i);
+								modelNames[i] = token;
 								addedIDs[i] = token;
 								pedInfo->m_nPedType = ePedType::PED_TYPE_CIVMALE;
 								pedInfo->m_nRadio1 = mInfo7->m_nRadio1;

@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include <vector>
 
+extern std::unordered_map<unsigned short, std::string> modelNames;
 extern std::unordered_map<std::string, std::vector<CZone*>> presetAllZones;
 extern int maxPedID;
 extern char currentZone[9];

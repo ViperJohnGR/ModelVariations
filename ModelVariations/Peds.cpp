@@ -732,14 +732,12 @@ int __cdecl getKillsByPlayer(int player)
 }
 
 template <std::uintptr_t address>
-int __fastcall SetModelIndexHooked(CEntity* _this, void*, const int index)
+void __fastcall SetModelIndexHooked(CEntity* _this, void*, const int index)
 {
-    int retVal = callMethodOriginalAndReturn<int, address>(_this, index);
+    if (index < 7 || index > 65535 || (vectorHasId(pedVars->disableOnMission, index) && CTheScripts__IsPlayerOnAMission()))
+        return callMethodOriginal<address>(_this, index);
 
-    if (vectorHasId(pedVars->disableOnMission, index) && CTheScripts__IsPlayerOnAMission())
-        return retVal;
-
-    auto it = pedVars->currentVariations.find(_this->m_nModelIndex);
+    auto it = pedVars->currentVariations.find((unsigned short)index);
     if (isValidPedId(_this->m_nModelIndex) && it != pedVars->currentVariations.end() && !it->second.empty())
     {
         const unsigned short newModel = vectorGetRandom(it->second);
@@ -747,24 +745,23 @@ int __fastcall SetModelIndexHooked(CEntity* _this, void*, const int index)
         {
             if (!loadModel(newModel, PRIORITY_REQUEST, true))
             {
-                Log::Write("Error loading ped model %d (%s)\n", newModel, modelNames.contains(newModel) ? modelNames[newModel].c_str() : "");
-                return callMethodOriginalAndReturn<int, address>(_this, newModel);
+                Log::Write("Error loading ped model %d (%s). Using original model %d.\n", newModel, modelNames.contains(newModel) ? modelNames[newModel].c_str() : "", index);
+                return callMethodOriginal<address>(_this, index);
             }
-
-            _this->DeleteRwObject();
 
             if (pedOptions->recursiveVariations)
                 _this->SetModelIndex(newModel);
             else 
-                retVal = callMethodOriginalAndReturn<int, address>(_this, newModel);
+                callMethodOriginal<address>(_this, newModel);
 
             if (!vectorHasId(pedVars->dontInheritBehaviourModels, index))
                 _this->m_nModelIndex = (unsigned short)index;
             variationModel = newModel;
+            return;
         }
     }
 
-    return retVal;
+    callMethodOriginal<address>(_this, index);
 }
 
 template <std::uintptr_t address>

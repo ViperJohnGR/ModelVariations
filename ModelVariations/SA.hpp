@@ -85,7 +85,7 @@ inline short CVehicleModelInfo__CLinkedUpgradeList__FindOtherUpgrade(uint32_t* _
 #define ScriptParams (reinterpret_cast<int*>(0xA43C78))
 
 
-inline bool loadModel(int model, int streamingFlags, bool loadImmediately)
+inline unsigned char loadModel(int model, int streamingFlags, bool loadImmediately)
 {
     if (model < 1)
         return false;
@@ -95,9 +95,9 @@ inline bool loadModel(int model, int streamingFlags, bool loadImmediately)
     CStreaming__RequestModel(model, streamingFlags);
 
     if (loadImmediately)
-        CStreaming__LoadAllRequestedModels(streamingFlags == PRIORITY_REQUEST);
+        CStreaming__LoadAllRequestedModels(false);
 
-    return CStreamingInfo::ms_pArrayBase[modelIndex].m_nLoadState == LOADSTATE_LOADED;
+    return CStreamingInfo::ms_pArrayBase[modelIndex].m_nLoadState;
 }
 
 inline std::string getLoadStateString(unsigned char loadState)

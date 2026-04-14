@@ -490,9 +490,9 @@ int getRandomVariation(const int modelid, bool parked = false)
     const unsigned short variationModel = vectorGetRandom(it->second);
     if (variationModel > 0)
     {
-        if (!loadModel(variationModel, PRIORITY_REQUEST, true))
+        if (auto loadState = loadModel(variationModel, PRIORITY_REQUEST, true); loadState != LOADSTATE_LOADED)
         {
-            Log::Write("Error loading vehicle model %d (%s)\n", variationModel, modelNames.contains(variationModel) ? modelNames[variationModel].c_str() : "");
+            Log::Write("Error loading vehicle model %d (%s) %s\n", variationModel, modelNames.contains(variationModel) ? modelNames[variationModel].c_str() : "", getLoadStateString(loadState).c_str());
             return modelid;
         }
 
@@ -965,7 +965,7 @@ void VehicleVariations::Process()
                     else
                     {
                         CStreaming__RequestVehicleUpgrade(slot[i], PRIORITY_REQUEST);
-                        CStreaming__LoadAllRequestedModels(true);
+                        CStreaming__LoadAllRequestedModels(false);
 
                         it.first->AddVehicleUpgrade(slot[i]);
                         CStreaming__SetMissionDoesntRequireModel(slot[i]);
@@ -1047,9 +1047,9 @@ void VehicleVariations::Process()
                 CVehicle* firstTrailer = NULL;
                 for (auto trailerModel : trailersVec)
                 {
-                    if (!loadModel(trailerModel, PRIORITY_REQUEST, true))
+                    if (auto loadState = loadModel(trailerModel, PRIORITY_REQUEST, true); loadState != LOADSTATE_LOADED)
                     {
-                        Log::Write("Error loading vehicle model %d (%s)\n", trailerModel, modelNames.contains(trailerModel) ? modelNames[trailerModel].c_str() : "");
+                        Log::Write("Error loading vehicle model %d (%s) %s\n", trailerModel, modelNames.contains(trailerModel) ? modelNames[trailerModel].c_str() : "", getLoadStateString(loadState).c_str());
                         break;
                     }
 
@@ -1390,8 +1390,8 @@ CHeli* __cdecl GenerateHeliHooked(CPed* ped, char newsHeli)
 
         unsigned short heliModel = newsHeli ? 488U : 497U;
 
-        if (!loadModel(heliModel, PRIORITY_REQUEST, true))
-            Log::Write("Error loading vehicle model %d (%s)\n", heliModel, modelNames.contains(heliModel) ? modelNames[heliModel].c_str() : "");
+        if (auto loadState = loadModel(heliModel, PRIORITY_REQUEST, true); loadState != LOADSTATE_LOADED)
+            Log::Write("Error loading vehicle model %d (%s) %s\n", heliModel, modelNames.contains(heliModel) ? modelNames[heliModel].c_str() : "", getLoadStateString(loadState).c_str());
     }
 
     return callOriginalAndReturn<CHeli*, address>(ped, newsHeli);
@@ -1480,9 +1480,9 @@ CCopPed* __fastcall CCopPedHooked(CCopPed* ped, void*, int copType)
         if (auto it = vehVars->driverGroups[currentOccupantsGroup].find(currentOccupantsModel); it != vehVars->driverGroups[currentOccupantsGroup].end())
         {
             auto driver = vectorGetRandom(it->second);
-            if (!loadModel(driver, PRIORITY_REQUEST, true))
+            if (auto loadState = loadModel(driver, PRIORITY_REQUEST, true); loadState != LOADSTATE_LOADED)
             {
-                Log::Write("Error loading ped model %d (%s)\n", driver, modelNames.contains(driver) ? modelNames[driver].c_str() : "");
+                Log::Write("Error loading ped model %d (%s) %s\n", driver, modelNames.contains(driver) ? modelNames[driver].c_str() : "", getLoadStateString(loadState).c_str());
                 roadblockDriver = 0;
                 return callMethodOriginalAndReturn<CCopPed*, address>(ped, copType);
             }
@@ -1585,10 +1585,10 @@ CPed* __cdecl AddPedHooked(unsigned int pedType, int modelIndex, CVector* posn, 
 {
     if (occupantModelIndex > 0)
     {
-        if (loadModel(occupantModelIndex, PRIORITY_REQUEST, true))
+        if (auto loadState = loadModel(occupantModelIndex, PRIORITY_REQUEST, true); loadState == LOADSTATE_LOADED)
             modelIndex = occupantModelIndex;
         else
-            Log::Write("Error loading ped model %d (%s)\n", occupantModelIndex, modelNames.contains((unsigned short)occupantModelIndex) ? modelNames[(unsigned short)occupantModelIndex].c_str() : "");
+            Log::Write("Error loading ped model %d (%s) %s\n", occupantModelIndex, modelNames.contains((unsigned short)occupantModelIndex) ? modelNames[(unsigned short)occupantModelIndex].c_str() : "", getLoadStateString(loadState).c_str());
 
         if (pedType != PED_TYPE_MEDIC)
         {
@@ -1732,7 +1732,7 @@ int __fastcall CreateInstanceHooked(CVehicleModelInfo* _this)
 
         Log::Write("Model %d has NULL vehicle struct (load state = %u). Trying to load model... ", index, CStreamingInfo::ms_pArrayBase[index].m_nLoadState);
         CStreaming__RequestModel(index, PRIORITY_REQUEST);
-        CStreaming__LoadAllRequestedModels(true);
+        CStreaming__LoadAllRequestedModels(false);
         if (_this->m_pVehicleStruct != NULL)
             Log::Write("OK\n");
         else

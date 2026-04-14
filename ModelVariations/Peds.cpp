@@ -743,9 +743,9 @@ void __fastcall SetModelIndexHooked(CEntity* _this, void*, const int index)
         const unsigned short newModel = vectorGetRandom(it->second);
         if (newModel > 0 && newModel != _this->m_nModelIndex)
         {
-            if (!loadModel(newModel, PRIORITY_REQUEST, true))
+            if (auto loadState = loadModel(newModel, PRIORITY_REQUEST, true); loadState != LOADSTATE_LOADED)
             {
-                Log::Write("Error loading ped model %d (%s). Using original model %d.\n", newModel, modelNames.contains(newModel) ? modelNames[newModel].c_str() : "", index);
+                Log::Write("Error loading ped model %d (%s) %s. Using original model %d.\n", newModel, modelNames.contains(newModel) ? modelNames[newModel].c_str() : "", getLoadStateString(loadState).c_str(), index);
                 return callMethodOriginal<address>(_this, index);
             }
 

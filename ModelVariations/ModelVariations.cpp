@@ -62,7 +62,7 @@ std::chrono::steady_clock::time_point loadTime;
 std::chrono::milliseconds totalTimeSinceLoad(0);
 std::chrono::milliseconds gameplayTimeSinceLoad(0);
 
-int secondsSinceLastModCheck = -1;
+int secSinceLastModuleCheck = -1;
 
 int drawDebugText = false;
 
@@ -96,6 +96,9 @@ int trackReferenceCounts = -1;
 int disableKey = 0;
 int reloadKey = 0;
 int debugKey = 0;
+
+//debugDrawOptions
+float debugDrawSize = 0.42f;
 
 std::set<std::uintptr_t> forceEnable;
 
@@ -608,9 +611,9 @@ template <std::uintptr_t address>
 void CPopCycle__DisplayHooked()
 {
     if (drawDebugText > 1 && enableVehicles)
-        VehicleVariations::DrawDebugInfo();
+        VehicleVariations::DrawDebugInfo(debugDrawSize);
     if ((drawDebugText == 1 || drawDebugText == 3) && enablePeds)
-        PedVariations::DrawDebugInfo();
+        PedVariations::DrawDebugInfo(debugDrawSize);
 
     callOriginal<address>();
 }
@@ -762,9 +765,9 @@ void __cdecl CGame__ProcessHooked()
         keyDown = false;
 
     int seconds = static_cast<int>(totalTimeSinceLoad.count() / 1000.0);
-    if (enableLog && (seconds / 30) != secondsSinceLastModCheck) //every 30 seconds
+    if (enableLog && (seconds / 30) != secSinceLastModuleCheck) //every 30 seconds
     {
-        secondsSinceLastModCheck = seconds / 30;
+        secSinceLastModuleCheck = seconds / 30;
         for (auto& it : hookedCalls)
         {
             if (it.second.name.empty())
@@ -954,6 +957,7 @@ public:
         debugKey = iniSettings.ReadInteger("Settings", "DebugKey", 0);
         enableLog = iniSettings.ReadBoolean("Settings", "EnableLog", false) && Log::Open("ModelVariations.log");
         logJumps = iniSettings.ReadBoolean("Settings", "LogJumps", false);
+        debugDrawSize = iniSettings.ReadFloat("Settings", "DebugDrawSize", 0.28f);
 
         std::string checkForceEnabled = iniSettings.ReadString("Settings", "ForceEnable", "");
         if (!checkForceEnabled.empty())

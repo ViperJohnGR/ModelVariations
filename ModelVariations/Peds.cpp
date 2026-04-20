@@ -578,18 +578,21 @@ void PedVariations::UpdateVariations()
     }
 }
 
-void PedVariations::DrawDebugInfo() 
+void PedVariations::DrawDebugInfo(float fontSize)
 {
     auto* pedPool = CPools::ms_pPedPool;
     if (!pedPool)
         return;
+
+    float fontSizew = RsGlobal.maximumHeight/640.0f * fontSize;
+    float fontSizeh = fontSizew * 2.2f;
 
     // Text style
     CFont::SetBackground(false, false);
     CFont::SetOrientation(ALIGN_CENTER);
     CFont::SetProportional(true);
     CFont::SetFontStyle(FONT_SUBTITLES);
-    CFont::SetScale(0.42f, 0.96f);
+    CFont::SetScale(fontSizew, fontSizeh);
     CFont::SetEdge(1);
     CFont::SetDropColor(CRGBA(0, 0, 0, 255));
     CFont::SetColor(CRGBA(127, 255, 255, 255));
@@ -613,7 +616,7 @@ void PedVariations::DrawDebugInfo()
         if (!CSprite::CalcScreenCoors(worldPos, &screenPos, &w, &h, true, true))
             continue;
 
-        float lineOffset = 15.0f;
+        float lineOffset = (RsGlobal.maximumHeight / 640.0f) * fontSize * 35.0f;
         char line1[32] = {};
         char line2[64] = {};
         std::snprintf(line1, sizeof(line1), "0x%08X", reinterpret_cast<std::uintptr_t>(ped));
@@ -621,7 +624,7 @@ void PedVariations::DrawDebugInfo()
 
         CFont::PrintString(screenPos.x, screenPos.y, line1);
         CFont::PrintString(screenPos.x, screenPos.y + lineOffset, line2);
-        lineOffset += 15.0f;
+        lineOffset += lineOffset;
 
         std::string nextLine;
        
@@ -635,7 +638,7 @@ void PedVariations::DrawDebugInfo()
                 nextLine += buffer;
             }
             CFont::PrintString(screenPos.x, screenPos.y + lineOffset, nextLine.c_str());
-            lineOffset += 15.0f;
+            lineOffset += lineOffset;
         }
 
         if (auto it = changedVoices.find(ped); it != changedVoices.end())
@@ -643,7 +646,7 @@ void PedVariations::DrawDebugInfo()
             char buffer[32] = {};
             std::snprintf(buffer, sizeof(buffer), "Voice: %u", it->second);
             CFont::PrintString(screenPos.x, screenPos.y + lineOffset, buffer);
-            lineOffset += 15.0f;
+            lineOffset += lineOffset;
         }
     }
 }

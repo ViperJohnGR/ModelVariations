@@ -1133,18 +1133,21 @@ void VehicleVariations::UpdateVariations()
         }
 }
 
-void VehicleVariations::DrawDebugInfo()
+void VehicleVariations::DrawDebugInfo(float fontSize)
 {
     auto* vehiclePool = CPools::ms_pVehiclePool;
     if (!vehiclePool)
         return;
+
+    float fontSizew = RsGlobal.maximumHeight / 640.0f * fontSize;
+    float fontSizeh = fontSizew * 2.2f;
 
     // Text style
     CFont::SetBackground(false, false);
     CFont::SetOrientation(ALIGN_CENTER);
     CFont::SetProportional(true);
     CFont::SetFontStyle(FONT_SUBTITLES);
-    CFont::SetScale(0.42f, 0.96f);
+    CFont::SetScale(fontSizew, fontSizeh);
     CFont::SetEdge(1);
     CFont::SetDropColor(CRGBA(0, 0, 0, 255));
     CFont::SetColor(CRGBA(255, 255, 255, 255));
@@ -1168,7 +1171,7 @@ void VehicleVariations::DrawDebugInfo()
         if (!CSprite::CalcScreenCoors(worldPos, &screenPos, &w, &h, true, true))
             continue;
 
-        float lineOffset = 14.0f;
+        float lineOffset = (RsGlobal.maximumHeight / 640.0f) * fontSize * 35.0f;
         char line1[32] = {};
         char line2[64] = {};
         std::snprintf(line1, sizeof(line1), "0x%08X", reinterpret_cast<std::uintptr_t>(veh));
@@ -1176,7 +1179,7 @@ void VehicleVariations::DrawDebugInfo()
 
         CFont::PrintString(screenPos.x, screenPos.y, line1);
         CFont::PrintString(screenPos.x, screenPos.y + lineOffset, line2);
-        lineOffset += 14.0f;
+        lineOffset += lineOffset;
 
         char nextline[32] = {};
         auto parentModel = getVariationOriginalModel(veh->m_nModelIndex);
@@ -1184,7 +1187,7 @@ void VehicleVariations::DrawDebugInfo()
         {
             std::snprintf(nextline, sizeof(nextline), "Parent model: %u", parentModel);
             CFont::PrintString(screenPos.x, screenPos.y + lineOffset, nextline);
-            lineOffset += 14.0f;
+            lineOffset += lineOffset;
         }
     }
 }

@@ -26,7 +26,7 @@ public:
 	static void LoadData();
 	static void Process();
 	static void UpdateVariations();
-	static void DrawDebugInfo();
+	static void DrawDebugInfo(float fontSize);
 
 	//Logging
 	static void LogCurrentVariations();

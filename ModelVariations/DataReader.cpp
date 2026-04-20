@@ -120,11 +120,23 @@ std::vector<unsigned short> DataReader::ReadLine(const std::string& section, con
 
 		auto token = trimmed.c_str();
 
+		int multiplier = 1;
+
+		size_t start = trimmed.find('{');
+		size_t end = trimmed.find('}', start);
+
+		if (start != std::string::npos && end > start) {
+			int n = fast_atoi(trimmed.substr(start + 1, end - start - 1).c_str());
+			if (n > 0 && n < 10000)
+				multiplier = n;
+		}
+
 		if (parseType == READ_NUMS)
 		{
 			auto num = fast_atoi(token);
 			if (num > -1 && num < INT_MAX)
-				retVector.push_back((unsigned short)num);
+				for (int i = 0; i < multiplier; i++)
+					retVector.push_back((unsigned short)num);
 		}
 		else if (parseType == READ_WEAPONS)
 		{
@@ -133,7 +145,8 @@ std::vector<unsigned short> DataReader::ReadLine(const std::string& section, con
 				weaponType = fast_atoi(token);
 
 			if (weaponType > -1 && weaponType < 1000 && CWeaponInfo::GetWeaponInfo((eWeaponType)weaponType, 1) != NULL)
-				retVector.push_back((unsigned short)weaponType);
+				for (int i = 0; i < multiplier; i++)
+					retVector.push_back((unsigned short)weaponType);
 		}
 		else if (parseType == READ_OCCUPANT_GROUPS)
 		{
@@ -141,7 +154,8 @@ std::vector<unsigned short> DataReader::ReadLine(const std::string& section, con
 			{
 				auto occupantGroup = fast_atoi(token + 13);
 				if (occupantGroup > -1 && occupantGroup < INT_MAX)
-					retVector.push_back((unsigned short)occupantGroup);
+					for (int i = 0; i < multiplier; i++)
+						retVector.push_back((unsigned short)occupantGroup);
 			}
 		}
 		else if (parseType == READ_TUNING)
@@ -150,7 +164,8 @@ std::vector<unsigned short> DataReader::ReadLine(const std::string& section, con
 			{
 				auto paintjob = fast_atoi(token + 8);
 				if (paintjob > 0 && paintjob <= 10)
-					retVector.push_back((unsigned short)paintjob-1U);
+					for (int i = 0; i < multiplier; i++)
+						retVector.push_back((unsigned short)paintjob-1U);
 			}
 			else if (token[0] != 'G')
 			{
@@ -159,7 +174,8 @@ std::vector<unsigned short> DataReader::ReadLine(const std::string& section, con
 				{
 					const auto modelType = mInfo->GetModelType();
 					if (modelType != MODEL_INFO_VEHICLE && modelType != MODEL_INFO_PED && modelType != MODEL_INFO_WEAPON && modelid > 300)
-						retVector.push_back((unsigned short)modelid);
+						for (int i = 0; i < multiplier; i++)
+							retVector.push_back((unsigned short)modelid);
 				}
 			}
 		}
@@ -167,7 +183,8 @@ std::vector<unsigned short> DataReader::ReadLine(const std::string& section, con
 		{
 			auto trailer = fast_atoi(token + 8);
 			if (trailer > 0 && trailer < 10)
-				retVector.push_back((unsigned short)trailer);
+				for (int i = 0; i < multiplier; i++)
+					retVector.push_back((unsigned short)trailer);
 		}
 		else
 		{
@@ -190,12 +207,14 @@ std::vector<unsigned short> DataReader::ReadLine(const std::string& section, con
 				if (parseType == READ_VEHICLES)
 				{
 					if (mInfo->GetModelType() == MODEL_INFO_VEHICLE || modelid == 0)
-						retVector.push_back((unsigned short)modelid);
+						for (int i = 0; i < multiplier; i++)
+							retVector.push_back((unsigned short)modelid);
 				}
 				else if (parseType == READ_PEDS)
 				{
 					if (mInfo->GetModelType() == MODEL_INFO_PED)
-						retVector.push_back((unsigned short)modelid);
+						for (int i = 0; i < multiplier; i++)
+							retVector.push_back((unsigned short)modelid);
 				}
 			}
 			else if (parseType == READ_PEDS && !(token[0] >= '0' && token[0] <= '9') && !reachedMaxCapacity)
@@ -219,7 +238,8 @@ std::vector<unsigned short> DataReader::ReadLine(const std::string& section, con
 								CStreaming__RequestSpecialModel(i, token, 0);
 								CStreaming::SetModelIsDeletable(i);
 								CStreaming::SetModelTxdIsDeletable(i);
-								retVector.push_back(i);
+								for (int j = 0; j < multiplier; j++)
+									retVector.push_back(i);
 								modelNames[i] = token;
 								addedIDs[i] = token;
 								pedInfo->m_nPedType = ePedType::PED_TYPE_CIVMALE;

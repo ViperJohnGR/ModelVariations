@@ -166,31 +166,6 @@ void checkForUpdate()
     return;
 }
 
-std::string getDatetime(bool printDate, bool printTime, bool printMs)
-{
-    SYSTEMTIME systime;
-    GetSystemTime(&systime);
-    char str[255] = {};
-    int i = 0;
-
-    if (printDate)
-    {
-        i += snprintf(str, 254, "%d/%d/%d", systime.wDay, systime.wMonth, systime.wYear);
-        if (printTime)
-            i += snprintf(str + i, 254U - i, " ");
-    }
-
-    if (printTime)
-    {
-        i += snprintf(str + i, 254U - i, "%02d:%02d:%02d", systime.wHour, systime.wMinute, systime.wSecond);
-
-        if (printMs)
-            snprintf(str + i, 254U - i, ".%03d", systime.wMilliseconds);
-    }
-
-    return str;
-}
-
 bool loadPESection(const char* filePath, int section, std::vector<unsigned char>& buffer, unsigned int* size)
 {
     HANDLE hFile;

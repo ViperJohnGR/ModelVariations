@@ -78,6 +78,8 @@ inline void CScriptsForBrains__AddNewScriptBrain(void* _this, short index, short
 inline bool CTheZones__PointLiesWithinZone(void* point, void* zone) { return getDynamicFunction<bool, 0x572BCE, 0x572270>(point, zone); }
 #define CTheZones__NavigationZoneArray getPointerFromAddress<unsigned char>(0x572BB7, 0xBA3798)
 
+inline bool CWeather__IsRainy() { return getDynamicFunction<bool, 0x4AF5A1, 0x4ABF50>(); }
+
 inline short CVehicleModelInfo__CLinkedUpgradeList__FindOtherUpgrade(uint32_t* _this, uint16_t a2) { return getDynamicMethod<short, 0x4986BB, 0x4C74D0>(_this, a2); }
 #define CVehicleModelInfo__CVehicleStructure__m_pInfoPool getPointerFromAddress<CPool<CVehicleModelInfo::CVehicleStructure>>(0x5B8FF9, 0xB4E680, 2)
 #define CVehicleModelInfo__ms_linkedUpgrades getPointerFromAddress<uint32_t>(0x4986B7, 0xB4E6D8)

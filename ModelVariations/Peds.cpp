@@ -15,6 +15,7 @@
 #include <CSprite.h>
 #include <CTaskComplexCopInCar.h>
 #include <CTheZones.h>
+#include <CWeather.h>
 #include <CWorld.h>
 
 #include <array>
@@ -38,6 +39,11 @@ struct tPedVars {
     std::unordered_map<unsigned short, bool> useParentVoice;
     std::unordered_map<unsigned short, std::vector<unsigned short>> voices;
     std::unordered_map<unsigned short, unsigned int> animGroups;
+    std::unordered_map<unsigned short, std::vector<unsigned short>> weatherSunny;
+    std::unordered_map<unsigned short, std::vector<unsigned short>> weatherRainy;
+    std::unordered_map<unsigned short, std::vector<unsigned short>> weatherFoggy;
+    std::unordered_map<unsigned short, std::vector<unsigned short>> weatherSandstorm;
+    std::unordered_map<unsigned short, std::vector<unsigned short>> weatherWindy;
 
     std::set<unsigned short> pedHasVariations;
 
@@ -67,6 +73,15 @@ std::unique_ptr<tPedOptions> pedOptions(new tPedOptions);
 unsigned short variationModel = 0;
 
 std::map<CPed*, unsigned short> changedVoices;
+
+struct
+{
+    bool isRainy = false;
+    bool isSandstorm = false;
+    bool isFoggy = false;
+    bool isWindy = false;
+    bool isSunny = false;
+} weatherState;
 
 bool isValidPedId(int id)
 {
@@ -295,6 +310,26 @@ void PedVariations::LoadData()
                 pedVars->disableOnMission.push_back(modelIndex);
         }
         
+        auto vec = dataFile.ReadLine(section, "WeatherSunny", READ_PEDS);
+        if (!vec.empty())
+            pedVars->weatherSunny[modelIndex] = vec;
+
+        vec = dataFile.ReadLine(section, "WeatherRainy", READ_PEDS);
+        if (!vec.empty())
+            pedVars->weatherRainy[modelIndex] = vec;
+
+        vec = dataFile.ReadLine(section, "WeatherFoggy", READ_PEDS);
+        if (!vec.empty())
+            pedVars->weatherFoggy[modelIndex] = vec;
+
+        vec = dataFile.ReadLine(section, "WeatherSandstorm", READ_PEDS);
+        if (!vec.empty())
+            pedVars->weatherSandstorm[modelIndex] = vec;
+
+        vec = dataFile.ReadLine(section, "WeatherWindy", READ_PEDS);
+        if (!vec.empty())
+            pedVars->weatherWindy[modelIndex] = vec;
+
         int parentVoice = dataFile.ReadInteger(section, "UseParentVoice", -1);
         if (parentVoice > -1)
             pedVars->useParentVoice[modelIndex] = static_cast<bool>(parentVoice);
@@ -311,7 +346,7 @@ void PedVariations::LoadData()
                 }
             }
 
-        auto vec = dataFile.ReadLine(section, "Voice", READ_PEDS);
+        vec = dataFile.ReadLine(section, "Voice", READ_PEDS);
         if (!vec.empty())
             pedVars->voices.insert({ modelIndex, vec });
     }
@@ -337,6 +372,20 @@ void PedVariations::LoadData()
 
 void PedVariations::Process()
 {
+    bool isRainy = CWeather__IsRainy();
+    bool isSandstorm = CWeather::Sandstorm > 0.29;
+    bool isFoggy = CWeather::Foggyness > 0.4;
+    bool isWindy = CWeather::Wind > 0.29;
+    bool isSunny = !isRainy && !isSandstorm && !isFoggy && !isWindy;
+
+    bool weatherChanged = isRainy != weatherState.isRainy ||
+                          isSandstorm != weatherState.isSandstorm ||
+                          isFoggy != weatherState.isFoggy ||
+                          isWindy != weatherState.isWindy ||
+                          isSunny != weatherState.isSunny;
+
+    weatherState = { isRainy, isSandstorm, isFoggy, isWindy, isSunny };
+
     int variationsUpdateQueued = 0;
 
     int gameTime = (CClock::ms_nGameClockHours * 100 + CClock::ms_nGameClockMinutes);
@@ -364,6 +413,17 @@ void PedVariations::Process()
                 if (pedVars->activeTimeGroups[it.first].insert((unsigned short)i).second == true)
                     variationsUpdateQueued = it.first;
         }
+
+    if (weatherChanged)
+    {
+        char gameTimeString[7] = {};
+        snprintf(gameTimeString, 6, "%02d:%02d", CClock::ms_nGameClockHours, CClock::ms_nGameClockMinutes);
+        Log::Write("\n[%s] Updating ped variations due to weather change. Current weather: %d %d %d %d %d. Game time: %s\n", getDatetime(false, true, true).c_str(), isRainy, isSandstorm, isFoggy, isWindy, isSunny, gameTimeString);
+        UpdateVariations();
+        PedVariations::LogCurrentVariations();
+        Log::Write("\n");
+        weatherChanged = false;
+    }
 
     if (variationsUpdateQueued > 0)
     {
@@ -570,6 +630,41 @@ void PedVariations::UpdateVariations()
                 if (!it->second[wantedLevel].empty() && !pedVars->currentVariations[modelid].empty())
                     vectorfilterVector(pedVars->currentVariations[modelid], it->second[wantedLevel]);
             }
+        }
+
+        if (weatherState.isRainy)
+        {
+            auto it = pedVars->weatherRainy.find(modelid);
+            if (it != pedVars->weatherRainy.end() && !it->second.empty())
+                vectorfilterVector(pedVars->currentVariations[modelid], it->second);
+        }
+
+        if (weatherState.isSandstorm)
+        {
+            auto it = pedVars->weatherSandstorm.find(modelid);
+            if (it != pedVars->weatherSandstorm.end() && !it->second.empty())
+                vectorfilterVector(pedVars->currentVariations[modelid], it->second);
+        }
+
+        if (weatherState.isFoggy)
+        {
+            auto it = pedVars->weatherFoggy.find(modelid);
+            if (it != pedVars->weatherFoggy.end() && !it->second.empty())
+                vectorfilterVector(pedVars->currentVariations[modelid], it->second);
+        }
+
+        if (weatherState.isWindy)
+        {
+            auto it = pedVars->weatherFoggy.find(modelid);
+            if (it != pedVars->weatherFoggy.end() && !it->second.empty())
+                vectorfilterVector(pedVars->currentVariations[modelid], it->second);
+        }
+
+        if (weatherState.isSunny)
+        {
+            auto it = pedVars->weatherSunny.find(modelid);
+            if (it != pedVars->weatherSunny.end() && !it->second.empty())
+                vectorfilterVector(pedVars->currentVariations[modelid], it->second);
         }
 
         if (auto it = pedVars->activeTimeGroups.find(modelid); it != pedVars->activeTimeGroups.end())

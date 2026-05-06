@@ -12,6 +12,7 @@
 #include <CFont.h>
 #include <CModelInfo.h>
 #include <CPed.h>
+#include <CPopCycle.h>
 #include <CSprite.h>
 #include <CTaskComplexCopInCar.h>
 #include <CTheZones.h>
@@ -35,7 +36,7 @@ struct tPedVars {
 
 
     std::map<unsigned short, std::chrono::steady_clock::time_point> pedTimeSinceSpawn;
-    std::unordered_map<unsigned short, std::vector<unsigned short>> originalModels;
+    std::unordered_map<unsigned short, unsigned short> originalModels;
     std::unordered_map<unsigned short, bool> useParentVoice;
     std::unordered_map<unsigned short, std::vector<unsigned short>> voices;
     std::unordered_map<unsigned short, unsigned int> animGroups;
@@ -60,12 +61,7 @@ std::unique_ptr<tPedVars> pedVars(new tPedVars);
 struct tPedOptions {
     bool recursiveVariations = true;
     bool useParentVoices = false;
-    bool enableCloneRemover = false;
-    bool cloneRemoverDisableOnMission = true;
-    bool cloneRemoverVehicleOccupants = false;
-    int cloneRemoverSpawnDelay = 3;
-    std::vector<unsigned short> cloneRemoverIncludeVariations;
-    std::vector<unsigned short> cloneRemoverExclusions;
+    bool improveCivilianVariety = false;
 };
 
 std::unique_ptr<tPedOptions> pedOptions(new tPedOptions);
@@ -93,9 +89,9 @@ bool isValidPedId(int id)
     return true;
 }
 
-std::vector<unsigned short> PedVariations::GetVariationOriginalModels(const int modelIndex)
+unsigned short PedVariations::GetVariationOriginalModel(const int modelIndex)
 {
-    if (modelIndex < 400)
+    if (modelIndex < 300)
         return { (unsigned short)modelIndex };
 
     auto it = pedVars->originalModels.find((unsigned short)modelIndex);
@@ -103,60 +99,6 @@ std::vector<unsigned short> PedVariations::GetVariationOriginalModels(const int 
         return it->second;
 
     return { (unsigned short)modelIndex };
-}
-
-bool pedDelaySpawn(unsigned short model, bool includeParentModels)
-{
-    if (!includeParentModels)
-    {
-        if (pedVars->pedTimeSinceSpawn.contains(model))
-            return true;
-    }
-    else
-    {
-        auto it = pedVars->originalModels.find(model);
-        if (it != pedVars->originalModels.end())
-            for (auto& i : it->second)
-                if (pedVars->pedTimeSinceSpawn.contains(i))
-                    return true;
-    }
-    return false;
-}
-
-bool compareOriginalModels(unsigned short model1, unsigned short model2, bool includeVariations = false)
-{
-    if (model1 == model2)
-        return true;
-
-    if (includeVariations)
-    {
-        auto it1 = pedVars->originalModels.find(model1);
-        auto it2 = pedVars->originalModels.find(model2);
-        if (it1 != pedVars->originalModels.end() && it2 != pedVars->originalModels.end())
-            return std::find_first_of(it1->second.begin(), it1->second.end(), it2->second.begin(), it2->second.end()) != it1->second.end();
-        else
-        {
-            unsigned short model = 0;
-            std::vector<unsigned short>* vec = NULL;
-            if (it1 != pedVars->originalModels.end())
-            {
-                model = model2;
-                vec = &it1->second;
-            }
-            else if (it2 != pedVars->originalModels.end())
-            {
-                model = model1;
-                vec = &it2->second;
-            }
-            else
-                return false;
-
-            if (std::find(vec->begin(), vec->end(), model) != vec->end())
-                return true;
-        }
-    }
-
-    return false;
 }
 
 bool isPedVisible(CPed* ped) 
@@ -186,6 +128,16 @@ bool isPedVisible(CPed* ped)
     );
 
     return !hitSomething || hitEntity == ped;
+}
+
+bool canPedDriveVeh(int pedModel, int vehModel)
+{
+    CPedModelInfo* pedInfo = reinterpret_cast<CPedModelInfo*>(CModelInfo::GetModelInfo(pedModel));
+    CVehicleModelInfo *vehInfo = reinterpret_cast<CVehicleModelInfo*>(CModelInfo::GetModelInfo(vehModel));
+    if (pedInfo && vehInfo)
+        return (pedInfo->m_nCarsCanDriveMask & (1U << vehInfo->m_nVehicleClass));
+
+    return false;
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -278,7 +230,7 @@ void PedVariations::LoadData()
                 if (auto it = j.second.find(modelIndex); it != j.second.end())
                     for (auto variation : it->second)
                         if (variation > 0 && variation != modelIndex)
-                            vectorPushUnique(pedVars->originalModels[variation], modelIndex);
+                            pedVars->originalModels.insert({ variation, modelIndex });
 
             for (unsigned int j = 0; j < 9; j++)
             {
@@ -355,17 +307,9 @@ void PedVariations::LoadData()
     std::sort(pedVars->mergeInteriors.begin(), pedVars->mergeInteriors.end());
     std::sort(pedVars->disableOnMission.begin(), pedVars->disableOnMission.end());
 
-    for (auto& it : pedVars->originalModels)
-        std::sort(it.second.begin(), it.second.end());
-
     pedOptions->recursiveVariations = dataFile.ReadBoolean("Settings", "RecursiveVariations", true);
     pedOptions->useParentVoices = dataFile.ReadBoolean("Settings", "UseParentVoices", false);
-    pedOptions->enableCloneRemover = dataFile.ReadBoolean("Settings", "EnableCloneRemover", false);
-    pedOptions->cloneRemoverDisableOnMission = dataFile.ReadBoolean("Settings", "CloneRemoverDisableOnMission", true);
-    pedOptions->cloneRemoverVehicleOccupants = dataFile.ReadBoolean("Settings", "CloneRemoverIncludeVehicleOccupants", false);
-    pedOptions->cloneRemoverSpawnDelay = dataFile.ReadInteger("Settings", "CloneRemoverSpawnDelay", 3);
-    pedOptions->cloneRemoverIncludeVariations = dataFile.ReadLine("Settings", "CloneRemoverIncludeVariations", READ_PEDS);
-    pedOptions->cloneRemoverExclusions = dataFile.ReadLine("Settings", "CloneRemoverExcludeModels", READ_PEDS);
+    pedOptions->improveCivilianVariety = dataFile.ReadBoolean("Settings", "ImproveCivilianVariety", false);
 
     Log::Write("\n");
 }
@@ -452,110 +396,28 @@ void PedVariations::Process()
         return !IsPedPointerValid(it.first);
     });
 
-    if (pedOptions->enableCloneRemover)
-    {
-        auto it = pedVars->pedTimeSinceSpawn.begin();
-        while (it != pedVars->pedTimeSinceSpawn.end())
-            if (std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - it->second).count() < pedOptions->cloneRemoverSpawnDelay)
-                it++;
-            else
-                it = pedVars->pedTimeSinceSpawn.erase(it);
-    }
-
     ProcessDrugDealers();
 
     while (!pedVars->stack.empty())
     {
-        const auto deletePed = [](CPed* ped)
-        {
-            if (IsPedPointerValid(ped))
-            {
-                if (ped->m_pIntelligence)
-                    ped->m_pIntelligence->FlushImmediately(false);
-                CTheScripts__RemoveThisPed(ped);
-            }
-        };
-
-        const auto pedDeleteVeh = [deletePed](CPed* ped)
-        {
-            CVehicle* veh = ped->m_pVehicle;
-            if (ped->m_pVehicle->m_pDriver == ped)
-            {
-                deletePed(veh->m_pDriver);
-                for (auto& i : veh->m_apPassengers)
-                    deletePed(i);
-                DestroyVehicleAndDriverAndPassengers(veh);
-            }
-            else
-                for (auto& i : veh->m_apPassengers)
-                    deletePed(i);
-        };
-
-        const auto isCarEmpty = [](CVehicle* veh)
-        {
-            if (IsPedPointerValid(veh->m_pDriver))
-                return false;
-            else
-                for (auto &i : veh->m_apPassengers)
-                    if (IsPedPointerValid(i))
-                        return false;
-
-            return true;
-        };
-
         CPed* ped = pedVars->stack.top();
         pedVars->stack.pop();
 
-        if (isValidPedId(ped->m_nModelIndex))
+        if (ped && isValidPedId(ped->m_nModelIndex))
         {
             auto it = pedVars->currentVariations.find(ped->m_nModelIndex);
             if (it != pedVars->currentVariations.end() && !it->second.empty() && it->second[0] == 0 && ped->m_nCreatedBy != 2) //Delete models with a 0 id variation
             {
-                if (IsVehiclePointerValid(ped->m_pVehicle))
-                    pedDeleteVeh(ped);
+                CVehicle* veh = ped->m_pVehicle;
+                if (IsVehiclePointerValid(veh) && veh->m_nCreatedBy != eVehicleCreatedBy::MISSION_VEHICLE && veh->m_pDriver == ped)
+                    veh->bFadeOut = true;
                 else
-                    deletePed(ped);
-            }
-        }
-
-        if (IsPedPointerValid(ped) && pedOptions->enableCloneRemover && ped->m_nCreatedBy != 2 && CPools::ms_pPedPool && 
-            !(pedOptions->cloneRemoverDisableOnMission && CTheScripts__IsPlayerOnAMission())) //Clone remover
-        {
-            bool includeVariations = vectorHasId(pedOptions->cloneRemoverIncludeVariations, ped->m_nModelIndex);
-            if (pedDelaySpawn(ped->m_nModelIndex, includeVariations)) //Delete peds spawned before SpawnTime
-            {
-                if (!IsVehiclePointerValid(ped->m_pVehicle))
-                    deletePed(ped);
-                else if (pedOptions->cloneRemoverVehicleOccupants && !isCarEmpty(ped->m_pVehicle) && ped->m_pVehicle->m_nVehicleSubClass != eVehicleType::VEHICLE_TRAIN)
-                    pedDeleteVeh(ped);
-            }
-
-            if (IsPedPointerValid(ped) && !vectorHasId(pedOptions->cloneRemoverExclusions, ped->m_nModelIndex) && ped->m_nModelIndex > 0) //Delete peds already spawned
-            {
-                if (includeVariations)
                 {
-                    auto it = pedVars->originalModels.find(ped->m_nModelIndex);
-                    if (it != pedVars->originalModels.end())
-                        for (auto& i : it->second)
-                            pedVars->pedTimeSinceSpawn.insert({ i, std::chrono::steady_clock::now() });
-                }
-                else
-                    pedVars->pedTimeSinceSpawn.insert({ ped->m_nModelIndex, std::chrono::steady_clock::now() });
+                    if (ped->m_pIntelligence)
+                        ped->m_pIntelligence->FlushImmediately(false);
+                    CTheScripts__RemoveThisPed(ped);
 
-                for (CPed* ped2 : CPools::ms_pPedPool)
-                    if (IsPedPointerValid(ped2) && ped2 != ped && compareOriginalModels(ped->m_nModelIndex, ped2->m_nModelIndex, includeVariations))
-                    {
-                        if (!IsVehiclePointerValid(ped->m_pVehicle))
-                        {
-                            deletePed(ped);
-                            break;
-                        }
-                        else if (pedOptions->cloneRemoverVehicleOccupants && !isCarEmpty(ped->m_pVehicle) && ped->m_pVehicle->m_nVehicleSubClass != eVehicleType::VEHICLE_TRAIN)
-                        {
-                            pedDeleteVeh(ped);
-                            break;
-                        }
-                    }
+                }
             }
         }
     }
@@ -580,15 +442,14 @@ void PedVariations::ProcessDrugDealers(bool reset)
          
             for (auto& it : pedVars->originalModels)
                 if (it.first > 300)
-                    for (auto originalModel : it.second)
-                        if (originalModel == 28 || originalModel == 29 || originalModel == 30 || originalModel == 254)
-                        {
-                            Log::Write(addedIDs.contains(it.first) ? "%uSP\n" : "%u\n", it.first);
-                            auto findByScmIndex = CExternalScripts__findByScmIndex(CTheScripts__StreamedScripts, 19);
+                    if (it.second == 28 || it.second == 29 || it.second == 30 || it.second == 254)
+                    {
+                        Log::Write(addedIDs.contains(it.first) ? "%uSP\n" : "%u\n", it.first);
+                        auto findByScmIndex = CExternalScripts__findByScmIndex(CTheScripts__StreamedScripts, 19);
 
-                            CScriptsForBrains__AddNewScriptBrain(CTheScripts__ScriptsForBrains, findByScmIndex, (short)it.first, 100, 0, -1, -1.0);
-                            break;
-                        }
+                        CScriptsForBrains__AddNewScriptBrain(CTheScripts__ScriptsForBrains, findByScmIndex, (short)it.first, 100, 0, -1, -1.0);
+                        break;
+                    }
 
             Log::Write("\n");
             dealersFrames = 11;
@@ -723,15 +584,9 @@ void PedVariations::DrawDebugInfo(float fontSize)
 
         std::string nextLine;
        
-        if (auto it = pedVars->originalModels.find(ped->m_nModelIndex); it != pedVars->originalModels.end() && !it->second.empty())
+        if (auto it = pedVars->originalModels.find(ped->m_nModelIndex); it != pedVars->originalModels.end())
         {
-            nextLine = "Parent models:";
-            for (auto parentModel : it->second)
-            {
-                char buffer[20];
-                std::snprintf(buffer, sizeof(buffer), " %u", parentModel);
-                nextLine += buffer;
-            }
+            nextLine = "Parent model: " + it->second;
             CFont::PrintString(screenPos.x, screenPos.y + lineOffset, nextLine.c_str());
             lineOffset += lineOffset;
         }
@@ -893,8 +748,8 @@ char __fastcall CAEPedSpeechAudioEntity__InitialiseHooked(CAEPedSpeechAudioEntit
         if (useParentVoice)
         {
             auto it = pedVars->originalModels.find(ped->m_nModelIndex);
-            if (it != pedVars->originalModels.end() && !it->second.empty())
-                newModel = it->second[0];
+            if (it != pedVars->originalModels.end())
+                newModel = it->second;
         }
 
         auto it = pedVars->voices.find(ped->m_nModelIndex);
@@ -954,6 +809,83 @@ void* __fastcall CreateNextSubTaskHooked(CTaskComplexCopInCar* _this, void*, CPe
     return callMethodOriginalAndReturn<void*, address>(_this, ped);
 }
 
+template <std::uintptr_t address>
+bool __cdecl PedIsAcceptableInCurrentZoneHooked(int a1)
+{
+    for (CPed *ped : CPools::ms_pPedPool)
+    {
+        if (ped && ped->m_nModelIndex == a1)
+            return false;
+    }
+
+    return callOriginalAndReturn<bool, address>(a1);
+}
+
+template <std::uintptr_t address>
+int __cdecl ChooseCivilianOccupationForVehicleHooked(char male, CVehicle* a2)
+{
+    auto vehDrivers = { 9, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 27, 28, 29, 30, 31, 32, 33, 34, 
+                        35, 36, 37, 40, 43, 44, 45, 46, 47, 48, 50, 55, 56, 57, 58, 59, 60, 66, 67, 68, 69, 71, 72, 73, 
+                        82, 83, 84, 90, 91, 93, 94, 95, 97, 98, 100, 101, 128, 131, 132, 133, 134, 135, 136, 137, 138, 
+                        139, 140, 141, 142, 143, 147, 148, 150, 151, 153, 154, 157, 158, 159, 160, 161, 162, 168, 169, 
+                        170, 181, 182, 183, 184, 185, 186, 187, 188, 198, 199, 200, 201, 202, 206, 210, 211, 212, 213, 
+                        215, 216, 217, 219, 220, 221, 222, 223, 224, 225, 226, 227, 228, 229, 233, 234, 235, 236, 240, 
+                        241, 242, 247, 248, 250, 255, 260, 261, 262, 263, 264 };
+
+
+    auto modelid = callOriginalAndReturn<int, address>(male, a2);
+    CVehicleModelInfo* vehModelInfo = (CVehicleModelInfo*)CModelInfo::GetModelInfo(a2->m_nModelIndex);
+
+    if (modelid < 9)
+    {
+        if (a2->m_nModelIndex == 481)
+        {
+            loadModel(23, PRIORITY_REQUEST, true);
+            return 23;
+        }
+        else
+            for (int i : vehDrivers)
+            {
+                auto mInfo = CModelInfo::GetModelInfo(i);
+                if (mInfo && vehModelInfo && mInfo->GetModelType() == MODEL_INFO_PED && CPopCycle::IsPedAppropriateForCurrentZone(i) && (canPedDriveVeh(i, a2->m_nModelIndex) || a2->m_nModelIndex == 422))
+                {
+                    bool modelExists = false;
+                    for (CPed* ped : CPools::ms_pPedPool)
+                        if (ped && ped->m_nModelIndex == i)
+                        {
+                            modelExists = true;
+                            break;
+                        }
+
+                    if (!modelExists)
+                    {
+                        loadModel(i, PRIORITY_REQUEST, true);
+                        return i;
+                    }
+                }
+            }
+    }
+   
+    std::pair<unsigned short, unsigned short> leastUsedModel = { 7, 65535 };
+
+    for (auto i : vehDrivers)
+    {
+        auto mInfo = CModelInfo::GetModelInfo(i);
+        if (mInfo && mInfo->m_nRefCount > 0 && mInfo->m_nRefCount <= leastUsedModel.second)
+        {
+            if (mInfo->m_nRefCount == leastUsedModel.second && rand<bool>())
+                leastUsedModel.first = static_cast<unsigned short>(i);
+            else
+            {
+                leastUsedModel.first = static_cast<unsigned short>(i);
+                leastUsedModel.second = mInfo->m_nRefCount;
+            }
+        }
+    }
+
+    return leastUsedModel.first;
+}
+
 void PedVariations::InstallHooks(bool enableSpecialPeds)
 {
     if (enableSpecialPeds)
@@ -1009,4 +941,11 @@ void PedVariations::InstallHooks(bool enableSpecialPeds)
     hookCall(0x5E8052, CPhysicalHooked<0x5E8052>, "CPhysical::CPhysical"); //CPed::CPed
 
     hookCall(0x870A4C, CreateNextSubTaskHooked<0x870A4C>, "CTaskComplexCopInCar::CreateNextSubTask", true);
+
+    if (pedOptions->improveCivilianVariety)
+    {
+        hookCall(0x61302B, PedIsAcceptableInCurrentZoneHooked<0x61302B>, "CPopCycle::PedIsAcceptableInCurrentZone"); //CPopulation::ChooseCivilianOccupation
+        hookCall(0x61330D, PedIsAcceptableInCurrentZoneHooked<0x61330D>, "CPopCycle::PedIsAcceptableInCurrentZone"); //CPopulation::ChooseCivilianOccupation
+        hookCall(0x613B32, ChooseCivilianOccupationForVehicleHooked<0x613B32>, "CPopulation::ChooseCivilianOccupationForVehicle"); //CPopulation::AddPedInCar
+    }
 }

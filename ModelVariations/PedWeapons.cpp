@@ -32,17 +32,16 @@ int lastMissionLoaded = -1;
 
 bool isIdValidForWatcher(unsigned short id)
 {
-    for (auto i : PedVariations::GetVariationOriginalModels(id))
-        switch (i)  //NOTE: drug dealers only work with WEAPONFORCE because they are initially unarmed
-        {
-            case 28:
-            case 29:
-            case 30:
-            case 163:
-            case 164:
-            case 254:
-                return true;
-        }
+    switch (PedVariations::GetVariationOriginalModel(id))  //NOTE: drug dealers only work with WEAPONFORCE because they are initially unarmed
+    {
+        case 28:
+        case 29:
+        case 30:
+        case 163:
+        case 164:
+        case 254:
+            return true;
+    }
     return false;
 }
 

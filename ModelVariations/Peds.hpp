@@ -35,5 +35,5 @@ public:
 	//Call hooks
 	static void InstallHooks(bool enableSpecialPeds);
 
-	static std::vector<unsigned short> GetVariationOriginalModels(const int modelIndex);
+	static unsigned short GetVariationOriginalModel(const int modelIndex);
 };

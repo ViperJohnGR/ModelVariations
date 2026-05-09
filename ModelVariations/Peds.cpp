@@ -516,8 +516,8 @@ void PedVariations::UpdateVariations()
 
         if (weatherState.isWindy)
         {
-            auto it = pedVars->weatherFoggy.find(modelid);
-            if (it != pedVars->weatherFoggy.end() && !it->second.empty())
+            auto it = pedVars->weatherWindy.find(modelid);
+            if (it != pedVars->weatherWindy.end() && !it->second.empty())
                 vectorfilterVector(pedVars->currentVariations[modelid], it->second);
         }
 
@@ -586,7 +586,7 @@ void PedVariations::DrawDebugInfo(float fontSize)
        
         if (auto it = pedVars->originalModels.find(ped->m_nModelIndex); it != pedVars->originalModels.end())
         {
-            nextLine = "Parent model: " + it->second;
+            nextLine = "Parent model: " + std::to_string(it->second);
             CFont::PrintString(screenPos.x, screenPos.y + lineOffset, nextLine.c_str());
             lineOffset += lineOffset;
         }

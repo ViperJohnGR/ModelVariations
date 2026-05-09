@@ -118,8 +118,6 @@ std::vector<unsigned short> DataReader::ReadLine(const std::string& section, con
 		if (trimmed.empty())
 			continue;
 
-		auto token = trimmed.c_str();
-
 		int multiplier = 1;
 
 		size_t start = trimmed.find('{');
@@ -130,6 +128,11 @@ std::vector<unsigned short> DataReader::ReadLine(const std::string& section, con
 			if (n > 0 && n < 10000)
 				multiplier = n;
 		}
+
+		if (start != std::string::npos)
+			trimmed.erase(start);
+
+		auto token = trimmed.c_str();
 
 		if (parseType == READ_NUMS)
 		{

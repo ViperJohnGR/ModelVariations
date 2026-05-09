@@ -2762,7 +2762,6 @@ void VehicleVariations::InstallHooks()
         hookASM(0x4F8213, "66 81 7A 22 C9 01",                cmpWordPtrRegModel<REG_EDX, 0x4F8219, 0x1C9>, "CAEVehicleAudioEntity::GetFreqForPlayerEngineSound");
         hookASM(0x4F8972, "66 81 79 22 C9 01",                cmpWordPtrRegModel<REG_ECX, 0x4F8978, 0x1C9>, "CAEVehicleAudioEntity::ProcessVehicleFlatTyre");
         hookASM(0x570F72, "66 81 79 22 C9 01",                cmpWordPtrRegModel<REG_ECX, 0x570F78, 0x1C9>, "CPlayerInfo::Process");
-        hookASM(0x6D19A3, "3D C9 01 00 00",                   cmpReg32Model<REG_EAX, 0x6D19A8, 0x1C9>, "CVehicle::RemoveDriver");
         hookASM(0x431A99, "66 81 7E 22 E4 01",                cmpWordPtrRegModel<REG_ESI, 0x431A9F, 0x1E4>, "CCarCtrl::GenerateOneRandomCar");
         hookASM(0x6F13A4, "66 81 7E 22 E4 01",                cmpWordPtrRegModel<REG_ESI, 0x6F13AA, 0x1E4>, "CBoat::PreRender");
         hookASM(0x6F2B7E, "66 81 7E 22 E4 01",                cmpWordPtrRegModel<REG_ESI, 0x6F2B84, 0x1E4>, "CBoat::CBoat");
@@ -2843,6 +2842,7 @@ void VehicleVariations::InstallHooks()
         hookASM(0x6D7E11, "66 81 7E 22 0B 02",                cmpWordPtrRegModel<REG_ESI, 0x6D7E17, 0x20B>, "CVehicle::InflictDamage");
         hookASM(0x6AC0E2, "BF 20 02 00 00",                   patch6AC0E2, "CAutomobile::PreRender");
         hookASM(0x41F2A2, "BF 0B 02 00 00",                   patch41F2A2, "CCarAI::UpdateCarAI");
+        hookASM(0x6D199F, "0F BF 47 22 3D C9 01 00 00",       movsxReg32WordPtrReg<REG_EAX, REG_EDI, 0x6D19A8, 5, 0x0001C93D, 0x90909000>, "CVehicle::RemoveDriver");
 
         hookCall(0x8711D0, BurstTyreHooked<0x8711D0>, "CAutomobile::BurstTyre", true);
 

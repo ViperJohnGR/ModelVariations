@@ -1611,7 +1611,13 @@ CPed* __cdecl AddPedHooked(unsigned int pedType, int modelIndex, CVector* posn, 
         model = getPedModelForCopType(modelIndex);
 
     if (model > -1 && CStreamingInfo::ms_pArrayBase[model].m_nLoadState != LOADSTATE_LOADED)
-        Log::Write("Error! Ped model %d is not loaded.\n", model);
+    {
+        Log::Write("Error! Ped model %d is not loaded. Loading now... ", model);
+        if (loadModel(model, PRIORITY_REQUEST, true) == LOADSTATE_LOADED)
+            Log::Write("OK\n", model);
+        else
+            Log::Write("FAILED\n", model);
+    }
 
     return callOriginalAndReturn<CPed*, address>(pedType, modelIndex, posn, unknown);
 }

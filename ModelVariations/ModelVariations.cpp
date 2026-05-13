@@ -12,12 +12,14 @@
 #include <plugin.h>
 #include <CEntryExit.h>
 #include <CEntryExitManager.h>
+#include <CFont.h>
 #include <CLoadedCarGroup.h>
 #include <CModelInfo.h>
 #include <CPedModelInfo.h>
 #include <CStreaming.h>
 #include <CTheZones.h>
 #include <CVector.h>
+#include <CWeather.h>
 
 #include <chrono>
 #include <map>
@@ -99,6 +101,8 @@ int debugKey = 0;
 
 //debugDrawOptions
 float debugDrawSize = 0.42f;
+float debugDrawX = 20.0f;
+float debugDrawY = 120.0f;
 
 std::set<std::uintptr_t> forceEnable;
 
@@ -590,6 +594,45 @@ void CPopCycle__DisplayHooked()
     if ((drawDebugText == 1 || drawDebugText == 3) && enablePeds)
         PedVariations::DrawDebugInfo(debugDrawSize);
 
+    if (drawDebugText > 0)
+    {
+        float fontSize = debugDrawSize*2.0f;
+
+        float fontSizew = RsGlobal.maximumHeight / 640.0f * fontSize;
+        float fontSizeh = fontSizew * 2.2f;
+
+        CFont::SetFontStyle(FONT_SUBTITLES);
+        CFont::SetScale(fontSizew, fontSizeh);
+        CFont::SetColor(CRGBA(255, 255, 255, 255));
+        CFont::SetDropColor(CRGBA(0, 0, 0, 255));
+        CFont::SetEdge(1);
+        CFont::SetProportional(true);
+        CFont::SetBackground(false, false);
+        CFont::SetJustify(false);
+        CFont::SetOrientation(ALIGN_LEFT);
+
+        char text[64];
+
+        float x = SCREEN_COORD_LEFT(debugDrawX);
+        float y = SCREEN_COORD_TOP(debugDrawY);
+        float lineOffset = (RsGlobal.maximumHeight / 640.0f) * fontSize * 38.0f;
+
+        sprintf_s(text, sizeof(text), "Debug state: %d", drawDebugText);
+        CFont::PrintString(x, y, text);
+
+        sprintf_s(text, sizeof(text), "Rain: %.3f", CWeather::Rain);
+        CFont::PrintString(x, y + lineOffset, text);
+
+        sprintf_s(text, sizeof(text), "Sandstorm: %.3f", CWeather::Sandstorm);
+        CFont::PrintString(x, y + lineOffset * 2.0f, text);
+
+        sprintf_s(text, sizeof(text), "Foggyness: %.3f", CWeather::Foggyness);
+        CFont::PrintString(x, y + lineOffset * 3.0f, text);
+
+        sprintf_s(text, sizeof(text), "Wind: %.3f", CWeather::Wind);
+        CFont::PrintString(x, y + lineOffset * 4.0f, text);
+    }
+
     callOriginal<address>();
 }
 
@@ -933,6 +976,8 @@ public:
         enableLog = iniSettings.ReadBoolean("Settings", "EnableLog", false) && Log::Open("ModelVariations.log");
         logJumps = iniSettings.ReadBoolean("Settings", "LogJumps", false);
         debugDrawSize = iniSettings.ReadFloat("Settings", "DebugDrawSize", 0.28f);
+        debugDrawX = iniSettings.ReadFloat("Settings", "DebugDrawX", 20.0f);
+        debugDrawY = iniSettings.ReadFloat("Settings", "DebugDrawY", 120.0f);
 
         std::string checkForceEnabled = iniSettings.ReadString("Settings", "ForceEnable", "");
         if (!checkForceEnabled.empty())

@@ -102,7 +102,7 @@ int debugKey = 0;
 //debugDrawOptions
 float debugDrawSize = 0.42f;
 float debugDrawX = 20.0f;
-float debugDrawY = 120.0f;
+float debugDrawY = 180.0f;
 
 std::set<std::uintptr_t> forceEnable;
 
@@ -596,7 +596,9 @@ void CPopCycle__DisplayHooked()
 
     if (drawDebugText > 0)
     {
-        float fontSize = debugDrawSize*2.0f;
+        CPlayerPed* player = FindPlayerPed();
+
+        float fontSize = debugDrawSize*1.8f;
 
         float fontSizew = RsGlobal.maximumHeight / 640.0f * fontSize;
         float fontSizeh = fontSizew * 2.2f;
@@ -609,28 +611,31 @@ void CPopCycle__DisplayHooked()
         CFont::SetProportional(true);
         CFont::SetBackground(false, false);
         CFont::SetJustify(false);
-        CFont::SetOrientation(ALIGN_LEFT);
+        CFont::SetOrientation(ALIGN_RIGHT);
 
         char text[64];
 
-        float x = SCREEN_COORD_LEFT(debugDrawX);
+        float x = SCREEN_COORD_RIGHT(debugDrawX);
         float y = SCREEN_COORD_TOP(debugDrawY);
         float lineOffset = (RsGlobal.maximumHeight / 640.0f) * fontSize * 38.0f;
+        float offsetMultiplier = 1.0f;
 
-        sprintf_s(text, sizeof(text), "Debug state: %d", drawDebugText);
-        CFont::PrintString(x, y, text);
+        auto PrintDebugLine = [&](const char* format, auto&&... args)
+        {
+            sprintf_s(text, sizeof(text), format, std::forward<decltype(args)>(args)...);
 
-        sprintf_s(text, sizeof(text), "Rain: %.3f", CWeather::Rain);
-        CFont::PrintString(x, y + lineOffset, text);
+            CFont::PrintString(x, y + lineOffset * offsetMultiplier, text);
+            offsetMultiplier += 1.0f;
+        };
 
-        sprintf_s(text, sizeof(text), "Sandstorm: %.3f", CWeather::Sandstorm);
-        CFont::PrintString(x, y + lineOffset * 2.0f, text);
-
-        sprintf_s(text, sizeof(text), "Foggyness: %.3f", CWeather::Foggyness);
-        CFont::PrintString(x, y + lineOffset * 3.0f, text);
-
-        sprintf_s(text, sizeof(text), "Wind: %.3f", CWeather::Wind);
-        CFont::PrintString(x, y + lineOffset * 4.0f, text);
+        PrintDebugLine("Debug state: %d", drawDebugText);
+        PrintDebugLine("Current zone: %s", currentZone);
+        if (player && player->m_pEnex)
+            PrintDebugLine("Current interior: %s", player->m_pEnex);
+        PrintDebugLine("Rain: %.3f", CWeather::Rain);
+        PrintDebugLine("Sandstorm: %.3f", CWeather::Sandstorm);
+        PrintDebugLine("Foggyness: %.3f", CWeather::Foggyness);
+        PrintDebugLine("Wind: %.3f", CWeather::Wind);
     }
 
     callOriginal<address>();
@@ -977,7 +982,7 @@ public:
         logJumps = iniSettings.ReadBoolean("Settings", "LogJumps", false);
         debugDrawSize = iniSettings.ReadFloat("Settings", "DebugDrawSize", 0.28f);
         debugDrawX = iniSettings.ReadFloat("Settings", "DebugDrawX", 20.0f);
-        debugDrawY = iniSettings.ReadFloat("Settings", "DebugDrawY", 120.0f);
+        debugDrawY = iniSettings.ReadFloat("Settings", "DebugDrawY", 180.0f);
 
         std::string checkForceEnabled = iniSettings.ReadString("Settings", "ForceEnable", "");
         if (!checkForceEnabled.empty())

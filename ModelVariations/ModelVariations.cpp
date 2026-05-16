@@ -102,7 +102,7 @@ int debugKey = 0;
 //debugDrawOptions
 float debugDrawSize = 0.42f;
 float debugDrawX = 20.0f;
-float debugDrawY = 180.0f;
+float debugDrawY = 240.0f;
 
 std::set<std::uintptr_t> forceEnable;
 
@@ -589,9 +589,9 @@ char __fastcall TransitionFinishedHooked(CEntryExit* _this, void*, CPed* ped)
 template <std::uintptr_t address>
 void CPopCycle__DisplayHooked()
 {
-    if (drawDebugText > 1 && enableVehicles)
+    if (drawDebugText > 2 && enableVehicles)
         VehicleVariations::DrawDebugInfo(debugDrawSize);
-    if ((drawDebugText == 1 || drawDebugText == 3) && enablePeds)
+    if ((drawDebugText == 2 || drawDebugText == 4) && enablePeds)
         PedVariations::DrawDebugInfo(debugDrawSize);
 
     if (drawDebugText > 0)
@@ -628,14 +628,24 @@ void CPopCycle__DisplayHooked()
             offsetMultiplier += 1.0f;
         };
 
+        bool isRainy = CWeather__IsRainy();
+        bool isSandstorm = CWeather::Sandstorm > 0.29;
+        bool isFoggy = CWeather::Foggyness > 0.4;
+        bool isWindy = CWeather::Wind > 0.29;
+
         PrintDebugLine("Debug state: %d", drawDebugText);
+        PrintDebugLine("%d MB %d MB", CStreaming__ms_memoryUsed / 1024 / 1024, getMemoryUsage() / 1024 / 1024);
         PrintDebugLine("Current zone: %s", currentZone);
         if (player && player->m_pEnex)
             PrintDebugLine("Current interior: %s", player->m_pEnex);
-        PrintDebugLine("Rain: %.3f", CWeather::Rain);
-        PrintDebugLine("Sandstorm: %.3f", CWeather::Sandstorm);
-        PrintDebugLine("Foggyness: %.3f", CWeather::Foggyness);
-        PrintDebugLine("Wind: %.3f", CWeather::Wind);
+        if (CWeather::Rain > 0.001)
+            PrintDebugLine("%s: %.3f", isRainy ? "~y~Rain~s~" : "Rain", CWeather::Rain);
+        if (CWeather::Sandstorm > 0.001)
+            PrintDebugLine("%s: %.3f", isSandstorm ? "~y~Sandstorm~s~" : "Sandstorm", CWeather::Sandstorm);
+        if (CWeather::Foggyness > 0.001)
+            PrintDebugLine("%s: %.3f", isFoggy ? "~y~Foggyness~s~" : "Foggyness", CWeather::Foggyness);
+        if (CWeather::Wind > 0.001)
+            PrintDebugLine("%s: %.3f", isWindy ? "~y~Wind~s~" : "Wind", CWeather::Wind);
     }
 
     callOriginal<address>();
@@ -780,7 +790,7 @@ void __cdecl CGame__ProcessHooked()
         {
             keyDown = true;
             drawDebugText++;
-            if (drawDebugText > 3)
+            if (drawDebugText > 4)
                 drawDebugText = 0;
         }
     }
@@ -982,7 +992,7 @@ public:
         logJumps = iniSettings.ReadBoolean("Settings", "LogJumps", false);
         debugDrawSize = iniSettings.ReadFloat("Settings", "DebugDrawSize", 0.28f);
         debugDrawX = iniSettings.ReadFloat("Settings", "DebugDrawX", 20.0f);
-        debugDrawY = iniSettings.ReadFloat("Settings", "DebugDrawY", 180.0f);
+        debugDrawY = iniSettings.ReadFloat("Settings", "DebugDrawY", 240.0f);
 
         std::string checkForceEnabled = iniSettings.ReadString("Settings", "ForceEnable", "");
         if (!checkForceEnabled.empty())

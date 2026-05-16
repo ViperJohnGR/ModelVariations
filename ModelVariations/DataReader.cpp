@@ -48,11 +48,13 @@ void DataReader::Load(const char* filename)
 		else if (auto pos = line.find_first_of('='); pos < line.size())
 		{
 			key = trimString(line.substr(0, pos));
-			value = trimString(line.substr(pos+1));
+			value = trimString(line.substr(pos + 1));
+			std::vector<std::string> keys = splitString(key, ',');
 
-			if (!key.empty() && !value.empty())
+			if (!keys.empty() && !value.empty())
 				for (auto& s : sections)
-						data[s][key] = value;
+					for (auto &k : keys)
+						data[s][k] = value;
 		}
 	}
 }

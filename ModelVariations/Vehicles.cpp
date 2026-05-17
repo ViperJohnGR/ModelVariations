@@ -2796,7 +2796,7 @@ void VehicleVariations::InstallHooks()
         hookASM(0x6CF055, "66 81 7F 22 62 02",                cmpWordPtrRegModel<REG_EDI, 0x6CF05B, 0x262>, "CTrailer::ScanForTowLink");
         hookASM(0x6CFC41, "66 81 7E 22 62 02",                cmpWordPtrRegModel<REG_ESI, 0x6CFC47, 0x262>, "CTrailer::PreRender");
         hookASM(0x6D42FE, "8D 81 57 FE FF FF",                patch6D42FE, "CVehicle::GetPlaneGunsPosition");
-        hookASM(0x6AC730, "A1 10 B9 A9 00",                   patch6AC730, "CAutomobile::PreRender");
+        hookASM(0x6AC730, "A1",                               patch6AC730, "CAutomobile::PreRender");
         hookASM(0x6D474B, "8D 87 57 FE FF FF",                patch6D474B, "CVehicle::GetPlaneOrdnancePosition");
         hookASM(0x729B76U, isGameHOODLUM() ? "E9 18 D7 CD FF" : "BB 59 02 00 00", patch729B76, "CAutomobile::FireTruckControl");
         hookASM(0x6DD218, "BF CC 01 00 00",                   patch6DD218, "CVehicle::DoBoatSplashes");

@@ -8,6 +8,7 @@
 #include <CPedModelInfo.h>
 #include <CPhysical.h>
 #include <CPopulation.h>
+#include <CRunningScript.h>
 #include <CStreamingInfo.h>
 
 
@@ -70,6 +71,7 @@ inline void CStreaming__SetMissionDoesntRequireModel(int model) { getDynamicFunc
 
 inline bool CTheScripts__IsPlayerOnAMission() { return getDynamicFunction<bool, 0x571582, 0x464D50>(); }
 inline void CTheScripts__RemoveThisPed(void* ped) { getDynamicFunction<void, 0x409DE2, 0x486240>(ped); }
+#define CTheScripts__pActiveScripts getPointerFromAddress<CRunningScript>(0x468D76, 0xA8B42C)
 #define CTheScripts__ScriptsForBrains getPointerFromAddress<std::uintptr_t>(0x476D7D, 0xA90CF0)
 #define CTheScripts__StreamedScripts getPointerFromAddress<std::uintptr_t>(0x476D51, 0xA47B60)
 

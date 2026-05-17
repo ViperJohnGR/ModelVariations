@@ -16,6 +16,7 @@
 #include <CLoadedCarGroup.h>
 #include <CModelInfo.h>
 #include <CPedModelInfo.h>
+#include <CRunningScript.h>
 #include <CStreaming.h>
 #include <CTheZones.h>
 #include <CVector.h>
@@ -102,7 +103,7 @@ int debugKey = 0;
 //debugDrawOptions
 float debugDrawSize = 0.42f;
 float debugDrawX = 20.0f;
-float debugDrawY = 240.0f;
+float debugDrawY = 340.0f;
 
 std::set<std::uintptr_t> forceEnable;
 
@@ -635,6 +636,11 @@ void CPopCycle__DisplayHooked()
 
         PrintDebugLine("Debug state: %d", drawDebugText);
         PrintDebugLine("%d MB %d MB", CStreaming__ms_memoryUsed / 1024 / 1024, getMemoryUsage() / 1024 / 1024);
+        if (CTheScripts__IsPlayerOnAMission())
+            for (CRunningScript* script = CTheScripts__pActiveScripts; script; script = script->m_pNext)
+                if (script->m_bIsActive && script->m_bIsMission)
+                    PrintDebugLine("Mission: %s", script->m_szName);
+
         PrintDebugLine("Current zone: %s", currentZone);
         if (player && player->m_pEnex)
             PrintDebugLine("Current interior: %s", player->m_pEnex);
@@ -992,7 +998,7 @@ public:
         logJumps = iniSettings.ReadBoolean("Settings", "LogJumps", false);
         debugDrawSize = iniSettings.ReadFloat("Settings", "DebugDrawSize", 0.28f);
         debugDrawX = iniSettings.ReadFloat("Settings", "DebugDrawX", 20.0f);
-        debugDrawY = iniSettings.ReadFloat("Settings", "DebugDrawY", 240.0f);
+        debugDrawY = iniSettings.ReadFloat("Settings", "DebugDrawY", 340.0f);
 
         std::string checkForceEnabled = iniSettings.ReadString("Settings", "ForceEnable", "");
         if (!checkForceEnabled.empty())

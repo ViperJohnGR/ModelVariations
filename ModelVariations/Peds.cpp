@@ -830,7 +830,7 @@ int __cdecl ChooseCivilianOccupationForVehicleHooked(char male, CVehicle* a2)
                         139, 140, 141, 142, 143, 147, 148, 150, 151, 153, 154, 157, 158, 159, 160, 161, 162, 168, 169, 
                         170, 181, 182, 183, 184, 185, 186, 187, 188, 198, 199, 200, 201, 202, 206, 210, 211, 212, 213, 
                         215, 216, 217, 219, 220, 221, 222, 223, 224, 225, 226, 227, 228, 229, 233, 234, 235, 236, 240, 
-                        241, 242, 247, 248, 250, 255, 260, 261, 262, 263, 264 };
+                        241, 242, 247, 248, 250, 255, 260, 261, 262, 263 };
 
 
     auto modelid = callOriginalAndReturn<int, address>(male, a2);
@@ -838,32 +838,31 @@ int __cdecl ChooseCivilianOccupationForVehicleHooked(char male, CVehicle* a2)
 
     if (modelid < 9)
     {
-        if (a2->m_nModelIndex == 481)
-        {
-            loadModel(23, PRIORITY_REQUEST, true);
-            return 23;
-        }
-        else
-            for (int i : vehDrivers)
-            {
-                auto mInfo = CModelInfo::GetModelInfo(i);
-                if (mInfo && vehModelInfo && mInfo->GetModelType() == MODEL_INFO_PED && CPopCycle::IsPedAppropriateForCurrentZone(i) && (canPedDriveVeh(i, a2->m_nModelIndex) || a2->m_nModelIndex == 422))
-                {
-                    bool modelExists = false;
-                    for (CPed* ped : CPools::ms_pPedPool)
-                        if (ped && ped->m_nModelIndex == i)
-                        {
-                            modelExists = true;
-                            break;
-                        }
+        auto specificDriver = CPopulation::FindSpecificDriverModelForCar_ToUse(a2->m_nModelIndex);
+        if (specificDriver > 0 && loadModel(specificDriver, PRIORITY_REQUEST, true) == LOADSTATE_LOADED)
+            return specificDriver;
 
-                    if (!modelExists)
+
+        for (int i : vehDrivers)
+        {
+            auto mInfo = CModelInfo::GetModelInfo(i);
+            if (mInfo && vehModelInfo && mInfo->GetModelType() == MODEL_INFO_PED && CPopCycle::IsPedAppropriateForCurrentZone(i) && (canPedDriveVeh(i, a2->m_nModelIndex) || a2->m_nModelIndex == 422))
+            {
+                bool modelExists = false;
+                for (CPed* ped : CPools::ms_pPedPool)
+                    if (ped && ped->m_nModelIndex == i)
                     {
-                        loadModel(i, PRIORITY_REQUEST, true);
-                        return i;
+                        modelExists = true;
+                        break;
                     }
+
+                if (!modelExists)
+                {
+                    loadModel(i, PRIORITY_REQUEST, true);
+                    return i;
                 }
             }
+        }
     }
    
     std::pair<unsigned short, unsigned short> leastUsedModel = { 7, 65535 };

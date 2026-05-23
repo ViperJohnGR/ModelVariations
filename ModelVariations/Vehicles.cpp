@@ -221,28 +221,46 @@ bool isVehicleVisible(CVehicle* veh)
     return false;
 }
 
-bool isAnotherVehicleBehind(CVehicle* veh, const std::vector<CVehicle*> &exceptions)
+bool isAnotherVehicleBehind(CVehicle* veh, const std::vector<CVehicle*>& exceptions)
 {
-    auto isPointInPolygon = [](const std::vector<CVector2D>& polygon, const CVector2D& point)
-    {
-        //https://www.geeksforgeeks.org/point-in-polygon-in-cpp/
-        unsigned int n = polygon.size();
-        bool inside = false;
+    auto polygonsOverlap = [](const std::vector<CVector2D>& a, const std::vector<CVector2D>& b)
+        {
+            auto separated = [](const std::vector<CVector2D>& p, const std::vector<CVector2D>& q)
+                {
+                    for (unsigned int i = 0; i < p.size(); i++) {
+                        const CVector2D& p1 = p[i];
+                        const CVector2D& p2 = p[(i + 1) % p.size()];
 
-        for (unsigned int i = 0; i < n; i++) {
-            CVector2D p1 = polygon[i];
-            CVector2D p2 = polygon[(i + 1) % n];
+                        CVector2D axis = { -(p2.y - p1.y), p2.x - p1.x };
 
-            bool yCheck = (p1.y > point.y) != (p2.y > point.y);
+                        auto dot = [&](const CVector2D& v) {
+                            return v.x * axis.x + v.y * axis.y;
+                            };
 
-            double xIntersect = (p2.x - p1.x) * (point.y - p1.y) / (p2.y - p1.y) + (double)p1.x;
+                        float minP = dot(p[0]), maxP = minP;
+                        float minQ = dot(q[0]), maxQ = minQ;
 
-            if (yCheck && point.x < xIntersect)
-                inside = !inside;
-        }
+                        for (const auto& v : p) {
+                            float d = dot(v);
+                            minP = std::min(minP, d);
+                            maxP = std::max(maxP, d);
+                        }
 
-        return inside;
-    };
+                        for (const auto& v : q) {
+                            float d = dot(v);
+                            minQ = std::min(minQ, d);
+                            maxQ = std::max(maxQ, d);
+                        }
+
+                        if (maxP < minQ || maxQ < minP)
+                            return true;
+                    }
+
+                    return false;
+                };
+
+            return !separated(a, b) && !separated(b, a);
+        };
 
     auto* mInfo = CModelInfo::GetModelInfo(veh->m_nModelIndex);
     if (mInfo == NULL || mInfo->m_pColModel == NULL)
@@ -256,7 +274,12 @@ bool isAnotherVehicleBehind(CVehicle* veh, const std::vector<CVehicle*> &excepti
     CVector top_right = veh->TransformFromObjectSpace({ vmax.x, vmin.y, 0.0f });
     CVector top_left = veh->TransformFromObjectSpace({ vmin.x, vmin.y, 0.0f });
 
-    std::vector<CVector2D> polygon = { { top_left.x, top_left.y }, { top_right.x, top_right.y }, { bottom_right.x, bottom_right.y }, { bottom_left.x, bottom_left.y } };
+    std::vector<CVector2D> polygon = {
+        { top_left.x, top_left.y },
+        { top_right.x, top_right.y },
+        { bottom_right.x, bottom_right.y },
+        { bottom_left.x, bottom_left.y }
+    };
 
     for (const auto& i : CPools::ms_pVehiclePool)
     {
@@ -279,19 +302,17 @@ bool isAnotherVehicleBehind(CVehicle* veh, const std::vector<CVehicle*> &excepti
             CVector vminTarget = mInfoTarget->m_pColModel->m_boundBox.m_vecMin;
             CVector vmaxTarget = mInfoTarget->m_pColModel->m_boundBox.m_vecMax;
 
-            CVector2D top_rightTarget = convert3DVectorTo2D(i->TransformFromObjectSpace({ vmaxTarget.x, vminTarget.y, 0.0f }));
-            CVector2D top_leftTarget = convert3DVectorTo2D(i->TransformFromObjectSpace({ vminTarget.x, vminTarget.y, 0.0f }));
-            CVector2D bottom_leftTarget = convert3DVectorTo2D(i->TransformFromObjectSpace({ vminTarget.x, vminTarget.y * 2.0f, 0.0f }));
-            CVector2D bottom_rightTarget = convert3DVectorTo2D(i->TransformFromObjectSpace({ vmaxTarget.x, vminTarget.y * 2.0f, 0.0f }));
+            std::vector<CVector2D> targetPolygon = {
+                convert3DVectorTo2D(i->TransformFromObjectSpace({ vminTarget.x, vmaxTarget.y, 0.0f })),
+                convert3DVectorTo2D(i->TransformFromObjectSpace({ vmaxTarget.x, vmaxTarget.y, 0.0f })),
+                convert3DVectorTo2D(i->TransformFromObjectSpace({ vmaxTarget.x, vminTarget.y, 0.0f })),
+                convert3DVectorTo2D(i->TransformFromObjectSpace({ vminTarget.x, vminTarget.y, 0.0f }))
+            };
 
-            CVector2D top_centerTarget = convert3DVectorTo2D(i->TransformFromObjectSpace({ 0.0, vminTarget.y, 0.0f }));
-
-            if (isPointInPolygon(polygon, top_rightTarget) || isPointInPolygon(polygon, top_leftTarget) || isPointInPolygon(polygon, top_centerTarget) ||
-                isPointInPolygon(polygon, bottom_leftTarget) || isPointInPolygon(polygon, bottom_rightTarget))
+            if (polygonsOverlap(polygon, targetPolygon))
                 return true;
         }
     }
-
 
     return false;
 }

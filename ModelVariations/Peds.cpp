@@ -91,9 +91,6 @@ bool isValidPedId(int id)
 
 unsigned short PedVariations::GetVariationOriginalModel(const int modelIndex)
 {
-    if (modelIndex < 300)
-        return { (unsigned short)modelIndex };
-
     auto it = pedVars->originalModels.find((unsigned short)modelIndex);
     if (it != pedVars->originalModels.end())
         return it->second;

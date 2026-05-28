@@ -200,7 +200,7 @@ inline std::string fileToString(const std::string &filename)
         return str;
     }
 
-    str.resize(filesize+1);
+    str.resize(filesize);
     DWORD lpNumberOfBytesRead = 0;
     ReadFile(hFile, &str[0], filesize, &lpNumberOfBytesRead, NULL);
 

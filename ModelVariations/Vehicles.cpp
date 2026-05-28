@@ -1476,7 +1476,22 @@ int __cdecl GetDefaultCopModelHooked()
     if (roadblockDriver > 0)
         return roadblockDriver;
 
-    return callOriginalAndReturn<int, address>();
+    auto retVal = callOriginalAndReturn<int, address>();
+
+    if (retVal == 0)
+    {
+        Log::Write("GetDefaultCopModel: Error! Returned model is 0. Trying to get model manually... ");
+        int model = CStreaming::ms_aDefaultCopModel[CTheZones::m_CurrLevel];
+        if (model > 0 && model < 65535)
+        {
+            Log::Write("OK. Using model %d\n", model);
+            return model;
+        }
+        Log::Write("FAILED. Using MALE01\n");
+        return 7;
+    }
+
+    return retVal;
 }
 
 template <std::uintptr_t address>

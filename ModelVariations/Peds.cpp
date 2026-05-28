@@ -569,7 +569,7 @@ void PedVariations::DrawDebugInfo(float fontSize)
         if (!CSprite::CalcScreenCoors(worldPos, &screenPos, &w, &h, true, true))
             continue;
 
-        float lineOffset = (RsGlobal.maximumHeight / 640.0f) * fontSize * 35.0f;
+        const float lineOffset = (RsGlobal.maximumHeight / 640.0f) * fontSize * 35.0f;
         char line1[32] = {};
         char line2[64] = {};
         std::snprintf(line1, sizeof(line1), "0x%08X", reinterpret_cast<std::uintptr_t>(ped));
@@ -577,23 +577,20 @@ void PedVariations::DrawDebugInfo(float fontSize)
 
         CFont::PrintString(screenPos.x, screenPos.y, line1);
         CFont::PrintString(screenPos.x, screenPos.y + lineOffset, line2);
-        lineOffset += lineOffset;
 
         std::string nextLine;
        
         if (auto it = pedVars->originalModels.find(ped->m_nModelIndex); it != pedVars->originalModels.end())
         {
             nextLine = "Parent model: " + std::to_string(it->second);
-            CFont::PrintString(screenPos.x, screenPos.y + lineOffset, nextLine.c_str());
-            lineOffset += lineOffset;
+            CFont::PrintString(screenPos.x, screenPos.y + lineOffset * 2.0f, nextLine.c_str());
         }
 
         if (auto it = changedVoices.find(ped); it != changedVoices.end())
         {
             char buffer[32] = {};
             std::snprintf(buffer, sizeof(buffer), "Voice: %u", it->second);
-            CFont::PrintString(screenPos.x, screenPos.y + lineOffset, buffer);
-            lineOffset += lineOffset;
+            CFont::PrintString(screenPos.x, screenPos.y + lineOffset * 3.0f, buffer);
         }
     }
 }
@@ -688,10 +685,10 @@ void __fastcall SetModelIndexHooked(CEntity* _this, void*, const int index)
         return callMethodOriginal<address>(_this, index);
 
     auto it = pedVars->currentVariations.find((unsigned short)index);
-    if (isValidPedId(_this->m_nModelIndex) && it != pedVars->currentVariations.end() && !it->second.empty())
+    if (isValidPedId(index) && it != pedVars->currentVariations.end() && !it->second.empty())
     {
         const unsigned short newModel = vectorGetRandom(it->second);
-        if (newModel > 0 && newModel != _this->m_nModelIndex)
+        if (newModel > 0 && newModel != index)
         {
             if (auto loadState = loadModel(newModel, PRIORITY_REQUEST, true); loadState != LOADSTATE_LOADED)
             {

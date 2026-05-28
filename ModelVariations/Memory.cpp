@@ -47,6 +47,9 @@ size_t getMemoryUsage()
 
 bool isAddressValid(std::uintptr_t address)
 {
+    if (address == 0)
+        return false;
+
     MEMORY_BASIC_INFORMATION mbi;
     if (VirtualQuery(reinterpret_cast<void*>(address), &mbi, sizeof(mbi)) == 0)
         return false; // Query failed

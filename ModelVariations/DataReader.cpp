@@ -1,6 +1,7 @@
 #include "DataReader.hpp"
 #include "FuncUtil.hpp"
 #include "Log.hpp"
+#include "Memory.hpp"
 #include "SA.hpp"
 
 #include <CModelInfo.h>
@@ -54,7 +55,7 @@ void DataReader::Load(const char* filename)
 			if (!keys.empty() && !value.empty())
 				for (auto& s : sections)
 					for (auto &k : keys)
-						data[s][k] = value;
+						data[s][trimString(k)] = value;
 		}
 	}
 }
@@ -108,9 +109,8 @@ std::vector<unsigned short> DataReader::ReadLine(const std::string& section, con
 	std::vector<unsigned short> retVector;
 
 	std::string iniString = this->ReadString(section, key, "");
-	CPedModelInfo* mInfo7 = (CPedModelInfo*)CModelInfo::GetModelInfo(7);
 
-	if (iniString.empty() || mInfo7 == NULL)
+	if (iniString.empty() || CModelInfo::GetModelInfo(7) == NULL)
 		return retVector;
 
 	for (std::string &str : splitString(iniString, ','))
@@ -224,12 +224,14 @@ std::vector<unsigned short> DataReader::ReadLine(const std::string& section, con
 			}
 			else if (parseType == READ_PEDS && !(token[0] >= '0' && token[0] <= '9') && !reachedMaxCapacity)
 			{
+				CPedModelInfo* mInfo7 = reinterpret_cast<CPedModelInfo*>(CModelInfo::GetModelInfo(7));
+
 				if (CStreaming__ms_pExtraObjectsDir->m_nNumEntries >= CStreaming__ms_pExtraObjectsDir->m_nCapacity)
 				{
 					reachedMaxCapacity = true;
 					Log::Write("WARNING: The number of extra object directory entries is has reached max capacity (%u)\n", CStreaming__ms_pExtraObjectsDir->m_nCapacity);
 				}
-				else if (CStreaming__ms_pExtraObjectsDir->FindItem(token) && mInfo7)
+				else if (CStreaming__ms_pExtraObjectsDir->FindItem(token) && isAddressValid(mInfo7))
 				{
 					static unsigned short startID = 1326;
 					for (unsigned short i = startID; i < maxPedID; i++)

@@ -10,12 +10,12 @@
 #include "Vehicles.hpp"
 
 #include <plugin.h>
+#include <CCollisionData.h>
 #include <CEntryExit.h>
 #include <CEntryExitManager.h>
 #include <CFont.h>
 #include <CLoadedCarGroup.h>
 #include <CModelInfo.h>
-#include <CPedModelInfo.h>
 #include <CRunningScript.h>
 #include <CStreaming.h>
 #include <CTheZones.h>
@@ -665,11 +665,38 @@ int __cdecl FileLoaderLoadObject(const char* a1)
     {
         int modelId = -1;
         char modelName[50] = {};
-        if (sscanf(a1, "%d %s", &modelId, modelName) == 2 && modelId > 0 && strnlen(modelName, 49) > 0)
+        if (sscanf(a1, "%d %49s", &modelId, modelName) == 2 && modelId > 0 && strnlen(modelName, 49) > 0)
             modelNames[(unsigned short)modelId] = modelName;
     }
 
     return callOriginalAndReturn<unsigned int, address>(a1);
+}
+
+template <std::uintptr_t address>
+void __cdecl RemoveTrianglePlanesHooked(CCollisionData* a2)
+{
+    if (!isAddressValid(a2))
+        return;
+
+    if (!isAddressValid(a2->m_pTrianglePlanes))
+        return;
+
+    auto* link = a2->GetLinkPtr();
+
+    if (!isAddressValid(link))
+        return;
+
+    if (!isAddressValid(link->prev) || !isAddressValid(link->next))
+        return;
+
+    if (link->prev->next != link)
+        return;
+
+    if (link->next->prev != link)
+        return;
+
+    
+    callOriginal<address>(a2);
 }
 
 template <std::uintptr_t address>
@@ -1100,6 +1127,14 @@ public:
         hookCall(0x5B8644, FileLoaderLoadObject<0x5B8644>, "CFileLoader::LoadAnimatedClumpObject");
         hookCall(0x5B864C, FileLoaderLoadObject<0x5B864C>, "CFileLoader::LoadVehicleObject");
         hookCall(0x5B8654, FileLoaderLoadObject<0x5B8654>, "CFileLoader::LoadPedObject");
+
+        hookCall(0x40F716, RemoveTrianglePlanesHooked<0x40F716>, "CCollision::RemoveTrianglePlanes"); //CColModel::~CColModel
+        hookCall(0x40F9F1, RemoveTrianglePlanesHooked<0x40F9F1>, "CCollision::RemoveTrianglePlanes"); //CColModel::RemoveCollisionVolumes
+        //hookCall(0x4185AF, RemoveTrianglePlanesHooked<0x4185AF>, "CCollision::RemoveTrianglePlanes"); //CCollision::RemoveTrianglePlanes
+        if (isGameHOODLUM())
+            hookCall(0x156FB57, RemoveTrianglePlanesHooked<0x156FB57>, "CCollision::RemoveTrianglePlanes"); //CCollisionData::RemoveCollisionVolumes
+        else
+            hookCall(0x40F0E7, RemoveTrianglePlanesHooked<0x40F0E7>, "CCollision::RemoveTrianglePlanes"); //CCollisionData::RemoveCollisionVolumes
 
         hookCall(0x53E981, CGame__ProcessHooked<0x53E981>, "CGame::Process"); //Idle
         hookCall(0x748E6B, CGame__ShutdownHooked<0x748E6B>, "CGame::Shutdown"); //WinMain

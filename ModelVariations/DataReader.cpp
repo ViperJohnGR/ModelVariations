@@ -75,8 +75,8 @@ float DataReader::ReadFloat(const std::string& section, const std::string& key, 
 	if (auto itSection = data.find(section); itSection != data.end())
 		if (auto itKey = itSection->second.find(key); itKey != itSection->second.end())
 		{
-			float value = floatFromString(itKey->second.c_str());
-			if (!std::isnan(value))
+			float value;
+			if (floatFromString(itKey->second.c_str(), value))
 				return value;
 		}
 

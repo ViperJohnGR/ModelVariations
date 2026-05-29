@@ -457,6 +457,21 @@ void initialize()
 
     Log::Write("\n");
 
+    uint32_t* streamingMemoryOriginal = (uint32_t*)0x5B8E6A;
+    uint32_t streamingMemoryNew = 0;
+    uIntFromString(iniSettings.ReadString("Limits", "StreamingMemory", ""), streamingMemoryNew);
+    streamingMemoryNew = streamingMemoryNew * 1024 * 1024;
+    if (streamingMemoryNew > 52428800)
+    {
+        if (*streamingMemoryOriginal == 52428800)
+        {
+            injector::WriteMemory<uint32_t>(streamingMemoryOriginal, streamingMemoryNew, true);
+            Log::Write("Streaming memory was set to %u\n", streamingMemoryNew);
+        }
+        else
+            Log::Write("Streaming memory not increased. Current streaming memory is %d", *streamingMemoryOriginal);
+    }
+
     modInitialized = true;
 }
 

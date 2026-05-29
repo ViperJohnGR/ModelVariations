@@ -310,16 +310,36 @@ inline int fast_atoi(const char* str, bool returnAtInvalidChar = false)
     return negative ? -val : val;
 }
 
-inline float floatFromString(const std::string &str)
+inline bool floatFromString(const std::string& str, float& x)
 {
-    float out;
+    float value{};
 
     const char* first = str.data();
-    const char* last = first + str.size();
+    const char* last = str.data() + str.size();
 
-    auto [ptr, ec] = std::from_chars(first, last, out, std::chars_format::general);
+    auto [ptr, ec] = std::from_chars(first, last, value, std::chars_format::general);
 
-    return (ec == std::errc{}) ? out : std::numeric_limits<float>::quiet_NaN();
+    if (ec != std::errc{} || ptr != last)
+        return false;
+
+    x = value;
+    return true;
+}
+
+inline bool uIntFromString(const std::string& str, unsigned int& x)
+{
+    unsigned int value{};
+
+    const char* first = str.data();
+    const char* last = str.data() + str.size();
+
+    auto [ptr, ec] = std::from_chars(first, last, value, 10);
+
+    if (ec != std::errc{} || ptr != last)
+        return false;
+
+    x = value;
+    return true;
 }
 
 

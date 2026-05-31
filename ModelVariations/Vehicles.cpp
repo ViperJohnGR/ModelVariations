@@ -1283,7 +1283,14 @@ int __cdecl ChooseModelHooked(int* a1)
     if (model < 400)
         return model;
 
-    return getRandomVariation((unsigned short)model);
+    auto retVal = getRandomVariation((unsigned short)model);
+    if (CStreamingInfo::ms_pArrayBase[retVal].m_nLoadState != LOADSTATE_LOADED)
+    {
+        Log::Write("ChooseModelHooked Error! Model %d is not loaded.\n", retVal);
+        return -1;
+    }
+
+    return retVal;
 }
 
 template <std::uintptr_t address>
@@ -1294,7 +1301,14 @@ int __cdecl ChoosePoliceCarModelHooked(int a1)
     if (model < 427 || model > 601)
         return model;
 
-    return getRandomVariation((unsigned short)model);
+    auto retVal = getRandomVariation((unsigned short)model);
+    if (CStreamingInfo::ms_pArrayBase[retVal].m_nLoadState != LOADSTATE_LOADED)
+    {
+        Log::Write("ChooseModelHooked Error! Model %d is not loaded.\n", retVal);
+        return -1;
+    }
+
+    return retVal;
 }
 
 template <std::uintptr_t address>

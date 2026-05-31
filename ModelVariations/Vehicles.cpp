@@ -67,6 +67,7 @@ int occupantModelIndex = -1;
 std::map<CVehicle*, std::vector<CVehicle*>> spawnedTrailers;  //<veh, <trailers>>
 
 std::uintptr_t x6ABCBE_Destination = 0;
+std::uintptr_t x4306A1_Destination = 0;
 
 uint32_t asmNextInstr[4] = {};
 uint16_t asmModel16 = 0;
@@ -1696,6 +1697,13 @@ void __cdecl PossiblyRemoveVehicleHooked(CVehicle* car)
     if (car == NULL)
         return;
 
+    if (car->m_pRwObject == NULL)
+    {
+        Log::Write("PossiblyRemoveVehicleHooked Error! Vehicle 0x%X (%u) has NULL m_pRwObject. Returning.\n", car, car->m_nModelIndex);
+        return;
+        //TODO: check if veh was on trailers list
+    }
+
     std::vector<CVehicle*> trailersToCheck;    
 
     for (auto it = spawnedTrailers.begin(); it != spawnedTrailers.end(); )
@@ -1784,6 +1792,9 @@ int __fastcall GetVehicleAppearanceHooked(CVehicle* veh)
 template <std::uintptr_t address>
 int __fastcall CreateInstanceHooked(CVehicleModelInfo* _this)
 {
+    //if (strncmp(currentZone, "GAN2", 4) == 0)
+        //return 0;
+    //TODO: Maybe copy all vehStructs when available then use that when the game can't load it
     if (_this->m_pVehicleStruct == NULL)
     {
         int index = 0;
@@ -1831,6 +1842,12 @@ template <std::uintptr_t address>
 CVehicle* __cdecl GetNewVehicleDependingOnCarModelHooked(int modelIndex, int createdBy)
 {
     CVehicle* veh = callOriginalAndReturn<CVehicle*, address>(modelIndex, createdBy);
+    if (veh && veh->m_pRwObject == NULL)
+    {
+        Log::Write("GetNewVehicleDependingOnCarModelHooked Error! Vehicle 0x%X (%u) has NULL m_pRwObject. Returning NULL.\n", veh, veh->m_nModelIndex);
+        return NULL;
+    }
+    
     processTuning(veh);
     return veh;
 }
@@ -1882,6 +1899,27 @@ void __cdecl CWorld__AddHooked(CVehicle* a1)
         tuneParkedCar = false;
     }
     callOriginal<address>(a1);
+}
+
+template <std::uintptr_t address>
+void* __cdecl FillFrameArrayHooked(void* clump, void* data)
+{
+    if (!isAddressValid(clump) || !isAddressValid(data))
+        return NULL;
+
+    return callOriginalAndReturn<void*, address>(clump, data);
+}
+
+template <std::uintptr_t address>
+void __fastcall SetupSuspensionLinesHooked(CVehicle* _this)
+{
+    if (_this == NULL)
+        return;
+
+    if (_this->m_pRwObject == NULL)
+        return;
+
+    callMethodOriginal<address>(_this);
 }
 
 //changeScriptedCars
@@ -2097,6 +2135,24 @@ void __fastcall ProcessControlInputsHooked(CPlane* _this, void*, unsigned char a
 /////////////////////////////////////////////  ASM HOOKS  /////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
+void __declspec(naked) patch4306A1()
+{
+    __asm {
+        call x4306A1_Destination
+        test eax, eax
+        jz pointerIsNull
+
+        mov ecx, 0x4306A6
+        jmp ecx
+
+pointerIsNull:
+        add esp, 8
+        mov ecx, 0x431F30
+        jmp ecx
+    }
+}
+
+
 void __declspec(naked) patch6A155C()
 {
     __asm {
@@ -2107,7 +2163,7 @@ void __declspec(naked) patch6A155C()
         je isCement
         cmp ax, 0x220
 
-    isCement:
+isCement:
         mov ax, word ptr [edi + 0x22]
         mov asmJmpAddress, 0x6A1564
         jmp asmJmpAddress
@@ -2600,6 +2656,25 @@ void VehicleVariations::InstallHooks()
 
     //Tuning for parked cars
     hookCall(0x6F3C8C, CWorld__AddHooked<0x6F3C8C>, "CWorld::Add"); //CCarGenerator::DoInternalProcessing
+
+    x4306A1_Destination = injector::GetBranchDestination(0x4306A1).as_int();
+    if (isAddressValid(x4306A1_Destination))
+        hookASM(0x4306A1, "", patch4306A1, "CCarCtrl::GenerateOneRandomCar");
+
+    hookCall(0x6A078A, FillFrameArrayHooked<0x6A078A>, "CClumpModelInfo::FillFrameArray"); //CAutomobile::SetupModelNodes
+    hookCall(0x6A65B4, FillFrameArrayHooked<0x6A65B4>, "CClumpModelInfo::FillFrameArray"); //CAutomobile::SetModelIndex
+    hookCall(0x6B0B92, FillFrameArrayHooked<0x6B0B92>, "CClumpModelInfo::FillFrameArray"); //CAutomobile::CAutomobile
+    hookCall(0x6B597A, FillFrameArrayHooked<0x6B597A>, "CClumpModelInfo::FillFrameArray"); //CBike::SetupModelNodes
+    hookCall(0x6B8994, FillFrameArrayHooked<0x6B8994>, "CClumpModelInfo::FillFrameArray"); //CBike::SetModelIndex
+    hookCall(0x6BF50D, FillFrameArrayHooked<0x6BF50D>, "CClumpModelInfo::FillFrameArray"); //CBike::CBike
+    hookCall(0x6F01BA, FillFrameArrayHooked<0x6F01BA>, "CClumpModelInfo::FillFrameArray"); //CBoat::SetupModelNodes
+    hookCall(0x6F2A1D, FillFrameArrayHooked<0x6F2A1D>, "CClumpModelInfo::FillFrameArray"); //CBoat::CBoat
+    hookCall(0x6F5554, FillFrameArrayHooked<0x6F5554>, "CClumpModelInfo::FillFrameArray"); //CTrain::SetModelIndex
+    hookCall(0x6F60D1, FillFrameArrayHooked<0x6F60D1>, "CClumpModelInfo::FillFrameArray"); //CTrain::CTrain
+
+    hookCall(0x6BF768, SetupSuspensionLinesHooked<0x6BF768>, "CBike::SetupSuspensionLines"); //CBike::CBike
+
+    //TODO: CAutomobile::SetupSuspensionLines
 
     if (vehOptions->changeScriptedCars)
         hookCall(0x467B01, CreateCarForScriptHooked<0x467B01>, "CCarCtrl::CreateCarForScript"); //00A5: CREATE_CAR

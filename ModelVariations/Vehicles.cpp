@@ -122,6 +122,7 @@ struct tVehOptions {
     bool changeScriptedCars = false;
     bool disablePayAndSpray = false;
     bool enableLights = false;
+    bool enableTrailerLights = false;
     bool enableSideMissions = false;
     bool enableSiren = false;
     bool enableSpecialFeatures = false;
@@ -543,6 +544,7 @@ void VehicleVariations::LoadData()
     vehOptions->changeScriptedCars    = dataFile.ReadBoolean("Settings", "ChangeScriptedCars", false);
     vehOptions->disablePayAndSpray    = dataFile.ReadBoolean("Settings", "DisablePayAndSpray", false);
     vehOptions->enableLights          = dataFile.ReadBoolean("Settings", "EnableLights", false);
+    vehOptions->enableTrailerLights   = dataFile.ReadBoolean("Settings", "EnableTrailerBrakeLights", false);
     vehOptions->enableSideMissions    = dataFile.ReadBoolean("Settings", "EnableSideMissions", false);
     vehOptions->enableSiren           = dataFile.ReadBoolean("Settings", "EnableSiren", false);
     vehOptions->enableSpecialFeatures = dataFile.ReadBoolean("Settings", "EnableSpecialFeatures", false);
@@ -2028,6 +2030,32 @@ void __fastcall AddDamagedVehicleParticlesHooked(CVehicle* veh)
         veh->m_nModelIndex = (unsigned short)getVariationOriginalModel(veh->m_nModelIndex);
 }
 
+//enableTrailerLights
+template <std::uintptr_t address>
+void __fastcall DoVehicleLightsHooked(CAutomobile* _this, void*, void* m, int a3)
+{
+    if (_this == NULL || !CModelInfo::IsTrailerModel(_this->m_nModelIndex) || getVariationOriginalModel(_this->m_nModelIndex) == 610)
+    {
+        callMethodOriginal<address>(_this, m, a3);
+        return;
+    }
+
+    CPed* driverOriginal = _this->m_pDriver;
+    float brakeOriginal = _this->m_fBreakPedal;
+
+    if (IsVehiclePointerValid(_this->m_pTractor) && _this->m_pTractor->m_fBreakPedal > 0.0f)
+    {
+        _this->bEngineOn = true;
+        if (_this->m_fBreakPedal < 0.1)
+            _this->m_fBreakPedal = 0.1;
+        _this->m_pDriver = FindPlayerPed();
+    }
+
+    callMethodOriginal<address>(_this, m, a3);
+    _this->m_pDriver = driverOriginal;
+    _this->m_fBreakPedal = brakeOriginal;
+}
+
 //disablePayAndSpray
 template <std::uintptr_t address>
 bool __cdecl IsCarSprayableHooked(CVehicle* veh)
@@ -2707,6 +2735,9 @@ void VehicleVariations::InstallHooks()
 
         hookCall(0x6AB34B, AddDamagedVehicleParticlesHooked<0x6AB34B>, "CVehicle::AddDamagedVehicleParticles"); //CAutomobile::PreRender
     }
+
+    if (vehOptions->enableTrailerLights)
+        hookCall(0x6ABCB9, DoVehicleLightsHooked<0x6ABCB9>, "CVehicle::DoVehicleLights"); //CAutomobile::PreRender
 
     if (vehOptions->disablePayAndSpray)
         hookCall(0x44AC75, IsCarSprayableHooked<0x44AC75>, "CGarages::IsCarSprayable"); //CGarage::Update

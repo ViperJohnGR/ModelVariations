@@ -10,6 +10,7 @@
 #include <CPopulation.h>
 #include <CRunningScript.h>
 #include <CStreamingInfo.h>
+#include <CWorld.h>
 
 
 template <typename Ret, std::uintptr_t address, std::uintptr_t fallback, typename C, typename... Args>
@@ -89,6 +90,20 @@ inline short CVehicleModelInfo__CLinkedUpgradeList__FindOtherUpgrade(uint32_t* _
 #define ScriptParams (reinterpret_cast<int*>(0xA43C78))
 
 
+inline std::string getLoadStateString(unsigned char loadState)
+{
+    switch (loadState)
+    {
+    case LOADSTATE_NOT_LOADED: return "LOADSTATE_NOT_LOADED";
+    case LOADSTATE_LOADED: return "LOADSTATE_LOADED";
+    case LOADSTATE_Requested: return "LOADSTATE_REQUESTED";
+    case LOADSTATE_Channeled: return "LOADSTATE_CHANNELED";
+    case LOADSTATE_Finishing: return "LOADSTATE_FINISHING";
+    };
+
+    return std::to_string(loadState);
+}
+
 inline unsigned char loadModel(int model, int streamingFlags, bool loadImmediately)
 {
     if (model < 1)
@@ -104,16 +119,32 @@ inline unsigned char loadModel(int model, int streamingFlags, bool loadImmediate
     return CStreamingInfo::ms_pArrayBase[modelIndex].m_nLoadState;
 }
 
-inline std::string getLoadStateString(unsigned char loadState)
+inline void destroyPed(CPed* ped)
 {
-    switch (loadState)
-    {
-        case LOADSTATE_NOT_LOADED: return "LOADSTATE_NOT_LOADED";
-        case LOADSTATE_LOADED: return "LOADSTATE_LOADED";
-        case LOADSTATE_Requested: return "LOADSTATE_REQUESTED";
-        case LOADSTATE_Channeled: return "LOADSTATE_CHANNELED";
-        case LOADSTATE_Finishing: return "LOADSTATE_FINISHING";
-    };
+    if (!IsPedPointerValid(ped))
+        return;
 
-    return std::to_string(loadState);
+    if (ped->m_pIntelligence)
+        ped->m_pIntelligence->FlushImmediately(false);
+
+    if (ped->m_nCreatedBy == 2)
+        CTheScripts__RemoveThisPed(ped);
+    else
+        CPopulation::RemovePed(ped);
+}
+
+inline void destroyVehicleAndOccupants(CVehicle* veh)
+{
+    if (!IsVehiclePointerValid(veh))
+        return;
+
+    if (IsPedPointerValid(veh->m_pDriver))
+        destroyPed(veh->m_pDriver);
+
+    for (int i = 0; i < 8; i++)
+        if (IsPedPointerValid(veh->m_apPassengers[i]))
+            destroyPed(veh->m_apPassengers[i]);
+
+    CWorld::Remove(veh);
+    delete veh;
 }

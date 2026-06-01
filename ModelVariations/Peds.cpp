@@ -409,12 +409,7 @@ void PedVariations::Process()
                 if (IsVehiclePointerValid(veh) && veh->m_nCreatedBy != eVehicleCreatedBy::MISSION_VEHICLE && veh->m_pDriver == ped)
                     veh->bFadeOut = true;
                 else
-                {
-                    if (ped->m_pIntelligence)
-                        ped->m_pIntelligence->FlushImmediately(false);
-                    CTheScripts__RemoveThisPed(ped);
-
-                }
+                    destroyPed(ped);
             }
         }
     }

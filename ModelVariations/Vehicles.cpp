@@ -931,10 +931,10 @@ void VehicleVariations::Process()
                 if (trailerAttached)
                     for (auto trailer : it->second)
                         if (IsVehiclePointerValid(trailer))
-                            if (trailer->m_pTractor && (isAnotherVehicleBehind(trailer, it->second) || veh->GetHasCollidedWithAnyObject() || CPhysical__TestCollision(trailer, false)))
+                            if (trailer->m_pTractor && (isAnotherVehicleBehind(veh, it->second) || isAnotherVehicleBehind(trailer, it->second) || CPhysical__TestCollision(trailer, false)))
                             {
                                 for (auto& j : it->second)
-                                    DestroyVehicleAndDriverAndPassengers(j);
+                                    destroyVehicleAndOccupants(j);
 
                                 it->second.clear();
                                 break;
@@ -960,7 +960,7 @@ void VehicleVariations::Process()
                 {
                     for (auto trailer : it->second)
                         if (IsVehiclePointerValid(trailer))
-                            DestroyVehicleAndDriverAndPassengers(trailer);
+                            destroyVehicleAndOccupants(trailer);
 
                     it->second.clear();
                 }
@@ -1034,7 +1034,7 @@ void VehicleVariations::Process()
                 if (!i.second.empty() && i.second[0] == veh && veh->m_pTractor && isAnotherVehicleBehind(veh, i.second))
                 {
                     for (auto& j : i.second)
-                        DestroyVehicleAndDriverAndPassengers(j);
+                        destroyVehicleAndOccupants(j);
 
                     i.second.clear();
                     break;
@@ -1702,8 +1702,9 @@ void __cdecl PossiblyRemoveVehicleHooked(CVehicle* car)
     if (car->m_pRwObject == NULL)
     {
         Log::Write("PossiblyRemoveVehicleHooked Error! Vehicle 0x%X (%u) has NULL m_pRwObject. Returning.\n", car, car->m_nModelIndex);
+        spawnedTrailers.erase(car);
+
         return;
-        //TODO: check if veh was on trailers list
     }
 
     std::vector<CVehicle*> trailersToCheck;    
@@ -1744,7 +1745,7 @@ void __cdecl PossiblyRemoveVehicleHooked(CVehicle* car)
             for (auto& trailer : trailersToCheck)
             {
                 if (trailer->m_pTractor)
-                    trailer->bFadeOut = 1;
+                    trailer->bFadeOut = true;
                 else if ((CTimer::m_snTimeInMilliseconds - trailer->m_nCreationTime) > 1500)
                     break;
             }
@@ -1881,7 +1882,7 @@ void __cdecl CWorld__RemoveHooked(CEntity* entity)
         {
             for (auto trailer : it->second)
                 if (IsVehiclePointerValid(trailer) && getDistanceFromVeh(truck, trailer) < 22.0f)
-                    DestroyVehicleAndDriverAndPassengers(trailer);
+                    destroyVehicleAndOccupants(trailer);
 
             spawnedTrailers.erase(it);
         }
@@ -2063,7 +2064,7 @@ void __fastcall DoVehicleLightsHooked(CAutomobile* _this, void*, void* m, int a3
     {
         _this->bEngineOn = true;
         if (_this->m_fBreakPedal < 0.1)
-            _this->m_fBreakPedal = 0.1;
+            _this->m_fBreakPedal = 0.1f;
         _this->m_pDriver = FindPlayerPed();
     }
 

@@ -1794,8 +1794,6 @@ int __fastcall GetVehicleAppearanceHooked(CVehicle* veh)
 template <std::uintptr_t address>
 int __fastcall CreateInstanceHooked(CVehicleModelInfo* _this)
 {
-    //if (strncmp(currentZone, "GAN2", 4) == 0)
-        //return 0;
     //TODO: Maybe copy all vehStructs when available then use that when the game can't load it
     if (_this->m_pVehicleStruct == NULL)
     {
@@ -1922,6 +1920,24 @@ void __fastcall SetupSuspensionLinesHooked(CVehicle* _this)
         return;
 
     callMethodOriginal<address>(_this);
+}
+
+template <std::uintptr_t address>
+void __fastcall UpdateClumpAlphaHooked(CVehicle* _this)
+{
+    if (!isAddressValid(_this) || !isAddressValid(_this->m_pRwObject))
+        return;
+
+    callMethodOriginal<address>(_this);
+}
+
+template <std::uintptr_t address>
+void __cdecl SetClumpAlphaHooked(void* a1, void* a2)
+{
+    if (!isAddressValid(a1) || !isAddressValid(a2))
+        return;
+
+    callOriginal<address>(a1, a2);
 }
 
 //changeScriptedCars
@@ -2701,6 +2717,12 @@ void VehicleVariations::InstallHooks()
     hookCall(0x6F60D1, FillFrameArrayHooked<0x6F60D1>, "CClumpModelInfo::FillFrameArray"); //CTrain::CTrain
 
     hookCall(0x6BF768, SetupSuspensionLinesHooked<0x6BF768>, "CBike::SetupSuspensionLines"); //CBike::CBike
+
+    hookCall(0x6B19F2, UpdateClumpAlphaHooked<0x6B19F2>, "CVehicle::UpdateClumpAlpha"); //CAutomobile::ProcessControl
+    hookCall(0x6B92F5, UpdateClumpAlphaHooked<0x6B92F5>, "CVehicle::UpdateClumpAlpha"); //CBike::ProcessControl
+    hookCall(0x6F185D, UpdateClumpAlphaHooked<0x6F185D>, "CVehicle::UpdateClumpAlpha"); //CBoat::ProcessControl
+
+    hookCall(0x6F3DF2, SetClumpAlphaHooked<0x6F3DF2>, "CVisibilityPlugins::SetClumpAlpha"); //CCarGenerator::DoInternalProcessing
 
     //TODO: CAutomobile::SetupSuspensionLines
 

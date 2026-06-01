@@ -702,19 +702,20 @@ void __cdecl RemoveTrianglePlanesHooked(CCollisionData* a2)
     auto* link = a2->GetLinkPtr();
 
     if (!isAddressValid(link))
+    {
+        a2->m_pTrianglePlanes = NULL;
         return;
+    }
 
     if (!isAddressValid(link->prev) || !isAddressValid(link->next))
     {
-        link->prev = NULL;
-        link->next = NULL;
+        a2->m_pTrianglePlanes = NULL;
         return;
     }
 
     if (link->prev->next != link || link->next->prev != link)
     {
-        link->prev = NULL;
-        link->next = NULL;
+        a2->m_pTrianglePlanes = NULL;
         return;
     }
 

@@ -1344,7 +1344,17 @@ CAutomobile* __fastcall CAutomobileHooked(CAutomobile* automobile, void*, int mo
 template <std::uintptr_t address>
 int __fastcall PickRandomCarHooked(CLoadedCarGroup* cargrp, void*, char a2, char a3) //for random parked cars
 {
-    return (cargrp == NULL) ? -1 : getRandomVariation(callMethodOriginalAndReturn<int, address>(cargrp, a2, a3), true);
+    if (cargrp == NULL)
+        return -1;
+
+    int variation = getRandomVariation(callMethodOriginalAndReturn<int, address>(cargrp, a2, a3), true);
+    if (CStreamingInfo::ms_pArrayBase[variation].m_nLoadState != LOADSTATE_LOADED)
+    {
+        Log::Write("PickRandomCarHooked Error! Model %d is not loaded.\n", variation);
+        return -1;
+    }
+
+    return variation;
 }
 
 template <std::uintptr_t address>
@@ -1795,7 +1805,6 @@ int __fastcall GetVehicleAppearanceHooked(CVehicle* veh)
 template <std::uintptr_t address>
 int __fastcall CreateInstanceHooked(CVehicleModelInfo* _this)
 {
-    //TODO: Maybe copy all vehStructs when available then use that when the game can't load it
     if (_this->m_pVehicleStruct == NULL)
     {
         int index = 0;
@@ -2724,8 +2733,6 @@ void VehicleVariations::InstallHooks()
     hookCall(0x6F185D, UpdateClumpAlphaHooked<0x6F185D>, "CVehicle::UpdateClumpAlpha"); //CBoat::ProcessControl
 
     hookCall(0x6F3DF2, SetClumpAlphaHooked<0x6F3DF2>, "CVisibilityPlugins::SetClumpAlpha"); //CCarGenerator::DoInternalProcessing
-
-    //TODO: CAutomobile::SetupSuspensionLines
 
     if (vehOptions->changeScriptedCars)
         hookCall(0x467B01, CreateCarForScriptHooked<0x467B01>, "CCarCtrl::CreateCarForScript"); //00A5: CREATE_CAR

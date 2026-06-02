@@ -1374,9 +1374,33 @@ void __fastcall DoInternalProcessingHooked(CCarGenerator* park) //for non-random
 
     if (vehOptions->changeCarGenerators)
     {
+        auto originalModel = park->m_nModelId;
         if (!vectorHasId(vehOptions->carGenExclude, park->m_nModelId))
             park->m_nModelId = (short)getRandomVariation(park->m_nModelId, true);
-        callMethodOriginal<address>(park);
+
+        if (park->m_nModelId != originalModel && originalModel == 588)
+        {
+            auto hotdogAddresses = { /*0x6F361E,*/ 0x6F3649, 0x6F3CAD };
+            for (auto hdAddress : hotdogAddresses)
+                if (auto value = injector::ReadMemory<uint16_t>(hdAddress, true); value != 588)
+                {
+                    Log::LogModifiedAddress(hdAddress, "Modified address detected: 0x%08X is %u\n", hdAddress, value);
+                    callMethodOriginal<address>(park);
+                    return;
+                }
+
+            loadModel(168, PRIORITY_REQUEST, true);
+            for (auto hdAddress : hotdogAddresses)
+                WriteMemory<uint16_t>(hdAddress, park->m_nModelId);
+
+            callMethodOriginal<address>(park);
+
+            for (auto hdAddress : hotdogAddresses)
+                WriteMemory<uint16_t>(hdAddress, 588);
+        }
+        else
+            callMethodOriginal<address>(park);
+
         return;
     }
 

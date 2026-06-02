@@ -59,7 +59,6 @@ std::unique_ptr<tPedVars> pedVars(new tPedVars);
 
 
 struct tPedOptions {
-    bool recursiveVariations = true;
     bool useParentVoices = false;
     bool improveCivilianVariety = false;
 };
@@ -304,7 +303,6 @@ void PedVariations::LoadData()
     std::sort(pedVars->mergeInteriors.begin(), pedVars->mergeInteriors.end());
     std::sort(pedVars->disableOnMission.begin(), pedVars->disableOnMission.end());
 
-    pedOptions->recursiveVariations = dataFile.ReadBoolean("Settings", "RecursiveVariations", true);
     pedOptions->useParentVoices = dataFile.ReadBoolean("Settings", "UseParentVoices", false);
     pedOptions->improveCivilianVariety = dataFile.ReadBoolean("Settings", "ImproveCivilianVariety", false);
 
@@ -690,11 +688,8 @@ void __fastcall SetModelIndexHooked(CEntity* _this, void*, const int index)
                 Log::Write("Error loading ped model %d (%s) %s. Using original model %d.\n", newModel, modelNames.contains(newModel) ? modelNames[newModel].c_str() : "", getLoadStateString(loadState).c_str(), index);
                 return callMethodOriginal<address>(_this, index);
             }
-
-            if (pedOptions->recursiveVariations)
-                _this->SetModelIndex(newModel);
-            else 
-                callMethodOriginal<address>(_this, newModel);
+                    
+            callMethodOriginal<address>(_this, newModel);
 
             if (!vectorHasId(pedVars->dontInheritBehaviourModels, index))
                 _this->m_nModelIndex = (unsigned short)index;

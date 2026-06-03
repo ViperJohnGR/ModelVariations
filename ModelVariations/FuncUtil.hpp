@@ -69,7 +69,7 @@ inline std::string hashFile(const HANDLE& hFile, DWORD filesize = 0)
     if (filesize == 0)
         filesize = GetFileSize(hFile, NULL);
 
-    if (filesize != INVALID_FILE_SIZE)
+    if (filesize != INVALID_FILE_SIZE && filesize > 0)
     {
         DWORD lpNumberOfBytesRead = 0;
         BCRYPT_ALG_HANDLE hProvider = NULL;
@@ -93,6 +93,8 @@ inline std::string hashFile(const HANDLE& hFile, DWORD filesize = 0)
                 }
     }
 
+    if (hashString.size() > 64)
+        hashString.resize(64);
     return hashString;
 }
 
@@ -194,7 +196,7 @@ inline std::string fileToString(const std::string &filename)
         return str;
 
     auto filesize = GetFileSize(hFile, NULL);
-    if (filesize == INVALID_FILE_SIZE)
+    if (filesize == INVALID_FILE_SIZE || filesize == 0)
     {
         CloseHandle(hFile);
         return str;

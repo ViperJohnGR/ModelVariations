@@ -1040,7 +1040,7 @@ void VehicleVariations::Process()
                     break;
                 }
             
-            if (veh->m_pDriver && veh->m_pDriver != FindPlayerPed() && spawnTrailer)
+            if (veh->m_pDriver && veh->m_pDriver != FindPlayerPed() && spawnTrailer && !isAnotherVehicleBehind(veh, {}))
             {
                 std::vector<unsigned short> zoneTrailers;
                 if (auto it = vehVars->trailerZones.find(*reinterpret_cast<uint64_t*>(currentZone)); it != vehVars->trailerZones.end())
@@ -1348,7 +1348,7 @@ int __fastcall PickRandomCarHooked(CLoadedCarGroup* cargrp, void*, char a2, char
         return -1;
 
     int variation = getRandomVariation(callMethodOriginalAndReturn<int, address>(cargrp, a2, a3), true);
-    if (CStreamingInfo::ms_pArrayBase[variation].m_nLoadState != LOADSTATE_LOADED)
+    if (variation > 0 && CStreamingInfo::ms_pArrayBase[variation].m_nLoadState != LOADSTATE_LOADED)
     {
         Log::Write("PickRandomCarHooked Error! Model %d is not loaded.\n", variation);
         return -1;

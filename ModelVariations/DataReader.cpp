@@ -158,7 +158,7 @@ std::vector<unsigned short> DataReader::ReadLine(const std::string& section, con
 			if (strncmp(token, "OccupantGroup", 13) == 0)
 			{
 				auto occupantGroup = fast_atoi(token + 13);
-				if (occupantGroup > -1 && occupantGroup < INT_MAX)
+				if (occupantGroup > 0 && occupantGroup < INT_MAX)
 					for (int i = 0; i < multiplier; i++)
 						retVector.push_back((unsigned short)occupantGroup);
 			}

@@ -1676,16 +1676,17 @@ CPed* __cdecl AddPedHooked(unsigned int pedType, int modelIndex, CVector* posn, 
     if (occupantModelIndex > 0)
     {
         if (auto loadState = loadModel(occupantModelIndex, PRIORITY_REQUEST, true); loadState == LOADSTATE_LOADED)
+        {
             modelIndex = occupantModelIndex;
+            if (pedType != PED_TYPE_MEDIC)
+            {
+                CPedModelInfo* mInfo = (CPedModelInfo*)CModelInfo::GetModelInfo(occupantModelIndex);
+                if (mInfo)
+                    pedType = mInfo->m_nPedType;
+            }
+        }
         else
             Log::Write("Error loading ped model %d (%s) %s\n", occupantModelIndex, modelNames.contains((unsigned short)occupantModelIndex) ? modelNames[(unsigned short)occupantModelIndex].c_str() : "", getLoadStateString(loadState).c_str());
-
-        if (pedType != PED_TYPE_MEDIC)
-        {
-            CPedModelInfo* mInfo = (CPedModelInfo*)CModelInfo::GetModelInfo(occupantModelIndex);
-            if (mInfo)
-                pedType = mInfo->m_nPedType;
-        }
 
         CPed* ped = callOriginalAndReturn<CPed*, address>(pedType, modelIndex, posn, unknown);
         occupantModelIndex = -1;

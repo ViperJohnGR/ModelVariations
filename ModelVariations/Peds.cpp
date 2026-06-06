@@ -854,7 +854,7 @@ int __cdecl ChooseCivilianOccupationForVehicleHooked(char male, CVehicle* a2)
     for (auto i : vehDrivers)
     {
         auto mInfo = CModelInfo::GetModelInfo(i);
-        if (mInfo && mInfo->m_nRefCount > 0 && mInfo->m_nRefCount <= leastUsedModel.second)
+        if (mInfo && mInfo->m_nRefCount > 0 && mInfo->m_nRefCount <= leastUsedModel.second && canPedDriveVeh(i, a2->m_nModelIndex))
         {
             if (mInfo->m_nRefCount == leastUsedModel.second && rand<bool>())
                 leastUsedModel.first = static_cast<unsigned short>(i);
@@ -885,7 +885,7 @@ void PedVariations::InstallHooks(bool enableSpecialPeds)
             notModified = false;
         }
 
-        if (notModified && maxPedID > -1)
+        if (notModified && maxPedID > 800)
         {
             destroyedModelCounters.resize(maxPedID * 2);
 

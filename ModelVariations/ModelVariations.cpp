@@ -92,7 +92,6 @@ bool enableSpecialPeds = false;
 bool enableVehicles = false;
 bool enablePedWeapons = false;
 bool forceEnableGlobal = false;
-bool loadSettingsImmediately = false;
 bool enableStreamingFix = false;
 int loadStage = 1;
 int trackReferenceCounts = -1;
@@ -1051,7 +1050,6 @@ public:
         iniSettings.Load(dataFileName);
 
         trackReferenceCounts = iniSettings.ReadInteger("Settings", "TrackReferenceCounts", -1);
-        loadSettingsImmediately = iniSettings.ReadBoolean("Settings", "LoadSettingsImmediately", true);
         enableStreamingFix = iniSettings.ReadBoolean("Settings", "EnableStreamingFix", false);
         loadStage = iniSettings.ReadInteger("Settings", "LoadStage", 1);
         disableKey = iniSettings.ReadInteger("Settings", "DisableKey", 0);

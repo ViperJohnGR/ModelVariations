@@ -1938,8 +1938,17 @@ void __cdecl CWorld__AddHooked(CVehicle* a1)
 template <std::uintptr_t address>
 void* __cdecl FillFrameArrayHooked(void* clump, void* data)
 {
-    if (!isAddressValid(clump) || !isAddressValid(data))
+    if (!isAddressValid(clump))
+    {
+        Log::Write("FillFrameArrayHooked Error! clump is invalid (0x%X).\n", clump);
         return NULL;
+    }
+
+    if (!isAddressValid(data))
+    {
+        Log::Write("FillFrameArrayHooked Error! clump is (0x%X) data is invalid (0x%X).\n", clump, data);
+        return NULL;
+    }
 
     return callOriginalAndReturn<void*, address>(clump, data);
 }
@@ -1948,10 +1957,16 @@ template <std::uintptr_t address>
 void __fastcall SetupSuspensionLinesHooked(CVehicle* _this)
 {
     if (_this == NULL)
+    {
+        Log::Write("SetupSuspensionLinesHooked Error! _this is NULL.\n");
         return;
+    }
 
     if (_this->m_pRwObject == NULL)
+    {
+        Log::Write("CBike::SetupSuspensionLinesHooked Error! m_pRwObject for _this (0x%X) is NULL.\n", _this);
         return;
+    }
 
     callMethodOriginal<address>(_this);
 }
@@ -1959,8 +1974,17 @@ void __fastcall SetupSuspensionLinesHooked(CVehicle* _this)
 template <std::uintptr_t address>
 void __fastcall UpdateClumpAlphaHooked(CVehicle* _this)
 {
-    if (!isAddressValid(_this) || !isAddressValid(_this->m_pRwObject))
+    if (!isAddressValid(_this))
+    {
+        Log::Write("UpdateClumpAlphaHooked Error! _this is invalid (0x%X).\n", _this);
         return;
+    }
+
+    if (!isAddressValid(_this->m_pRwObject))
+    {
+        Log::Write("UpdateClumpAlphaHooked Error! m_pRwObject for _this (0x%X) with modelIndex (%u) is invalid (0x%X).\n", _this, _this->m_nModelIndex, _this->m_pRwObject);
+        return;
+    }
 
     callMethodOriginal<address>(_this);
 }
@@ -1968,8 +1992,17 @@ void __fastcall UpdateClumpAlphaHooked(CVehicle* _this)
 template <std::uintptr_t address>
 void __cdecl SetClumpAlphaHooked(void* a1, void* a2)
 {
-    if (!isAddressValid(a1) || !isAddressValid(a2))
+    if (!isAddressValid(a1))
+    {
+        Log::Write("SetClumpAlphaHooked Error! a1 is invalid (0x%X).\n", a1);
         return;
+    }
+
+    if (a2 && !isAddressValid(a2))
+    {
+        Log::Write("SetClumpAlphaHooked Error! a1 is (0x%X) a2 is invalid (0x%X).\n", a1, a2);
+        return;
+    }
 
     callOriginal<address>(a1, a2);
 }
@@ -2735,6 +2768,7 @@ void VehicleVariations::InstallHooks()
     //Tuning for parked cars
     hookCall(0x6F3C8C, CWorld__AddHooked<0x6F3C8C>, "CWorld::Add"); //CCarGenerator::DoInternalProcessing
 
+    /////////////////////// NULL GUARDS ///////////////////////
     x4306A1_Destination = injector::GetBranchDestination(0x4306A1).as_int();
     if (isAddressValid(x4306A1_Destination))
         hookASM(0x4306A1, "", patch4306A1, "CCarCtrl::GenerateOneRandomCar");
@@ -2757,6 +2791,7 @@ void VehicleVariations::InstallHooks()
     hookCall(0x6F185D, UpdateClumpAlphaHooked<0x6F185D>, "CVehicle::UpdateClumpAlpha"); //CBoat::ProcessControl
 
     hookCall(0x6F3DF2, SetClumpAlphaHooked<0x6F3DF2>, "CVisibilityPlugins::SetClumpAlpha"); //CCarGenerator::DoInternalProcessing
+    /////////////////////// NULL GUARDS END ///////////////////////
 
     if (vehOptions->changeScriptedCars)
         hookCall(0x467B01, CreateCarForScriptHooked<0x467B01>, "CCarCtrl::CreateCarForScript"); //00A5: CREATE_CAR

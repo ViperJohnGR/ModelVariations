@@ -605,9 +605,9 @@ char __fastcall TransitionFinishedHooked(CEntryExit* _this, void*, CPed* ped)
 template <std::uintptr_t address>
 void CPopCycle__DisplayHooked()
 {
-    if (drawDebugText > 2 && enableVehicles)
+    if (drawDebugText > 2)
         VehicleVariations::DrawDebugInfo(debugDrawSize);
-    if ((drawDebugText == 2 || drawDebugText == 4) && enablePeds)
+    if ((drawDebugText == 2 || drawDebugText == 4))
         PedVariations::DrawDebugInfo(debugDrawSize);
 
     if (drawDebugText > 0)
@@ -691,10 +691,20 @@ template <std::uintptr_t address>
 void __cdecl RemoveTrianglePlanesHooked(CCollisionData* a2)
 {
     if (!isAddressValid(a2))
+    {
+        Log::Write("RemoveTrianglePlanesHooked Error! a2 is invalid (0x%X)\n", a2);
         return;
+    }
+
+    if (a2->m_pTrianglePlanes == NULL)
+    {
+        callOriginal<address>(a2);
+        return;
+    }
 
     if (!isAddressValid(a2->m_pTrianglePlanes))
     {
+        Log::Write("RemoveTrianglePlanesHooked Error! a2 is (0x%X) a2->m_pTrianglePlanes is invalid (0x%X)\n", a2, a2->m_pTrianglePlanes);
         a2->m_pTrianglePlanes = NULL;
         return;
     }
@@ -703,18 +713,21 @@ void __cdecl RemoveTrianglePlanesHooked(CCollisionData* a2)
 
     if (!isAddressValid(link))
     {
+        Log::Write("RemoveTrianglePlanesHooked Error! link is invalid (0x%X)\n", link);
         a2->m_pTrianglePlanes = NULL;
         return;
     }
 
     if (!isAddressValid(link->prev) || !isAddressValid(link->next))
     {
+        Log::Write("RemoveTrianglePlanesHooked Error! link chain is invalid (prev:0x%X next:0x%X)\n", link);
         a2->m_pTrianglePlanes = NULL;
         return;
     }
 
     if (link->prev->next != link || link->next->prev != link)
     {
+        Log::Write("RemoveTrianglePlanesHooked Error! link chain does not point to link (prev->next: 0x%x next->prev: 0x%X)\n", link->prev->next, link->next->prev);
         a2->m_pTrianglePlanes = NULL;
         return;
     }

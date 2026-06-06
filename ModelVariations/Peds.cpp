@@ -398,7 +398,7 @@ void PedVariations::Process()
         CPed* ped = pedVars->stack.top();
         pedVars->stack.pop();
 
-        if (ped && isValidPedId(ped->m_nModelIndex))
+        if (IsPedPointerValid(ped) && isValidPedId(ped->m_nModelIndex))
         {
             auto it = pedVars->currentVariations.find(ped->m_nModelIndex);
             if (it != pedVars->currentVariations.end() && !it->second.empty() && it->second[0] == 0 && ped->m_nCreatedBy != 2) //Delete models with a 0 id variation
@@ -826,7 +826,7 @@ int __cdecl ChooseCivilianOccupationForVehicleHooked(char male, CVehicle* a2)
             return specificDriver;
 
 
-        for (int i : vehDrivers)
+        for (auto i : vehDrivers)
         {
             auto mInfo = CModelInfo::GetModelInfo(i);
             if (mInfo && vehModelInfo && mInfo->GetModelType() == MODEL_INFO_PED && CPopCycle::IsPedAppropriateForCurrentZone(i) && (canPedDriveVeh(i, a2->m_nModelIndex) || a2->m_nModelIndex == 422))
@@ -840,10 +840,13 @@ int __cdecl ChooseCivilianOccupationForVehicleHooked(char male, CVehicle* a2)
                     }
 
                 if (!modelExists)
-                {
-                    loadModel(i, PRIORITY_REQUEST, true);
-                    return i;
-                }
+                    if (auto loadState = loadModel(i, PRIORITY_REQUEST, true); loadState != LOADSTATE_LOADED)
+                    {
+                        auto modelName = modelNames.find(static_cast<unsigned short>(i));
+                        Log::Write("Error loading ped model %d (%s) %s.\n", i, modelName != modelNames.end() ? modelName->second.c_str() : "", getLoadStateString(loadState).c_str());
+                    }
+                    else
+                        return i;
             }
         }
     }
@@ -855,8 +858,11 @@ int __cdecl ChooseCivilianOccupationForVehicleHooked(char male, CVehicle* a2)
         auto mInfo = CModelInfo::GetModelInfo(i);
         if (mInfo && mInfo->m_nRefCount > 0 && mInfo->m_nRefCount <= leastUsedModel.second && canPedDriveVeh(i, a2->m_nModelIndex))
         {
-            if (mInfo->m_nRefCount == leastUsedModel.second && rand<bool>())
-                leastUsedModel.first = static_cast<unsigned short>(i);
+            if (mInfo->m_nRefCount == leastUsedModel.second)
+            {
+                if (rand<bool>())
+                    leastUsedModel.first = static_cast<unsigned short>(i);
+            }
             else
             {
                 leastUsedModel.first = static_cast<unsigned short>(i);

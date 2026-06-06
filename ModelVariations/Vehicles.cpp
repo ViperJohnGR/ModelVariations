@@ -923,9 +923,9 @@ void VehicleVariations::Process()
                     if (IsVehiclePointerValid(it->second[i]) && it->second[i]->m_pTractor == NULL)
                     {
                         if (i == 0)
-                            trailerAttached = it->second[i]->SetTowLink(veh, 1);
+                            trailerAttached |= it->second[i]->SetTowLink(veh, 1);
                         else if (IsVehiclePointerValid(it->second[i - 1]))
-                            trailerAttached = it->second[i]->SetTowLink(it->second[i - 1], 1);
+                            trailerAttached |= it->second[i]->SetTowLink(it->second[i - 1], 1);
                     }
 
                 if (trailerAttached)
@@ -991,11 +991,25 @@ void VehicleVariations::Process()
                         CStreaming__RequestVehicleUpgrade(slot[i], PRIORITY_REQUEST);
                         CStreaming__LoadAllRequestedModels(false);
 
-                        it.first->AddVehicleUpgrade(slot[i]);
-                        CStreaming__SetMissionDoesntRequireModel(slot[i]);
-                        short otherUpgrade = CVehicleModelInfo__CLinkedUpgradeList__FindOtherUpgrade(CVehicleModelInfo__ms_linkedUpgrades, slot[i]);
-                        if (otherUpgrade > -1)
-                            CStreaming__SetMissionDoesntRequireModel(otherUpgrade);
+                        auto loadState1 = CStreamingInfo::ms_pArrayBase[slot[i]].m_nLoadState;
+                        
+                        if (loadState1 != LOADSTATE_LOADED)
+                            Log::Write("Error loading (%s) tuning part model %d (%s) for vehicle id %u\n", getLoadStateString(loadState1).c_str(), slot[i], modelNames.contains(slot[i]) ? modelNames[slot[i]].c_str() : "", it.first->m_nModelIndex);
+                        else
+                        {
+                            short otherUpgrade = CVehicleModelInfo__CLinkedUpgradeList__FindOtherUpgrade(CVehicleModelInfo__ms_linkedUpgrades, slot[i]);
+                            unsigned char loadState2 = otherUpgrade > -1 ? CStreamingInfo::ms_pArrayBase[otherUpgrade].m_nLoadState : LOADSTATE_NOT_LOADED;
+                            if (otherUpgrade > -1 && loadState2 != LOADSTATE_LOADED)
+                            {
+                                Log::Write("Error loading (%s) pair tuning part model %d (%s) for vehicle id %u\n", getLoadStateString(loadState2).c_str(), otherUpgrade, modelNames.contains(otherUpgrade) ? modelNames[otherUpgrade].c_str() : "", it.first->m_nModelIndex);
+                                continue;
+                            }
+                            it.first->AddVehicleUpgrade(slot[i]);
+                            CStreaming__SetMissionDoesntRequireModel(slot[i]);
+                            
+                            if (otherUpgrade > -1)
+                                CStreaming__SetMissionDoesntRequireModel(otherUpgrade);
+                        }
                     }
                 }
     }

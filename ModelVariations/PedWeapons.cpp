@@ -91,19 +91,16 @@ void PedWeaponVariations::LoadData()
                 pedHasWeaponVariations.push_back((unsigned short)modelid);
         }
 
-        for (auto& keys : iniData.second)
-        {
-            std::string name;
-            if (keys.first.starts_with("WANTED"))
+        for (auto& kvp : iniData.second)
+            for (const std::string& token : splitString(kvp.first, '|'))
             {
-                auto modelNameStart = keys.first.find("|") + 1;
-                name = keys.first.substr(modelNameStart, keys.first.find("|", modelNameStart) - modelNameStart);
+                auto mInfo = CModelInfo::GetModelInfo(token.c_str(), &modelid);
+                if (mInfo && mInfo->GetModelType() == MODEL_INFO_VEHICLE && modelid > 0 && modelid < 65536)
+                {
+                    wepVehModels.insert({ (unsigned short)modelid, token });
+                    break;
+                }
             }
-            else
-                name = keys.first.substr(0, keys.first.find("|"));
-            if (CModelInfo::GetModelInfo(name.data(), &modelid))
-                wepVehModels.insert({ (unsigned short)modelid, name });
-        }
     }
 
     std::sort(pedHasWeaponVariations.begin(), pedHasWeaponVariations.end());

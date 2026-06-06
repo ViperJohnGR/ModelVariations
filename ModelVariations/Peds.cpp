@@ -438,7 +438,6 @@ void PedVariations::ProcessDrugDealers(bool reset)
                         auto findByScmIndex = CExternalScripts__findByScmIndex(CTheScripts__StreamedScripts, 19);
 
                         CScriptsForBrains__AddNewScriptBrain(CTheScripts__ScriptsForBrains, findByScmIndex, (short)it.first, 100, 0, -1, -1.0);
-                        break;
                     }
 
             Log::Write("\n");

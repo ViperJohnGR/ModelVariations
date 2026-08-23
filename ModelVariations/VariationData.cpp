@@ -1,11 +1,59 @@
+#include "SA.hpp"
 #include "VariationData.hpp"
 
+#include <CTheZones.h>
 
 std::array<unsigned short, 65536> originalModels{};
 
 
-std::unordered_map<uint64_t, std::unordered_map<unsigned short, std::vector<unsigned short>>> variations;
-std::unordered_map<uint64_t, std::unordered_map<unsigned short, std::vector<unsigned short>>>::iterator currentZoneVariations = variations.end();
+std::unordered_map<unsigned short, std::unordered_map<unsigned short, unsigned short>> variations;
+std::unordered_map<unsigned short, std::unordered_map<unsigned short, unsigned short>>::iterator currentZoneVariations = variations.end();
+
+std::unordered_map<uint64_t, std::unordered_map<unsigned short, unsigned short>> interiorVariations;
+
+std::vector<std::vector<unsigned short>> variationSets;
+
+
+unsigned short variationSetsAdd(const std::vector<unsigned short>& vec)
+{
+    bool variationSetExists = false;
+    size_t setIndex = 0;
+
+    for (size_t j = 0; j < variationSets.size(); j++)
+    {
+        if (variationSets[j] == vec)
+        {
+            variationSetExists = true;
+            setIndex = j;
+            break;
+        }
+    }
+
+    if (!variationSetExists)
+    {
+        variationSets.push_back(vec);
+        setIndex = variationSets.size() - 1;
+    }
+
+    return static_cast<unsigned short>(setIndex);
+}
+
+CZone* getZone(std::string name)
+{
+    for (int k = 0; k < CTheZones::TotalNumberOfInfoZones; k++)
+    {
+        CZone* zone = reinterpret_cast<CZone*>(CTheZones__NavigationZoneArray + k * 0x20);
+        if (strncmp(zone->m_szLabel, name.c_str(), 8) == 0)
+            return zone;
+    }
+
+    return NULL;
+}
+
+unsigned short zoneGetIndex(CZone* zone)
+{
+    return static_cast<unsigned short>((reinterpret_cast<unsigned char*>(zone) - CTheZones__NavigationZoneArray) / 0x20);
+}
 
 
 __declspec(naked) int __stdcall getVariationOriginalModel(int)

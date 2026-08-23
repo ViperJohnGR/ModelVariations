@@ -27,8 +27,6 @@ private:
 	std::string file; // Owns the character storage referenced by data.
 
 public:
-	using Section = std::map<std::string_view, std::string_view>;
-	using Data = std::map<std::string_view, Section>;
 
 	DataReader() = default;
 	DataReader(const char* filename);
@@ -49,7 +47,7 @@ public:
 	std::vector<std::vector<unsigned short>> ReadTrailerLine(std::string_view section, std::string_view key);
 	std::vector<unsigned short> ReadLineUnique(std::string_view section, std::string_view key, dataTypeToRead parseType);
 
-	Data data;
+	std::map<std::string_view, std::map<std::string_view, std::string_view>> data; //TODO: unordered_map
 
 private:
 	const std::string_view* FindValue(std::string_view section, std::string_view key) const;

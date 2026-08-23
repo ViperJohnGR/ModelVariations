@@ -641,6 +641,7 @@ void VehicleVariations::LoadData()
         {
             unsigned short modelid = (unsigned short)iModel;
             auto& properties = getOrCreateVehProperties(modelid);
+            std::map<CZone*, std::vector<unsigned short>> zones;
 
             if (dataFile.ReadBoolean(section, "ChangeOnlyParked", false))
                 properties.changeOnlyWhenParked = true;
@@ -655,17 +656,15 @@ void VehicleVariations::LoadData()
                     {
                         properties.hasVariations = true;
                         if (it->second.empty()) //Global
+                        {
                             for (int k = 0; k < CTheZones::TotalNumberOfInfoZones; k++)
                             {
                                 CZone* zone = reinterpret_cast<CZone*>(CTheZones__NavigationZoneArray + k * 0x20);
-                                uint64_t zoneName = *reinterpret_cast<uint64_t*>(zone->m_szLabel);
-                                variations[zoneName][modelid] = vectorUnion(variations[zoneName][modelid], vec);
+                                zones[zone] = vectorUnion(zones[zone], vec);
                             }
-                        else for (auto zone : it->second)
-                        {
-                            uint64_t zoneName = *reinterpret_cast<uint64_t*>(zone->m_szLabel);
-                            variations[zoneName][modelid] = vectorUnion(variations[zoneName][modelid], vec);
                         }
+                        else for (auto zone : it->second)
+                            zones[zone] = vectorUnion(zones[zone], vec);
                     }
 
                     //Occupant Groups
@@ -747,7 +746,9 @@ void VehicleVariations::LoadData()
                     if (!vec.empty())
                     {
                         properties.hasVariations = true;
-                        variations[zoneName][modelid] = mergeZones ? vectorUnion(variations[zoneName][modelid], vec) : vec;
+                        auto zone = getZone(kvp.first.data());
+                        if (zone != NULL)
+                            zones[zone] = mergeZones ? vectorUnion(zones[zone], vec) : vec;
                     }
 
                     //Groups
@@ -766,6 +767,9 @@ void VehicleVariations::LoadData()
                         vehVars.trailerZones[zoneName][modelid] = mergeZones ? vectorUnion(vehVars.trailerZones[zoneName][modelid], vec) : vec;
                 }
             }
+
+            for (const auto& it : zones)
+                variations[zoneGetIndex(it.first)][modelid] = variationSetsAdd(it.second);
                 
             for (unsigned i = 0; i < 6; i++)
             {
@@ -775,9 +779,9 @@ void VehicleVariations::LoadData()
                 properties.wantedVariations[i] = vec;
             }
 
-            for (auto &i : variations)
+            for (const auto& i : variations)
                 if (auto it = i.second.find(modelid); it != i.second.end())
-                    for (auto variation : it->second)
+                    for (auto variation : variationSets[it->second])
                         if (variation > 0 && variation != modelid && !(vectorHasId(vehOptions.inheritExclude, variation)))
                             setOriginalModel(variation, modelid);
 
@@ -1267,7 +1271,7 @@ void VehicleVariations::UpdateVariations()
             continue;
 
         if (auto it = currentZoneVariations->second.find(modelid); it != currentZoneVariations->second.end())
-            properties->currentVariations = it->second;
+            properties->currentVariations = variationSets[it->second];
 
         if (wanted)
         {
@@ -1452,14 +1456,14 @@ void VehicleVariations::LogVariations()
         return;
 
     std::map<unsigned short, std::set<unsigned short>> variationsMap;
-    for (auto& it : variations)
-        for (auto& i : it.second)
+    for (const auto& it : variations)
+        for (const auto& i : it.second)
         {
             auto mInfo = CModelInfo::GetModelInfo(i.first);
             if (!mInfo || mInfo->GetModelType() != MODEL_INFO_VEHICLE)
                 continue;
 
-            for (auto j : i.second)
+            for (auto j : variationSets[i.second])
                 variationsMap[i.first].insert(j);
         }
     

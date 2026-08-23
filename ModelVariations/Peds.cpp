@@ -195,6 +195,9 @@ void PedVariations::LoadData()
 
         if (isValidPedId(modelIndex))
         {
+            std::map<CZone*, std::vector<unsigned short>> zones;
+            std::map<std::string_view, std::vector<unsigned short>> interiors;
+
             for (auto& kvp : iniData.second)
             {
                 if (auto it = presetAllZones.find(std::string(kvp.first)); it != presetAllZones.end())
@@ -209,15 +212,11 @@ void PedVariations::LoadData()
                             for (int k = 0; k < CTheZones::TotalNumberOfInfoZones; k++)
                             {
                                 CZone* zone = reinterpret_cast<CZone*>(CTheZones__NavigationZoneArray + k * 0x20);
-                                uint64_t zoneName = *reinterpret_cast<uint64_t*>(zone->m_szLabel);
-                                variations[zoneName][modelIndex] = vectorUnion(variations[zoneName][modelIndex], vec);
+                                zones[zone] = vectorUnion(zones[zone], vec);
                             }
                         }
                         else for (auto zone : it->second)
-                        {
-                            uint64_t zoneName = *reinterpret_cast<uint64_t*>(zone->m_szLabel);
-                            variations[zoneName][modelIndex] = vectorUnion(variations[zoneName][modelIndex], vec);
-                        }
+                            zones[zone] = vectorUnion(zones[zone], vec);
                     }
                 }
                 else if (kvp.first.size() >= 8 && kvp.first.starts_with("MISSION"))
@@ -239,11 +238,23 @@ void PedVariations::LoadData()
                     if (!vec.empty())
                     {
                         properties.hasVariations = true;
-                        uint64_t zoneName = 0;
-                        copyString((char*)&zoneName, kvp.first.data(), std::min<std::size_t>(8, kvp.first.size()));
-                        variations[zoneName][modelIndex] = mergeZones ? vectorUnion(variations[zoneName][modelIndex], vec) : vec;
+                        auto zone = getZone(kvp.first.data());
+                        if (zone == NULL)
+                            interiors[kvp.first] = vec;
+                        else
+                            zones[zone] = mergeZones ? vectorUnion(zones[zone], vec) : vec;
                     }
                 }
+            }
+
+            for (const auto& it : zones)
+                variations[zoneGetIndex(it.first)][modelIndex] = variationSetsAdd(it.second);
+
+            for (const auto& it : interiors)
+            {
+                char interiorName[9] = {};
+                copyString(interiorName, it.first.data(), std::min<std::size_t>(8, it.first.size()));
+                interiorVariations[*reinterpret_cast<const uint64_t*>(interiorName)][modelIndex] = variationSetsAdd(it.second);
             }
 
             for (unsigned j = 0; j < 6; j++)
@@ -256,7 +267,7 @@ void PedVariations::LoadData()
 
             for (const auto& j : variations)
                 if (auto it = j.second.find(modelIndex); it != j.second.end())
-                    for (auto variation : it->second)
+                    for (auto variation : variationSets[it->second])
                         if (variation > 0 && variation != modelIndex)
                             setOriginalModel(variation, modelIndex);
 
@@ -482,7 +493,7 @@ void PedVariations::UpdateVariations()
             properties->currentVariations.clear();
 
     auto player = FindPlayerPed();
-    auto interiorVariations = (CGame::currArea) ? variations.find(player->m_pEnex ? (*reinterpret_cast<const uint64_t*>(player->m_pEnex)) : (*reinterpret_cast<const uint64_t*>(CEntryExit::ms_spawnPoint))) : variations.end();
+    auto currentInteriorVariations = (CGame::currArea) ? interiorVariations.find(player->m_pEnex ? (*reinterpret_cast<const uint64_t*>(player->m_pEnex)) : (*reinterpret_cast<const uint64_t*>(CEntryExit::ms_spawnPoint))) : interiorVariations.end();
 
     for (auto modelId : pedVars.populatedModels)
     {
@@ -491,17 +502,17 @@ void PedVariations::UpdateVariations()
             continue;
 
         bool modelHasInteriorVariations = false;
-
-        if (interiorVariations != variations.end())
-            if (auto it = interiorVariations->second.find(modelId); it != interiorVariations->second.end())
+        
+        if (currentInteriorVariations != interiorVariations.end())
+            if (auto it = currentInteriorVariations->second.find(modelId); it != currentInteriorVariations->second.end())
             {
-                properties->currentVariations = it->second;
+                properties->currentVariations = variationSets[it->second];
                 modelHasInteriorVariations = true;
             }
-
+            
         if ((!modelHasInteriorVariations || properties->mergeInteriors) && currentZoneVariations != variations.end())
             if (auto it = currentZoneVariations->second.find(modelId); it != currentZoneVariations->second.end())
-                properties->currentVariations = vectorUnion(it->second, properties->currentVariations);
+                properties->currentVariations = vectorUnion(variationSets[it->second], properties->currentVariations);
 
         if (wantedLevel < 6 && !properties->wantedVariations[wantedLevel].empty() && !properties->currentVariations.empty())
             vectorfilterVector(properties->currentVariations, properties->wantedVariations[wantedLevel]);
@@ -736,7 +747,7 @@ void PedVariations::LogVariations()
             if (!mInfo || mInfo->GetModelType() != MODEL_INFO_PED)
                 continue;
 
-            for (auto j : i.second)
+            for (auto j : variationSets[i.second])
                 variationsMap[i.first].insert(j);
         }
 

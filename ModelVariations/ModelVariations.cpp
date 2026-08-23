@@ -197,7 +197,9 @@ void clearEverything()
 
     resetOriginalModels();
     variations.clear();
+    interiorVariations.clear();
     currentZoneVariations = variations.end();
+    variationSets.clear();
 
     PedVariations::ClearData();
     PedWeaponVariations::ClearData();
@@ -262,7 +264,7 @@ void updateVariations()
     if (currentZone == NULL)
         return;
 
-    currentZoneVariations = variations.find(*reinterpret_cast<uint64_t*>(currentZone->m_szLabel));
+    currentZoneVariations = variations.find(zoneGetIndex(currentZone));
 
     auto player = FindPlayerPed();
             
@@ -574,9 +576,7 @@ __declspec(noinline) CZone* __cdecl FindSmallestZoneForPositionHooked(void* poin
     auto player = FindPlayerPed();
     static CZone *zoneStart = reinterpret_cast<CZone*>(CTheZones__NavigationZoneArray);
 
-    auto index = (reinterpret_cast<char*>(retVal) - reinterpret_cast<char*>(zoneStart))/0x20;
-
-    if (currentZone != retVal)
+    if (currentZone != retVal) //TODO: maybe do not update zone when in interior
     {
         logVariationsChange("Zone changed");
 

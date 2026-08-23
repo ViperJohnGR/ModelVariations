@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Helpers.hpp"
 #include "Memory.hpp"
 
 #include <CDirectory.h>

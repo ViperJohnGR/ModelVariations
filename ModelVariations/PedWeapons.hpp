@@ -3,7 +3,7 @@
 #include <chrono>
 
 extern CZone* currentZone;
-extern std::chrono::milliseconds gameplayTimeSinceLoad;
+extern std::chrono::steady_clock::duration gameplayTimeSinceLoad;
 extern char currentMission[9];
 
 class PedWeaponVariations

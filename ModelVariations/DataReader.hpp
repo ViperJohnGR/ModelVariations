@@ -1,6 +1,5 @@
 #pragma once
 
-#include <map>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -47,7 +46,7 @@ public:
 	std::vector<std::vector<unsigned short>> ReadTrailerLine(std::string_view section, std::string_view key);
 	std::vector<unsigned short> ReadLineUnique(std::string_view section, std::string_view key, dataTypeToRead parseType);
 
-	std::map<std::string_view, std::map<std::string_view, std::string_view>> data; //TODO: unordered_map
+	std::unordered_map<std::string_view, std::unordered_map<std::string_view, std::string_view>> data;
 
 private:
 	const std::string_view* FindValue(std::string_view section, std::string_view key) const;

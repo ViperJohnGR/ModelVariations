@@ -607,6 +607,8 @@ void VehicleVariations::ClearData()
     vehVars.tuningStack.clear();
     vehVars.stack.clear();
 
+    spawnedTrailers.clear();
+
     vehOptions = {};
 }
 
@@ -746,7 +748,7 @@ void VehicleVariations::LoadData()
                     if (!vec.empty())
                     {
                         properties.hasVariations = true;
-                        auto zone = getZone(kvp.first.data());
+                        auto zone = getZone(kvp.first);
                         if (zone != NULL)
                             zones[zone] = mergeZones ? vectorUnion(zones[zone], vec) : vec;
                     }
@@ -962,6 +964,9 @@ void VehicleVariations::Process()
 
     static int lastGameTime = -1;
     int gameTime = (CClock__ms_nGameClockHours * 100 + CClock__ms_nGameClockMinutes);
+
+    if (vehVars.populatedModels.empty())
+        lastGameTime = -1;
 
     if (gameTime != lastGameTime)
     {

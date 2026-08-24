@@ -38,12 +38,12 @@ unsigned short variationSetsAdd(const std::vector<unsigned short>& vec)
     return static_cast<unsigned short>(setIndex);
 }
 
-CZone* getZone(std::string name)
+CZone* getZone(std::string_view name)
 {
     for (int k = 0; k < CTheZones::TotalNumberOfInfoZones; k++)
     {
         CZone* zone = reinterpret_cast<CZone*>(CTheZones__NavigationZoneArray + k * 0x20);
-        if (strncmp(zone->m_szLabel, name.c_str(), 8) == 0)
+        if (strncmp(zone->m_szLabel, name.data(), std::min(name.size(), 8U)) == 0)
             return zone;
     }
 

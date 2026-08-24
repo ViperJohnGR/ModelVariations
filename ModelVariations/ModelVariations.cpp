@@ -66,8 +66,8 @@ DataReader iniSettings;
 
 std::chrono::steady_clock::time_point lastTime;
 std::chrono::steady_clock::time_point loadTime;
-std::chrono::milliseconds totalTimeSinceLoad(0);
-std::chrono::milliseconds gameplayTimeSinceLoad(0);
+std::chrono::steady_clock::duration totalTimeSinceLoad(0);
+std::chrono::steady_clock::duration gameplayTimeSinceLoad(0);
 
 int drawDebugText = 0;
 
@@ -261,9 +261,6 @@ void updateVariations()
 {
     //zInfo->m_szTextKey = BLUEB | zInfo->m_szLabel = BLUEB1
 
-    if (currentZone == NULL)
-        return;
-
     currentZoneVariations = variations.find(zoneGetIndex(currentZone));
 
     auto player = FindPlayerPed();
@@ -412,7 +409,7 @@ void refreshOnGameRestart()
 {
     lastTime = std::chrono::steady_clock::time_point{};
     loadTime = std::chrono::steady_clock::now();
-    gameplayTimeSinceLoad = std::chrono::milliseconds(0);
+    gameplayTimeSinceLoad = std::chrono::steady_clock::duration(0);
 
     auto startTime = std::chrono::steady_clock::now();
 
@@ -552,7 +549,8 @@ __declspec(noinline) void CPopCycle__DisplayHooked()
 
         if (CGame::currArea)
             PrintDebugLine("currArea: %d", CGame::currArea);
-        PrintDebugLine("Current zone: %s", currentZone ? currentZone->m_szLabel : NULL);
+        if (currentZone)
+            PrintDebugLine("Current zone: %s", currentZone->m_szLabel);
         if (player && player->m_pEnex)
             PrintDebugLine("Current interior: %.8s", player->m_pEnex);
         if (CWeather::Rain > 0.001)
@@ -576,7 +574,7 @@ __declspec(noinline) CZone* __cdecl FindSmallestZoneForPositionHooked(void* poin
     auto player = FindPlayerPed();
     static CZone *zoneStart = reinterpret_cast<CZone*>(CTheZones__NavigationZoneArray);
 
-    if (currentZone != retVal) //TODO: maybe do not update zone when in interior
+    if (currentZone != retVal && CGame::currArea == 0)
     {
         logVariationsChange("Zone changed");
 
@@ -685,13 +683,13 @@ __declspec(noinline) void __cdecl CGame__ProcessHooked()
     if (!FrontEndMenuManager->m_bMenuActive)
     {
         if (lastTime.time_since_epoch().count() > 0)
-            gameplayTimeSinceLoad += std::chrono::duration_cast<std::chrono::milliseconds>(now - lastTime);
+            gameplayTimeSinceLoad += (now - lastTime);
         lastTime = now;
     }
     else
         lastTime = std::chrono::steady_clock::time_point{};
 
-    totalTimeSinceLoad = std::chrono::duration_cast<std::chrono::milliseconds>(now - loadTime);
+    totalTimeSinceLoad = (now - loadTime);
     
 
     originalCall.call();

@@ -238,7 +238,7 @@ void PedVariations::LoadData()
                     if (!vec.empty())
                     {
                         properties.hasVariations = true;
-                        auto zone = getZone(kvp.first.data());
+                        auto zone = getZone(kvp.first);
                         if (zone == NULL)
                             interiors[kvp.first] = vec;
                         else
@@ -253,7 +253,7 @@ void PedVariations::LoadData()
             for (const auto& it : interiors)
             {
                 char interiorName[9] = {};
-                copyString(interiorName, it.first.data(), std::min<std::size_t>(8, it.first.size()));
+                copyString(interiorName, it.first.data(), std::min(8U, it.first.size()));
                 interiorVariations[*reinterpret_cast<const uint64_t*>(interiorName)][modelIndex] = variationSetsAdd(it.second);
             }
 
@@ -368,6 +368,9 @@ void PedVariations::Process()
 
     static int lastGameTime = -1;
     int gameTime = (CClock__ms_nGameClockHours * 100 + CClock__ms_nGameClockMinutes);
+
+    if (pedVars.populatedModels.empty())
+        lastGameTime = -1;
 
     if (gameTime != lastGameTime)
     {

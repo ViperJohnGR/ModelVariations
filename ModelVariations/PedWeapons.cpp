@@ -26,7 +26,7 @@ std::vector<CPed*> pedWepStack;
 
 std::vector<unsigned short> pedHasWeaponVariations;
 std::vector<std::pair<CPed*, int>> weaponWatchers;
-std::map<CPed*, std::chrono::milliseconds> delayedPeds;
+std::map<CPed*, std::chrono::steady_clock::duration> delayedPeds;
 
 const char* slotStrings[13] = {"SLOT0", "SLOT1", "SLOT2", "SLOT3", "SLOT4", "SLOT5", "SLOT6", "SLOT7", "SLOT8", "SLOT9", "SLOT10", "SLOT11", "SLOT12"};
 bool iniHasGlobal = false;

@@ -15,7 +15,7 @@ extern std::unordered_map<uint64_t, std::unordered_map<unsigned short, unsigned 
 
 extern std::vector<std::vector<unsigned short>> variationSets;
 
-unsigned short variationSetsAdd(const std::vector<unsigned short>& vec);
+unsigned short variationSetsAdd(std::vector<unsigned short>&& vec);
 CZone* getZone(std::string_view name);
 unsigned short zoneGetIndex(CZone* zone);
 

@@ -247,14 +247,14 @@ void PedVariations::LoadData()
                 }
             }
 
-            for (const auto& it : zones)
-                variations[zoneGetIndex(it.first)][modelIndex] = variationSetsAdd(it.second);
+            for (auto& [zone, values] : zones)
+                variations[zoneGetIndex(zone)][modelIndex] = variationSetsAdd(std::move(values));
 
-            for (const auto& it : interiors)
+            for (auto& [interior, values] : interiors)
             {
                 char interiorName[9] = {};
-                copyString(interiorName, it.first.data(), std::min(8U, it.first.size()));
-                interiorVariations[*reinterpret_cast<const uint64_t*>(interiorName)][modelIndex] = variationSetsAdd(it.second);
+                copyString(interiorName, interior.data(), std::min(8U, interior.size()));
+                interiorVariations[*reinterpret_cast<const uint64_t*>(interiorName)][modelIndex] = variationSetsAdd(std::move(values));
             }
 
             for (unsigned j = 0; j < 6; j++)
@@ -266,7 +266,7 @@ void PedVariations::LoadData()
             }
 
             for (const auto& j : variations)
-                if (auto it = j.second.find(modelIndex); it != j.second.end())
+                if (auto it = j.second.find(modelIndex); it != j.second.end() && it->second < variationSets.size())
                     for (auto variation : variationSets[it->second])
                         if (variation > 0 && variation != modelIndex)
                             setOriginalModel(variation, modelIndex);
@@ -507,14 +507,14 @@ void PedVariations::UpdateVariations()
         bool modelHasInteriorVariations = false;
         
         if (currentInteriorVariations != interiorVariations.end())
-            if (auto it = currentInteriorVariations->second.find(modelId); it != currentInteriorVariations->second.end())
+            if (auto it = currentInteriorVariations->second.find(modelId); it != currentInteriorVariations->second.end() && it->second < variationSets.size())
             {
                 properties->currentVariations = variationSets[it->second];
                 modelHasInteriorVariations = true;
             }
             
         if ((!modelHasInteriorVariations || properties->mergeInteriors) && currentZoneVariations != variations.end())
-            if (auto it = currentZoneVariations->second.find(modelId); it != currentZoneVariations->second.end())
+            if (auto it = currentZoneVariations->second.find(modelId); it != currentZoneVariations->second.end() && it->second < variationSets.size())
                 properties->currentVariations = vectorUnion(variationSets[it->second], properties->currentVariations);
 
         if (wantedLevel < 6 && !properties->wantedVariations[wantedLevel].empty() && !properties->currentVariations.empty())
@@ -747,7 +747,7 @@ void PedVariations::LogVariations()
         for (const auto& i : it.second)
         {
             auto mInfo = CModelInfo::GetModelInfo(i.first);
-            if (!mInfo || mInfo->GetModelType() != MODEL_INFO_PED)
+            if (!mInfo || mInfo->GetModelType() != MODEL_INFO_PED || i.second >= variationSets.size())
                 continue;
 
             for (auto j : variationSets[i.second])

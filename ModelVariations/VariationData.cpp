@@ -14,28 +14,32 @@ std::unordered_map<uint64_t, std::unordered_map<unsigned short, unsigned short>>
 std::vector<std::vector<unsigned short>> variationSets;
 
 
-unsigned short variationSetsAdd(const std::vector<unsigned short>& vec)
+unsigned short variationSetsAdd(std::vector<unsigned short>&& vec)
 {
-    bool variationSetExists = false;
-    size_t setIndex = 0;
+    static std::size_t lastVariationSetIndex = SIZE_MAX;
+    if (variationSets.empty())
+        lastVariationSetIndex = SIZE_MAX;
 
-    for (size_t j = 0; j < variationSets.size(); j++)
+    if (lastVariationSetIndex < variationSets.size() && variationSets[lastVariationSetIndex] == vec)
+        return static_cast<unsigned short>(lastVariationSetIndex);
+
+    for (std::size_t j = variationSets.size(); j != 0;)
     {
+        --j;
+
+        if (j == lastVariationSetIndex)
+            continue;
+
         if (variationSets[j] == vec)
         {
-            variationSetExists = true;
-            setIndex = j;
-            break;
+            lastVariationSetIndex = j;
+            return static_cast<unsigned short>(j);
         }
     }
 
-    if (!variationSetExists)
-    {
-        variationSets.push_back(vec);
-        setIndex = variationSets.size() - 1;
-    }
-
-    return static_cast<unsigned short>(setIndex);
+    variationSets.emplace_back(std::move(vec));
+    lastVariationSetIndex = variationSets.size() - 1;
+    return static_cast<unsigned short>(lastVariationSetIndex);
 }
 
 CZone* getZone(std::string_view name)

@@ -770,8 +770,8 @@ void VehicleVariations::LoadData()
                 }
             }
 
-            for (const auto& it : zones)
-                variations[zoneGetIndex(it.first)][modelid] = variationSetsAdd(it.second);
+            for (auto& [zone, values] : zones)
+                variations[zoneGetIndex(zone)][modelid] = variationSetsAdd(std::move(values));
                 
             for (unsigned i = 0; i < 6; i++)
             {
@@ -782,7 +782,7 @@ void VehicleVariations::LoadData()
             }
 
             for (const auto& i : variations)
-                if (auto it = i.second.find(modelid); it != i.second.end())
+                if (auto it = i.second.find(modelid); it != i.second.end() && it->second < variationSets.size())
                     for (auto variation : variationSets[it->second])
                         if (variation > 0 && variation != modelid && !(vectorHasId(vehOptions.inheritExclude, variation)))
                             setOriginalModel(variation, modelid);
@@ -1275,7 +1275,7 @@ void VehicleVariations::UpdateVariations()
         if (!properties || !properties->hasVariations)
             continue;
 
-        if (auto it = currentZoneVariations->second.find(modelid); it != currentZoneVariations->second.end())
+        if (auto it = currentZoneVariations->second.find(modelid); it != currentZoneVariations->second.end() && it->second < variationSets.size())
             properties->currentVariations = variationSets[it->second];
 
         if (wanted)
@@ -1465,7 +1465,7 @@ void VehicleVariations::LogVariations()
         for (const auto& i : it.second)
         {
             auto mInfo = CModelInfo::GetModelInfo(i.first);
-            if (!mInfo || mInfo->GetModelType() != MODEL_INFO_VEHICLE)
+            if (!mInfo || mInfo->GetModelType() != MODEL_INFO_VEHICLE || i.second >= variationSets.size())
                 continue;
 
             for (auto j : variationSets[i.second])

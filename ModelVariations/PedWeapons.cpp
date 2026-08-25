@@ -253,7 +253,7 @@ void PedWeaponVariations::Process()
         }
 
         for (int m = (isOnMission ? 0 : 1); m < 2; m++)
-            for (int k = (iniHasGlobal ? 0 : 1); k < 2; k++)
+            for (int k = 1; k >= (iniHasGlobal ? 0 : 1); --k)
             {
                 const std::string& activeSection = (k == 1) ? section : "Global";
                 for (int j = 0; j < 4; j++)

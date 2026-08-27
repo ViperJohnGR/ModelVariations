@@ -330,7 +330,7 @@ bool strcasestr(std::string_view src, std::string_view sub)
     return false;
 }
 
-bool strcasecmp(std::string_view s1, std::string_view s2)
+bool strcasecmp(std::string_view s1, std::string_view s2, size_t n)
 {
     while (!s1.empty() && s1.back() == '\0')
         s1.remove_suffix(1);
@@ -338,16 +338,18 @@ bool strcasecmp(std::string_view s1, std::string_view s2)
     while (!s2.empty() && s2.back() == '\0')
         s2.remove_suffix(1);
 
-    if (s1.size() != s2.size())
-        return false;
+    const size_t count = n == 0 ? std::min(s1.size(), s2.size()) : std::min({ s1.size(), s2.size(), n });
 
-    for (size_t i = 0; i < s1.size(); i++)
+    for (size_t i = 0; i < count; ++i)
     {
         if (toUpper(s1[i]) != toUpper(s2[i]))
             return false;
     }
 
-    return true;
+    if (n != 0 && count == n)
+        return true;
+
+    return s1.size() == s2.size();
 }
 
 std::vector<std::string> splitString(const std::string& s, char separator)

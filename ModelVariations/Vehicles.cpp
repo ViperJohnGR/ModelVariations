@@ -118,6 +118,12 @@ std::map<CVehicle*, std::vector<CVehicle*>> spawnedTrailers;  //<veh, <trailers>
 std::uintptr_t x6ABCBE_Destination = 0;
 std::uintptr_t x4306A1_Destination = 0;
 
+struct tVehColors {
+    std::optional<unsigned char> color1;
+    std::optional<unsigned char> color2;
+    std::optional<unsigned char> color3;
+    std::optional<unsigned char> color4;
+};
 
 struct tTrailerProperties {
     std::vector<std::vector<unsigned short>> trailers[9];
@@ -177,7 +183,9 @@ struct tVehVars {
     std::unordered_map<uint64_t, std::unordered_map<unsigned short, std::vector<unsigned short>>> occupantGroups;
     std::unordered_map<uint64_t, std::unordered_map<unsigned short, std::vector<unsigned short>>> trailerZones;
     std::unordered_map<uint64_t, std::unordered_map<unsigned short, std::vector<unsigned short>>> tuning;
+    std::unordered_map<uint64_t, std::unordered_map<unsigned short, std::vector<tVehColors>>> colors;
     std::unordered_map<unsigned short, std::vector<unsigned short>>* currentTuning = nullptr;
+    std::unordered_map<unsigned short, std::vector<tVehColors>>* currentColors = nullptr;
 
     std::vector<std::pair<CVehicle*, std::array<int, 18>>> tuningStack;
     std::vector<CVehicle*> stack;
@@ -227,6 +235,59 @@ struct tVehOptions {
 
 static tVehOptions vehOptions;
 
+std::vector<tVehColors> readVehColors(std::string s)
+{
+    std::vector<tVehColors> colorsVec;
+
+    if (s.empty())
+        return colorsVec;
+
+    for (std::string colorsStr : splitString(s, ','))
+    {
+        colorsStr = trimString(colorsStr);
+
+        if (!strcasecmp(colorsStr, "color_", 6))
+            continue;
+
+        colorsStr.erase(0, 6);
+
+        tVehColors vehColors{};
+
+        unsigned int colors[4] = {};
+
+        auto numColorsRead = sscanf_SA(colorsStr.c_str(), "%u_%u_%u_%u", &colors[0], &colors[1], &colors[2], &colors[3]);
+
+        if (numColorsRead < 1 || numColorsRead > 4)
+            continue;
+
+        if (numColorsRead > 3 && colors[3] < 256)
+            vehColors.color4 = colors[3];
+
+        if (numColorsRead > 2 && colors[2] < 256)
+            vehColors.color3 = colors[2];
+
+        if (numColorsRead > 1 && colors[1] < 256)
+            vehColors.color2 = colors[1];
+
+        if (colors[0] < 256)
+            vehColors.color1 = colors[0];
+
+        colorsVec.push_back(vehColors);
+    }
+
+    return colorsVec;
+}
+
+std::vector<tVehColors> mergeVehColors(const std::vector<tVehColors>& vec1, const std::vector<tVehColors>& vec2)
+{
+    std::vector<tVehColors> result;
+    result.reserve(vec1.size() + vec2.size());
+
+    result.insert(result.end(), vec1.begin(), vec1.end());
+    result.insert(result.end(), vec2.begin(), vec2.end());
+
+    return result;
+}
 
 float getDistanceFromVeh(CVehicle* vehicle, CEntity* target)
 {
@@ -630,8 +691,10 @@ void VehicleVariations::ClearData()
 
     vehVars.occupantGroups.clear();
     vehVars.trailerZones.clear();
-    vehVars.currentTuning = nullptr;
     vehVars.tuning.clear();
+    vehVars.colors.clear();
+    vehVars.currentTuning = nullptr;
+    vehVars.currentColors = nullptr;
 
     vehVars.tuningStack.clear();
     vehVars.stack.clear();
@@ -754,6 +817,26 @@ void VehicleVariations::LoadData()
                             vehVars.trailerZones[zoneName][modelid] = vectorUnion(vehVars.trailerZones[zoneName][modelid], vec);
                         }
                     }
+
+                    //Colors
+                    auto colorsVec = readVehColors(dataFile.ReadString(section, kvp.first, ""));
+
+                    if (!colorsVec.empty())
+                    {
+                        if (it->second.empty()) //Global
+                            for (int k = 0; k < CTheZones::TotalNumberOfInfoZones; k++)
+                            {
+                                CZone* zone = reinterpret_cast<CZone*>(CTheZones__NavigationZoneArray + k * 0x20);
+                                uint64_t zoneName = *reinterpret_cast<uint64_t*>(zone->m_szLabel);
+                                vehVars.colors[zoneName][modelid] = mergeVehColors(vehVars.colors[zoneName][modelid], colorsVec);
+                            }
+                        else for (auto zone : it->second)
+                        {
+                            uint64_t zoneName = *reinterpret_cast<uint64_t*>(zone->m_szLabel);
+                            vehVars.colors[zoneName][modelid] = mergeVehColors(vehVars.colors[zoneName][modelid], colorsVec);
+                        }
+                    }
+
                 }
                 else if (kvp.first.size() >= 8 && kvp.first.starts_with("MISSION"))
                 {
@@ -796,6 +879,11 @@ void VehicleVariations::LoadData()
                     vec = dataFile.ReadLine(section, kvp.first, READ_TRAILERS);
                     if (!vec.empty())
                         vehVars.trailerZones[zoneName][modelid] = mergeZones ? vectorUnion(vehVars.trailerZones[zoneName][modelid], vec) : vec;
+
+                    //Colors
+                    auto colorsVec = readVehColors(dataFile.ReadString(section, kvp.first, ""));
+                    if (!colorsVec.empty())
+                        vehVars.colors[zoneName][modelid] = mergeZones ? mergeVehColors(vehVars.colors[zoneName][modelid], colorsVec) : colorsVec;
                 }
             }
 
@@ -1192,116 +1280,134 @@ void VehicleVariations::Process()
         const auto* occupantProperties = properties ? properties->occupantProperties.get() : nullptr;
         const auto* trailerProperties = properties ? properties->trailerProperties.get() : nullptr;
         if (properties && !properties->currentVariations.empty() && properties->currentVariations[0] == 0)
-            DestroyVehicleAndDriverAndPassengers(veh);
-        else
         {
-            if (occupantProperties && !occupantProperties->passengers.empty() && occupantProperties->passengers[0] == 0)
-                for (int i = 0; i < 8; i++)
+            DestroyVehicleAndDriverAndPassengers(veh);
+            continue;
+        }
+ 
+        if (occupantProperties && !occupantProperties->passengers.empty() && occupantProperties->passengers[0] == 0)
+            for (int i = 0; i < 8; i++)
+            {
+                CPed* passenger = veh->m_apPassengers[i];
+                if (passenger != NULL && passenger->m_nModelIndex > 0 && passenger->m_nCreatedBy != 2)
                 {
-                    CPed* passenger = veh->m_apPassengers[i];
-                    if (passenger != NULL && passenger->m_nModelIndex > 0 && passenger->m_nCreatedBy != 2)
-                    {
-                        if (passenger->m_pIntelligence)
-                            passenger->m_pIntelligence->FlushImmediately(false);
-                        CTheScripts__RemoveThisPed(passenger);
-                    }
+                    if (passenger->m_pIntelligence)
+                        passenger->m_pIntelligence->FlushImmediately(false);
+                    CTheScripts__RemoveThisPed(passenger);
                 }
+            }
 
-            bool spawnTrailer = rand<uint32_t>(0, 3) == 0;
+        bool spawnTrailer = rand<uint32_t>(0, 3) == 0;
 
-            if (trailerProperties && trailerProperties->trailersSpawnChances)
-                spawnTrailer = rand<uint32_t>(0, 100) < *trailerProperties->trailersSpawnChances;
+        if (trailerProperties && trailerProperties->trailersSpawnChances)
+            spawnTrailer = rand<uint32_t>(0, 100) < *trailerProperties->trailersSpawnChances;
 
-            for (auto &i : spawnedTrailers)
-                if (!i.second.empty() && i.second[0] == veh && veh->m_pTractor && isAnotherVehicleBehind(veh, i.second))
+        for (auto &i : spawnedTrailers)
+            if (!i.second.empty() && i.second[0] == veh && veh->m_pTractor && isAnotherVehicleBehind(veh, i.second))
+            {
+                for (auto& j : i.second)
+                    destroyVehicleAndOccupants(j);
+
+                i.second.clear();
+                break;
+            }
+
+        if (vehVars.currentColors)
+        {
+            if (auto it = vehVars.currentColors->find(veh->m_nModelIndex); it != vehVars.currentColors->end())
+            {
+                auto newColor = it->second[CGeneral::GetRandomNumberInRange(0, (int)it->second.size())];
+            
+                if (newColor.color1)
+                    veh->m_nPrimaryColor = *newColor.color1;
+                if (newColor.color2)
+                    veh->m_nSecondaryColor = *newColor.color2;
+                if (newColor.color3)
+                    veh->m_nTertiaryColor = *newColor.color3;
+                if (newColor.color4)
+                    veh->m_nQuaternaryColor = *newColor.color4;
+            }
+        }
+            
+        if (IsVehiclePointerValid(veh) && veh->m_pDriver && veh->m_pDriver != FindPlayerPed() && spawnTrailer && !isAnotherVehicleBehind(veh, {}))
+        {
+            std::vector<unsigned short> zoneTrailers;
+            if (currentZone)
+                if (auto it = vehVars.trailerZones.find(*reinterpret_cast<uint64_t*>(currentZone->m_szLabel)); it != vehVars.trailerZones.end())
+                    if (auto it2 = it->second.find(veh->m_nModelIndex); it2 != it->second.end())
+                        zoneTrailers = it2->second;
+
+            if (properties)
+                for (auto i : properties->activeTimeGroups)
+                    vectorfilterVector(zoneTrailers, properties->timeGroups[i].trailers);
+
+            if (zoneTrailers.empty())
+                continue;
+                
+            auto trailerConfigSelected = vectorGetRandom(zoneTrailers) - 1;
+            if (trailerConfigSelected < 0)
+                continue;
+            if (!trailerProperties || trailerProperties->trailers[trailerConfigSelected].empty())
+                continue;
+
+            CVehicle* previous = veh;
+            CCarCtrl::SwitchVehicleToRealPhysics(veh);
+
+            bool trailerMatchExtras = vectorHasId(trailerProperties->trailersMatchExtras, trailerConfigSelected + 1);
+            bool trailerMatchColors = vectorHasId(trailerProperties->trailersMatchColors, trailerConfigSelected + 1);
+
+            const auto& trailerConfigurations = trailerProperties->trailers[trailerConfigSelected];
+            const std::vector<unsigned short> &trailersVec = trailerConfigurations[CGeneral::GetRandomNumberInRange(0, (int)trailerConfigurations.size())];
+            CVehicle* firstTrailer = NULL;
+            for (auto trailerModel : trailersVec)
+            {
+                if (auto loadState = loadModel(trailerModel, PRIORITY_REQUEST, true); loadState != LOADSTATE_LOADED)
                 {
-                    for (auto& j : i.second)
-                        destroyVehicleAndOccupants(j);
-
-                    i.second.clear();
+                    Log::Write("Error loading vehicle model %d (%s) %s\n", trailerModel, modelNames.contains(trailerModel) ? modelNames[trailerModel].c_str() : "", getLoadStateString(loadState));
                     break;
                 }
-            
-            if (IsVehiclePointerValid(veh) && veh->m_pDriver && veh->m_pDriver != FindPlayerPed() && spawnTrailer && !isAnotherVehicleBehind(veh, {}))
-            {
-                std::vector<unsigned short> zoneTrailers;
-                if (currentZone)
-                    if (auto it = vehVars.trailerZones.find(*reinterpret_cast<uint64_t*>(currentZone->m_szLabel)); it != vehVars.trailerZones.end())
-                        if (auto it2 = it->second.find(veh->m_nModelIndex); it2 != it->second.end())
-                            zoneTrailers = it2->second;
 
-                if (properties)
-                    for (auto i : properties->activeTimeGroups)
-                        vectorfilterVector(zoneTrailers, properties->timeGroups[i].trailers);
-
-                if (zoneTrailers.empty())
-                    continue;
-                
-                auto trailerConfigSelected = vectorGetRandom(zoneTrailers) - 1;
-                if (trailerConfigSelected < 0)
-                    continue;
-                if (!trailerProperties || trailerProperties->trailers[trailerConfigSelected].empty())
-                    continue;
-
-                CVehicle* previous = veh;
-                CCarCtrl::SwitchVehicleToRealPhysics(veh);
-
-                bool trailerMatchExtras = vectorHasId(trailerProperties->trailersMatchExtras, trailerConfigSelected + 1);
-                bool trailerMatchColors = vectorHasId(trailerProperties->trailersMatchColors, trailerConfigSelected + 1);
-
-                const auto& trailerConfigurations = trailerProperties->trailers[trailerConfigSelected];
-                const std::vector<unsigned short> &trailersVec = trailerConfigurations[CGeneral::GetRandomNumberInRange(0, (int)trailerConfigurations.size())];
-                CVehicle* firstTrailer = NULL;
-                for (auto trailerModel : trailersVec)
+                if (trailersVec.size() == 1 && trailerMatchExtras)
                 {
-                    if (auto loadState = loadModel(trailerModel, PRIORITY_REQUEST, true); loadState != LOADSTATE_LOADED)
+                    CVehicleModelInfo::ms_compsToUse[0] = veh->m_anExtras[0];
+                    //CVehicleModelInfo::ms_compsToUse[1] = veh->m_anExtras[1];
+                }
+
+                CVehicle* trailer = CCarCtrl::GetNewVehicleDependingOnCarModel(trailerModel, RANDOM_VEHICLE);
+                if (firstTrailer == NULL)
+                    firstTrailer = trailer;
+
+                if (trailer && IsVehiclePointerValid(veh))
+                {
+                    auto newPos = previous->GetPosition();
+                    newPos.z = CWorld::FindGroundZForCoord(newPos.x, newPos.y) - 5.0f;
+
+                    CWorld::Add(trailer);
+                    //CTheScripts::ClearSpaceForMissionEntity(previous->GetPosition(), trailer);
+                    spawnedTrailers[veh].push_back(trailer);
+                    trailer->SetPosn(newPos);
+                    if (previous == veh)
+                        if (!trailer->SetTowLink(previous, 1))
+                            Log::Write("SetTowLink() failed for vehicle %d and trailer %d.\n", veh->m_nModelIndex, trailer->m_nModelIndex);
+
+                    previous = trailer;
+                    if (trailerProperties->trailersHealth)
+                        trailer->m_fHealth = static_cast<float>(*trailerProperties->trailersHealth);
+
+                    if (trailerMatchColors)
                     {
-                        Log::Write("Error loading vehicle model %d (%s) %s\n", trailerModel, modelNames.contains(trailerModel) ? modelNames[trailerModel].c_str() : "", getLoadStateString(loadState));
-                        break;
+                        trailer->m_nPrimaryColor = veh->m_nPrimaryColor;
+                        trailer->m_nSecondaryColor = veh->m_nSecondaryColor;
+                        trailer->m_nTertiaryColor = veh->m_nTertiaryColor;
+                        trailer->m_nQuaternaryColor = veh->m_nQuaternaryColor;
                     }
-
-                    if (trailersVec.size() == 1 && trailerMatchExtras)
+                    if (firstTrailer && trailersVec.size() > 1 && trailerMatchExtras)
                     {
-                        CVehicleModelInfo::ms_compsToUse[0] = veh->m_anExtras[0];
-                        //CVehicleModelInfo::ms_compsToUse[1] = veh->m_anExtras[1];
+                        CVehicleModelInfo::ms_compsToUse[0] = firstTrailer->m_anExtras[0];
+                        CVehicleModelInfo::ms_compsToUse[1] = firstTrailer->m_anExtras[1];
                     }
-
-                    CVehicle* trailer = CCarCtrl::GetNewVehicleDependingOnCarModel(trailerModel, RANDOM_VEHICLE);
-                    if (firstTrailer == NULL)
-                        firstTrailer = trailer;
-
-                    if (trailer && IsVehiclePointerValid(veh))
-                    {
-                        auto newPos = previous->GetPosition();
-                        newPos.z = CWorld::FindGroundZForCoord(newPos.x, newPos.y) - 5.0f;
-
-                        CWorld::Add(trailer);
-                        //CTheScripts::ClearSpaceForMissionEntity(previous->GetPosition(), trailer);
-                        spawnedTrailers[veh].push_back(trailer);
-                        trailer->SetPosn(newPos);
-                        if (previous == veh)
-                            if (!trailer->SetTowLink(previous, 1))
-                                Log::Write("SetTowLink() failed for vehicle %d and trailer %d.\n", veh->m_nModelIndex, trailer->m_nModelIndex);
-
-                        previous = trailer;
-                        if (trailerProperties->trailersHealth)
-                            trailer->m_fHealth = static_cast<float>(*trailerProperties->trailersHealth);
-
-                        if (trailerMatchColors)
-                        {
-                            trailer->m_nPrimaryColor = veh->m_nPrimaryColor;
-                            trailer->m_nSecondaryColor = veh->m_nSecondaryColor;
-                            trailer->m_nTertiaryColor = veh->m_nTertiaryColor;
-                            trailer->m_nQuaternaryColor = veh->m_nQuaternaryColor;
-                        }
-                        if (firstTrailer && trailersVec.size() > 1 && trailerMatchExtras)
-                        {
-                            CVehicleModelInfo::ms_compsToUse[0] = firstTrailer->m_anExtras[0];
-                            CVehicleModelInfo::ms_compsToUse[1] = firstTrailer->m_anExtras[1];
-                        }
-                    }
-                }                
-            }
+                }
+            }                
         }
     }
 }
@@ -1310,15 +1416,20 @@ void VehicleVariations::UpdateVariations()
 {
     const CWanted* wanted = FindPlayerWanted(-1);
     vehVars.currentTuning = nullptr;
+    vehVars.currentColors = nullptr;
 
     for (auto modelId : vehVars.populatedModels)
         if (auto* properties = findVehProperties(modelId))
             properties->currentVariations.clear();
 
     auto currentZoneTuning = currentZone ? vehVars.tuning.find(*reinterpret_cast<uint64_t*>(currentZone->m_szLabel)) : vehVars.tuning.end();
+    auto currentZoneColors = currentZone ? vehVars.colors.find(*reinterpret_cast<uint64_t*>(currentZone->m_szLabel)) : vehVars.colors.end();
 
     if (currentZoneTuning != vehVars.tuning.end())
         vehVars.currentTuning = &(currentZoneTuning->second);
+
+    if (currentZoneColors != vehVars.colors.end())
+        vehVars.currentColors = &(currentZoneColors->second);
 
     if (currentZoneVariations == variations.end())
         return;

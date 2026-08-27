@@ -50,7 +50,7 @@ std::string bytesToString(std::uintptr_t address, unsigned int nBytes);
 std::string fileToString(const std::string& filename);
 std::string getFilenameFromPath(const std::string& path);
 bool strcasestr(std::string_view src, std::string_view sub);
-bool strcasecmp(std::string_view s1, std::string_view s2);
+bool strcasecmp(std::string_view s1, std::string_view s2, size_t n = 0);
 std::vector<std::string> splitString(const std::string& s, char separator);
 std::vector<std::string> splitString(const std::string& s, const std::string& separators);
 std::string trimString(const std::string& str);

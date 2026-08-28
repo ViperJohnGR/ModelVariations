@@ -17,14 +17,14 @@
 #include <vector>
 
 static const char* dataFileName = "ModelVariations_PedWeapons.ini";
-static DataReader dataFile;
 
-std::unordered_map<unsigned short, std::string> wepPedModels;
 std::unordered_map<unsigned short, std::string> wepVehModels;
+std::unordered_map<unsigned short, std::unordered_map<std::string, std::vector<unsigned short>>> weaponVectors;
 
 std::vector<CPed*> pedWepStack;
 
-std::vector<unsigned short> pedHasWeaponVariations;
+std::vector<unsigned short> disableOnMission;
+std::vector<unsigned short> mergeZonesWithGlobal;
 std::vector<std::pair<CPed*, int>> weaponWatchers;
 std::map<CPed*, std::chrono::steady_clock::duration> delayedPeds;
 
@@ -60,22 +60,21 @@ bool isIdValidForWatcher(unsigned short id)
 
 void PedWeaponVariations::ClearData()
 {
-    wepPedModels.clear();
     wepVehModels.clear();
+    weaponVectors.clear();
     pedWepStack.clear();
-    pedHasWeaponVariations.clear();
+    disableOnMission.clear();
+    mergeZonesWithGlobal.clear();
     weaponWatchers.clear();
     delayedPeds.clear();
     iniHasGlobal = false;
 
     pedWeaponOptions = {};
-
-    dataFile.Clear();
 }
 
 void PedWeaponVariations::LoadData()
 {
-    dataFile.Load(dataFileName);
+    DataReader dataFile(dataFileName);
 
     pedWeaponOptions.weaponforceClearsWeapons = dataFile.ReadBoolean("Settings", "WeaponforceClearsWeapons", false);
     pedWeaponOptions.skipScriptedPeds = dataFile.ReadBoolean("Settings", "SkipScriptedPeds", false);
@@ -85,42 +84,63 @@ void PedWeaponVariations::LoadData()
 
     for (auto& iniData : dataFile.data)
     {
-        if (iniData.first == "Global")
-            iniHasGlobal = true;
+        bool sectionIsGlobal = iniData.first == "Global";
 
         int modelid = 0;
         std::string section(iniData.first);
         Log::Write("%s\n", section.c_str());
 
-        if (!(section[0] >= '0' && section[0] <= '9'))
+        if (!sectionIsGlobal)
         {
-            CModelInfo::GetModelInfo(section.data(), &modelid);
-            if (modelid > 0)
-            {
-                pedHasWeaponVariations.push_back((unsigned short)modelid);
-                wepPedModels.insert({ (unsigned short)modelid, section });
-            }
-        }
-        else
-        {
-            fromString<int>(section, modelid);
-            if (modelid > 0 && modelid < 65535)
-                pedHasWeaponVariations.push_back((unsigned short)modelid);
+            if (!(section[0] >= '0' && section[0] <= '9'))
+                CModelInfo::GetModelInfo(section.data(), &modelid);
+            else
+                fromString<int>(section, modelid);
         }
 
         for (auto& kvp : iniData.second)
-            for (const std::string& token : splitString(std::string(kvp.first), '|'))
+        {
+            auto key = std::string(kvp.first);
+
+            auto vec = dataFile.ReadLine(iniData.first, kvp.first, READ_WEAPONS);
+
+            if (!vec.empty() && (modelid > (sectionIsGlobal ? -1 : 0)) && modelid < 65536)
+                weaponVectors[static_cast<unsigned short>(modelid)][key] = vec;
+
+            for (const std::string& token : splitString(key, '|'))
             {
-                auto mInfo = CModelInfo::GetModelInfo(token.c_str(), &modelid);
-                if (mInfo && mInfo->GetModelType() == MODEL_INFO_VEHICLE && modelid > 0 && modelid < 65536)
+                int vehModelId = 0;
+                auto mInfo = CModelInfo::GetModelInfo(token.c_str(), &vehModelId);
+                if (mInfo && mInfo->GetModelType() == MODEL_INFO_VEHICLE && vehModelId > 0 && vehModelId < 65536)
                 {
-                    wepVehModels.insert({ (unsigned short)modelid, token });
+                    wepVehModels.insert({ (unsigned short)vehModelId, token });
                     break;
                 }
             }
+        }
+
+        if (dataFile.ReadBoolean(iniData.first, "MergeZonesWithGlobal", false))
+        {
+            if (section == "Global")
+                mergeZonesWithGlobal.push_back(0);
+            else if (modelid > 0 && modelid < 65536)
+                mergeZonesWithGlobal.push_back(static_cast<unsigned short>(modelid));
+        }
+
+        if (dataFile.ReadBoolean(iniData.first, "DisableOnMission", false))
+        {
+            if (section == "Global")
+                disableOnMission.push_back(0);
+            else if (modelid > 0 && modelid < 65536)
+                disableOnMission.push_back(static_cast<unsigned short>(modelid));
+        }
     }
 
-    std::sort(pedHasWeaponVariations.begin(), pedHasWeaponVariations.end());
+    std::sort(disableOnMission.begin(), disableOnMission.end());
+    std::sort(mergeZonesWithGlobal.begin(), mergeZonesWithGlobal.end());
+
+    if (weaponVectors.contains(0))
+        iniHasGlobal = true;
 
     Log::Write("\n");
 }
@@ -140,7 +160,7 @@ void PedWeaponVariations::Process()
             continue;
         }
 
-        if (ped->m_nModelIndex < 7 || (!vectorHasId(pedHasWeaponVariations, ped->m_nModelIndex) && !iniHasGlobal))
+        if (ped->m_nModelIndex < 7 || (!weaponVectors.contains(ped->m_nModelIndex) && !iniHasGlobal))
             continue;
 
         if (pedWeaponOptions.skipScriptedPeds && ped->m_nCreatedBy == 2)
@@ -168,11 +188,14 @@ void PedWeaponVariations::Process()
         }
 
         bool wepChanged = false;
+        unsigned short pedModel = 0;
+        auto wepVecIt = weaponVectors.end();
 
-        const auto changeWeapon = [&](const std::string& section, const std::string& key) -> bool
+        const auto changeWeapon = [&](std::string key) -> bool
         {
-            std::vector<unsigned short> vec = dataFile.ReadLine(section, key, READ_WEAPONS);
-            if (!vec.empty())
+            if (auto it = wepVecIt->second.find(key); it == wepVecIt->second.end())
+                return false;
+            else if (auto &vec = it->second; !vec.empty())
             {
                 eWeaponType weaponId = (eWeaponType)vectorGetRandom(vec);
                 const CWeaponInfo* wInfo = CWeaponInfo::GetWeaponInfo(weaponId, 1);
@@ -211,17 +234,11 @@ void PedWeaponVariations::Process()
             return false;
         };
 
-        std::string section;
-        if (auto it = wepPedModels.find(ped->m_nModelIndex); it != wepPedModels.end())
-            section = it->second;
-        else
-            section = std::to_string(ped->m_nModelIndex);
-
-        const bool mergeWeapons = dataFile.ReadBoolean(section, "MergeZonesWithGlobal", false);
+        const bool mergeWeapons = vectorHasId(mergeZonesWithGlobal, ped->m_nModelIndex);
         bool isOnMission = CTheScripts__IsPlayerOnAMission();
         bool pedInVehicle = IsVehiclePointerValid(ped->m_pVehicle);
 
-        if (dataFile.ReadBoolean(section, "DisableOnMission", false) && isOnMission)
+        if (vectorHasId(disableOnMission, ped->m_nModelIndex) && isOnMission)
             continue;
 
         std::array<std::string, 13> weaponStrings;
@@ -255,7 +272,12 @@ void PedWeaponVariations::Process()
         for (int m = (isOnMission ? 0 : 1); m < 2; m++)
             for (int k = 1; k >= (iniHasGlobal ? 0 : 1); --k)
             {
-                const std::string& activeSection = (k == 1) ? section : "Global";
+                pedModel = (k == 1) ? ped->m_nModelIndex : 0;
+                wepVecIt = weaponVectors.find(pedModel);
+
+                if (wepVecIt == weaponVectors.end())
+                    continue;
+
                 for (int j = 0; j < 4; j++)
                 {
                     if (wepChanged)
@@ -278,13 +300,13 @@ void PedWeaponVariations::Process()
                         wantedVehString += vehString;
 
                     bool changeZoneWeaponForce = true;
-                    if (changeWeapon(activeSection, wantedVehString + "WEAPONFORCE"))
+                    if (changeWeapon(wantedVehString + "WEAPONFORCE"))
                         changeZoneWeaponForce = rand<bool>();
 
                     std::string wantedVehZoneString = wantedVehString + zoneString + '|';
 
                     if (changeZoneWeaponForce || !mergeWeapons)
-                        changeWeapon(activeSection, wantedVehZoneString + "WEAPONFORCE");
+                        changeWeapon(wantedVehZoneString + "WEAPONFORCE");
 
                     if (!wepChanged)
                     {
@@ -294,17 +316,17 @@ void PedWeaponVariations::Process()
                                 bool changeZoneWeapon = true;
                                 bool changeZoneSlot = true;
 
-                                if (changeWeapon(activeSection, wantedVehString + slotStrings[i]))
+                                if (changeWeapon(wantedVehString + slotStrings[i]))
                                     changeZoneSlot = rand<bool>();
 
                                 if ((changeZoneSlot || !mergeWeapons))
-                                    changeWeapon(activeSection, wantedVehZoneString + slotStrings[i]);
+                                    changeWeapon(wantedVehZoneString + slotStrings[i]);
 
-                                if (changeWeapon(activeSection, wantedVehString + weaponStrings[i]))
+                                if (changeWeapon(wantedVehString + weaponStrings[i]))
                                     changeZoneWeapon = rand<bool>();
 
                                 if ((changeZoneWeapon || !mergeWeapons))
-                                    changeWeapon(activeSection, wantedVehZoneString + weaponStrings[i]);
+                                    changeWeapon(wantedVehZoneString + weaponStrings[i]);
                             }
 
                         if (wepChanged)

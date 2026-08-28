@@ -38,15 +38,17 @@ void WriteMemory(std::uintptr_t address, unsigned int value)
 template <typename T>
 T* getPointerFromAddress(std::uintptr_t address, T* fallback, int depth = 1)
 {
-    if (!isAddressValid(address))
+    auto p = reinterpret_cast<void*>(address);
+
+    if (!isAddressValid(p))
     {
         Log::Write("Address 0x%08X is invalid.\n", address);
         return fallback;
     }
 
-    auto p = reinterpret_cast<void*>(address);
+    p = *reinterpret_cast<void**>(p);
 
-    for (int i = 0; i < depth; ++i)
+    for (int i = 1; i < depth; ++i)
     {
         if (!isAddressValid(p))
         {

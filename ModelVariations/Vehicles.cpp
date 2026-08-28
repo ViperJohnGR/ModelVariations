@@ -292,7 +292,7 @@ std::vector<tVehColors> mergeVehColors(const std::vector<tVehColors>& vec1, cons
 float getDistanceFromVeh(CVehicle* vehicle, CEntity* target)
 {
     if (vehicle == NULL || target == NULL)
-        return 0.0f;
+        return std::numeric_limits<float>::infinity();
 
     return (vehicle->GetPosition() - target->GetPosition()).Magnitude();
 }
@@ -429,7 +429,7 @@ bool isAnotherVehicleBehind(CVehicle* veh, const std::vector<CVehicle*>& excepti
 
     for (const auto& i : CPools::ms_pVehiclePool)
     {
-        if (std::abs(i->GetPosition().z - veh->GetPosition().z) > 25.0f)
+        if (std::abs(i->GetPosition().z - veh->GetPosition().z) > 25.0f || getDistanceFromVeh(veh, i) > 50.0f)
             continue;
 
         bool exceptionFound = false;

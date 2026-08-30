@@ -234,11 +234,11 @@ void PedWeaponVariations::Process()
             return false;
         };
 
-        const bool mergeWeapons = vectorHasId(mergeZonesWithGlobal, ped->m_nModelIndex);
+        const bool mergeWeapons = vectorHasId(mergeZonesWithGlobal, ped->m_nModelIndex) || vectorHasId(mergeZonesWithGlobal, 0);
         bool isOnMission = CTheScripts__IsPlayerOnAMission();
         bool pedInVehicle = IsVehiclePointerValid(ped->m_pVehicle);
 
-        if (vectorHasId(disableOnMission, ped->m_nModelIndex) && isOnMission)
+        if ((vectorHasId(disableOnMission, ped->m_nModelIndex) || vectorHasId(disableOnMission, 0)) && isOnMission)
             continue;
 
         std::array<std::string, 13> weaponStrings;

@@ -10,6 +10,7 @@
 
 #include <plugin.h>
 #include <ePedType.h>
+#include <CCarEnterExit.h>
 #include <CEntryExit.h>
 #include <CFont.h>
 #include <CGame.h>
@@ -85,17 +86,28 @@ static pedVariationProperties& getOrCreatePedProperties(unsigned short modelId)
 
 
 struct tPedOptions {
-    bool useParentVoices = false;
+    bool delayModelLoading = false;
     bool improveCivilianVariety = false;
+    bool useParentVoices = false;
 };
 
 static tPedOptions pedOptions;
 
 unsigned short variationModel = 0;
 
+CPed* forceModel = NULL;
+
 bool ignoreCivilianVariety = false;
 
+struct delayedModelChange
+{
+    unsigned short parentModel;
+    unsigned short variationModel;
+    bool dontInheritBehaviour;
+};
+
 std::map<CPed*, unsigned short> changedVoices;
+std::map<CPed*, delayedModelChange> delayedModelChanges;
 
 struct
 {
@@ -114,6 +126,23 @@ bool isValidPedId(int id)
         return false;
 
     return true;
+}
+
+bool isPedInVehicle(CPed* ped)
+{
+    if (!IsPedPointerValid(ped) || !IsVehiclePointerValid(ped->m_pVehicle))
+        return false;
+
+    CVehicle* veh = ped->m_pVehicle;
+
+    if (veh->m_pDriver == ped)
+        return true;
+
+    for (int i = 0; i < 8; i++)
+        if (veh->m_apPassengers[i] == ped)
+            return true;
+
+    return false;
 }
 
 bool isPedVisible(CPed* ped)
@@ -164,6 +193,14 @@ void PedVariations::ClearData()
     for (auto modelId : pedVars.populatedModels)
         pedVars.pedById[modelId].reset();
     pedVars.populatedModels.clear();
+
+    for (auto &it : delayedModelChanges)
+    {
+        it.first->bIsVisible = true;
+        it.first->bDontRender = false;
+    }
+
+    delayedModelChanges.clear();
 
     pedVars.stack.clear();
 
@@ -271,6 +308,12 @@ void PedVariations::LoadData()
                         if (variation > 0 && variation != modelIndex)
                             setOriginalModel(variation, modelIndex);
 
+            for (const auto& j : interiorVariations)
+                if (auto it = j.second.find(modelIndex); it != j.second.end() && it->second < variationSets.size())
+                    for (auto variation : variationSets[it->second])
+                        if (variation > 0 && variation != modelIndex)
+                            setOriginalModel(variation, modelIndex);
+
             for (unsigned int j = 0; j < 9; j++)
             {
                 auto groupStart = dataFile.ReadInteger(section, "TimeGroup" + std::to_string(j + 1) + "Start", -1);
@@ -342,8 +385,9 @@ void PedVariations::LoadData()
             properties.voices = vec;
     }
 
-    pedOptions.useParentVoices = dataFile.ReadBoolean("Settings", "UseParentVoices", false);
+    pedOptions.delayModelLoading = dataFile.ReadBoolean("Settings", "DelayModelLoading", false);
     pedOptions.improveCivilianVariety = dataFile.ReadBoolean("Settings", "ImproveCivilianVariety", false);
+    pedOptions.useParentVoices = dataFile.ReadBoolean("Settings", "UseParentVoices", false);
 
     Log::Write("\n");
 }
@@ -452,6 +496,51 @@ void PedVariations::Process()
                     destroyPed(ped);
             }
         }
+    }
+
+    for (auto it = delayedModelChanges.begin(); it != delayedModelChanges.end(); )
+    {
+        CPed* ped = it->first;
+
+        if (!IsPedPointerValid(ped))
+        {
+            it = delayedModelChanges.erase(it);
+            continue;
+        }
+
+        if (CStreamingInfo__ms_pArrayBase[it->second.variationModel].m_nLoadState == LOADSTATE_LOADED)
+        {
+            auto* oldClump = reinterpret_cast<RpClump*>(ped->m_pRwObject);
+            auto* associations = RpAnimBlendClumpExtractAssociations(oldClump);
+
+            if (auto* ik = ped->m_pIntelligence->m_TaskMgr.GetTaskSecondary(TASK_SECONDARY_IK))
+                ik->MakeAbortable(ped, ABORT_PRIORITY_IMMEDIATE, nullptr);
+
+            ped->DeleteRwObject();
+            CWorld::Remove(ped);
+
+            forceModel = ped;
+            ped->SetModelIndex(it->second.variationModel);
+            forceModel = NULL;
+
+            CWorld::Add(ped);
+
+            RpAnimBlendClumpGiveAssociations(reinterpret_cast<RpClump*>(ped->m_pRwObject), associations);
+
+            if (ped->m_nMoveState != PEDMOVE_NONE)
+                ped->field_538 = PEDMOVE_NONE;
+
+            ped->bIsVisible = true;
+            ped->bDontRender = false;
+
+            if (isPedInVehicle(ped))
+                CCarEnterExit::AddInCarAnim(ped->m_pVehicle, ped, ped->m_pVehicle->m_pDriver == ped);
+
+            it = delayedModelChanges.erase(it);
+            continue;
+        }
+
+        ++it;
     }
 }
 
@@ -786,36 +875,55 @@ __declspec(noinline) void __fastcall SetModelIndexHooked(CEntity* _this, void*, 
 {
     const auto originalCall = captureCurrentOriginalCall();
 
+    if (forceModel == _this)
+    {
+        auto it = delayedModelChanges.find(forceModel);
+
+        originalCall.callMethod(_this, static_cast<int>(it->second.variationModel));
+
+        if (!it->second.dontInheritBehaviour)
+            _this->m_nModelIndex = it->second.parentModel;
+
+        variationModel = it->second.variationModel;
+        return;
+    }
+
     if (index < 7 || index > 65535)
         return originalCall.callMethod(_this, index);
 
     auto* properties = findPedProperties(static_cast<unsigned short>(index));
-    if (properties && properties->disableOnMission && CTheScripts__IsPlayerOnAMission())
+    if (!properties)
         return originalCall.callMethod(_this, index);
 
-    if (properties && isValidPedId(index) && !properties->currentVariations.empty())
+    if (properties->disableOnMission && CTheScripts__IsPlayerOnAMission() || !isValidPedId(index) || properties->currentVariations.empty())
+        return originalCall.callMethod(_this, index);
+    
+    const unsigned short newModel = vectorGetRandom(properties->currentVariations);
+    if (newModel == 0 || newModel == index)
+        return originalCall.callMethod(_this, index);
+    
+    if (!pedOptions.delayModelLoading)
+        loadModel(newModel, PRIORITY_REQUEST, true);
+            
+    if (CStreamingInfo__ms_pArrayBase[newModel].m_nLoadState == LOADSTATE_LOADED)
     {
-        const unsigned short newModel = vectorGetRandom(properties->currentVariations);
-        if (newModel > 0 && newModel != index)
-        {
-            if (auto loadState = loadModel(newModel, PRIORITY_REQUEST, true); loadState != LOADSTATE_LOADED)
-            {
-                Log::Write("Error loading ped model %d (%s) %s. Using original model %d.\n", newModel, modelNames.contains(newModel) ? modelNames[newModel].c_str() : "", getLoadStateString(loadState), index);
-                return originalCall.callMethod(_this, index);
-            }
+        originalCall.callMethod(_this, newModel);
+        Log::WriteVerbose("Ped 0x%08X index %d was replaced with model %u\n", reinterpret_cast<uint32_t>(_this), index, newModel);
 
-            originalCall.callMethod(_this, newModel);
-
-            Log::WriteVerbose("Ped 0x%08X index %d was replaced with model %u\n", reinterpret_cast<uint32_t>(_this), index, newModel);
-
-            if (!properties->dontInheritBehaviour)
-                _this->m_nModelIndex = (unsigned short)index;
-            variationModel = newModel;
-            return;
-        }
+        if (!properties->dontInheritBehaviour)
+            _this->m_nModelIndex = static_cast<unsigned short>(index);
+        variationModel = newModel;
+        return;
     }
+            
+    CStreaming__RequestModel(newModel, PRIORITY_REQUEST);
+    CPed* ped = reinterpret_cast<CPed*>(_this);
+    delayedModelChanges.insert({ ped, delayedModelChange{static_cast<unsigned short>(index), newModel, properties->dontInheritBehaviour} });
 
     originalCall.callMethod(_this, index);
+
+    ped->bIsVisible = false;
+    ped->bDontRender = true;
 }
 
 __declspec(noinline) void __fastcall UpdateRpHAnimHooked(CPed* entity)
@@ -839,21 +947,30 @@ __declspec(noinline) char __fastcall CAEPedSpeechAudioEntity__InitialiseHooked(C
     if (ped != NULL)
     {
         const auto currentModel = ped->m_nModelIndex;
-        unsigned short newModel = 0;
+        unsigned short propertiesModel = currentModel;
+        unsigned short parentModel = static_cast<unsigned short>(getVariationOriginalModel(currentModel));
 
-        const auto* properties = findPedProperties(ped->m_nModelIndex);
+        if (const auto it = delayedModelChanges.find(ped); it != delayedModelChanges.end())
+        {
+            propertiesModel = it->second.variationModel;
+            parentModel = it->second.parentModel;
+        }
+
+        const auto* properties = findPedProperties(propertiesModel);
         const bool useParentVoice = properties && properties->useParentVoice.has_value() ? *properties->useParentVoice : pedOptions.useParentVoices;
 
+        unsigned short voiceModel = propertiesModel;
+
         if (useParentVoice)
-            newModel = static_cast<unsigned short>(getVariationOriginalModel(ped->m_nModelIndex));
+            voiceModel = parentModel;
 
         if (properties && !properties->voices.empty())
-            newModel = vectorGetRandom(properties->voices);
+            voiceModel = vectorGetRandom(properties->voices);
 
-        if (newModel > 0)
+        if (voiceModel > 0 && voiceModel != currentModel)
         {
-            changedVoices[ped] = newModel;
-            ped->m_nModelIndex = newModel;
+            changedVoices[ped] = voiceModel;
+            ped->m_nModelIndex = voiceModel;
             char retVal = originalCall.callMethodAndReturn<char>(_this, ped);
             ped->m_nModelIndex = currentModel;
             return retVal;
@@ -867,6 +984,7 @@ __declspec(noinline) CPhysical* __fastcall CPhysicalHooked(CPed* _this)
 {
     const auto originalCall = captureCurrentOriginalCall();
     changedVoices.erase(_this);
+    delayedModelChanges.erase(_this);
     CPhysical* retVal = originalCall.callMethodAndReturn<CPhysical*>(_this);
     pedVars.stack.push_back(_this);
     return retVal;

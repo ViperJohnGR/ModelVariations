@@ -71,6 +71,7 @@ std::chrono::steady_clock::duration gameplayTimeSinceLoad(0);
 
 int drawDebugText = 0;
 
+CEntryExit* currentSpawnPoint = NULL;
 CZone* currentZone = NULL;
 unsigned int currentWanted = 0;
 
@@ -200,6 +201,7 @@ void clearEverything()
     interiorVariations.clear();
     currentZoneVariations = variations.end();
     variationSets.clear();
+    currentSpawnPoint = NULL;
 
     PedVariations::ClearData();
     PedWeaponVariations::ClearData();
@@ -581,8 +583,6 @@ __declspec(noinline) CZone* __cdecl FindSmallestZoneForPositionHooked(void* poin
         currentZone = retVal;
         updateVariations();
     }
-
-    static auto currentSpawnPoint = CEntryExit::ms_spawnPoint;
 
     if (currentSpawnPoint != CEntryExit::ms_spawnPoint && (player->m_pEnex ? CGame::currArea == 0 : CGame::currArea != 0))
     {

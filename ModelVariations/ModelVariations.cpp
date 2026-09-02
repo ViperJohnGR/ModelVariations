@@ -400,7 +400,7 @@ void initialize()
             Log::Write("Streaming memory was set to %u\n", streamingMemoryNew);
         }
         else
-            Log::Write("Streaming memory not increased. Current streaming memory is %d\n", *streamingMemoryOriginal);
+            Log::Write("Streaming memory not increased. Current streaming memory is %u\n", *streamingMemoryOriginal);
     }
 
 

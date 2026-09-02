@@ -235,7 +235,7 @@ struct tVehOptions {
 
 static tVehOptions vehOptions;
 
-std::vector<tVehColors> readVehColors(std::string s)
+std::vector<tVehColors> readVehColors(const std::string &s)
 {
     std::vector<tVehColors> colorsVec;
 
@@ -429,7 +429,7 @@ bool isAnotherVehicleBehind(CVehicle* veh, const std::vector<CVehicle*>& excepti
 
     for (const auto& i : CPools::ms_pVehiclePool)
     {
-        if (std::abs(i->GetPosition().z - veh->GetPosition().z) > 25.0f || getDistanceFromVeh(veh, i) > 50.0f)
+        if (std::abs(i->GetPosition().z - veh->GetPosition().z) > 15.0f || getDistanceFromVeh(veh, i) > 50.0f)
             continue;
 
         bool exceptionFound = false;

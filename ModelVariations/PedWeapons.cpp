@@ -27,12 +27,14 @@ std::vector<unsigned short> disableOnMission;
 std::vector<unsigned short> mergeZonesWithGlobal;
 std::vector<std::pair<CPed*, int>> weaponWatchers;
 std::map<CPed*, std::chrono::steady_clock::duration> delayedPeds;
+std::map<CPed*, eWeaponType> delayedSlotChanges;
 
 const char* slotStrings[13] = {"SLOT0", "SLOT1", "SLOT2", "SLOT3", "SLOT4", "SLOT5", "SLOT6", "SLOT7", "SLOT8", "SLOT9", "SLOT10", "SLOT11", "SLOT12"};
 bool iniHasGlobal = false;
 
 struct tPedWeaponOptions {
     bool weaponforceClearsWeapons = false;
+    bool weaponforceDelayInVehicle = false;
     bool skipScriptedPeds = false;
     int giveWeaponDelay = 0;
 };
@@ -77,6 +79,7 @@ void PedWeaponVariations::LoadData()
     DataReader dataFile(dataFileName);
 
     pedWeaponOptions.weaponforceClearsWeapons = dataFile.ReadBoolean("Settings", "WeaponforceClearsWeapons", false);
+    pedWeaponOptions.weaponforceDelayInVehicle = dataFile.ReadBoolean("Settings", "WeaponforceDelayInVehicle", false);
     pedWeaponOptions.skipScriptedPeds = dataFile.ReadBoolean("Settings", "SkipScriptedPeds", false);
     pedWeaponOptions.giveWeaponDelay = dataFile.ReadInteger("Settings", "GiveWeaponDelay", false);
 
@@ -149,6 +152,19 @@ void PedWeaponVariations::Process()
 {
     std::vector<CPed*> pedsToPush;
 
+    for (auto it = delayedSlotChanges.begin(); it != delayedSlotChanges.end();)
+    {
+        if (!IsPedPointerValid(it->first))
+            it = delayedSlotChanges.erase(it);
+        else if (!it->first->bInVehicle)
+        {
+            it->first->SetCurrentWeapon(it->second);
+            it = delayedSlotChanges.erase(it);
+        }
+        else
+            ++it;
+    }
+
     while (!pedWepStack.empty())
     {
         CPed* ped = pedWepStack.back();
@@ -220,11 +236,16 @@ void PedWeaponVariations::Process()
                     if (pedWeaponOptions.weaponforceClearsWeapons && isWeaponforce)
                         ped->ClearWeapons();
                         
-                    Log::WriteVerbose("Giving ped 0x%08X with model id %u weapon %u\n", ped, ped->m_nModelIndex, weaponId);
+                    Log::WriteVerbose("Giving ped 0x%08X with model id %u weapon %u (key %s)\n", ped, ped->m_nModelIndex, weaponId, key.c_str());
                     ped->GiveWeapon(weaponId, 9999, true);
 
                     if (isWeaponforce)
-                        ped->SetCurrentWeapon(weaponId);
+                    {
+                        if (pedWeaponOptions.weaponforceDelayInVehicle && ped->m_pVehicle)
+                            delayedSlotChanges.insert({ ped, weaponId });
+                        else
+                            ped->SetCurrentWeapon(weaponId);
+                    }
 
                     wepChanged = true;
                     return true;

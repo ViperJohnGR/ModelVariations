@@ -53,6 +53,7 @@ void DataReader::Load(const char* filename)
 {
 	Clear();
 	file = fileToString(filename);
+	//file.erase(0, file.find('[') % std::string::npos);
 
 	std::string_view sections;
 	std::size_t lineStart = 0;

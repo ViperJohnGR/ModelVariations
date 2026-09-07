@@ -62,6 +62,8 @@ struct tPedVars {
     std::array<std::unique_ptr<pedVariationProperties>, 65536> pedById{};
     std::vector<unsigned short> populatedModels;
 
+    std::set<unsigned short> drugDealerVariations;
+
     std::vector<CPed*> stack;
 };
 
@@ -196,8 +198,11 @@ void PedVariations::ClearData()
 
     for (auto &it : delayedModelChanges)
     {
-        it.first->bIsVisible = true;
-        it.first->bDontRender = false;
+        if (IsPedPointerValid(it.first))
+        {
+            it.first->bIsVisible = true;
+            it.first->bDontRender = false;
+        }
     }
 
     delayedModelChanges.clear();
@@ -291,7 +296,7 @@ void PedVariations::LoadData()
             {
                 char interiorName[9] = {};
                 copyString(interiorName, interior.data(), std::min(8U, interior.size()));
-                interiorVariations[*reinterpret_cast<const uint64_t*>(interiorName)][modelIndex] = variationSetsAdd(std::move(values));
+                interiorVariations[charStringTo64(interiorName)][modelIndex] = variationSetsAdd(std::move(values));
             }
 
             for (unsigned j = 0; j < 6; j++)
@@ -302,17 +307,27 @@ void PedVariations::LoadData()
                 properties.wantedVariations[j] = vec;
             }
 
+            bool isDrugDealer = modelIndex == 28 || modelIndex == 29 || modelIndex == 30 || modelIndex == 254;
+
             for (const auto& j : variations)
                 if (auto it = j.second.find(modelIndex); it != j.second.end() && it->second < variationSets.size())
                     for (auto variation : variationSets[it->second])
                         if (variation > 0 && variation != modelIndex)
+                        {
+                            if (isDrugDealer)
+                                pedVars.drugDealerVariations.insert(variation);
                             setOriginalModel(variation, modelIndex);
+                        }
 
             for (const auto& j : interiorVariations)
                 if (auto it = j.second.find(modelIndex); it != j.second.end() && it->second < variationSets.size())
                     for (auto variation : variationSets[it->second])
                         if (variation > 0 && variation != modelIndex)
+                        {
+                            if (isDrugDealer)
+                                pedVars.drugDealerVariations.insert(variation);
                             setOriginalModel(variation, modelIndex);
+                        }
 
             for (unsigned int j = 0; j < 9; j++)
             {
@@ -559,15 +574,14 @@ void PedVariations::ProcessDrugDealers(bool reset)
         {
             Log::Write("Applying drug dealer fix...\n");
 
-            for (auto modelId : pedVars.populatedModels)
+            for (auto modelId : pedVars.drugDealerVariations)
                 if (modelId > 300)
-                    if (auto originalModel = getVariationOriginalModel(modelId); originalModel == 28 || originalModel == 29 || originalModel == 30 || originalModel == 254)
-                    {
-                        Log::Write(addedIDs.contains(modelId) ? "%uSP\n" : "%u\n", modelId);
-                        auto findByScmIndex = CExternalScripts__findByScmIndex(CTheScripts__StreamedScripts, 19);
+                {
+                    Log::Write(addedIDs.contains(modelId) ? "%uSP\n" : "%u\n", modelId);
+                    auto findByScmIndex = CExternalScripts__findByScmIndex(CTheScripts__StreamedScripts, 19);
 
-                        CScriptsForBrains__AddNewScriptBrain(CTheScripts__ScriptsForBrains, findByScmIndex, static_cast<short>(modelId), 100, 0, -1, -1.0);
-                    }
+                    CScriptsForBrains__AddNewScriptBrain(CTheScripts__ScriptsForBrains, findByScmIndex, static_cast<short>(modelId), 100, 0, -1, -1.0);
+                }
 
             Log::Write("\n");
             dealersFrames = 11;
@@ -585,7 +599,7 @@ void PedVariations::UpdateVariations()
             properties->currentVariations.clear();
 
     auto player = FindPlayerPed();
-    auto currentInteriorVariations = (CGame::currArea) ? interiorVariations.find(player->m_pEnex ? (*reinterpret_cast<const uint64_t*>(player->m_pEnex)) : (*reinterpret_cast<const uint64_t*>(CEntryExit::ms_spawnPoint))) : interiorVariations.end();
+    auto currentInteriorVariations = (CGame::currArea) ? interiorVariations.find(player->m_pEnex ? (charStringTo64(player->m_pEnex)) : (charStringTo64(CEntryExit::ms_spawnPoint))) : interiorVariations.end();
 
     for (auto modelId : pedVars.populatedModels)
     {
@@ -918,6 +932,7 @@ __declspec(noinline) void __fastcall SetModelIndexHooked(CEntity* _this, void*, 
             
     CStreaming__RequestModel(newModel, PRIORITY_REQUEST);
     CPed* ped = reinterpret_cast<CPed*>(_this);
+    Log::WriteVerbose("Adding ped 0x%08X index %d newModel %u to delayedModelChanges\n", reinterpret_cast<uint32_t>(_this), index, newModel);
     delayedModelChanges.insert({ ped, delayedModelChange{static_cast<unsigned short>(index), newModel, properties->dontInheritBehaviour} });
 
     originalCall.callMethod(_this, index);

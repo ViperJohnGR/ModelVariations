@@ -53,7 +53,8 @@ void DataReader::Load(const char* filename)
 {
 	Clear();
 	file = fileToString(filename);
-	//file.erase(0, file.find('[') % std::string::npos);
+	if (file.starts_with("\xEF\xBB\xBF"))
+		file.erase(0, 3);
 
 	std::string_view sections;
 	std::size_t lineStart = 0;

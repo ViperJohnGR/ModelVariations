@@ -36,6 +36,17 @@ bool isGameCompact()
     return (plugin::GetGameVersion() == GAME_10US_COMPACT);
 }
 
+uint64_t charStringTo64(void* s)
+{
+    if (s == nullptr)
+        return 0;
+
+    uint64_t retVal = 0;
+    memcpy(&retVal, s, 8);
+
+    return retVal;
+}
+
 CVector2D convert3DVectorTo2D(const CVector& vec)
 {
     return { vec.x, vec.y };

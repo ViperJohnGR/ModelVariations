@@ -11,6 +11,7 @@
 
 bool isGameHOODLUM();
 bool isGameCompact();
+uint64_t charStringTo64(void *s);
 CVector2D convert3DVectorTo2D(const CVector& vec);
 std::string getFullPath(const std::string& filename);
 std::string printFilenameWithBorder(std::string_view name, char ch = '#');
@@ -56,83 +57,27 @@ std::vector<std::string> splitString(const std::string& s, const std::string& se
 std::string trimString(const std::string& str);
 std::string_view trimView(std::string_view text);
 
-template<class T>
-bool fromString(std::string_view s, T& x, int base = 10)
+template <typename T>
+bool fromString(std::string_view str, T& x, int base = 10)
 {
-    static_assert((std::is_integral_v<T> && !std::is_same_v<T, bool>) || std::is_floating_point_v<T>);
+    T value{};
 
-    auto p = s.begin(), e = s.end(); 
-    bool neg = p != e && *p == '-';
-    if (p != e && (*p == '-' || *p == '+'))
-        ++p;
+    const char* first = str.data();
+    const char* last = str.data() + str.size();
 
-    if constexpr (std::is_integral_v<T>) 
-    {
-        using U = std::make_unsigned_t<T>;
-        if (base < 2 || base>36 || (!std::is_signed_v<T> && neg))
-            return false;
-        U max = std::is_signed_v<T> ? U(std::numeric_limits<T>::max()) + neg : U(-1), n = 0;
-        auto b = p;
+    std::from_chars_result result{};
 
-        for (; p != e; ++p)
-        {
-            unsigned d = *p - '0';
-            if (d > 9) 
-            {
-                d = (*p | 32) - 'a' + 10;
-                if (d < 10)
-                    return false;       // Reject '@' and '`'
-            }
-            if (d >= unsigned(base) || n > (max - d) / base)
-                return false;
-            n = n * base + d;
-        }
-
-        if (p == b)
-            return false;
-        x = neg ? T(U(0) - n) : T(n);
-    }
+    if constexpr (std::is_integral_v<T>)
+        result = std::from_chars(first, last, value, base);
+    else if constexpr (std::is_floating_point_v<T>)
+        result = std::from_chars(first, last, value);
     else
-    {
-        if (base != 10)
-            return false;
+        static_assert(std::is_arithmetic_v<T>, "fromString<T> only supports arithmetic types parseable by std::from_chars");
 
-        constexpr uint64_t M = (uint64_t(1) << 53) - 1;
-        uint64_t n = 0, scale = 1;
-        bool dot = false, any = false;
+    if (result.ec != std::errc{} || result.ptr != last)
+        return false;
 
-        for (; p != e; ++p)
-        {
-            if (*p == '.' && !dot)
-            {
-                dot = true;
-                continue;
-            }
-
-            unsigned d = unsigned(*p - '0');
-            if (d > 9 || n > (M - d) / 10)
-                return false;
-
-            any = true;
-            n = n * 10 + d;
-
-            if (dot)
-            {
-                if (scale > M / 10)
-                    return false;
-                scale *= 10;
-            }
-        }
-
-        if (!any)
-            return false;
-
-        double v = double(n) / double(scale);
-        if (v > double(std::numeric_limits<T>::max()))
-            return false;
-
-        x = T(neg ? -v : v);
-    }
+    x = value;
     return true;
 }
 

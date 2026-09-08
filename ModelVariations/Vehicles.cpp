@@ -1359,6 +1359,9 @@ void VehicleVariations::Process()
             bool trailerMatchExtras = vectorHasId(trailerProperties->trailersMatchExtras, trailerConfigSelected + 1);
             bool trailerMatchColors = vectorHasId(trailerProperties->trailersMatchColors, trailerConfigSelected + 1);
 
+            const auto originalExtras0 = CVehicleModelInfo::ms_compsToUse[0];
+            const auto originalExtras1 = CVehicleModelInfo::ms_compsToUse[1];
+
             const auto& trailerConfigurations = trailerProperties->trailers[trailerConfigSelected];
             const std::vector<unsigned short> &trailersVec = trailerConfigurations[CGeneral::GetRandomNumberInRange(0, (int)trailerConfigurations.size())];
             CVehicle* firstTrailer = NULL;
@@ -1380,7 +1383,7 @@ void VehicleVariations::Process()
                 if (firstTrailer == NULL)
                     firstTrailer = trailer;
 
-                if (trailer && IsVehiclePointerValid(veh))
+                if (trailer && trailer->m_pRwObject && IsVehiclePointerValid(veh))
                 {
                     auto newPos = previous->GetPosition();
                     newPos.z = CWorld::FindGroundZForCoord(newPos.x, newPos.y) - 5.0f;
@@ -1410,7 +1413,10 @@ void VehicleVariations::Process()
                         CVehicleModelInfo::ms_compsToUse[1] = firstTrailer->m_anExtras[1];
                     }
                 }
-            }                
+            }      
+
+            CVehicleModelInfo::ms_compsToUse[0] = originalExtras0;
+            CVehicleModelInfo::ms_compsToUse[1] = originalExtras1;
         }
     }
 }
@@ -2367,7 +2373,23 @@ __declspec(noinline) void __cdecl CWorld__RemoveHooked(CVehicle* entity)
         {
             for (auto trailer : it->second)
                 if (IsVehiclePointerValid(trailer) && getDistanceFromVeh(entity, trailer) < 22.0f)
-                    destroyVehicleAndOccupants(trailer);
+                {
+                    auto currentTractor = trailer->m_pTractor;
+                    bool isPlayerTrailer = false;
+                    while (IsVehiclePointerValid(currentTractor))
+                    {
+                        if (currentTractor->m_pDriver == FindPlayerPed())
+                        {
+                            isPlayerTrailer = true;
+                            break;
+                        }
+
+                        currentTractor = currentTractor->m_pTractor;
+                    }
+
+                    if (!isPlayerTrailer)
+                        destroyVehicleAndOccupants(trailer);
+                }
 
             spawnedTrailers.erase(it);
         }

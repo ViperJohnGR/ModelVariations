@@ -877,12 +877,27 @@ void PedVariations::LogVariations()
 
 __declspec(noinline) int __cdecl getKillsByPlayer(int player)
 {
-    int sum = 0;
+    if (player < 0 || player >= 2)
+        return 0;
 
-    for (int i = maxPedID * player; i < maxPedID * (player+1); i++)
-        sum += destroyedModelCounters[i];
+    const int modelCount = std::min(maxPedID, static_cast<int>(destroyedModelCounters.size() / 2));
 
-    return sum;
+    int total = 0;
+
+    for (int modelId = 0; modelId < modelCount; ++modelId)
+    {
+        CBaseModelInfo* modelInfo = CModelInfo::GetModelInfo(modelId);
+
+        // The original function counts ped kills, not destroyed vehicles.
+        if (!modelInfo || modelInfo->GetModelType() != MODEL_INFO_PED)
+            continue;
+
+        // Counters are interleaved:
+        // [model 0 player 0, model 0 player 1, model 1 player 0, ...]
+        total += destroyedModelCounters[modelId * 2 + player];
+    }
+
+    return total;
 }
 
 __declspec(noinline) void __fastcall SetModelIndexHooked(CEntity* _this, void*, const int index)
@@ -1134,7 +1149,10 @@ __declspec(noinline) int __cdecl ChooseCivilianOccupationForVehicleHooked(char m
         }
     }
 
-    return leastUsedModel.first;
+    if (CPopCycle::IsPedAppropriateForCurrentZone(leastUsedModel.first) && (male ? CPopulation::IsMale(leastUsedModel.first) : true))
+        return leastUsedModel.first;
+
+    return modelid;
 }
 
 void PedVariations::InstallHooks(bool enableSpecialPeds)

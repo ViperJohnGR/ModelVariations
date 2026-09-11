@@ -383,8 +383,23 @@ void PedWeaponVariations::LogDataFile()
 __declspec(noinline) CPed* __fastcall CPedHooked(CPed* ped, void*, int pedType)
 {
     const auto originalCall = captureCurrentOriginalCall();
+
+    std::erase(pedWepStack, ped);
+    std::erase_if(weaponWatchers,
+        [ped](const auto& watcher)
+        {
+            return watcher.first == ped;
+        }
+    );
+
+    delayedPeds.erase(ped);
+    delayedSlotChanges.erase(ped);
+
     CPed* retVal = originalCall.callMethodAndReturn<CPed*>(ped, pedType);
-    pedWepStack.push_back(ped);
+
+    if (retVal)
+        pedWepStack.push_back(ped);
+
     return retVal;
 }
 

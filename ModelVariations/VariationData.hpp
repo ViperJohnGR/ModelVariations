@@ -19,6 +19,7 @@ unsigned short variationSetsAdd(std::vector<unsigned short>&& vec);
 CZone* getZone(std::string_view name);
 unsigned short zoneGetIndex(CZone* zone);
 
+extern "C" __declspec(dllexport) int MV_GetVariationOriginalModel(int modelIndex);
 int __stdcall getVariationOriginalModel(int);
 void resetOriginalModels();
 void setOriginalModel(int model, int originalModel);

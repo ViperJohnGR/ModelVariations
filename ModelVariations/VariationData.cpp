@@ -60,6 +60,11 @@ unsigned short zoneGetIndex(CZone* zone)
 }
 
 
+int MV_GetVariationOriginalModel(int modelIndex)
+{
+    return getVariationOriginalModel(modelIndex);
+}
+
 __declspec(naked) int __stdcall getVariationOriginalModel(int)
 {
     __asm

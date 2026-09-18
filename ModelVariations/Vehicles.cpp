@@ -1387,11 +1387,12 @@ void VehicleVariations::Process()
                 {
                     auto newPos = previous->GetPosition();
                     newPos.z = CWorld::FindGroundZForCoord(newPos.x, newPos.y) - 5.0f;
+                    trailer->SetPosn(newPos);
 
                     CWorld::Add(trailer);
                     //CTheScripts::ClearSpaceForMissionEntity(previous->GetPosition(), trailer);
                     spawnedTrailers[veh].push_back(trailer);
-                    trailer->SetPosn(newPos);
+                    
                     if (previous == veh)
                         if (!trailer->SetTowLink(previous, 1))
                             Log::Write("SetTowLink() failed for vehicle %d and trailer %d.\n", veh->m_nModelIndex, trailer->m_nModelIndex);
@@ -1547,6 +1548,17 @@ void VehicleVariations::DrawDebugInfo(float fontSize, uint32_t debugOptions)
             currentOffset += lineOffset;
         }
 
+        if (debugOptions & std::to_underlying(debugDrawVehStats::REF_COUNT))
+        {
+            auto mInfo = CModelInfo::GetModelInfo(veh->m_nModelIndex);
+            if (mInfo)
+            {
+                std::string line = msprintf("Ref Count: %u", mInfo->m_nRefCount);
+                CFont::PrintString(screenPos.x, screenPos.y + currentOffset, line.c_str());
+                currentOffset += lineOffset;
+            }
+        }
+
         if (debugOptions & std::to_underlying(debugDrawVehStats::LOCKED) && !veh->CanPedOpenLocks(FindPlayerPed()))
         {
             CFont::PrintString(screenPos.x, screenPos.y + currentOffset, "Locked");
@@ -1579,7 +1591,18 @@ void VehicleVariations::DrawDebugInfo(float fontSize, uint32_t debugOptions)
 
         if (auto parentModel = getVariationOriginalModel(veh->m_nModelIndex); parentModel != veh->m_nModelIndex && (debugOptions & std::to_underlying(debugDrawVehStats::PARENT_MODEL)))
         {
-            std::string line = msprintf("Parent model : %d", parentModel);
+            std::string line = msprintf("Parent model: %d", parentModel);
+            CFont::PrintString(screenPos.x, screenPos.y + currentOffset, line.c_str());
+            currentOffset += lineOffset;
+        }
+
+        if (auto it = spawnedTrailers.find(veh); debugOptions & std::to_underlying(debugDrawVehStats::TRAILERS) && it != spawnedTrailers.end())
+        {
+            std::string line = msprintf("Trailers: ", veh->m_fHealth);
+            for (auto trailer : it->second)
+                line += msprintf("%u ", trailer->m_nModelIndex);
+
+            line.pop_back();
             CFont::PrintString(screenPos.x, screenPos.y + currentOffset, line.c_str());
             currentOffset += lineOffset;
         }
@@ -1706,6 +1729,9 @@ __declspec(noinline) void __cdecl AddPoliceCarOccupantsHooked(CVehicle* a2, char
 
     const unsigned short model = a2->m_nModelIndex;
     a2->m_nModelIndex = (unsigned short)getVariationOriginalModel(a2->m_nModelIndex);
+
+    if (!a2->IsLawEnforcementVehicle())
+        Log::Write("Warning: Vehicle 0x%X (%u) is not a law enforcement vehicle. Expect empty vehicle.\n", a2, model);
 
     originalCall.call(a2, a3);
 
@@ -2150,7 +2176,8 @@ __declspec(noinline) void __cdecl PossiblyRemoveVehicleHooked(CVehicle* car)
         return;
     }
 
-    std::vector<CVehicle*> trailersToCheck;    
+    std::vector<CVehicle*> trailersToCheck;
+    CVehicle* tractor = NULL;
 
     for (auto it = spawnedTrailers.begin(); it != spawnedTrailers.end(); )
     {
@@ -2169,8 +2196,16 @@ __declspec(noinline) void __cdecl PossiblyRemoveVehicleHooked(CVehicle* car)
         }
 
         for (auto trailer : it->second)
-            if (trailer == car && (((CTimer::m_snTimeInMilliseconds - trailer->m_nCreationTime) < 300) || (trailer->m_pTractor && (!trailer->m_pTractor->bFadeOut))))
-                return;
+        {
+            if (trailer == car)
+            {
+                if (((CTimer::m_snTimeInMilliseconds - trailer->m_nCreationTime) < 300) || (trailer->m_pTractor && (!trailer->m_pTractor->bFadeOut)))
+                    return;
+
+                tractor = it->first;
+                break;
+            }
+        }
           
         if (it->first == car)
             for (auto trailer : it->second)
@@ -2197,6 +2232,19 @@ __declspec(noinline) void __cdecl PossiblyRemoveVehicleHooked(CVehicle* car)
             }
             spawnedTrailers.erase(car);
         }
+
+    if (tractor && !IsVehiclePointerValid(car))
+    {
+        auto it = spawnedTrailers.find(tractor);
+        if (it != spawnedTrailers.end())
+        {
+            while (!it->second.empty() && it->second.back() != car)
+                it->second.pop_back();
+
+            if (!it->second.empty())
+                it->second.pop_back();
+        }        
+    }
 }
 
 __declspec(noinline) void* __fastcall SetDriverHooked(CVehicle* _this, void*, CPed* a2)
@@ -2347,6 +2395,7 @@ __declspec(noinline) CPhysical* __fastcall CPhysicalHooked(CVehicle* _this)
     const auto originalCall = captureCurrentOriginalCall();
     CPhysical* retVal = originalCall.callMethodAndReturn<CPhysical*>(_this);
     vehVars.stack.push_back(_this);
+    spawnedTrailers.erase(_this);
     return retVal;
 }
 
@@ -2361,6 +2410,22 @@ __declspec(noinline) void __fastcall AddAudioEventHooked(CAEVehicleAudioEntity* 
         if (vehicle && (CTimer::m_snTimeInMilliseconds - vehicle->m_nCreationTime) > 2000)
             originalCall.callMethod(audio, audioEvent, fVolume);
     }
+}
+
+char __fastcall BreakTowLinkHooked(CAutomobile* _this)
+{
+    const auto originalCall = captureCurrentOriginalCall();
+
+    for (auto &it : spawnedTrailers)
+    {
+        auto vecIt = std::find(it.second.begin(), it.second.end(), _this);
+
+        if (vecIt != it.second.end())
+            it.second.erase(vecIt, it.second.end());
+    }
+
+    
+    return originalCall.callMethodAndReturn<char>(_this);
 }
 
 __declspec(noinline) void __cdecl CWorld__RemoveHooked(CVehicle* entity)
@@ -3208,6 +3273,9 @@ void VehicleVariations::InstallHooks()
 
     hookSharedCall<0x6CFFBB, AddAudioEventHooked>("CAEVehicleAudioEntity::AddAudioEvent"); //CTrailer::SetTowLink
     hookSharedCall<0x6CEFCE, AddAudioEventHooked>("CAEVehicleAudioEntity::AddAudioEvent"); //CTrailer::BreakTowLink
+
+    hookSharedCall<0x871218, BreakTowLinkHooked>("CAutomobile::BreakTowLink", true);
+    hookSharedCall<0x871D20, BreakTowLinkHooked>("CTrailer::BreakTowLink", true);
 
     hookSharedCall<0x4251E6, CWorld__RemoveHooked>("CWorld::Remove"); //CCarCtrl::PossiblyRemoveVehicle
     hookSharedCall<0x425221, CWorld__RemoveHooked>("CWorld::Remove"); //CCarCtrl::PossiblyRemoveVehicle

@@ -207,6 +207,7 @@ void PedVariations::ClearData()
 
     delayedModelChanges.clear();
 
+    pedVars.drugDealerVariations.clear();
     pedVars.stack.clear();
 
     pedOptions = {};
@@ -745,6 +746,17 @@ void PedVariations::DrawDebugInfo(float fontSize, uint32_t debugOptions)
             currentOffset += lineOffset;
         }
 
+        if (debugOptions & std::to_underlying(debugDrawPedStats::REF_COUNT))
+        {
+            auto mInfo = CModelInfo::GetModelInfo(ped->m_nModelIndex);
+            if (mInfo)
+            {
+                std::string line = msprintf("Ref Count: %u", mInfo->m_nRefCount);
+                CFont::PrintString(screenPos.x, screenPos.y + currentOffset, line.c_str());
+                currentOffset += lineOffset;
+            }
+        }
+
         if (debugOptions & std::to_underlying(debugDrawPedStats::PROOFS))
         {
             std::string proofs = msprintf("%s%s%s%s%s%s", ped->bBulletProof ? " BP" : "",
@@ -1109,6 +1121,9 @@ __declspec(noinline) int __cdecl ChooseCivilianOccupationForVehicleHooked(char m
             auto mInfo = CModelInfo::GetModelInfo(i);
             if (mInfo && vehModelInfo && mInfo->GetModelType() == MODEL_INFO_PED && CPopCycle::IsPedAppropriateForCurrentZone(i) && (canPedDriveVeh(i, a2->m_nModelIndex) || a2->m_nModelIndex == 422))
             {
+                if (male && !CPopulation::IsMale(i))
+                    continue;
+
                 bool modelExists = false;
                 for (CPed* ped : CPools::ms_pPedPool)
                     if (ped && ped->m_nModelIndex == i)
@@ -1149,7 +1164,7 @@ __declspec(noinline) int __cdecl ChooseCivilianOccupationForVehicleHooked(char m
         }
     }
 
-    if (CPopCycle::IsPedAppropriateForCurrentZone(leastUsedModel.first) && (male ? CPopulation::IsMale(leastUsedModel.first) : true))
+    if (CPopCycle::IsPedAppropriateForCurrentZone(leastUsedModel.first))
         return leastUsedModel.first;
 
     return modelid;

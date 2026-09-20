@@ -235,7 +235,7 @@ void loadIniData()
         {
             enableSpecialPeds = false;
             if (!modInitialized)
-                MessageBox(NULL, "No limit adjuster found! EnableSpecialPeds will be disabled.", "Model Variations", MB_ICONWARNING);
+                MessageBox(NULL, "No limit adjuster found! EnableSpecialPeds will be disabled.", "Model Variations", MB_ICONWARNING | MB_SETFOREGROUND);
         }
 
         PedVariations::LoadData();
@@ -420,7 +420,7 @@ void refreshOnGameRestart()
 
     if (!modInitialized)
     {
-        MessageBox(NULL, "Could not initialize mod.", "Model Variations", MB_ICONWARNING);
+        MessageBox(NULL, "Could not initialize mod.", "Model Variations", MB_ICONWARNING | MB_SETFOREGROUND);
         return;
     }
         
@@ -1001,7 +1001,7 @@ __declspec(noinline) void __cdecl InitialiseGameHooked()
                         std::string warning_string = msprintf("WARNING: model %d %shas a reference count of %d\n", i, modelType, mInfo->m_nRefCount);
                         Log::Write("%s", warning_string.c_str());
 #ifdef _DEBUG
-                        MessageBox(NULL, warning_string.c_str(), "Model Variations", MB_ICONWARNING);
+                        MessageBox(NULL, warning_string.c_str(), "Model Variations", MB_ICONWARNING | MB_SETFOREGROUND);
 #endif
                         referenceCountModels.insert(static_cast<unsigned short>(i));
                     }
@@ -1140,7 +1140,7 @@ char __cdecl InitialiseRenderWareHooked()
     if (!loadOriginalExeSections(exePath, sections, sectionAddresses))
     {
         Log::Write("Error! Failed to retain the original executable sections. Mod initialization aborted.\n");
-        MessageBox(NULL, "Failed to load the original executable sections.", "Model Variations", MB_ICONERROR);
+        MessageBox(NULL, "Failed to load the original executable sections.", "Model Variations", MB_ICONERROR | MB_SETFOREGROUND);
         return retVal;
     }
 
@@ -1200,7 +1200,7 @@ public:
 
         if (!plugin::IsGameVersion10us())
         {
-            MessageBox(NULL, "Error! Unsupported EXE version detected!\nThis mod supports only the US v1.0 EXE.", "Model Variations", MB_ICONERROR);
+            MessageBox(NULL, "Error! Unsupported EXE version detected!\nThis mod supports only the US v1.0 EXE.", "Model Variations", MB_ICONERROR | MB_SETFOREGROUND);
             return;
         }
 

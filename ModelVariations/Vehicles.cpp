@@ -109,6 +109,7 @@ unsigned short lightsModel = 0;
 int currentOccupantsGroup = -1;
 unsigned short currentOccupantsModel = 0;
 bool tuneParkedCar = false;
+int useFirstCoronas = 0;
 
 int occupantModelIndex = -1;
 int clumpLoadModel = -1;
@@ -2278,6 +2279,22 @@ __declspec(noinline) void __fastcall CAutomobile__PreRenderHooked(CAutomobile* v
     lightsModel = 0;
 }
 
+__declspec(noinline) CVehicle* __fastcall CBike__PreRenderHooked(CVehicle* _this)
+{
+    const auto originalCall = captureCurrentOriginalCall();
+
+    if (_this == NULL)
+        return NULL;
+
+    unsigned short originalModel = _this->m_nModelIndex;
+    lightsModel = _this->m_nModelIndex;
+
+    CVehicle* retVal = originalCall.callMethodAndReturn<CVehicle*>(_this);
+    _this->m_nModelIndex = originalModel;
+    lightsModel = 0;
+    return retVal;
+}
+
 __declspec(noinline) int __fastcall GetVehicleAppearanceHooked(CVehicle* veh)
 {
     const auto originalCall = captureCurrentOriginalCall();
@@ -2349,7 +2366,7 @@ __declspec(noinline) void* __fastcall CreateInstanceHooked(CVehicleModelInfo* _t
                                                    CVehicleModelInfo__CVehicleStructure__m_pInfoPool->m_nSize,
                                                    CStreaming__ms_memoryUsed/1024/1024, CStreaming__ms_memoryAvailable/1024/1024);
             Log::Write("\n%s\n", errorString.c_str());
-            MessageBox(NULL, errorString.c_str(), "Model Variations", MB_ICONERROR);
+            MessageBox(NULL, errorString.c_str(), "Model Variations", MB_ICONERROR | MB_SETFOREGROUND);
             return 0;
         }
         clumpLoadModel = -1;
@@ -2569,7 +2586,6 @@ __declspec(noinline) bool __fastcall UsesSirenHooked(CVehicle* veh)
 }
 
 //enableLights
-template <bool second = false>
 __declspec(noinline) void __cdecl RegisterCoronaHooked(void* _this, CEntity* a2, unsigned char red, unsigned char green, unsigned char blue, unsigned char alpha, CVector* coors, 
                                                        float size, float a9, void* texture, unsigned char a11, unsigned char a12, unsigned char a13, int a14, float a15, float a16, 
                                                        float a17, float a18, float a19, float a20, bool a21)
@@ -2603,7 +2619,7 @@ __declspec(noinline) void __cdecl RegisterCoronaHooked(void* _this, CEntity* a2,
     //colors
     if (lightProperties)
     {
-        const auto& color = second ? lightProperties->lightColors2 : lightProperties->lightColors;
+        const auto& color = useFirstCoronas ? lightProperties->lightColors : lightProperties->lightColors2;
         if (color)
         {
             red = color->red;
@@ -2611,6 +2627,7 @@ __declspec(noinline) void __cdecl RegisterCoronaHooked(void* _this, CEntity* a2,
             blue = color->blue;
             alpha = color->alpha;
         }
+        useFirstCoronas = 0;
     }
 
     originalCall.call(_this, a2, red, green, blue, alpha, coors, size, a9, texture, a11, a12, a13, a14, a15, a16, a17, a18, a19, a20, a21);
@@ -2657,6 +2674,16 @@ __declspec(noinline) void __fastcall AddDamagedVehicleParticlesHooked(CVehicle* 
 __declspec(noinline) void __fastcall DoVehicleLightsHooked(CAutomobile* _this, void*, void* m, int a3)
 {
     const auto originalCall = captureCurrentOriginalCall();
+
+    if (originalCall.address == 0x6BD65F) //unrelated to trailer lights, lightsModel reset for CBike::PreRender
+    {
+        if (lightsModel > 0)
+            _this->m_nModelIndex = lightsModel;
+
+        lightsModel = 0;
+        originalCall.callMethod(_this, m, a3);
+        return;
+    }
 
     if (_this == NULL || !CModelInfo::IsTrailerModel(_this->m_nModelIndex) || getVariationOriginalModel(_this->m_nModelIndex) == 610)
     {
@@ -2980,18 +3007,25 @@ isCopBike:
     }
 }
 
-decltype(&RegisterCoronaHooked<true>) RegisterCoronaHookedPointer = nullptr;
-void __declspec(naked) patchCoronas()
+void __declspec(naked) patchCAutomobileCorona()
 {
     __asm {
-        push 0x0FF
+        mov useFirstCoronas, 1
+        push 0xFF
         push ecx
         push edx
-        push eax
-        push esi
-        push edi
-        call RegisterCoronaHookedPointer
-        push 0x6ABA65
+        push ebp
+        push 0x6ABA07
+        ret
+    }
+}
+
+void __declspec(naked) patchCBikeCorona()
+{
+    __asm {
+        mov useFirstCoronas, 1
+        push 0x41F00000
+        push 0x6BD4A6
         ret
     }
 }
@@ -3261,6 +3295,8 @@ void VehicleVariations::InstallHooks()
     hookSharedCall<0x871164, CAutomobile__PreRenderHooked>("CAutomobile::PreRender", true);
     hookSharedCall<0x6CFADC, CAutomobile__PreRenderHooked>("CAutomobile::PreRender"); //CTrailer::PreRender
 
+    hookSharedCall<0x8713A4, CBike__PreRenderHooked>("CBike::PreRender", true);
+
     hookSharedCall<0x6ABC93, GetVehicleAppearanceHooked>("CVehicle::GetVehicleAppearance"); //CAutomobile::PreRender
     x6ABCBE_Destination = injector::MakeJMP(0x6ABCBE, patch6ABCBE).as_int();
 
@@ -3343,22 +3379,22 @@ void VehicleVariations::InstallHooks()
 
     if (vehOptions.enableLights)
     {
-        SharedCallHookState* const registerCoronaState = hookSharedCall<0x6ABA60, RegisterCoronaHooked<false>>("CCoronas::RegisterCorona"); //CAutomobile::PreRender
-        hookSharedCall<0x6ABB35, RegisterCoronaHooked<false>>("CCoronas::RegisterCorona"); //CAutomobile::PreRender
-        hookSharedCall<0x6ABC69, RegisterCoronaHooked<false>>("CCoronas::RegisterCorona"); //CAutomobile::PreRender
-
-        if (registerCoronaState)
-            RegisterCoronaHookedPointer = createSharedCallThunk<&RegisterCoronaHooked<true>>(*registerCoronaState);
-
-        if (RegisterCoronaHookedPointer && (memoryMatchesOriginalExe(0x6ABA56, 5) || forceEnableGlobal || forceEnable.contains(0x6ABA56)))
-            injector::MakeJMP(0x6ABA56, patchCoronas);
-        else if (RegisterCoronaHookedPointer)
-            Log::LogModifiedAddress(0x6ABA56, "Modified method detected: CAutomobile::PreRender - 0x6ABA56 is %s\n", bytesToString(0x6ABA56, 5).c_str());
+        hookSharedCall<0x6ABA60, RegisterCoronaHooked>("CCoronas::RegisterCorona"); //CAutomobile::PreRender
+        hookSharedCall<0x6ABB35, RegisterCoronaHooked>("CCoronas::RegisterCorona"); //CAutomobile::PreRender
+        hookSharedCall<0x6ABC69, RegisterCoronaHooked>("CCoronas::RegisterCorona"); //CAutomobile::PreRender
+        hookSharedCall<0x6BD531, RegisterCoronaHooked>("CCoronas::RegisterCorona"); //CBike::PreRender
+        hookSharedCall<0x6BD4DD, RegisterCoronaHooked>("CCoronas::RegisterCorona"); //CBike::PreRender
 
         hookSharedCall<0x6AB80F, AddLightHooked>("CPointLights::AddLight"); //CAutomobile::PreRender
         hookSharedCall<0x6ABBA6, AddLightHooked>("CPointLights::AddLight"); //CAutomobile::PreRender
 
         hookSharedCall<0x6AB34B, AddDamagedVehicleParticlesHooked>("CVehicle::AddDamagedVehicleParticles"); //CAutomobile::PreRender
+        hookSharedCall<0x6BD40A, AddDamagedVehicleParticlesHooked>("CVehicle::AddDamagedVehicleParticles"); //CBike::PreRender
+
+        hookSharedCall<0x6BD65F, DoVehicleLightsHooked>("CVehicle::DoVehicleLights"); //CBike::PreRender
+
+        hookASM(0x6AB9FF, 5, patchCAutomobileCorona, "CAutomobile::PreRender");
+        hookASM(0x6BD4A1, 5, patchCBikeCorona, "CBike::PreRender");
     }
 
     if (vehOptions.enableTrailerLights)
@@ -3614,7 +3650,6 @@ void VehicleVariations::InstallHooks()
         hookASM(0x6ABFC8, 6, cmpWordPtrRegModel<REG_ESI, 0x6ABFCE, 0x1B0>, "CAutomobile::PreRender");
         hookASM(0x6AC025, 6, cmpWordPtrRegModel<REG_ESI, 0x6AC02B, 0x1B0>, "CAutomobile::PreRender");
         hookASM(0x6AC297, 8, movReg16WordPtrReg<REG_AX, REG_ESI, 0x6AC29F, 4, 0x34245CD9>, "CAutomobile::PreRender");
-        hookASM(0x6BD40F, 6, cmpWordPtrRegModel<REG_ESI, 0x6BD415, 0x20B>, "CBike::PreRender");
         hookASM(0x6D7E11, 6, cmpWordPtrRegModel<REG_ESI, 0x6D7E17, 0x20B>, "CVehicle::InflictDamage");
         hookASM(0x6AC0E2, 5, patch6AC0E2, "CAutomobile::PreRender");
         hookASM(0x41F2A2, 5, patch41F2A2, "CCarAI::UpdateCarAI");

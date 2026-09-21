@@ -47,8 +47,52 @@ struct SharedCallHookState {
 };
 
 extern SharedCallHookState* currentSharedCallHook;
-__declspec(noinline) SharedCallHookState* __fastcall hookSharedCallImpl(std::uintptr_t address, void* target, const char* name, bool isVTableAddress);
-__declspec(noinline) void* __fastcall createSharedCallThunkImpl(SharedCallHookState* state, void* target) noexcept;
+__declspec(noinline) SharedCallHookState* __fastcall hookSharedCallImpl(SharedCallHookState* state, void* thunk, const char* name, bool isVTableAddress);
+
+// Constant-initialized instruction bytes belong in executable, read-only storage.
+// Pointer fields receive ordinary linker/loader relocations; no code is emitted
+// or patched by the hook installer.
+#pragma section(".asm", execute, read)
+
+namespace hook_detail {
+    static_assert(sizeof(void*) == 4, "Shared-call thunks require an x86 build");
+
+#pragma pack(push, 1)
+    struct SharedCallThunkCode {
+        std::uint8_t setStateOpcode[2];
+        SharedCallHookState** currentStateSlot;
+        SharedCallHookState* state;
+        std::uint8_t jumpOpcode[2];
+        const void* targetSlot;
+    };
+#pragma pack(pop)
+
+    static_assert(sizeof(SharedCallThunkCode) == 16);
+    static_assert(offsetof(SharedCallThunkCode, currentStateSlot) == 2);
+    static_assert(offsetof(SharedCallThunkCode, state) == 6);
+    static_assert(offsetof(SharedCallThunkCode, jumpOpcode) == 10);
+    static_assert(offsetof(SharedCallThunkCode, targetSlot) == 12);
+
+    template <auto Target>
+    struct SharedCallTarget {
+        // One immutable jump target slot per handler, shared by its hook sites.
+        static inline constexpr auto function = Target;
+    };
+
+    template <std::uintptr_t address, auto Target>
+    struct SharedCallHookSlot {
+        static inline constinit SharedCallHookState state{ address, nullptr };
+
+        // mov dword ptr [currentSharedCallHook], &state
+        // jmp dword ptr [SharedCallTarget<Target>::function]
+        // Neither instruction changes the argument registers, stack, or flags.
+        __declspec(allocate(".asm"))
+        static inline constinit const SharedCallThunkCode code = {
+            { 0xC7, 0x05 }, &currentSharedCallHook, &state,
+            { 0xFF, 0x25 }, &SharedCallTarget<Target>::function
+        };
+    };
+}
 
 struct CapturedOriginalCall {
     std::uintptr_t address;
@@ -107,16 +151,10 @@ __forceinline SharedCallHookState* hookSharedCall(const char* name, bool isVTabl
     using TargetType = decltype(Target);
     static_assert(std::is_pointer_v<TargetType> && std::is_function_v<std::remove_pointer_t<TargetType>>, "Hook destination must be a function pointer");
 
-    return hookSharedCallImpl(address, reinterpret_cast<void*>(Target), name, isVTableAddress);
-}
+    static_assert(Target != nullptr, "Hook destination must not be null");
 
-template <auto Target>
-__forceinline decltype(Target) createSharedCallThunk(SharedCallHookState& state) noexcept
-{
-    using TargetType = decltype(Target);
-    static_assert(std::is_pointer_v<TargetType> && std::is_function_v<std::remove_pointer_t<TargetType>>, "Thunk destination must be a function pointer");
-
-    return reinterpret_cast<TargetType>(createSharedCallThunkImpl(&state, reinterpret_cast<void*>(Target)));
+    using Slot = hook_detail::SharedCallHookSlot<address, Target>;
+    return hookSharedCallImpl(&Slot::state, const_cast<hook_detail::SharedCallThunkCode*>(&Slot::code), name, isVTableAddress);
 }
 
 template <std::uintptr_t address, typename Function>

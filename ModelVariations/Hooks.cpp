@@ -10,23 +10,14 @@
 #include <cstring>
 #include <string>
 
-#include <Windows.h>
-
 namespace {
     constexpr std::size_t MaxHookDescriptors = 512;
-    constexpr std::size_t MaxSharedCallHooks = MaxHookDescriptors;
-    constexpr std::size_t SharedCallThunkSize = 15;
-
-    static_assert(sizeof(void*) == 4, "Shared-call thunks require an x86 build");
 
     std::array<hookinfo, MaxHookDescriptors> hookedCalls;
     std::size_t hookedCallCount = 0;
     std::array<asmhookinfo, MaxHookDescriptors> hooksASM;
     std::size_t asmHookCount = 0;
-    std::array<SharedCallHookState, MaxSharedCallHooks> sharedCallStates;
     std::size_t sharedCallStateCount = 0;
-    unsigned char* sharedCallThunkPool = nullptr;
-    std::size_t sharedCallThunkCount = 0;
 
     template <typename Descriptor, std::size_t Size>
     void storeHookDescriptor(std::array<Descriptor, Size>& descriptors, std::size_t& count, const Descriptor& descriptor)
@@ -44,22 +35,6 @@ namespace {
             descriptors[count++] = descriptor;
         else
             Log::Write("Error! Hook diagnostic descriptor capacity exceeded at address 0x%08X\n", descriptor.address);
-    }
-
-    bool ensureSharedCallThunkPool() noexcept
-    {
-        if (sharedCallThunkPool)
-            return true;
-
-        sharedCallThunkPool = static_cast<unsigned char*>(VirtualAlloc(nullptr, MaxSharedCallHooks * SharedCallThunkSize, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE));
-
-        if (!sharedCallThunkPool)
-        {
-            Log::Write("Error! Failed to allocate shared-call thunk memory (error %lu)\n", GetLastError());
-            return false;
-        }
-
-        return true;
     }
 }
 
@@ -95,65 +70,21 @@ std::size_t getNumMaxHooks()
     return MaxHookDescriptors;
 }
 
-__declspec(noinline) void* __fastcall createSharedCallThunkImpl(SharedCallHookState* state, void* target) noexcept
+__declspec(noinline) SharedCallHookState* __fastcall hookSharedCallImpl(SharedCallHookState* state, void* thunk, const char* name, bool isVTableAddress)
 {
-    if (!state || !target)
+    // Each compiled thunk owns one state. Reinstalling it must not capture the
+    // thunk itself as the original function and create an infinite call loop.
+    if (state->originalFunction)
+        return state;
+
+    if (void* originalFunction = hookCallImpl(state->address, thunk, name, isVTableAddress))
     {
-        Log::Write("Error! Invalid shared-call thunk request\n");
-        return nullptr;
+        state->originalFunction = originalFunction;
+        ++sharedCallStateCount;
+        return state;
     }
 
-    if (sharedCallThunkCount >= MaxSharedCallHooks)
-    {
-        Log::Write("Error! Shared-call thunk capacity exceeded at address 0x%08X\n", state->address);
-        return nullptr;
-    }
-
-    if (!ensureSharedCallThunkPool())
-        return nullptr;
-
-    unsigned char* const thunk = sharedCallThunkPool + sharedCallThunkCount * SharedCallThunkSize;
-
-    // mov dword ptr [currentSharedCallHook], state
-    thunk[0] = 0xC7;
-    thunk[1] = 0x05;
-    const std::uint32_t currentHookAddress = static_cast<std::uint32_t>(reinterpret_cast<std::uintptr_t>(&currentSharedCallHook));
-    const std::uint32_t stateAddress = static_cast<std::uint32_t>(reinterpret_cast<std::uintptr_t>(state));
-    std::memcpy(thunk + 2, &currentHookAddress, sizeof(currentHookAddress));
-    std::memcpy(thunk + 6, &stateAddress, sizeof(stateAddress));
-
-    // jmp target
-    thunk[10] = 0xE9;
-    const std::uintptr_t nextInstruction = reinterpret_cast<std::uintptr_t>(thunk + SharedCallThunkSize);
-    const std::uint32_t relativeTarget = static_cast<std::uint32_t>(reinterpret_cast<std::uintptr_t>(target) - nextInstruction);
-    std::memcpy(thunk + 11, &relativeTarget, sizeof(relativeTarget));
-
-    ++sharedCallThunkCount;
-    FlushInstructionCache(GetCurrentProcess(), thunk, SharedCallThunkSize);
-    return thunk;
-}
-
-__declspec(noinline) SharedCallHookState* __fastcall hookSharedCallImpl(std::uintptr_t address, void* target, const char* name, bool isVTableAddress)
-{
-    if (sharedCallStateCount >= MaxSharedCallHooks)
-    {
-        Log::Write("Error! Shared-call hook capacity exceeded at address 0x%08X\n", address);
-        return nullptr;
-    }
-
-    SharedCallHookState& state = sharedCallStates[sharedCallStateCount];
-    state = { address, nullptr };
-
-    void* const thunk = createSharedCallThunkImpl(&state, target);
-    if (!thunk)
-        return nullptr;
-
-    ++sharedCallStateCount;
-
-    if (void* originalFunction = hookCallImpl(address, thunk, name, isVTableAddress))
-        state.originalFunction = originalFunction;
-
-    return &state;
+    return nullptr;
 }
 
 bool hookASM(std::uintptr_t address, std::size_t numberOfBytes, injector::memory_pointer_raw hookDest, const char* funcName)

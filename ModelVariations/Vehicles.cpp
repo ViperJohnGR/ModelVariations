@@ -2411,8 +2411,14 @@ __declspec(noinline) CPhysical* __fastcall CPhysicalHooked(CVehicle* _this)
 {
     const auto originalCall = captureCurrentOriginalCall();
     CPhysical* retVal = originalCall.callMethodAndReturn<CPhysical*>(_this);
-    vehVars.stack.push_back(_this);
     spawnedTrailers.erase(_this);
+    std::erase(vehVars.stack, _this);
+    std::erase_if(vehVars.tuningStack, [_this](const auto& entry) {
+        return entry.first == _this;
+    });
+
+    vehVars.stack.push_back(_this);
+    
     return retVal;
 }
 

@@ -76,8 +76,7 @@ bool Timer::Pause(TimerID id)
 
     const auto now = std::chrono::steady_clock::now();
 
-    timer.elapsed +=
-        std::chrono::duration_cast<Duration>(now - timer.lastUpdate);
+    timer.elapsed += now - timer.lastUpdate;
 
     timer.lastUpdate = now;
     timer.state = State::Paused;
@@ -174,8 +173,7 @@ void Timer::Process()
         if (timer.state != State::Running)
             continue;
 
-        timer.elapsed +=
-            std::chrono::duration_cast<Duration>(now - timer.lastUpdate);
+        timer.elapsed += now - timer.lastUpdate;
 
         timer.lastUpdate = now;
 

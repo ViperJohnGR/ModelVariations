@@ -53,7 +53,7 @@ private:
     struct TimerData
     {
         Duration interval{ 0 };
-        Duration elapsed{ 0 };
+        std::chrono::steady_clock::duration elapsed{};
 
         LoopCount loopCount = InfiniteLoops;
         LoopCount remainingLoops = InfiniteLoops;

@@ -242,7 +242,7 @@ void PedWeaponVariations::Process()
                     if (isWeaponforce)
                     {
                         if (pedWeaponOptions.weaponforceDelayInVehicle && ped->m_pVehicle)
-                            delayedSlotChanges.insert({ ped, weaponId });
+                            delayedSlotChanges[ped] = weaponId;
                         else
                             ped->SetCurrentWeapon(weaponId);
                     }

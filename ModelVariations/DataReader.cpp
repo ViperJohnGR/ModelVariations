@@ -297,7 +297,7 @@ std::vector<unsigned short> DataReader::ReadLine(std::string_view section, std::
 
 				auto extraObjectsDir = CStreaming__ms_pExtraObjectsDir;
 
-				Log::WriteVerbose("ExtraObjectsDir->m_nNumEntries = %d pExtraObjectsDir->m_nCapacity = %d\n", extraObjectsDir->m_nNumEntries, extraObjectsDir->m_nCapacity);
+				Log::WriteVerbose("ExtraObjectsDir->m_nNumEntries = %d ExtraObjectsDir->m_nCapacity = %d\n", extraObjectsDir->m_nNumEntries, extraObjectsDir->m_nCapacity);
 
 				if (extraObjectsDir->m_nNumEntries >= extraObjectsDir->m_nCapacity)
 				{

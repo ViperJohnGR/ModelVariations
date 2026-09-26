@@ -103,6 +103,7 @@ bool ignoreCivilianVariety = false;
 
 struct delayedModelChange
 {
+    unsigned int time;
     unsigned short parentModel;
     unsigned short variationModel;
     bool dontInheritBehaviour;
@@ -524,13 +525,21 @@ void PedVariations::Process()
             continue;
         }
 
-        if (CStreamingInfo__ms_pArrayBase[it->second.variationModel].m_nLoadState == LOADSTATE_LOADED)
+        if ((CTimer::m_snTimeInMilliseconds - it->second.time) > 30000)
         {
-            auto* oldClump = reinterpret_cast<RpClump*>(ped->m_pRwObject);
-            auto* associations = RpAnimBlendClumpExtractAssociations(oldClump);
+            ped->bIsVisible = true;
+            ped->bDontRender = false;
+            it = delayedModelChanges.erase(it);
+            continue;
+        }
 
-            if (auto* ik = ped->m_pIntelligence->m_TaskMgr.GetTaskSecondary(TASK_SECONDARY_IK))
-                ik->MakeAbortable(ped, ABORT_PRIORITY_IMMEDIATE, nullptr);
+        if (CStreamingInfo__ms_pArrayBase[it->second.variationModel].m_nLoadState == LOADSTATE_LOADED && ped->m_pRwObject)
+        {
+            auto* associations = RpAnimBlendClumpExtractAssociations(reinterpret_cast<RpClump*>(ped->m_pRwObject));
+
+            if (ped->m_pIntelligence)
+                if (auto* ik = ped->m_pIntelligence->m_TaskMgr.GetTaskSecondary(TASK_SECONDARY_IK))
+                    ik->MakeAbortable(ped, ABORT_PRIORITY_IMMEDIATE, nullptr);
 
             ped->DeleteRwObject();
             CWorld::Remove(ped);
@@ -600,7 +609,7 @@ void PedVariations::UpdateVariations()
             properties->currentVariations.clear();
 
     auto player = FindPlayerPed();
-    auto currentInteriorVariations = (CGame::currArea) ? interiorVariations.find(player->m_pEnex ? (charStringTo64(player->m_pEnex)) : (charStringTo64(CEntryExit::ms_spawnPoint))) : interiorVariations.end();
+    auto currentInteriorVariations = (CGame::currArea) ? interiorVariations.find((player && player->m_pEnex) ? (charStringTo64(player->m_pEnex)) : (charStringTo64(CEntryExit::ms_spawnPoint))) : interiorVariations.end();
 
     for (auto modelId : pedVars.populatedModels)
     {
@@ -960,7 +969,7 @@ __declspec(noinline) void __fastcall SetModelIndexHooked(CEntity* _this, void*, 
     CStreaming__RequestModel(newModel, PRIORITY_REQUEST);
     CPed* ped = reinterpret_cast<CPed*>(_this);
     Log::WriteVerbose("Adding ped 0x%08X index %d newModel %u to delayedModelChanges\n", reinterpret_cast<uint32_t>(_this), index, newModel);
-    delayedModelChanges.insert({ ped, delayedModelChange{static_cast<unsigned short>(index), newModel, properties->dontInheritBehaviour} });
+    delayedModelChanges.insert({ ped, delayedModelChange{CTimer::m_snTimeInMilliseconds, static_cast<unsigned short>(index), newModel, properties->dontInheritBehaviour}});
 
     originalCall.callMethod(_this, index);
 
@@ -1151,6 +1160,9 @@ __declspec(noinline) int __cdecl ChooseCivilianOccupationForVehicleHooked(char m
         auto mInfo = CModelInfo::GetModelInfo(i);
         if (mInfo && mInfo->m_nRefCount > 0 && mInfo->m_nRefCount <= leastUsedModel.second && canPedDriveVeh(i, a2->m_nModelIndex))
         {
+            if (male && !CPopulation::IsMale(i))
+                continue;
+
             if (mInfo->m_nRefCount == leastUsedModel.second)
             {
                 if (rand<bool>())

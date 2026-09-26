@@ -47,7 +47,7 @@ CZone* getZone(std::string_view name)
     for (int k = 0; k < CTheZones::TotalNumberOfInfoZones; k++)
     {
         CZone* zone = reinterpret_cast<CZone*>(CTheZones__NavigationZoneArray + k * 0x20);
-        if (strncmp(zone->m_szLabel, name.data(), std::min(name.size(), 8U)) == 0)
+        if (strnlen(zone->m_szLabel, 8) == name.size() && strncmp(zone->m_szLabel, name.data(), name.size()) == 0)
             return zone;
     }
 
@@ -56,6 +56,9 @@ CZone* getZone(std::string_view name)
 
 unsigned short zoneGetIndex(CZone* zone)
 {
+    if (zone == NULL)
+        return 0;
+
     return static_cast<unsigned short>((reinterpret_cast<unsigned char*>(zone) - CTheZones__NavigationZoneArray) / 0x20);
 }
 

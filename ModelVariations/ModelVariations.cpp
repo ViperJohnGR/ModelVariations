@@ -263,7 +263,7 @@ void updateVariations()
 {
     //zInfo->m_szTextKey = BLUEB | zInfo->m_szLabel = BLUEB1
 
-    currentZoneVariations = variations.find(zoneGetIndex(currentZone));
+    currentZoneVariations = currentZone ? variations.find(zoneGetIndex(currentZone)) : variations.end();
 
     auto player = FindPlayerPed();
             
@@ -280,7 +280,7 @@ void updateVariations()
         for (unsigned i = 0; i < CPopulation__m_AppropriateLoadedCars->CountMembers(); i++)
             Log::Write("%d ", CPopulation__m_AppropriateLoadedCars->m_members[i]);
 
-        if (player->bInVehicle)
+        if (player && player->bInVehicle)
             Log::Write("\nPlayer is in vehicle 0x%08X with model id %u\n", player->m_pVehicle, player->m_pVehicle->m_nModelIndex);
 
         Log::Write("\n\n");
@@ -584,7 +584,7 @@ __declspec(noinline) CZone* __cdecl FindSmallestZoneForPositionHooked(void* poin
         updateVariations();
     }
 
-    if (currentSpawnPoint != CEntryExit::ms_spawnPoint && (player->m_pEnex ? CGame::currArea == 0 : CGame::currArea != 0))
+    if (currentSpawnPoint != CEntryExit::ms_spawnPoint && ((player && player->m_pEnex) ? CGame::currArea == 0 : CGame::currArea != 0))
     {
         logVariationsChange("Interior changed");
 
@@ -750,7 +750,7 @@ __declspec(noinline) void __cdecl CGame__ProcessHooked()
         logJumps = false;
     }
 
-    if (newVersionFound && gameplayTimeSinceLoad.count() > 9999)
+    if (newVersionFound && gameplayTimeSinceLoad > std::chrono::seconds(10))
     {
         CMessages::AddMessageJumpQ("~y~Model Variations~s~: Update available.", 4000, 0, false);
         newVersionFound = false;

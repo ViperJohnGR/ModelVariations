@@ -10,6 +10,7 @@
 #include <plugin.h>
 #include <CCarCtrl.h>
 #include <CCarGenerator.h>
+#include <CCollision.h>
 #include <CFont.h>
 #include <CHeli.h>
 #include <CModelInfo.h>
@@ -21,12 +22,11 @@
 #include <CWorld.h>
 
 #include <array>
+#include <cmath>
 #include <map>
 #include <memory>
 #include <optional>
 #include <set>
-
-using namespace plugin;
 
 enum eRegs16
 {
@@ -368,100 +368,205 @@ bool isVehicleVisible(CVehicle* veh)
     return false;
 }
 
-bool isAnotherVehicleBehind(CVehicle* veh, const std::vector<CVehicle*>& exceptions)
+namespace
 {
-    auto polygonsOverlap = [](const std::vector<CVector2D>& a, const std::vector<CVector2D>& b)
+    struct TrailerPlacement
     {
-        auto separated = [](const std::vector<CVector2D>& p, const std::vector<CVector2D>& q)
-        {
-            for (unsigned int i = 0; i < p.size(); i++) {
-                const CVector2D& p1 = p[i];
-                const CVector2D& p2 = p[(i + 1) % p.size()];
-
-                CVector2D axis = { -(p2.y - p1.y), p2.x - p1.x };
-
-                auto dot = [&](const CVector2D& v) {
-                    return v.x * axis.x + v.y * axis.y;
-                };
-
-                float minP = dot(p[0]), maxP = minP;
-                float minQ = dot(q[0]), maxQ = minQ;
-
-                for (const auto& v : p) {
-                    float d = dot(v);
-                    minP = std::min(minP, d);
-                    maxP = std::max(maxP, d);
-                }
-
-                for (const auto& v : q) {
-                    float d = dot(v);
-                    minQ = std::min(minQ, d);
-                    maxQ = std::max(maxQ, d);
-                }
-
-                if (maxP < minQ || maxQ < minP)
-                    return true;
-            }
-
-            return false;
-        };
-
-        return !separated(a, b) && !separated(b, a);
+        unsigned short model;
+        CColModel* collision;
+        CBox box;
+        CMatrix transform;
     };
 
-    auto* mInfo = CModelInfo::GetModelInfo(veh->m_nModelIndex);
-    if (mInfo == NULL || mInfo->m_pColModel == NULL)
-        return false;
-
-    CVector vmin = mInfo->m_pColModel->m_boundBox.m_vecMin;
-    CVector vmax = mInfo->m_pColModel->m_boundBox.m_vecMax;
-
-    CVector bottom_left = veh->TransformFromObjectSpace({ vmin.x, vmin.y * 3.0f, 0.0f });
-    CVector bottom_right = veh->TransformFromObjectSpace({ vmax.x, vmin.y * 3.0f, 0.0f });
-    CVector top_right = veh->TransformFromObjectSpace({ vmax.x, vmin.y, 0.0f });
-    CVector top_left = veh->TransformFromObjectSpace({ vmin.x, vmin.y, 0.0f });
-
-    std::vector<CVector2D> polygon = {
-        { top_left.x, top_left.y },
-        { top_right.x, top_right.y },
-        { bottom_right.x, bottom_right.y },
-        { bottom_left.x, bottom_left.y }
-    };
-
-    for (const auto& i : CPools::ms_pVehiclePool)
+    float trailerDot(const CVector& a, const CVector& b)
     {
-        if (std::abs(i->GetPosition().z - veh->GetPosition().z) > 15.0f || getDistanceFromVeh(veh, i) > 50.0f)
-            continue;
-
-        bool exceptionFound = false;
-        for (auto j : exceptions)
-            if (j == i)
-            {
-                exceptionFound = true;
-                break;
-            }
-        if (exceptionFound)
-            continue;
-
-        auto* mInfoTarget = CModelInfo::GetModelInfo(i->m_nModelIndex);
-        if (i != veh && mInfoTarget != NULL && mInfoTarget->m_pColModel != NULL)
-        {
-            CVector vminTarget = mInfoTarget->m_pColModel->m_boundBox.m_vecMin;
-            CVector vmaxTarget = mInfoTarget->m_pColModel->m_boundBox.m_vecMax;
-
-            std::vector<CVector2D> targetPolygon = {
-                convert3DVectorTo2D(i->TransformFromObjectSpace({ vminTarget.x, vmaxTarget.y, 0.0f })),
-                convert3DVectorTo2D(i->TransformFromObjectSpace({ vmaxTarget.x, vmaxTarget.y, 0.0f })),
-                convert3DVectorTo2D(i->TransformFromObjectSpace({ vmaxTarget.x, vminTarget.y, 0.0f })),
-                convert3DVectorTo2D(i->TransformFromObjectSpace({ vminTarget.x, vminTarget.y, 0.0f }))
-            };
-
-            if (polygonsOverlap(polygon, targetPolygon))
-                return true;
-        }
+        return a.x * b.x + a.y * b.y + a.z * b.z;
     }
 
-    return false;
+    CVector trailerTransformPoint(const CMatrix& transform, const CVector& point)
+    {
+        return transform.GetPosition() + transform.GetRight() * point.x
+            + transform.GetForward() * point.y + transform.GetUp() * point.z;
+    }
+
+    // Separating axis test for two oriented model bounding boxes (including sloped/rotated entities).
+    bool trailerBoxesOverlap(const CBox& a, const CMatrix& am, const CBox& b, const CMatrix& bm)
+    {
+        const CVector ac = (a.m_vecMin + a.m_vecMax) * 0.5f;
+        const CVector bc = (b.m_vecMin + b.m_vecMax) * 0.5f;
+        const CVector ah = (a.m_vecMax - a.m_vecMin) * 0.5f;
+        const CVector bh = (b.m_vecMax - b.m_vecMin) * 0.5f;
+        const float ae[3] = { ah.x, ah.y, ah.z };
+        const float be[3] = { bh.x, bh.y, bh.z };
+        const CVector aa[3] = { am.GetRight(), am.GetForward(), am.GetUp() };
+        const CVector ba[3] = { bm.GetRight(), bm.GetForward(), bm.GetUp() };
+        const CVector delta = trailerTransformPoint(bm, bc) - trailerTransformPoint(am, ac);
+        float r[3][3], absR[3][3], t[3];
+
+        for (int i = 0; i < 3; ++i)
+        {
+            t[i] = trailerDot(delta, aa[i]);
+            for (int j = 0; j < 3; ++j)
+            {
+                r[i][j] = trailerDot(aa[i], ba[j]);
+                absR[i][j] = std::fabs(r[i][j]) + 0.00001f;
+            }
+        }
+
+        for (int i = 0; i < 3; ++i)
+            if (std::fabs(t[i]) > ae[i] + be[0] * absR[i][0] + be[1] * absR[i][1] + be[2] * absR[i][2])
+                return false;
+        for (int j = 0; j < 3; ++j)
+            if (std::fabs(trailerDot(delta, ba[j])) > be[j] + ae[0] * absR[0][j] + ae[1] * absR[1][j] + ae[2] * absR[2][j])
+                return false;
+        for (int i = 0; i < 3; ++i)
+            for (int j = 0; j < 3; ++j)
+            {
+                const int i1 = (i + 1) % 3, i2 = (i + 2) % 3;
+                const int j1 = (j + 1) % 3, j2 = (j + 2) % 3;
+                const float separation = std::fabs(t[i2] * r[i1][j] - t[i1] * r[i2][j]);
+                const float radius = ae[i1] * absR[i2][j] + ae[i2] * absR[i1][j]
+                    + be[j1] * absR[i][j2] + be[j2] * absR[i][j1];
+                if (separation > radius)
+                    return false;
+            }
+        return true;
+    }
+
+    bool trailerSpaceOccupied(const TrailerPlacement& placement, CVehicle* tractor,
+        const std::vector<TrailerPlacement>& earlier)
+    {
+        // Adjacent trailers are allowed to meet at their tow hitches.
+        for (std::size_t i = 0; i + 1 < earlier.size(); ++i)
+            if (trailerBoxesOverlap(placement.box, placement.transform, earlier[i].box, earlier[i].transform))
+                return true;
+
+        CVector low = trailerTransformPoint(placement.transform, placement.box.m_vecMin);
+        CVector high = low;
+        for (int x = 0; x < 2; ++x)
+            for (int y = 0; y < 2; ++y)
+                for (int z = 0; z < 2; ++z)
+                {
+                    const CVector corner = trailerTransformPoint(placement.transform, {
+                        x ? placement.box.m_vecMax.x : placement.box.m_vecMin.x,
+                        y ? placement.box.m_vecMax.y : placement.box.m_vecMin.y,
+                        z ? placement.box.m_vecMax.z : placement.box.m_vecMin.z });
+                    low.x = std::min(low.x, corner.x); low.y = std::min(low.y, corner.y); low.z = std::min(low.z, corner.z);
+                    high.x = std::max(high.x, corner.x); high.y = std::max(high.y, corner.y); high.z = std::max(high.z, corner.z);
+                }
+
+        std::array<CEntity*, 512> candidates{};
+        short count = 0;
+        CWorld::FindObjectsIntersectingCube(low, high, &count, static_cast<short>(candidates.size()),
+            candidates.data(), true, true, true, true, true);
+        if (count >= static_cast<short>(candidates.size())) // Never accept a truncated collision query.
+            return true;
+
+        for (int i = 0; i < count; ++i)
+        {
+            CEntity* entity = candidates[i];
+            if (!entity || entity == tractor || !entity->bUsesCollision)
+                continue;
+            if (entity->m_nType == ENTITY_TYPE_PED && static_cast<CPed*>(entity)->bInVehicle)
+                continue;
+            CColModel* otherCollision = entity->GetColModel();
+            if (!otherCollision)
+                continue;
+
+            if (entity->m_nType != ENTITY_TYPE_BUILDING && entity->m_nType != ENTITY_TYPE_DUMMY)
+            {
+                if (trailerBoxesOverlap(placement.box, placement.transform,
+                    otherCollision->m_boundBox, *entity->GetMatrix()))
+                    return true;
+                continue;
+            }
+
+            // Large road/building bounds may overlap the box even though their actual
+            // triangles do not. Use the engine's collision model, ignoring road support.
+            if (!otherCollision->m_pColData)
+                continue;
+            CColPoint contacts[32]{};
+            auto* trailerData = placement.collision->m_pColData;
+            const auto suspensionLines = trailerData->m_nNumLines;
+            trailerData->m_nNumLines = 0;
+            const int n = CCollision::ProcessColModels(placement.transform, *placement.collision,
+                *entity->GetMatrix(), *otherCollision, contacts, nullptr, nullptr, false);
+            trailerData->m_nNumLines = suspensionLines;
+            const float bottom = trailerTransformPoint(placement.transform,
+                { 0.0f, 0.0f, placement.box.m_vecMin.z }).z;
+            for (int c = 0; c < n && c < 32; ++c)
+                if (!(std::fabs(contacts[c].m_vecNormal.z) > 0.7f && contacts[c].m_vecPoint.z < bottom + 0.3f))
+                    return true;
+        }
+        return false;
+    }
+
+    bool planTrailerPlacements(CVehicle* tractor, const std::vector<unsigned short>& models,
+        std::vector<TrailerPlacement>& placements)
+    {
+        if (models.empty())
+            return false;
+
+        CVector anchor;
+        if (!tractor->GetTowBarPos(anchor, true, nullptr))
+        {
+            const auto* info = CModelInfo::GetModelInfo(tractor->m_nModelIndex);
+            if (!info || !info->m_pColModel)
+                return false;
+            anchor = tractor->TransformFromObjectSpace({ 0.0f, info->m_pColModel->m_boundBox.m_vecMin.y, 0.0f });
+        }
+
+        CMatrix heading{};
+        heading.SetUnity();
+        heading.SetRotateZOnly(tractor->GetHeading());
+        for (auto model : models)
+        {
+            auto* info = CModelInfo::GetModelInfo(model);
+            if (!info || !info->m_pColModel || !info->m_pColModel->m_pColData)
+                return false;
+
+            const CBox& dimensions = info->m_pColModel->m_boundBox;
+            if (dimensions.m_vecMax.x <= dimensions.m_vecMin.x ||
+                dimensions.m_vecMax.y <= dimensions.m_vecMin.y ||
+                dimensions.m_vecMax.z <= dimensions.m_vecMin.z)
+                return false;
+
+            TrailerPlacement next{};
+            next.model = model;
+            next.collision = info->m_pColModel;
+            next.box = dimensions;
+            next.box.m_vecMin.x -= 0.15f; next.box.m_vecMax.x += 0.15f;
+            next.box.m_vecMin.y -= 0.15f; next.box.m_vecMax.y += 0.15f;
+            next.box.m_vecMin.z += 0.15f; // Leave the supporting road below the occupancy box.
+            next.box.m_vecMax.z += 0.15f;
+
+            // GTA SA uses vehicle dummy 9 for the trailer hitch. Its fallback is
+            // one metre ahead of the model's bounding box when no dummy exists.
+            CVector hitch{ 0.0f, dimensions.m_vecMax.y + 1.0f, 0.0f };
+            auto* vehicleInfo = static_cast<CVehicleModelInfo*>(info);
+            if (vehicleInfo->m_pVehicleStruct)
+            {
+                const CVector& dummy = vehicleInfo->m_pVehicleStruct->m_avDummyPos[9];
+                if (dummy.x != 0.0f || dummy.y != 0.0f || dummy.z != 0.0f)
+                    hitch = dummy;
+            }
+
+            next.transform = heading;
+            CVector pos = anchor - heading.GetRight() * hitch.x - heading.GetForward() * hitch.y;
+            bool groundFound = false;
+            const float ground = CWorld::FindGroundZFor3DCoord(pos.x, pos.y, anchor.z + 2.0f, &groundFound, nullptr);
+            if (!groundFound)
+                return false;
+            pos.z = ground - dimensions.m_vecMin.z + 0.05f;
+            next.transform.GetPosition() = pos;
+
+            if (trailerSpaceOccupied(next, tractor, placements))
+                return false;
+            placements.push_back(next);
+            anchor = pos + heading.GetForward() * (dimensions.m_vecMin.y + 0.05f);
+        }
+        return true;
+    }
 }
 
 int getTuningPartSlot(int model)
@@ -1184,7 +1289,7 @@ void VehicleVariations::Process()
                 if (trailerAttached)
                     for (auto trailer : it->second)
                         if (IsVehiclePointerValid(trailer))
-                            if (trailer->m_pTractor && (isAnotherVehicleBehind(veh, it->second) || isAnotherVehicleBehind(trailer, it->second) || CPhysical__TestCollision(trailer, false)))
+                            if (trailer->m_pTractor && CPhysical__TestCollision(trailer, false))
                             {
                                 for (auto& j : it->second)
                                     destroyVehicleAndOccupants(j);
@@ -1303,16 +1408,6 @@ void VehicleVariations::Process()
         if (trailerProperties && trailerProperties->trailersSpawnChances)
             spawnTrailer = rand<uint32_t>(0, 100) < *trailerProperties->trailersSpawnChances;
 
-        for (auto &i : spawnedTrailers)
-            if (!i.second.empty() && i.second[0] == veh && veh->m_pTractor && isAnotherVehicleBehind(veh, i.second))
-            {
-                for (auto& j : i.second)
-                    destroyVehicleAndOccupants(j);
-
-                i.second.clear();
-                break;
-            }
-
         if (!IsVehiclePointerValid(veh))
             continue;
 
@@ -1333,7 +1428,7 @@ void VehicleVariations::Process()
             }
         }
             
-        if (veh->m_pDriver && veh->m_pDriver != FindPlayerPed() && spawnTrailer && !isAnotherVehicleBehind(veh, {}))
+        if (veh->m_pDriver && veh->m_pDriver != FindPlayerPed() && spawnTrailer)
         {
             std::vector<unsigned short> zoneTrailers;
             if (currentZone)
@@ -1354,71 +1449,89 @@ void VehicleVariations::Process()
             if (!trailerProperties || trailerProperties->trailers[trailerConfigSelected].empty())
                 continue;
 
-            CVehicle* previous = veh;
-            CCarCtrl::SwitchVehicleToRealPhysics(veh);
-
             bool trailerMatchExtras = vectorHasId(trailerProperties->trailersMatchExtras, trailerConfigSelected + 1);
             bool trailerMatchColors = vectorHasId(trailerProperties->trailersMatchColors, trailerConfigSelected + 1);
 
-            const auto originalExtras0 = CVehicleModelInfo::ms_compsToUse[0];
-            const auto originalExtras1 = CVehicleModelInfo::ms_compsToUse[1];
-
             const auto& trailerConfigurations = trailerProperties->trailers[trailerConfigSelected];
             const std::vector<unsigned short> &trailersVec = trailerConfigurations[CGeneral::GetRandomNumberInRange(0, (int)trailerConfigurations.size())];
-            CVehicle* firstTrailer = NULL;
+            bool allModelsLoaded = true;
             for (auto trailerModel : trailersVec)
-            {
                 if (auto loadState = loadModel(trailerModel, PRIORITY_REQUEST, true); loadState != LOADSTATE_LOADED)
                 {
                     Log::Write("Error loading vehicle model %d (%s) %s\n", trailerModel, modelNames.contains(trailerModel) ? modelNames[trailerModel].c_str() : "", getLoadStateString(loadState));
+                    allModelsLoaded = false;
                     break;
                 }
+            if (!allModelsLoaded)
+                continue;
 
+            std::vector<TrailerPlacement> placements;
+            placements.reserve(trailersVec.size());
+            if (!planTrailerPlacements(veh, trailersVec, placements))
+                continue;
+
+            CCarCtrl::SwitchVehicleToRealPhysics(veh);
+            const auto originalExtras0 = CVehicleModelInfo::ms_compsToUse[0];
+            const auto originalExtras1 = CVehicleModelInfo::ms_compsToUse[1];
+            CVehicle* previous = veh;
+            CVehicle* firstTrailer = NULL;
+            std::vector<CVehicle*> created;
+            bool spawnedAll = true;
+            for (const auto& placement : placements)
+            {
                 if (trailersVec.size() == 1 && trailerMatchExtras)
                 {
                     CVehicleModelInfo::ms_compsToUse[0] = veh->m_anExtras[0];
                     //CVehicleModelInfo::ms_compsToUse[1] = veh->m_anExtras[1];
                 }
 
-                CVehicle* trailer = CCarCtrl::GetNewVehicleDependingOnCarModel(trailerModel, RANDOM_VEHICLE);
+                CVehicle* trailer = CCarCtrl::GetNewVehicleDependingOnCarModel(placement.model, RANDOM_VEHICLE);
+                if (!trailer || !trailer->m_pRwObject || !IsVehiclePointerValid(veh))
+                {
+                    if (trailer)
+                        destroyVehicleAndOccupants(trailer);
+                    spawnedAll = false;
+                    break;
+                }
                 if (firstTrailer == NULL)
                     firstTrailer = trailer;
 
-                if (trailer && trailer->m_pRwObject && IsVehiclePointerValid(veh))
+                trailer->SetMatrix(placement.transform);
+                CWorld::Add(trailer);
+                created.push_back(trailer);
+
+                if (previous == veh && !trailer->SetTowLink(previous, 1))
                 {
-                    auto newPos = previous->GetPosition();
-                    newPos.z = CWorld::FindGroundZForCoord(newPos.x, newPos.y) - 5.0f;
-                    trailer->SetPosn(newPos);
-
-                    CWorld::Add(trailer);
-                    //CTheScripts::ClearSpaceForMissionEntity(previous->GetPosition(), trailer);
-                    spawnedTrailers[veh].push_back(trailer);
-                    
-                    if (previous == veh)
-                        if (!trailer->SetTowLink(previous, 1))
-                            Log::Write("SetTowLink() failed for vehicle %d and trailer %d.\n", veh->m_nModelIndex, trailer->m_nModelIndex);
-
-                    previous = trailer;
-                    if (trailerProperties->trailersHealth)
-                        trailer->m_fHealth = static_cast<float>(*trailerProperties->trailersHealth);
-
-                    if (trailerMatchColors)
-                    {
-                        trailer->m_nPrimaryColor = veh->m_nPrimaryColor;
-                        trailer->m_nSecondaryColor = veh->m_nSecondaryColor;
-                        trailer->m_nTertiaryColor = veh->m_nTertiaryColor;
-                        trailer->m_nQuaternaryColor = veh->m_nQuaternaryColor;
-                    }
-                    if (firstTrailer && trailersVec.size() > 1 && trailerMatchExtras)
-                    {
-                        CVehicleModelInfo::ms_compsToUse[0] = firstTrailer->m_anExtras[0];
-                        CVehicleModelInfo::ms_compsToUse[1] = firstTrailer->m_anExtras[1];
-                    }
+                    Log::Write("SetTowLink() failed for vehicle %d and trailer %d.\n", veh->m_nModelIndex, trailer->m_nModelIndex);
+                    spawnedAll = false;
+                    break;
                 }
-            }      
+
+                previous = trailer;
+                if (trailerProperties->trailersHealth)
+                    trailer->m_fHealth = static_cast<float>(*trailerProperties->trailersHealth);
+
+                if (trailerMatchColors)
+                {
+                    trailer->m_nPrimaryColor = veh->m_nPrimaryColor;
+                    trailer->m_nSecondaryColor = veh->m_nSecondaryColor;
+                    trailer->m_nTertiaryColor = veh->m_nTertiaryColor;
+                    trailer->m_nQuaternaryColor = veh->m_nQuaternaryColor;
+                }
+                if (firstTrailer && trailersVec.size() > 1 && trailerMatchExtras)
+                {
+                    CVehicleModelInfo::ms_compsToUse[0] = firstTrailer->m_anExtras[0];
+                    CVehicleModelInfo::ms_compsToUse[1] = firstTrailer->m_anExtras[1];
+                }
+            }
 
             CVehicleModelInfo::ms_compsToUse[0] = originalExtras0;
             CVehicleModelInfo::ms_compsToUse[1] = originalExtras1;
+            if (spawnedAll)
+                spawnedTrailers[veh] = std::move(created);
+            else
+                for (auto trailer : created)
+                    destroyVehicleAndOccupants(trailer);
         }
     }
 }

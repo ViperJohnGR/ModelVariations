@@ -124,6 +124,10 @@ struct tVehColors {
     std::optional<unsigned char> color2;
     std::optional<unsigned char> color3;
     std::optional<unsigned char> color4;
+
+    bool operator==(const tVehColors& other) const {
+        return color1 == other.color1 && color2 == other.color2 && color3 == other.color3 && color4 == other.color4;
+    }
 };
 
 struct tTrailerProperties {
@@ -134,9 +138,14 @@ struct tTrailerProperties {
     std::vector<unsigned short> trailersMatchColors;
 };
 
+struct tDriverFilters {
+    std::vector<tVehColors> colors;
+    std::vector<unsigned short> tuning;
+};
+
 struct tTuningProperties {
     bool tuningFullBodykit = false;
-    std::vector<unsigned short> tuningDriverIds;
+    std::unordered_map<unsigned short, tDriverFilters> driverFilters;
     std::optional<BYTE> tuningChances;
 };
 
@@ -188,7 +197,7 @@ struct tVehVars {
     std::unordered_map<unsigned short, std::vector<unsigned short>>* currentTuning = nullptr;
     std::unordered_map<unsigned short, std::vector<tVehColors>>* currentColors = nullptr;
 
-    std::vector<std::pair<CVehicle*, std::array<int, 18>>> tuningStack;
+    std::vector<CVehicle*> tuningStack;
     std::vector<CVehicle*> stack;
 };
 
@@ -631,87 +640,6 @@ int getPedModelForCopType(int ctype)
     }
 }
 
-void processTuning(CVehicle* veh)
-{
-    /* TUNING PART SLOTS
-       0 - hood vents
-       1 - hood scoops
-       2 - spoilers
-       3 - side skirts
-       4 - front bullbars
-       5 - rear bullbars
-       6 - lights
-       7 - roof
-       8 - nitrous
-       9 - hydralics
-       10 - stereo
-       11
-       12 - wheels
-       13 - exhaust
-       14 - front bumper
-       15 - rear bumper
-       16 - misc
-    */
-
-    if (veh == NULL)
-    {
-        Log::Write("processTuning veh is NULL\n");
-        return;
-    }
-
-    if (veh->m_nCreatedBy == eVehicleCreatedBy::MISSION_VEHICLE || vehVars.currentTuning == nullptr)
-        return;
-
-    auto it = vehVars.currentTuning->find(veh->m_nModelIndex);
-    if (it != vehVars.currentTuning->end() && !it->second.empty())
-    {
-        std::array<std::vector<unsigned short>, 18> partsToInstall;
-        for (auto& part : it->second)
-            if (part < static_cast<CVehicleModelInfo*>(CModelInfo::GetModelInfo(veh->m_nModelIndex))->GetNumRemaps())
-                partsToInstall[17].push_back(part);
-            else
-            {
-                unsigned modSlot = (unsigned)getTuningPartSlot(part);
-                if (modSlot < 17)
-                    partsToInstall[modSlot].push_back(part);
-            }
-
-        const auto* properties = findVehProperties(veh->m_nModelIndex);
-        const auto* tuningProperties = properties ? properties->tuningProperties.get() : nullptr;
-
-        std::array<bool, 18> slotsSelected = {};
-        for (unsigned int i = 0; i < 18; i++)
-            if (tuningProperties && tuningProperties->tuningChances)
-                slotsSelected[i] = (*tuningProperties->tuningChances > 0) && (rand<uint32_t>(0, 100) < *tuningProperties->tuningChances);
-            else
-                slotsSelected[i] = rand<uint32_t>(0, 3) == 0;
-
-        if (tuningProperties && tuningProperties->tuningFullBodykit)
-            if (slotsSelected[14] == true || slotsSelected[15] == true || slotsSelected[3] == true)
-                slotsSelected[14] = slotsSelected[15] = slotsSelected[3] = true;
-
-        std::array<int, 18> selectedParts;
-        selectedParts.fill(-1);
-        bool install = false;
-
-        for (unsigned int slot = 0; slot < 18; slot++)
-        {
-            if (!slotsSelected[slot])
-                continue;
-
-            if (partsToInstall[slot].empty())
-                continue;
-
-            const uint32_t index = rand<uint32_t>(0, partsToInstall[slot].size());
-            selectedParts[slot] = partsToInstall[slot][index];
-            install = true;
-        }
-
-        if (install)
-            vehVars.tuningStack.emplace_back(veh, selectedParts);
-    }
-}
-
 void checkNumGroups(std::vector<unsigned short>& vec, uint8_t numGroups)
 {
     auto it = vec.begin();
@@ -951,6 +879,43 @@ void VehicleVariations::LoadData()
                     if (!vec.empty())
                         properties.missionVariations.insert({ (kvp.first[7] == '_') ? std::string(kvp.first.substr(8)) : std::string(kvp.first), vec });
                 }
+
+                if (kvp.first.size() > 6 && strcasecmp("driver", kvp.first, 6) && kvp.first[6] >= '0' && kvp.first[6] <= '9')
+                {
+                    auto readFilters = [&](unsigned short id)
+                    {
+                        if (kvp.second.contains("none"))
+                            getOrCreatePropertyGroup(properties.tuningProperties).driverFilters[id].tuning.push_back(65535);
+                        else
+                        {
+                            auto vec = dataFile.ReadLine(section, kvp.first, READ_TUNING);
+                            if (!vec.empty())
+                                getOrCreatePropertyGroup(properties.tuningProperties).driverFilters[id].tuning = vec;
+                        }
+
+                        auto colorsVec = readVehColors(dataFile.ReadString(section, kvp.first, ""));
+                        if (!colorsVec.empty())
+                            getOrCreatePropertyGroup(properties.tuningProperties).driverFilters[id].colors = colorsVec;
+                    };
+
+                    auto dash = kvp.first.find('-');
+                    if (dash != std::string_view::npos)
+                    {
+                        unsigned short first;
+                        unsigned short second;
+
+                        if (fromString<unsigned short>(kvp.first.substr(6, dash-6), first))
+                            if (fromString<unsigned short>(kvp.first.substr(dash+1), second) && first <= second && second < 65535)
+                                for (auto i = first; i <= second; i++)
+                                    readFilters(i);
+                    }
+                    else
+                    {
+                        unsigned short id;
+                        if (fromString<unsigned short>(kvp.first.substr(6), id))
+                            readFilters(id);
+                    }
+                }
             }
 
             bool mergeZones = dataFile.ReadBoolean(section, "MergeZonesWithAreas", false);
@@ -1167,10 +1132,6 @@ void VehicleVariations::LoadData()
             if (!vec.empty())
                 getOrCreatePropertyGroup(properties.trailerProperties).trailersMatchColors = vec;
 
-            vec = dataFile.ReadLine(section, "TuningDriverIDs", READ_PEDS);
-            if (!vec.empty())
-                getOrCreatePropertyGroup(properties.tuningProperties).tuningDriverIds = vec;
-
             const int trailersSpawnChance = dataFile.ReadInteger(section, "TrailersSpawnChance", -1);
             if (trailersSpawnChance > -1 && (!properties.trailerProperties || !properties.trailerProperties->trailersSpawnChances))
                 getOrCreatePropertyGroup(properties.trailerProperties).trailersSpawnChances = static_cast<BYTE>(trailersSpawnChance > 100 ? 100 : trailersSpawnChance);
@@ -1331,47 +1292,101 @@ void VehicleVariations::Process()
     
     while (!vehVars.tuningStack.empty())
     {
-        const auto it = vehVars.tuningStack.back();
+        const auto veh = vehVars.tuningStack.back();
         vehVars.tuningStack.pop_back();
 
-        if (!IsVehiclePointerValid(it.first))
+        if (!IsVehiclePointerValid(veh))
             continue;
 
-        const auto* properties = findVehProperties(it.first->m_nModelIndex);
+        if (veh->m_nCreatedBy == eVehicleCreatedBy::MISSION_VEHICLE || vehVars.currentTuning == nullptr)
+            continue;
+
+        const auto* properties = findVehProperties(veh->m_nModelIndex);
         const auto* tuningProperties = properties ? properties->tuningProperties.get() : nullptr;
-        if (!tuningProperties || tuningProperties->tuningDriverIds.empty() || vectorHasId(tuningProperties->tuningDriverIds, it.first->m_pDriver == NULL ? 0 : it.first->m_pDriver->m_nModelIndex))
-            for (int selectedPart : it.second)
-                if (selectedPart > -1)
+        unsigned short driverModel = veh->m_pDriver ? veh->m_pDriver->m_nModelIndex : 0;
+        std::array<int, 18> selectedParts;
+        selectedParts.fill(-1);
+
+        auto it = vehVars.currentTuning->find(veh->m_nModelIndex);
+        if (it != vehVars.currentTuning->end() && !it->second.empty())
+        {
+            const std::vector<unsigned short> *tuningFilterVec = nullptr;
+            if (tuningProperties)
+                if (auto it2 = tuningProperties->driverFilters.find(driverModel); it2 != tuningProperties->driverFilters.end())
+                    tuningFilterVec = &it2->second.tuning;
+
+            if (tuningFilterVec && vectorHasId(*tuningFilterVec, 65535))
+                continue;
+
+            auto filteredVec = tuningFilterVec == nullptr ? it->second : vectorReturnFilteredVector(it->second, *tuningFilterVec);
+
+            std::array<std::vector<unsigned short>, 18> partsToInstall;
+            for (auto& part : filteredVec)
+                if (part < static_cast<CVehicleModelInfo*>(CModelInfo::GetModelInfo(veh->m_nModelIndex))->GetNumRemaps())
+                    partsToInstall[17].push_back(part);
+                else
                 {
-                    const unsigned short part = static_cast<unsigned short>(selectedPart);
-                    if (part <= 20)
-                        it.first->SetRemap(part);
+                    unsigned modSlot = (unsigned)getTuningPartSlot(part);
+                    if (modSlot < 17)
+                        partsToInstall[modSlot].push_back(part);
+                }
+
+            std::array<bool, 18> slotsSelected = {};
+            for (unsigned int i = 0; i < 18; i++)
+                if (tuningProperties && tuningProperties->tuningChances)
+                    slotsSelected[i] = (*tuningProperties->tuningChances > 0) && (rand<uint32_t>(0, 100) < *tuningProperties->tuningChances);
+                else
+                    slotsSelected[i] = rand<uint32_t>(0, 3) == 0;
+
+            if (tuningProperties && tuningProperties->tuningFullBodykit)
+                if (slotsSelected[14] == true || slotsSelected[15] == true || slotsSelected[3] == true)
+                    slotsSelected[14] = slotsSelected[15] = slotsSelected[3] = true;
+
+            for (unsigned int slot = 0; slot < 18; slot++)
+            {
+                if (!slotsSelected[slot])
+                    continue;
+
+                if (partsToInstall[slot].empty())
+                    continue;
+
+                const uint32_t index = rand<uint32_t>(0, partsToInstall[slot].size());
+                selectedParts[slot] = partsToInstall[slot][index];
+            }
+        }
+
+        for (int selectedPart : selectedParts)
+            if (selectedPart > -1)
+            {
+                const unsigned short part = static_cast<unsigned short>(selectedPart);
+                if (part <= 20)
+                    veh->SetRemap(part);
+                else
+                {
+                    CStreaming__RequestVehicleUpgrade(part, PRIORITY_REQUEST);
+                    CStreaming__LoadAllRequestedModels(false);
+
+                    auto partLoadState = CStreamingInfo__ms_pArrayBase[part].m_nLoadState;
+                        
+                    if (partLoadState != LOADSTATE_LOADED)
+                        Log::Write("Error loading (%s) tuning part model %d (%s) for vehicle id %u\n", getLoadStateString(partLoadState), part, modelNames.contains(part) ? modelNames[part].c_str() : "", veh->m_nModelIndex);
                     else
                     {
-                        CStreaming__RequestVehicleUpgrade(part, PRIORITY_REQUEST);
-                        CStreaming__LoadAllRequestedModels(false);
-
-                        auto partLoadState = CStreamingInfo__ms_pArrayBase[part].m_nLoadState;
-                        
-                        if (partLoadState != LOADSTATE_LOADED)
-                            Log::Write("Error loading (%s) tuning part model %d (%s) for vehicle id %u\n", getLoadStateString(partLoadState), part, modelNames.contains(part) ? modelNames[part].c_str() : "", it.first->m_nModelIndex);
-                        else
+                        short otherUpgrade = CVehicleModelInfo__CLinkedUpgradeList__FindOtherUpgrade(CVehicleModelInfo__ms_linkedUpgrades, part);
+                        unsigned char pairLoadState = otherUpgrade > -1 ? CStreamingInfo__ms_pArrayBase[otherUpgrade].m_nLoadState : LOADSTATE_NOT_LOADED;
+                        if (otherUpgrade > -1 && pairLoadState != LOADSTATE_LOADED)
                         {
-                            short otherUpgrade = CVehicleModelInfo__CLinkedUpgradeList__FindOtherUpgrade(CVehicleModelInfo__ms_linkedUpgrades, part);
-                            unsigned char pairLoadState = otherUpgrade > -1 ? CStreamingInfo__ms_pArrayBase[otherUpgrade].m_nLoadState : LOADSTATE_NOT_LOADED;
-                            if (otherUpgrade > -1 && pairLoadState != LOADSTATE_LOADED)
-                            {
-                                Log::Write("Error loading (%s) pair tuning part model %d (%s) for vehicle id %u\n", getLoadStateString(pairLoadState), otherUpgrade, modelNames.contains(otherUpgrade) ? modelNames[otherUpgrade].c_str() : "", it.first->m_nModelIndex);
-                                continue;
-                            }
-                            it.first->AddVehicleUpgrade(part);
-                            CStreaming__SetMissionDoesntRequireModel(part);
-                            
-                            if (otherUpgrade > -1)
-                                CStreaming__SetMissionDoesntRequireModel(otherUpgrade);
+                            Log::Write("Error loading (%s) pair tuning part model %d (%s) for vehicle id %u\n", getLoadStateString(pairLoadState), otherUpgrade, modelNames.contains(otherUpgrade) ? modelNames[otherUpgrade].c_str() : "", veh->m_nModelIndex);
+                            continue;
                         }
+                        veh->AddVehicleUpgrade(part);
+                        CStreaming__SetMissionDoesntRequireModel(part);
+                            
+                        if (otherUpgrade > -1)
+                            CStreaming__SetMissionDoesntRequireModel(otherUpgrade);
                     }
                 }
+            }
     }
 
     while (!vehVars.stack.empty())
@@ -1415,8 +1430,22 @@ void VehicleVariations::Process()
         {
             if (auto it = vehVars.currentColors->find(veh->m_nModelIndex); it != vehVars.currentColors->end())
             {
-                auto newColor = it->second[CGeneral::GetRandomNumberInRange(0, (int)it->second.size())];
-            
+                std::vector<tVehColors> filteredVector;
+                const auto* tuningProperties = properties ? properties->tuningProperties.get() : nullptr;
+
+                unsigned short driverModel = veh->m_pDriver ? veh->m_pDriver->m_nModelIndex : 0;
+
+                if (tuningProperties)
+                    if (auto df = tuningProperties->driverFilters.find(driverModel); df != tuningProperties->driverFilters.end())
+                        for (const auto &color : it->second)
+                        {
+                            if (std::find(df->second.colors.begin(), df->second.colors.end(), color) != df->second.colors.end())
+                                filteredVector.push_back(color);
+                        }
+
+                const auto &vec = (filteredVector.empty() ? it->second : filteredVector);
+                const auto& newColor = vec[CGeneral::GetRandomNumberInRange(0, (int)vec.size())];
+
                 if (newColor.color1)
                     veh->m_nPrimaryColor = *newColor.color1;
                 if (newColor.color2)
@@ -2516,7 +2545,8 @@ __declspec(noinline) CVehicle* __cdecl GetNewVehicleDependingOnCarModelHooked(in
         return NULL;
     }
     
-    processTuning(veh);
+    if (veh)
+        vehVars.tuningStack.push_back(veh);
     return veh;
 }
 
@@ -2526,9 +2556,7 @@ __declspec(noinline) CPhysical* __fastcall CPhysicalHooked(CVehicle* _this)
     CPhysical* retVal = originalCall.callMethodAndReturn<CPhysical*>(_this);
     spawnedTrailers.erase(_this);
     std::erase(vehVars.stack, _this);
-    std::erase_if(vehVars.tuningStack, [_this](const auto& entry) {
-        return entry.first == _this;
-    });
+    std::erase(vehVars.tuningStack, _this);
 
     vehVars.stack.push_back(_this);
     
@@ -2605,7 +2633,7 @@ __declspec(noinline) void __cdecl CWorld__AddHooked(CVehicle* a1)
 
     if (tuneParkedCar)
     {
-        processTuning(a1);
+        vehVars.tuningStack.push_back(a1);
         tuneParkedCar = false;
     }
     originalCall.call(a1);

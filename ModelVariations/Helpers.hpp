@@ -87,6 +87,7 @@ bool fromString(std::string_view str, T& x, int base = 10)
 /////////////
 
 void vectorfilterVector(std::vector<unsigned short>& vec, const std::vector<unsigned short>& filterVec);
+std::vector<unsigned short> vectorReturnFilteredVector(const std::vector<unsigned short>& vec, const std::vector<unsigned short>& filterVec);
 unsigned short vectorGetRandom(const std::vector<unsigned short>& vec);
 bool vectorHasId(const std::vector<unsigned short>& vec, int id);
 bool vectorPushUnique(std::vector<unsigned short>& vec, unsigned short value);

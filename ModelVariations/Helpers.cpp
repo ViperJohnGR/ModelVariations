@@ -464,6 +464,23 @@ void vectorfilterVector(std::vector<unsigned short>& vec, const std::vector<unsi
         vec = std::move(vec2);
 }
 
+std::vector<unsigned short> vectorReturnFilteredVector(const std::vector<unsigned short>& vec, const std::vector<unsigned short>& filterVec)
+{
+    if (filterVec.empty())
+        return vec;
+
+    std::vector<unsigned short> vec2;
+
+    for (auto i : vec)
+        if (std::find(filterVec.begin(), filterVec.end(), i) != filterVec.end())
+            vec2.push_back(i);
+
+    if (vec2.empty())
+        return vec;
+
+    return vec2;
+}
+
 unsigned short vectorGetRandom(const std::vector<unsigned short>& vec)
 {
     if (vec.empty())

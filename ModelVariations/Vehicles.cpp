@@ -1295,14 +1295,45 @@ void VehicleVariations::Process()
         const auto veh = vehVars.tuningStack.back();
         vehVars.tuningStack.pop_back();
 
-        if (!IsVehiclePointerValid(veh))
-            continue;
-
-        if (veh->m_nCreatedBy == eVehicleCreatedBy::MISSION_VEHICLE || vehVars.currentTuning == nullptr)
+        if (!IsVehiclePointerValid(veh) || veh->m_nCreatedBy == eVehicleCreatedBy::MISSION_VEHICLE)
             continue;
 
         const auto* properties = findVehProperties(veh->m_nModelIndex);
         const auto* tuningProperties = properties ? properties->tuningProperties.get() : nullptr;
+
+        if (vehVars.currentColors)
+        {
+            if (auto it = vehVars.currentColors->find(veh->m_nModelIndex); it != vehVars.currentColors->end())
+            {
+                std::vector<tVehColors> filteredVector;
+
+                unsigned short driverModel = veh->m_pDriver ? veh->m_pDriver->m_nModelIndex : 0;
+
+                if (tuningProperties)
+                    if (auto df = tuningProperties->driverFilters.find(driverModel); df != tuningProperties->driverFilters.end())
+                        for (const auto& color : it->second)
+                        {
+                            if (std::find(df->second.colors.begin(), df->second.colors.end(), color) != df->second.colors.end())
+                                filteredVector.push_back(color);
+                        }
+
+                const auto& vec = (filteredVector.empty() ? it->second : filteredVector);
+                const auto& newColor = vec[CGeneral::GetRandomNumberInRange(0, (int)vec.size())];
+
+                if (newColor.color1)
+                    veh->m_nPrimaryColor = *newColor.color1;
+                if (newColor.color2)
+                    veh->m_nSecondaryColor = *newColor.color2;
+                if (newColor.color3)
+                    veh->m_nTertiaryColor = *newColor.color3;
+                if (newColor.color4)
+                    veh->m_nQuaternaryColor = *newColor.color4;
+            }
+        }
+
+        if (vehVars.currentTuning == nullptr)
+            continue;
+
         unsigned short driverModel = veh->m_pDriver ? veh->m_pDriver->m_nModelIndex : 0;
         std::array<int, 18> selectedParts;
         selectedParts.fill(-1);
@@ -1425,37 +1456,6 @@ void VehicleVariations::Process()
 
         if (!IsVehiclePointerValid(veh))
             continue;
-
-        if (vehVars.currentColors)
-        {
-            if (auto it = vehVars.currentColors->find(veh->m_nModelIndex); it != vehVars.currentColors->end())
-            {
-                std::vector<tVehColors> filteredVector;
-                const auto* tuningProperties = properties ? properties->tuningProperties.get() : nullptr;
-
-                unsigned short driverModel = veh->m_pDriver ? veh->m_pDriver->m_nModelIndex : 0;
-
-                if (tuningProperties)
-                    if (auto df = tuningProperties->driverFilters.find(driverModel); df != tuningProperties->driverFilters.end())
-                        for (const auto &color : it->second)
-                        {
-                            if (std::find(df->second.colors.begin(), df->second.colors.end(), color) != df->second.colors.end())
-                                filteredVector.push_back(color);
-                        }
-
-                const auto &vec = (filteredVector.empty() ? it->second : filteredVector);
-                const auto& newColor = vec[CGeneral::GetRandomNumberInRange(0, (int)vec.size())];
-
-                if (newColor.color1)
-                    veh->m_nPrimaryColor = *newColor.color1;
-                if (newColor.color2)
-                    veh->m_nSecondaryColor = *newColor.color2;
-                if (newColor.color3)
-                    veh->m_nTertiaryColor = *newColor.color3;
-                if (newColor.color4)
-                    veh->m_nQuaternaryColor = *newColor.color4;
-            }
-        }
             
         if (veh->m_pDriver && veh->m_pDriver != FindPlayerPed() && spawnTrailer)
         {

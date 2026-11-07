@@ -188,6 +188,41 @@ void logVariationsChange(const char* msg)
         Log::Write("player->m_pEnex = %.8s\n", player->m_pEnex);
 }
 
+SIZE_T GetLargestFreeVirtualBlock()
+{
+    SYSTEM_INFO si;
+    GetSystemInfo(&si);
+
+    BYTE* address = static_cast<BYTE*>(si.lpMinimumApplicationAddress);
+    BYTE* maxAddress = static_cast<BYTE*>(si.lpMaximumApplicationAddress);
+
+    SIZE_T largest = 0;
+
+    while (address < maxAddress)
+    {
+        MEMORY_BASIC_INFORMATION mbi{};
+
+        if (!VirtualQuery(address, &mbi, sizeof(mbi)))
+            break;
+
+        if (mbi.State == MEM_FREE)
+        {
+            if (mbi.RegionSize > largest)
+                largest = mbi.RegionSize;
+        }
+
+        BYTE* next =
+            static_cast<BYTE*>(mbi.BaseAddress) + mbi.RegionSize;
+
+        if (next <= address)
+            break;
+
+        address = next;
+    }
+
+    return largest;
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////   DATA   /////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -542,10 +577,16 @@ __declspec(noinline) void CPopCycle__DisplayHooked()
         bool isFoggy = CWeather::Foggyness > 0.3;
         bool isWindy = CWeather::Wind > 0.29;
 
+        MEMORYSTATUSEX memStatus;
+        memStatus.dwLength = sizeof(memStatus);
+        GlobalMemoryStatusEx(&memStatus);
+        auto largestBlock = GetLargestFreeVirtualBlock();
+
         PrintDebugLine("Model Variations v" MOD_VERSION);
         PrintDebugLine("Debug state: %d", drawDebugText);
         PrintDebugLine("Call hooks: %u/%u/%u", getSharedCallStateCount(), getHookedCalls().size(), getNumMaxHooks());
-        PrintDebugLine("%d MB %d MB", CStreaming__ms_memoryUsed / 1024 / 1024, getMemoryUsage() / 1024 / 1024);
+        PrintDebugLine("%d MB %d MB %d MB %u%%", CStreaming__ms_memoryUsed / 1024 / 1024, getMemoryUsage() / 1024 / 1024, largestBlock/1024/1024, memStatus.dwMemoryLoad);
+            
         if (CTheScripts__IsPlayerOnAMission())
             PrintDebugLine("Mission: %s", lastMissionLoaded);
 
@@ -1086,6 +1127,10 @@ char __cdecl InitialiseRenderWareHooked()
             CloseHandle(hFile);
         }
 
+        MEMORYSTATUSEX memStatus;
+        memStatus.dwLength = sizeof(memStatus);
+        GlobalMemoryStatusEx(&memStatus);
+
         std::string windowsVersion;
         char str[64] = {};
         DWORD cbData = 63;
@@ -1105,6 +1150,7 @@ char __cdecl InitialiseRenderWareHooked()
         Log::Write("Model Variations %s %s\n", MOD_VERSION, IS_DEBUG ? "DEBUG" : "");
         Log::Write("Build date: %s\n", __DATE__);
         Log::Write("%s\n", windowsVersion.c_str());
+        Log::Write("Physical RAM: %u MB\n", memStatus.ullTotalPhys/1024/1024);
         Log::Write("%s\n\n", getDatetime(true, true, false).c_str());
         Log::Write("%s\n", exePath);
 
